@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
+import { Logo } from '../components/brand/Logo'
 
 export function Landing() {
   const user = useAuthStore((state) => state.user)
@@ -23,9 +24,7 @@ export function Landing() {
       <nav className="fixed top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-[#D4E8E7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-[#1E3333] tracking-tight">
-              DentalLearn
-            </span>
+            <Logo />
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-sm font-medium text-[#6B8E8E] hover:text-[#2D6E6A] transition-colors">
@@ -217,7 +216,7 @@ export function Landing() {
       <footer className="py-12 border-t border-[#D4E8E7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-2 text-center md:text-left">
-            <span className="text-xl font-bold text-[#1E3333]">DentalLearn</span>
+            <Logo />
             <p className="text-[#6B8E8E] text-sm">© 2026 DentalLearn Education Inc.</p>
           </div>
           <div className="flex gap-8">

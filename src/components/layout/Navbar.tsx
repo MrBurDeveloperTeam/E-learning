@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { isAdminProfile, isCreatorProfile } from '../../lib/auth'
 import { useAuth } from '../../hooks/useAuth'
 import { NotificationBell } from './NotificationBell'
+import { Logo } from '../brand/Logo'
 
 const navLinks = [
   { label: 'Home', path: '/explore' },
@@ -71,9 +72,7 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           {/* Left — Logo */}
           <Link to={user ? "/explore" : "/"}>
-            <span className="text-xl font-semibold text-[#1E3333] tracking-tight">
-              DentalLearn
-            </span>
+            <Logo />
           </Link>
 
           {/* Center — nav links (authenticated only, hidden on mobile) */}

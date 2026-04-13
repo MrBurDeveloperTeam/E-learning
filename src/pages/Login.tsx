@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { toast } from 'sonner'
+import { Logo } from '../components/brand/Logo'
 
 export default function Login() {
   const { signInWithEmail, user, profile } = useAuth()
@@ -46,8 +47,8 @@ export default function Login() {
       <div className="w-full max-w-[380px] card p-8 animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-6">
-          <Link to="/">
-            <span className="text-xl font-semibold text-teal-800">DentalLearn</span>
+          <Link to="/" className="flex justify-center">
+            <Logo className="mb-2" />
           </Link>
           <h1 className="text-xl font-medium text-neutral-900 mt-4 mb-1">Welcome back</h1>
           <p className="text-sm text-neutral-400">Sign in to your DentalLearn account</p>
