@@ -1,12 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-interface Env {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  MUX_TOKEN_ID: string;
-  MUX_TOKEN_SECRET: string;
-}
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -14,18 +7,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-export const onRequestOptions: PagesFunction<Env> = async () => {
+export async function onRequestOptions() {
   return new Response("ok", { headers: corsHeaders });
-};
+}
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export async function onRequestPost(context: any) {
   try {
     const authHeader = context.request.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Missing Authorization header" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Verify the user is authenticated via Supabase
@@ -48,7 +44,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
 
     // Check Mux credentials
-    const { MUX_TOKEN_ID, MUX_TOKEN_SECRET } = context.env;
+    const MUX_TOKEN_ID = context.env.MUX_TOKEN_ID;
+    const MUX_TOKEN_SECRET = context.env.MUX_TOKEN_SECRET;
+
     if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
       return new Response(
         JSON.stringify({ error: "Mux credentials not configured" }),
@@ -87,9 +85,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       );
     }
 
-    const muxData = (await response.json()) as {
-      data: { url: string; id: string };
-    };
+    const muxData = await response.json() as any;
 
     return new Response(
       JSON.stringify({
@@ -107,4 +103,4 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-};
+}

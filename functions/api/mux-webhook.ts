@@ -1,22 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-interface Env {
-  SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-}
-
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export async function onRequestPost(context: any) {
   try {
-    const body = (await context.request.json()) as {
-      type: string;
-      data: {
-        id: string;
-        upload_id?: string;
-        playback_ids?: { id: string }[];
-        duration?: number;
-      };
-    };
-
+    const body = await context.request.json();
     const { type, data } = body;
 
     const supabase = createClient(
@@ -76,4 +62,4 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       headers: { "Content-Type": "application/json" },
     });
   }
-};
+}
