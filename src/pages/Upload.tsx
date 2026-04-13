@@ -71,11 +71,21 @@ export function Upload() {
     try {
       setUploading(true)
 
-      // 1. Get the direct upload URL from our edge function
-      const { data: uploadData, error: fnError } = await supabase.functions.invoke('get-mux-upload-url')
+      // 1. Get the direct upload URL from our Cloudflare Pages Function
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (!currentSession) throw new Error("Not authenticated")
 
-      if (fnError) throw new Error(fnError.message)
-      if (!uploadData || !uploadData.uploadUrl) throw new Error("Failed to get upload URL")
+      const uploadRes = await fetch('/api/get-mux-upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentSession.access_token}`,
+        },
+      })
+
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error || "Failed to get upload URL")
+      if (!uploadData.uploadUrl) throw new Error("Failed to get upload URL")
 
       const { uploadUrl, uploadId } = uploadData
 
