@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Upload as UploadIcon, CheckCircle, Video, X } from 'lucide-react'
+import { Upload as UploadIcon, CheckCircle, Image as ImageIcon, Video, X } from 'lucide-react'
 import * as UpChunk from '@mux/upchunk'
 import { useAuthStore } from '@/store/authStore'
-import { useCreateVideo } from '@/hooks/useVideos'
+import { useCreateVideo, useUploadVideoThumbnail } from '@/hooks/useVideos'
 import { Navbar } from '@/components/layout/Navbar'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -21,18 +21,34 @@ export function Upload() {
   const session = useAuthStore((state) => state.session)
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const { mutateAsync: createVideo } = useCreateVideo()
+  const { mutateAsync: uploadThumbnail } = useUploadVideoThumbnail()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<VideoCategory>(VIDEO_CATEGORIES[0])
   const [tags, setTags] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'followers_only'>('public')
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null)
   
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const thumbnailInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!thumbnailFile) {
+      setThumbnailPreviewUrl(null)
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(thumbnailFile)
+    setThumbnailPreviewUrl(objectUrl)
+
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [thumbnailFile])
 
   useEffect(() => {
     if (!isAuthLoading && session && profile && (!profile.is_verified || !profile.is_creator)) {
@@ -59,6 +75,25 @@ export function Upload() {
       } else {
         toast.error("Please upload a valid video file.")
       }
+    }
+  }
+
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFile = e.target.files[0]
+      if (!selectedFile.type.startsWith('image/')) {
+        toast.error('Please upload a valid image file for the thumbnail.')
+        e.target.value = ''
+        return
+      }
+
+      if (selectedFile.size > 2 * 1024 * 1024) {
+        toast.error('Thumbnail images must be 2MB or smaller.')
+        e.target.value = ''
+        return
+      }
+
+      setThumbnailFile(selectedFile)
     }
   }
 
@@ -89,6 +124,19 @@ export function Upload() {
 
       const { uploadUrl, uploadId } = uploadData
 
+      let thumbnailUrl: string | null = null
+      if (thumbnailFile) {
+        try {
+          thumbnailUrl = await uploadThumbnail({
+            userId: profile.user_id,
+            file: thumbnailFile,
+          })
+        } catch (thumbnailError) {
+          console.error('Thumbnail upload error:', thumbnailError)
+          toast.error('Thumbnail upload failed. Continuing without a custom thumbnail.')
+        }
+      }
+
       // 2. Insert DB record as processing
       await createVideo({
         creator_id: profile.user_id,
@@ -97,7 +145,8 @@ export function Upload() {
         category,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
         visibility,
-        mux_upload_id: uploadId
+        mux_upload_id: uploadId,
+        thumbnail_url: thumbnailUrl,
       })
 
       // 3. Upload file to Mux using UpChunk
@@ -168,6 +217,81 @@ export function Upload() {
                   onChange={e => setDescription(e.target.value)} 
                   disabled={uploading}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Custom thumbnail</Label>
+                <div className="rounded-xl border border-dashed border-[#88C1BD] bg-[#EAF4F3]/40 p-4">
+                  {!thumbnailPreviewUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                      className="flex w-full flex-col items-center justify-center rounded-lg px-6 py-8 text-center transition-colors hover:bg-white/70"
+                      disabled={uploading}
+                    >
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+                        <ImageIcon className="h-5 w-5 text-[#2D6E6A]" />
+                      </div>
+                      <p className="text-sm font-medium text-[#1E3333]">
+                        Upload a custom thumbnail
+                      </p>
+                      <p className="mt-1 text-xs text-[#6B8E8E]">
+                        JPG, PNG, or WebP up to 2MB
+                      </p>
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="overflow-hidden rounded-lg border border-[#D4E8E7] bg-white">
+                        <img
+                          src={thumbnailPreviewUrl}
+                          alt="Selected thumbnail preview"
+                          className="aspect-video w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-[#1E3333]">
+                            {thumbnailFile?.name}
+                          </p>
+                          <p className="text-xs text-[#6B8E8E]">
+                            {thumbnailFile ? `${(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB` : ''}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => thumbnailInputRef.current?.click()}
+                            disabled={uploading}
+                            className="rounded-lg border border-[#D4E8E7] bg-white px-3 py-1.5 text-xs font-medium text-[#2D6E6A] transition-colors hover:bg-[#EAF4F3]"
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setThumbnailFile(null)
+                              if (thumbnailInputRef.current) {
+                                thumbnailInputRef.current.value = ''
+                              }
+                            }}
+                            disabled={uploading}
+                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#DC2626] transition-colors hover:bg-[#FEE2E2]"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleThumbnailChange}
+                    disabled={uploading}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

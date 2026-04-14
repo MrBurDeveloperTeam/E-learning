@@ -331,6 +331,7 @@ export type CreateVideoParams = {
   tags: string[]
   visibility: 'public' | 'followers_only'
   mux_upload_id: string
+  thumbnail_url?: string | null
 }
 
 export async function createVideo(params: CreateVideoParams) {
@@ -344,6 +345,7 @@ export async function createVideo(params: CreateVideoParams) {
       tags: params.tags,
       visibility: params.visibility,
       mux_upload_id: params.mux_upload_id,
+      thumbnail_url: params.thumbnail_url ?? null,
       status: 'processing',
     })
     .select('id')
@@ -351,4 +353,18 @@ export async function createVideo(params: CreateVideoParams) {
 
   if (error) throw error
   return data
+}
+
+export async function uploadVideoThumbnail(userId: string, file: File) {
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${userId}/video-thumbnails/${crypto.randomUUID()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: false })
+
+  if (uploadError) throw uploadError
+
+  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+  return urlData.publicUrl
 }

@@ -16,6 +16,7 @@ import {
   recordVideoView,
   saveVideo,
   searchVideos,
+  uploadVideoThumbnail,
   unlikeVideo,
   unsaveVideo,
 } from '../lib/queries/videos'
@@ -241,3 +242,9 @@ export function useCreateVideo() {
   })
 }
 
+export function useUploadVideoThumbnail() {
+  return useMutation({
+    mutationFn: ({ userId, file }: { userId: string; file: File }) =>
+      uploadVideoThumbnail(userId, file),
+  })
+}
