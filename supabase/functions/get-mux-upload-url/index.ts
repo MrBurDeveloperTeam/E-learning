@@ -46,6 +46,8 @@ Deno.serve(async (req) => {
         new_asset_settings: {
           playback_policy: ["public"],
           video_quality: "basic",
+          normalize_audio: false,
+          master_access: "temporary",
         },
       }),
     });

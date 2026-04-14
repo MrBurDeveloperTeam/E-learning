@@ -329,16 +329,33 @@ export async function deleteVideo(videoId: string) {
 }
 
 export async function deleteOwnVideo(userId: string, videoId: string) {
-  const { data, error } = await supabase
-    .from('videos')
-    .delete()
-    .eq('id', videoId)
-    .eq('creator_id', userId)
-    .select('id')
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (error) throw error
-  if (!data?.length) {
-    throw new Error('Video not found or you do not have permission to delete it.')
+  if (!session) {
+    throw new Error('You must be signed in to delete a video.')
+  }
+
+  if (session.user.id !== userId) {
+    throw new Error('Your session is out of date. Please sign in again.')
+  }
+
+  const response = await fetch('/api/delete-video', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ videoId }),
+  })
+
+  const result = (await response.json().catch(() => null)) as
+    | { error?: string; success?: boolean }
+    | null
+
+  if (!response.ok) {
+    throw new Error(result?.error || 'Failed to delete the video.')
   }
 }
 

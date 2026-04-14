@@ -69,6 +69,8 @@ export async function onRequestPost(context: any) {
         new_asset_settings: {
           playback_policy: ["public"],
           video_quality: "basic",
+          normalize_audio: false,
+          master_access: "temporary",
         },
       }),
     });
