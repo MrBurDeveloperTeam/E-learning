@@ -1,9 +1,10 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Heart } from 'lucide-react'
+import { Heart, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { CommentWithAuthor } from '@/types'
 import { cn, timeAgo } from '@/lib/utils'
-import { useCommentLike, useReplies } from '@/hooks/useComments'
+import { useCommentLike, useDeleteComment, useReplies } from '@/hooks/useComments'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
@@ -23,11 +24,14 @@ export function CommentItem({
 }: CommentItemProps) {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
+  const profile = useAuthStore((state) => state.profile)
   const { isLiked, toggleLike, isPending } = useCommentLike(comment.id)
+  const deleteCommentMutation = useDeleteComment()
   const [showReplies, setShowReplies] = useState(false)
   const [showReplyInput, setShowReplyInput] = useState(false)
   const repliesQuery = useReplies(showReplies ? comment.id : '')
   const replyCount = comment.reply_count ?? 0
+  const isOwnComment = profile?.user_id === comment.author_id
 
   function handleLike() {
     if (!session) {
@@ -35,6 +39,20 @@ export function CommentItem({
       return
     }
     toggleLike.mutate()
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Delete this comment?')) return
+
+    try {
+      await deleteCommentMutation.mutateAsync({
+        commentId: comment.id,
+        videoId,
+      })
+      toast.success('Comment deleted')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete comment')
+    }
   }
 
   return (
@@ -90,6 +108,18 @@ export function CommentItem({
               className="ml-3 text-xs text-[#9BB5B5] transition-colors hover:text-[#2D6E6A]"
             >
               Reply
+            </button>
+          )}
+
+          {isOwnComment && (
+            <button
+              type="button"
+              disabled={deleteCommentMutation.isPending}
+              onClick={() => void handleDelete()}
+              className="ml-3 flex items-center gap-1 text-xs text-[#DC2626] transition-colors hover:text-[#B91C1C] disabled:opacity-50"
+            >
+              <Trash2 className="h-3 w-3" />
+              Delete
             </button>
           )}
         </div>

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   checkCommentLiked,
   createComment,
-  deleteComment,
+  deleteOwnComment,
   fetchComments,
   fetchReplies,
   likeComment,
@@ -42,12 +42,35 @@ export function useCreateComment() {
 
 export function useDeleteComment() {
   const qc = useQueryClient()
+  const profile = useAuthStore((state) => state.profile)
+  const userId = profile?.user_id
 
   return useMutation({
-    mutationFn: deleteComment,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['comments'] })
+    mutationFn: async ({
+      commentId,
+      videoId,
+    }: {
+      commentId: string
+      videoId: string
+    }) => {
+      if (!userId) {
+        throw new Error('You must be signed in to delete a comment.')
+      }
+
+      await deleteOwnComment(userId, commentId)
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['comments', variables.videoId] })
       qc.invalidateQueries({ queryKey: ['replies'] })
+      qc.invalidateQueries({ queryKey: ['comment-liked'] })
+      qc.invalidateQueries({ queryKey: ['video', variables.videoId] })
+      qc.setQueryData(['video', variables.videoId], (current: any) => {
+        if (!current) return current
+        return {
+          ...current,
+          comment_count: Math.max((current.comment_count ?? 0) - 1, 0),
+        }
+      })
     },
   })
 }

@@ -4,7 +4,7 @@ import {
   checkVideoLiked,
   checkVideoSaved,
   createVideo,
-  deleteVideo,
+  deleteOwnVideo,
   fetchCreatorVideos,
   fetchFollowingVideos,
   fetchMyVideos,
@@ -16,6 +16,7 @@ import {
   recordVideoView,
   saveVideo,
   searchVideos,
+  updateVideo,
   uploadVideoThumbnail,
   unlikeVideo,
   unsaveVideo,
@@ -216,15 +217,24 @@ export function useRecordView() {
 
 export function useDeleteVideo() {
   const qc = useQueryClient()
+  const profile = useAuthStore((state) => state.profile)
+  const userId = profile?.user_id
 
   return useMutation({
-    mutationFn: deleteVideo,
-    onSuccess: () => {
+    mutationFn: async (videoId: string) => {
+      if (!userId) {
+        throw new Error('You must be signed in to delete a video.')
+      }
+
+      await deleteOwnVideo(userId, videoId)
+    },
+    onSuccess: (_data, videoId) => {
       qc.invalidateQueries({ queryKey: ['my-videos'] })
       qc.invalidateQueries({ queryKey: ['videos'] })
       qc.invalidateQueries({ queryKey: ['creator-videos'] })
       qc.invalidateQueries({ queryKey: ['saved-videos'] })
       qc.invalidateQueries({ queryKey: ['following-videos'] })
+      qc.invalidateQueries({ queryKey: ['video', videoId] })
     },
   })
 }
@@ -238,6 +248,21 @@ export function useCreateVideo() {
       qc.invalidateQueries({ queryKey: ['my-videos'] })
       qc.invalidateQueries({ queryKey: ['videos'] })
       qc.invalidateQueries({ queryKey: ['creator-videos'] })
+    },
+  })
+}
+
+export function useUpdateVideo() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateVideo,
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['my-videos'] })
+      qc.invalidateQueries({ queryKey: ['videos'] })
+      qc.invalidateQueries({ queryKey: ['creator-videos'] })
+      qc.invalidateQueries({ queryKey: ['saved-videos'] })
+      qc.invalidateQueries({ queryKey: ['video', variables.videoId] })
     },
   })
 }

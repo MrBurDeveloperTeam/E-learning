@@ -1,6 +1,6 @@
 import MuxPlayer from '@mux/mux-player-react'
 import { Link, useParams, useNavigate } from '@tanstack/react-router'
-import { Bookmark, Lock, Share2, ThumbsUp } from 'lucide-react'
+import { Bookmark, Lock, Share2, ThumbsUp, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CommentSection } from '@/components/comments/CommentSection'
@@ -15,6 +15,7 @@ import { cn, formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import {
   useRecordView,
+  useDeleteVideo,
   useRelatedVideos,
   useVideo,
   useVideoLike,
@@ -25,6 +26,7 @@ export function Watch() {
   const { videoId } = useParams({ from: '/watch/$videoId' })
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
+  const profile = useAuthStore((state) => state.profile)
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const isAuthenticated = !!session
   const [expanded, setExpanded] = useState(false)
@@ -36,6 +38,7 @@ export function Watch() {
   const { isLiked, toggleLike, isPending: likePending } = useVideoLike(videoId)
   const { isSaved, toggleSave, isPending: savePending } = useVideoSave(videoId)
   const recordView = useRecordView()
+  const deleteVideoMutation = useDeleteVideo()
 
   // Dynamic document title
   useEffect(() => {
@@ -70,6 +73,19 @@ export function Watch() {
       return
     }
     toggleSave.mutate()
+  }
+
+  async function handleDeleteVideo() {
+    if (!video) return
+    if (!window.confirm('Delete this video? This cannot be undone.')) return
+
+    try {
+      await deleteVideoMutation.mutateAsync(video.id)
+      toast.success('Video deleted')
+      navigate({ to: '/studio' })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete video')
+    }
   }
 
   return (
@@ -193,6 +209,18 @@ export function Watch() {
                       <Share2 className="h-4 w-4" />
                       <span className="hidden sm:inline">Share</span>
                     </button>
+
+                    {profile?.user_id === video.creator_id && (
+                      <button
+                        type="button"
+                        disabled={deleteVideoMutation.isPending}
+                        onClick={() => void handleDeleteVideo()}
+                        className="flex items-center gap-2 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-3 sm:px-4 py-2 text-sm text-[#DC2626] transition-all hover:border-[#FCA5A5] hover:bg-[#FEE2E2] disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -91,6 +91,20 @@ export async function deleteComment(id: string) {
   if (error) throw error
 }
 
+export async function deleteOwnComment(userId: string, commentId: string) {
+  const { data, error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('author_id', userId)
+    .select('id')
+
+  if (error) throw error
+  if (!data?.length) {
+    throw new Error('Comment not found or you do not have permission to delete it.')
+  }
+}
+
 export async function likeComment(userId: string, commentId: string) {
   const { error } = await supabase
     .from('comment_likes')

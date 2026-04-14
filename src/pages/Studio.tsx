@@ -328,7 +328,12 @@ export function Studio() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => navigate({ to: '/upload' })}
+                                onClick={() =>
+                                  navigate({
+                                    to: '/upload',
+                                    search: { videoId: video.id },
+                                  })
+                                }
                                 className="rounded-lg p-1.5 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
@@ -443,7 +448,12 @@ export function Studio() {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => navigate({ to: '/upload' })}
+                                    onClick={() =>
+                                      navigate({
+                                        to: '/upload',
+                                        search: { videoId: video.id },
+                                      })
+                                    }
                                     className="rounded-lg p-2 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
                                   >
                                     <Edit3 className="h-4 w-4" />

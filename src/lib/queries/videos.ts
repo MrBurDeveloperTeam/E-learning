@@ -3,6 +3,7 @@ import type {
   SortOption,
   VideoSaveWithVideo,
   VideoWithCreator,
+  VideoVisibility,
 } from '../../types'
 
 const VIDEO_QUERY_TIMEOUT_MS = 8000
@@ -321,6 +322,57 @@ export async function recordVideoView(userId: string, videoId: string) {
 export async function deleteVideo(videoId: string) {
   const { error } = await supabase.from('videos').delete().eq('id', videoId)
   if (error) throw error
+}
+
+export async function deleteOwnVideo(userId: string, videoId: string) {
+  const { data, error } = await supabase
+    .from('videos')
+    .delete()
+    .eq('id', videoId)
+    .eq('creator_id', userId)
+    .select('id')
+
+  if (error) throw error
+  if (!data?.length) {
+    throw new Error('Video not found or you do not have permission to delete it.')
+  }
+}
+
+export type UpdateVideoParams = {
+  user_id: string
+  videoId: string
+  title: string
+  description?: string
+  category: string
+  tags: string[]
+  visibility: VideoVisibility
+  thumbnail_url?: string | null
+}
+
+export async function updateVideo(params: UpdateVideoParams) {
+  const updates: Record<string, unknown> = {
+    title: params.title,
+    description: params.description || null,
+    category: params.category,
+    tags: params.tags,
+    visibility: params.visibility,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (params.thumbnail_url !== undefined) {
+    updates.thumbnail_url = params.thumbnail_url
+  }
+
+  const { data, error } = await supabase
+    .from('videos')
+    .update(updates)
+    .eq('id', params.videoId)
+    .eq('creator_id', params.user_id)
+    .select('id')
+    .single()
+
+  if (error) throw error
+  return data
 }
 
 export type CreateVideoParams = {

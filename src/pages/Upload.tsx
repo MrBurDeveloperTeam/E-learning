@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Upload as UploadIcon, CheckCircle, Image as ImageIcon, Video, X } from 'lucide-react'
 import * as UpChunk from '@mux/upchunk'
 import { useAuthStore } from '@/store/authStore'
-import { useCreateVideo, useUploadVideoThumbnail } from '@/hooks/useVideos'
+import { useCreateVideo, useUpdateVideo, useUploadVideoThumbnail, useVideo } from '@/hooks/useVideos'
 import { Navbar } from '@/components/layout/Navbar'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -15,13 +15,28 @@ import { VIDEO_CATEGORIES, type VideoCategory } from '@/types'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
+function formatDuration(seconds: number | null | undefined) {
+  if (!seconds && seconds !== 0) return 'Duration unavailable'
+
+  const totalSeconds = Math.max(0, Math.floor(seconds))
+  const minutes = Math.floor(totalSeconds / 60)
+  const remainingSeconds = totalSeconds % 60
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
 export function Upload() {
   const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as { videoId?: string }
+  const videoId = search.videoId?.trim() ?? ''
+  const isEditMode = !!videoId
   const profile = useAuthStore((state) => state.profile)
   const session = useAuthStore((state) => state.session)
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const { mutateAsync: createVideo } = useCreateVideo()
+  const { mutateAsync: updateVideo } = useUpdateVideo()
   const { mutateAsync: uploadThumbnail } = useUploadVideoThumbnail()
+  const editVideoQuery = useVideo(videoId)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -30,6 +45,7 @@ export function Upload() {
   const [visibility, setVisibility] = useState<'public' | 'followers_only'>('public')
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null)
+  const [originalThumbnailUrl, setOriginalThumbnailUrl] = useState<string | null>(null)
   
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -39,8 +55,37 @@ export function Upload() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setTitle('')
+    setDescription('')
+    setCategory(VIDEO_CATEGORIES[0])
+    setTags('')
+    setVisibility('public')
+    setThumbnailFile(null)
+    setThumbnailPreviewUrl(null)
+    setOriginalThumbnailUrl(null)
+    setFile(null)
+    setUploading(false)
+    setProgress(0)
+  }, [videoId])
+
+  useEffect(() => {
+    if (!editVideoQuery.data) return
+
+    const video = editVideoQuery.data
+    setTitle(video.title ?? '')
+    setDescription(video.description ?? '')
+    setCategory(video.category)
+    setTags((video.tags ?? []).join(', '))
+    setVisibility(video.visibility)
+    setOriginalThumbnailUrl(video.thumbnail_url ?? null)
+    setThumbnailFile(null)
+    setFile(null)
+    setProgress(0)
+  }, [editVideoQuery.data])
+
+  useEffect(() => {
     if (!thumbnailFile) {
-      setThumbnailPreviewUrl(null)
+      setThumbnailPreviewUrl(originalThumbnailUrl)
       return
     }
 
@@ -48,12 +93,28 @@ export function Upload() {
     setThumbnailPreviewUrl(objectUrl)
 
     return () => URL.revokeObjectURL(objectUrl)
-  }, [thumbnailFile])
+  }, [thumbnailFile, originalThumbnailUrl])
+
+  useEffect(() => {
+    if (!isEditMode || isAuthLoading || !profile || !editVideoQuery.data) return
+
+    if (editVideoQuery.data.creator_id !== profile.user_id) {
+      toast.error("You can only edit your own videos.")
+      navigate({ to: '/studio', replace: true })
+    }
+  }, [editVideoQuery.data, isEditMode, isAuthLoading, navigate, profile])
+
+  useEffect(() => {
+    if (!isEditMode || !editVideoQuery.isError) return
+
+    toast.error('Video not found.')
+    navigate({ to: '/studio', replace: true })
+  }, [editVideoQuery.isError, isEditMode, navigate])
 
   useEffect(() => {
     if (!isAuthLoading && session && profile && (!profile.is_verified || !profile.is_creator)) {
        toast.error("You don't have permission to upload videos.")
-       navigate({ to: '/studio' })
+       navigate({ to: '/studio', replace: true })
     }
   }, [session, profile, navigate, isAuthLoading])
 
@@ -99,12 +160,48 @@ export function Upload() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file) return toast.error("Please select a video file")
     if (!title) return toast.error("Please enter a title")
     if (!profile) return toast.error("You must be logged in")
 
     try {
       setUploading(true)
+      let thumbnailUrl: string | null | undefined = undefined
+
+      if (thumbnailFile) {
+        try {
+          thumbnailUrl = await uploadThumbnail({
+            userId: profile.user_id,
+            file: thumbnailFile,
+          })
+        } catch (thumbnailError) {
+          console.error('Thumbnail upload error:', thumbnailError)
+          toast.error('Thumbnail upload failed. Continuing without a custom thumbnail.')
+          thumbnailUrl = isEditMode ? editVideoQuery.data?.thumbnail_url ?? null : null
+        }
+      } else if (isEditMode) {
+        thumbnailUrl = editVideoQuery.data?.thumbnail_url ?? null
+      }
+
+      if (isEditMode) {
+        if (!editVideoQuery.data) throw new Error('Video data is still loading.')
+
+        await updateVideo({
+          user_id: profile.user_id,
+          videoId,
+          title,
+          description,
+          category,
+          tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+          visibility,
+          thumbnail_url: thumbnailUrl,
+        })
+
+        toast.success('Video updated successfully.')
+        navigate({ to: '/studio', replace: true })
+        return
+      }
+
+      if (!file) return toast.error("Please select a video file")
 
       // 1. Get the direct upload URL from our Cloudflare Pages Function
       const { data: { session: currentSession } } = await supabase.auth.getSession()
@@ -124,17 +221,9 @@ export function Upload() {
 
       const { uploadUrl, uploadId } = uploadData
 
-      let thumbnailUrl: string | null = null
+      let createThumbnailUrl: string | null = null
       if (thumbnailFile) {
-        try {
-          thumbnailUrl = await uploadThumbnail({
-            userId: profile.user_id,
-            file: thumbnailFile,
-          })
-        } catch (thumbnailError) {
-          console.error('Thumbnail upload error:', thumbnailError)
-          toast.error('Thumbnail upload failed. Continuing without a custom thumbnail.')
-        }
+        createThumbnailUrl = thumbnailUrl ?? null
       }
 
       // 2. Insert DB record as processing
@@ -146,7 +235,7 @@ export function Upload() {
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
         visibility,
         mux_upload_id: uploadId,
-        thumbnail_url: thumbnailUrl,
+        thumbnail_url: createThumbnailUrl,
       })
 
       // 3. Upload file to Mux using UpChunk
@@ -162,7 +251,7 @@ export function Upload() {
 
       upload.on('success', () => {
         toast.success("Video uploaded successfully! It's now processing.")
-        navigate({ to: '/studio' })
+        navigate({ to: '/studio', replace: true })
       })
 
       upload.on('error', err => {
@@ -182,6 +271,10 @@ export function Upload() {
     return <div className="p-8 text-center text-sm text-[#9BB5B5]">Loading...</div>
   }
 
+  if (isEditMode && editVideoQuery.isLoading) {
+    return <div className="p-8 text-center text-sm text-[#9BB5B5]">Loading video data...</div>
+  }
+
   if (!session || !profile?.is_verified) {
     return null // Redirected by effect
   }
@@ -190,7 +283,21 @@ export function Upload() {
     <>
       <Navbar />
       <div className="max-w-4xl mx-auto px-6 py-8 pb-20 md:pb-8">
-        <PageHeader title="Upload video" subtitle="Share your knowledge with the dental community" />
+        <PageHeader
+          title={isEditMode ? 'Edit video' : 'Upload video'}
+          subtitle={
+            isEditMode
+              ? 'Update your video details and thumbnail'
+              : 'Share your knowledge with the dental community'
+          }
+        />
+
+        {isEditMode && editVideoQuery.data && (
+          <div className="mb-6 rounded-xl border border-[#88C1BD] bg-[#EAF4F3]/70 px-4 py-3 text-sm text-[#2D6E6A]">
+            Editing <span className="font-medium">{editVideoQuery.data.title}</span>
+            {' '} - the original video file stays attached to this post.
+          </div>
+        )}
       
         <div className="mt-8 grid md:grid-cols-2 gap-8">
           <div>
@@ -251,10 +358,12 @@ export function Upload() {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-[#1E3333]">
-                            {thumbnailFile?.name}
+                            {thumbnailFile?.name ?? 'Current thumbnail'}
                           </p>
                           <p className="text-xs text-[#6B8E8E]">
-                            {thumbnailFile ? `${(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB` : ''}
+                            {thumbnailFile
+                              ? `${(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB`
+                              : 'Saved thumbnail preview'}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -270,6 +379,7 @@ export function Upload() {
                             type="button"
                             onClick={() => {
                               setThumbnailFile(null)
+                              setThumbnailPreviewUrl(originalThumbnailUrl)
                               if (thumbnailInputRef.current) {
                                 thumbnailInputRef.current.value = ''
                               }
@@ -337,9 +447,42 @@ export function Upload() {
           </div>
 
           <div className="flex flex-col space-y-4">
-            <Label>Video File *</Label>
+            <Label>{isEditMode ? 'Video file' : 'Video File *'}</Label>
             
-            {!file ? (
+            {isEditMode ? (
+              <div className="border border-[#D4E8E7] rounded-xl overflow-hidden bg-white p-5">
+                {editVideoQuery.data ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-[#EAF4F3] flex items-center justify-center">
+                        <Video className="h-5 w-5 text-[#2D6E6A]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#1E3333] truncate">
+                          {editVideoQuery.data.title}
+                        </p>
+                        <p className="text-xs text-[#6B8E8E]">
+                          {editVideoQuery.data.status} - {editVideoQuery.data.category}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-[#6B8E8E]">
+                      <div className="rounded-lg bg-[#F7FAFA] px-3 py-2">
+                        Duration: {formatDuration(editVideoQuery.data.duration_seconds)}
+                      </div>
+                      <div className="rounded-lg bg-[#F7FAFA] px-3 py-2">
+                        Visibility: {editVideoQuery.data.visibility}
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#9BB5B5]">
+                      The original video file cannot be replaced from this page. Update the details and thumbnail instead.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-[#9BB5B5]">Loading video details...</div>
+                )}
+              </div>
+            ) : !file ? (
               <div 
                 className="border-2 border-dashed border-[#88C1BD] rounded-xl flex flex-col items-center justify-center p-12 text-center bg-[#EAF4F3]/50 hover:bg-[#EAF4F3] transition-colors cursor-pointer"
                 onDragOver={handleDragOver}
@@ -410,9 +553,9 @@ export function Upload() {
                 type="submit" 
                 form="upload-form"
                 className="w-full md:w-auto px-8" 
-                disabled={!file || !title || uploading}
-               >
-                 {uploading ? 'Uploading...' : 'Publish Video'}
+                disabled={uploading || !title || (!isEditMode && !file)}
+              >
+                 {uploading ? 'Saving...' : isEditMode ? 'Save changes' : 'Publish Video'}
                </Button>
             </div>
           </div>
