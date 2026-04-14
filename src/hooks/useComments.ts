@@ -3,6 +3,7 @@ import {
   checkCommentLiked,
   createComment,
   deleteOwnComment,
+  fetchCommentCount,
   fetchComments,
   fetchReplies,
   likeComment,
@@ -14,6 +15,14 @@ export function useComments(videoId: string) {
   return useQuery({
     queryKey: ['comments', videoId],
     queryFn: () => fetchComments(videoId),
+    enabled: !!videoId,
+  })
+}
+
+export function useCommentCount(videoId: string) {
+  return useQuery({
+    queryKey: ['comment-count', videoId],
+    queryFn: () => fetchCommentCount(videoId),
     enabled: !!videoId,
   })
 }
@@ -33,6 +42,8 @@ export function useCreateComment() {
     mutationFn: createComment,
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['comments', variables.video_id] })
+      qc.invalidateQueries({ queryKey: ['comment-count', variables.video_id] })
+      qc.invalidateQueries({ queryKey: ['video', variables.video_id] })
       if (variables.parent_id) {
         qc.invalidateQueries({ queryKey: ['replies', variables.parent_id] })
       }
@@ -61,6 +72,7 @@ export function useDeleteComment() {
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['comments', variables.videoId] })
+      qc.invalidateQueries({ queryKey: ['comment-count', variables.videoId] })
       qc.invalidateQueries({ queryKey: ['replies'] })
       qc.invalidateQueries({ queryKey: ['comment-liked'] })
       qc.invalidateQueries({ queryKey: ['video', variables.videoId] })

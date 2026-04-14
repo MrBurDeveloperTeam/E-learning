@@ -1,7 +1,6 @@
 import { useParams } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { FollowButton } from '@/components/creator/FollowButton'
-import { MetricCard } from '@/components/dashboard/MetricCard'
 import { Navbar } from '@/components/layout/Navbar'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -9,16 +8,15 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { useProfile } from '@/hooks/useProfile'
 import { useCreatorVideos } from '@/hooks/useVideos'
-import { cn, formatViewCount } from '@/lib/utils'
+import { formatViewCount } from '@/lib/utils'
 
 export function Channel() {
   const { userId } = useParams({ from: '/channel/$userId' })
-  const [tab, setTab] = useState<'videos' | 'about'>('videos')
   const profileQuery = useProfile(userId)
   const videosQuery = useCreatorVideos(userId)
   const profile = profileQuery.data
   const videos = videosQuery.data ?? []
-  const totalViews = videos.reduce((sum, video) => sum + video.view_count, 0)
+  const videoCount = videos.length
   const isLoading = profileQuery.isLoading || videosQuery.isLoading
   const isError = profileQuery.isError || videosQuery.isError
 
@@ -94,7 +92,7 @@ export function Channel() {
               </p>
               <div className="flex flex-wrap gap-4 mt-3">
                 <span className="text-sm text-[#6B8E8E]">
-                  {profile.video_count} videos
+                  {videoCount} videos
                 </span>
                 <span className="text-sm text-[#6B8E8E]">
                   {formatViewCount(profile.follower_count)} followers
@@ -110,58 +108,19 @@ export function Channel() {
               )}
             </div>
 
-            <div className="border-b border-[#D4E8E7] px-4 md:px-6">
-              <div className="flex overflow-x-auto scrollbar-hide gap-0">
-                {(['videos', 'about'] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setTab(value)}
-                    className={cn(
-                      'border-b-2 px-4 py-3 text-sm capitalize transition-colors flex-shrink-0',
-                      tab === value
-                        ? 'border-[#88C1BD] text-[#2D6E6A]'
-                        : 'border-transparent text-[#6B8E8E]'
-                    )}
-                  >
-                    {value}
-                  </button>
-                ))}
+            <div className="px-4 md:px-6 py-6 pb-20 md:pb-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-medium text-[#1E3333]">Videos</h2>
+                <span className="text-sm text-[#6B8E8E]">{videoCount}</span>
               </div>
+              <VideoGrid
+                videos={videos}
+                columns={4}
+                isLoading={videosQuery.isLoading}
+                emptyTitle="No videos yet"
+                emptyDescription="This creator hasn't uploaded any videos yet"
+              />
             </div>
-
-            {tab === 'videos' && (
-              <div className="px-4 md:px-6 py-6 pb-20 md:pb-6">
-                <VideoGrid
-                  videos={videos}
-                  columns={4}
-                  isLoading={videosQuery.isLoading}
-                  emptyTitle="No videos yet"
-                  emptyDescription="This creator hasn't uploaded any videos yet"
-                />
-              </div>
-            )}
-
-            {tab === 'about' && (
-              <div className="grid gap-6 px-4 md:px-6 py-6 pb-20 md:pb-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="max-w-2xl">
-                  <h2 className="mb-3 text-base font-medium text-[#1E3333]">About</h2>
-                  <p className="text-sm leading-relaxed text-[#3D5C5C]">
-                    {profile.bio || 'No bio provided yet.'}
-                  </p>
-                  <div className="mt-6 space-y-2 text-sm text-[#6B8E8E]">
-                    <p>Specialty: {profile.specialty ?? 'Not specified'}</p>
-                    <p>Institution: {profile.institution ?? 'Not specified'}</p>
-
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                  <MetricCard label="Videos" value={profile.video_count} />
-                  <MetricCard label="Followers" value={formatViewCount(profile.follower_count)} />
-                  <MetricCard label="Total views" value={formatViewCount(totalViews)} />
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>

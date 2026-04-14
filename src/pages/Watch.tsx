@@ -30,7 +30,11 @@ export function Watch() {
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const isAuthenticated = !!session
   const [expanded, setExpanded] = useState(false)
+  const playerRef = useRef<any>(null)
   const hasRecordedView = useRef(false)
+  const trackedWatchSeconds = useRef(0)
+  const lastTrackedTime = useRef<number | null>(null)
+  const trackingInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const videoQuery = useVideo(videoId)
   const video = videoQuery.data
@@ -39,6 +43,57 @@ export function Watch() {
   const { isSaved, toggleSave, isPending: savePending } = useVideoSave(videoId)
   const recordView = useRecordView()
   const deleteVideoMutation = useDeleteVideo()
+
+  function getViewThresholdSeconds(durationSeconds: number | null | undefined) {
+    if (!durationSeconds || durationSeconds <= 0) return 30
+    return Math.min(30, Math.max(5, durationSeconds * 0.5))
+  }
+
+  function stopViewTracking() {
+    if (trackingInterval.current) {
+      clearInterval(trackingInterval.current)
+      trackingInterval.current = null
+    }
+  }
+
+  function maybeRecordMeaningfulView() {
+    if (!video || hasRecordedView.current) return
+
+    const thresholdSeconds = getViewThresholdSeconds(video.duration_seconds)
+    if (trackedWatchSeconds.current < thresholdSeconds) return
+
+    hasRecordedView.current = true
+    stopViewTracking()
+    recordView.mutate(videoId)
+  }
+
+  function samplePlaybackProgress() {
+    if (document.hidden || hasRecordedView.current) return
+
+    const player = playerRef.current as HTMLMediaElement | null
+    if (!player || player.paused) return
+
+    const currentTime = player.currentTime ?? 0
+    const previousTime = lastTrackedTime.current
+
+    if (previousTime !== null) {
+      const delta = currentTime - previousTime
+      // Ignore seeks and spurious jumps. Only continuous playback counts.
+      if (delta > 0 && delta <= 2) {
+        trackedWatchSeconds.current += delta
+      }
+    }
+
+    lastTrackedTime.current = currentTime
+    maybeRecordMeaningfulView()
+  }
+
+  function startViewTracking() {
+    stopViewTracking()
+    const player = playerRef.current as HTMLMediaElement | null
+    lastTrackedTime.current = player?.currentTime ?? 0
+    trackingInterval.current = setInterval(samplePlaybackProgress, 1000)
+  }
 
   // Dynamic document title
   useEffect(() => {
@@ -49,6 +104,33 @@ export function Watch() {
       document.title = 'DentalLearn — Dental Video Community'
     }
   }, [video?.title])
+
+  useEffect(() => {
+    hasRecordedView.current = false
+    trackedWatchSeconds.current = 0
+    lastTrackedTime.current = null
+    stopViewTracking()
+
+    return () => stopViewTracking()
+  }, [videoId])
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        stopViewTracking()
+        lastTrackedTime.current = null
+        return
+      }
+
+      const player = playerRef.current as HTMLMediaElement | null
+      if (player && !player.paused && !hasRecordedView.current) {
+        startViewTracking()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [videoId, video?.duration_seconds])
 
   async function copyLink() {
     try {
@@ -122,15 +204,24 @@ export function Watch() {
               <div className="w-full aspect-video bg-black lg:rounded-xl overflow-hidden">
                 {isAuthenticated && video.mux_playback_id ? (
                   <MuxPlayer
+                    ref={playerRef}
                     playbackId={video.mux_playback_id}
                     streamType="on-demand"
                     autoPlay={false}
                     className="h-full w-full"
                     onPlay={() => {
-                      if (!hasRecordedView.current) {
-                        recordView.mutate(videoId)
-                        hasRecordedView.current = true
-                      }
+                      if (!hasRecordedView.current) startViewTracking()
+                    }}
+                    onPause={() => {
+                      samplePlaybackProgress()
+                      stopViewTracking()
+                      lastTrackedTime.current = null
+                    }}
+                    onEnded={() => {
+                      samplePlaybackProgress()
+                      maybeRecordMeaningfulView()
+                      stopViewTracking()
+                      lastTrackedTime.current = null
                     }}
                   />
                 ) : (

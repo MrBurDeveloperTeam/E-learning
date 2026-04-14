@@ -5,6 +5,7 @@ import { FollowButton } from '@/components/creator/FollowButton'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { useFollowing } from '@/hooks/useFollow'
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
 import { supabase } from '@/lib/supabase'
 import { VIDEO_CATEGORIES, type SortOption } from '@/types'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ export function Home() {
   const [category, setCategory] = useState<string>('All')
   const [sort, setSort] = useState<SortOption>('newest')
   const profile = useAuthStore((state) => state.profile)
+  const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
 
   const {
     data,
@@ -107,7 +109,10 @@ export function Home() {
 
       <div className="sticky top-14 z-40 border-b border-[#D6E0E0] bg-[#F7FAFA] py-3">
         <div className="mx-auto max-w-[1400px] px-4 md:px-6">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+          <div
+            ref={categoryScrollRef}
+            className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1"
+          >
             {['All', ...VIDEO_CATEGORIES].map((item) => {
               const active = item === category
 

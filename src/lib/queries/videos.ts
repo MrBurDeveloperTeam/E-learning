@@ -252,7 +252,10 @@ export async function fetchFollowingVideos(userId: string): Promise<VideoWithCre
 export async function likeVideo(userId: string, videoId: string) {
   const { error } = await supabase
     .from('video_likes')
-    .insert({ user_id: userId, video_id: videoId })
+    .upsert(
+      { user_id: userId, video_id: videoId },
+      { onConflict: 'user_id,video_id', ignoreDuplicates: true }
+    )
 
   if (error) throw error
 }
@@ -312,11 +315,12 @@ export async function checkVideoSaved(userId: string, videoId: string): Promise<
 }
 
 export async function recordVideoView(userId: string, videoId: string) {
-  const { error } = await supabase
-    .from('video_views')
-    .insert({ user_id: userId, video_id: videoId })
+  const { error } = await supabase.rpc('record_video_view', {
+    p_user_id: userId,
+    p_video_id: videoId,
+  })
 
-  if (error && error.code !== '23505') throw error
+  if (error) throw error
 }
 
 export async function deleteVideo(videoId: string) {

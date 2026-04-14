@@ -10,6 +10,7 @@ import { Landing } from '@/pages/Landing'
 import { Watch } from '@/pages/Watch'
 import { Upload } from '@/pages/Upload'
 import { Channel } from '@/pages/Channel'
+import { Categories } from '@/pages/Categories'
 import { Category } from '@/pages/Category'
 import { Search } from '@/pages/Search'
 import { Feed } from '@/pages/Feed'
@@ -67,6 +68,12 @@ const watchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/watch/$videoId',
   component: Watch,
+})
+
+const categoriesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/category',
+  component: Categories,
 })
 
 const categoryRoute = createRoute({
@@ -209,6 +216,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   watchRoute,
+  categoriesRoute,
   categoryRoute,
   searchRoute,
   channelRoute,

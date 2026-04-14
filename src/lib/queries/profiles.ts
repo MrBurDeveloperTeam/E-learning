@@ -1,14 +1,29 @@
 import { supabase } from '../supabase'
 import type { Profile } from '../../types'
 
+type ProfileWithVideoAggregate = Profile & {
+  videos?: Array<{ count: number | null }> | null
+}
+
+function normalizeProfileVideoCount(profile: ProfileWithVideoAggregate | null): Profile | null {
+  if (!profile) return null
+
+  const exactVideoCount = profile.videos?.[0]?.count
+  return {
+    ...profile,
+    video_count: exactVideoCount ?? profile.video_count ?? 0,
+  }
+}
+
 export async function fetchProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, videos(count)')
+    .eq('videos.status', 'published')
     .eq('user_id', userId)
     .single()
   if (error) throw error
-  return data as Profile
+  return normalizeProfileVideoCount(data as ProfileWithVideoAggregate)!
 }
 
 export async function updateProfile(
@@ -53,8 +68,9 @@ export async function searchCreators(query: string) {
   const escaped = term.replace(/[%_,]/g, '')
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, videos(count)')
     .eq('is_creator', true)
+    .eq('videos.status', 'published')
     .or(
       `full_name.ilike.%${escaped}%,username.ilike.%${escaped}%,specialty.ilike.%${escaped}%`
     )
@@ -63,5 +79,6 @@ export async function searchCreators(query: string) {
 
   if (error) throw error
 
-  return (data ?? []) as Profile[]
+  return ((data ?? []) as ProfileWithVideoAggregate[])
+    .map((profile) => normalizeProfileVideoCount(profile)!)
 }

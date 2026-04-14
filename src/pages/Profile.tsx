@@ -54,6 +54,7 @@ export function Profile() {
   const profile = profileQuery.data
   const videosQuery = useCreatorVideos(profile?.is_creator ? userId : '')
   const creatorVideos = videosQuery.data ?? []
+  const videoCount = creatorVideos.length
   const isOwnProfile = currentProfile?.user_id === userId
 
   if (profileQuery.isLoading) {
@@ -142,7 +143,7 @@ export function Profile() {
               {profile.is_creator && (
                 <div className="text-center md:text-left">
                   <p className="text-base font-medium text-[#1E3333]">
-                    {profile.video_count}
+                    {videoCount}
                   </p>
                   <p className="text-xs text-[#9BB5B5]">Videos</p>
                 </div>

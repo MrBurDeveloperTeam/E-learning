@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useComments } from '@/hooks/useComments'
+import { useCommentCount, useComments } from '@/hooks/useComments'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CommentInput } from './CommentInput'
@@ -16,6 +16,8 @@ export function CommentSection({
 }: CommentSectionProps) {
   const [sort, setSort] = useState<'top' | 'newest'>('top')
   const { data: comments = [], isLoading, isError, refetch } = useComments(videoId)
+  const commentCountQuery = useCommentCount(videoId)
+  const displayCommentCount = commentCountQuery.data ?? commentCount
 
   const sortedComments =
     sort === 'newest'
@@ -29,7 +31,7 @@ export function CommentSection({
     <div>
       <div className="mb-5 flex items-center gap-4">
         <h3 className="text-base font-medium text-[#1E3333]">
-          {commentCount} comments
+          {displayCommentCount} comments
         </h3>
         <select
           value={sort}

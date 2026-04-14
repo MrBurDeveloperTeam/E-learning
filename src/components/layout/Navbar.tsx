@@ -12,7 +12,7 @@ const navLinks = [
   { label: 'Home', path: '/explore' },
   { label: 'Following', path: '/feed' },
   { label: 'Saved videos', path: '/saved' },
-  { label: 'Categories', path: '/category/implantology' },
+  { label: 'Categories', path: '/category' },
 ]
 
 export function Navbar() {
@@ -459,7 +459,7 @@ export function Navbar() {
             </div>
           </Link>
         ) : (
-          <Link to="/category/$slug" params={{ slug: 'implantology' }} onClick={closeMobileMenu}>
+          <Link to="/category" onClick={closeMobileMenu}>
             <div
               className={cn(
                 'flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-colors',
@@ -472,7 +472,7 @@ export function Navbar() {
                 <rect x="14" y="14" width="7" height="7" rx="1" />
                 <rect x="3" y="14" width="7" height="7" rx="1" />
               </svg>
-              <span className="text-[10px]">Explore</span>
+              <span className="text-[10px]">Categories</span>
             </div>
           </Link>
         )}

@@ -58,6 +58,17 @@ export async function fetchComments(videoId: string): Promise<CommentWithAuthor[
   }))
 }
 
+export async function fetchCommentCount(videoId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('comments')
+    .select('id', { count: 'exact', head: true })
+    .eq('video_id', videoId)
+
+  if (error) throw error
+
+  return count ?? 0
+}
+
 export async function fetchReplies(parentId: string): Promise<CommentWithAuthor[]> {
   const { data, error } = await supabase
     .from('comments')
@@ -108,7 +119,10 @@ export async function deleteOwnComment(userId: string, commentId: string) {
 export async function likeComment(userId: string, commentId: string) {
   const { error } = await supabase
     .from('comment_likes')
-    .insert({ user_id: userId, comment_id: commentId })
+    .upsert(
+      { user_id: userId, comment_id: commentId },
+      { onConflict: 'user_id,comment_id', ignoreDuplicates: true }
+    )
 
   if (error) throw error
 }
