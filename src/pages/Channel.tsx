@@ -6,20 +6,31 @@ import { RetryCard } from '@/components/shared/RetryCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoGrid } from '@/components/video/VideoGrid'
-import { useProfile } from '@/hooks/useProfile'
+import { useProfile, usePublicCreatorProfile } from '@/hooks/useProfile'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 
 export function Channel() {
   const { userId } = useParams({ from: '/channel/$userId' })
-  const profileQuery = useProfile(userId)
+  const user = useAuthStore((state) => state.user)
+  const currentProfile = useAuthStore((state) => state.profile)
+  const isOwnChannel = currentProfile?.user_id === userId || user?.id === userId
+  const ownProfileQuery = useProfile(userId, isOwnChannel)
+  const publicCreatorProfileQuery = usePublicCreatorProfile(userId, !isOwnChannel)
   const videosQuery = useCreatorVideos(userId)
-  const profile = profileQuery.data
+  const profile = isOwnChannel
+    ? ownProfileQuery.data ?? currentProfile
+    : publicCreatorProfileQuery.data
   const profileName = getDisplayName(profile, 'Unknown creator')
   const videos = videosQuery.data ?? []
   const videoCount = videos.length
-  const isLoading = profileQuery.isLoading || videosQuery.isLoading
-  const isError = profileQuery.isError || videosQuery.isError
+  const isLoading =
+    (isOwnChannel ? ownProfileQuery.isLoading : publicCreatorProfileQuery.isLoading) ||
+    videosQuery.isLoading
+  const isError =
+    (isOwnChannel ? ownProfileQuery.isError : publicCreatorProfileQuery.isError) ||
+    videosQuery.isError
 
   // Dynamic document title
   useEffect(() => {
@@ -39,7 +50,11 @@ export function Channel() {
           <div className="px-4 md:px-6 py-8">
             <RetryCard
               onRetry={() => {
-                void profileQuery.refetch()
+                if (isOwnChannel) {
+                  void ownProfileQuery.refetch()
+                } else {
+                  void publicCreatorProfileQuery.refetch()
+                }
                 void videosQuery.refetch()
               }}
             />

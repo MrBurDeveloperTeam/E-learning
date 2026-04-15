@@ -1,16 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchProfile,
-  searchCreators,
+  fetchPublicProfile,
+  fetchPublicCreatorProfile,
+  searchPublicCreators,
   updateProfile,
   uploadAvatar,
 } from '../lib/queries/profiles'
 
-export function useProfile(userId: string | undefined) {
+export function useProfile(userId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ['profile', userId],
     queryFn: () => fetchProfile(userId!),
-    enabled: !!userId,
+    enabled: enabled && !!userId,
+  })
+}
+
+export function usePublicProfile(userId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['public-profile', userId],
+    queryFn: () => fetchPublicProfile(userId!),
+    enabled: enabled && !!userId,
+  })
+}
+
+export function usePublicCreatorProfile(userId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['public-creator-profile', userId],
+    queryFn: () => fetchPublicCreatorProfile(userId!),
+    enabled: enabled && !!userId,
   })
 }
 
@@ -26,6 +44,8 @@ export function useUpdateProfile() {
     }) => updateProfile(userId, payload),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['profile', variables.userId] })
+      qc.invalidateQueries({ queryKey: ['public-profile', variables.userId] })
+      qc.invalidateQueries({ queryKey: ['public-creator-profile', variables.userId] })
     },
   })
 }
@@ -37,6 +57,8 @@ export function useUploadAvatar() {
       uploadAvatar(userId, file),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['profile', variables.userId] })
+      qc.invalidateQueries({ queryKey: ['public-profile', variables.userId] })
+      qc.invalidateQueries({ queryKey: ['public-creator-profile', variables.userId] })
     },
   })
 }
@@ -46,7 +68,7 @@ export function useSearchCreators(query: string) {
 
   return useQuery({
     queryKey: ['creator-search', term],
-    queryFn: () => searchCreators(term),
+    queryFn: () => searchPublicCreators(term),
     enabled: term.length >= 2,
   })
 }

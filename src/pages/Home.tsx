@@ -6,14 +6,13 @@ import { RetryCard } from '@/components/shared/RetryCard'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { useFollowing } from '@/hooks/useFollow'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
-import { supabase } from '@/lib/supabase'
+import { fetchTopPublicCreators } from '@/lib/queries/profiles'
 import { VIDEO_CATEGORIES, type SortOption } from '@/types'
 import { cn, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { fetchVideosPaginated } from '@/lib/queries/videosPaginated'
-import type { Profile } from '@/types'
 
 export function Home() {
   const [category, setCategory] = useState<string>('All')
@@ -65,38 +64,17 @@ export function Home() {
   const { data: following = [] } = useFollowing(profile?.user_id ?? '')
   const creatorSuggestionsQuery = useQuery({
     queryKey: ['home-follow-suggestions', profile?.user_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(
-          'user_id, name, full_name, username, avatar_url, specialty, is_verified, follower_count, video_count'
-        )
-        .eq('is_creator', true)
-        .eq('is_verified', true)
-        .neq('user_id', profile?.user_id ?? '')
-        .order('follower_count', { ascending: false })
-        .limit(6)
-
-      if (error) throw error
-      return (data ?? []) as Pick<
-        Profile,
-        | 'user_id'
-        | 'name'
-        | 'full_name'
-        | 'username'
-        | 'avatar_url'
-        | 'specialty'
-        | 'is_verified'
-        | 'follower_count'
-        | 'video_count'
-      >[]
-    },
+    queryFn: () =>
+      fetchTopPublicCreators({
+        excludeUserId: profile?.user_id,
+        limit: 6,
+      }),
     enabled:
       !!profile?.user_id && (profile.following_count ?? 0) < 5,
   })
   const followingIds = new Set(
     following
-      .map((row) => row.profiles?.user_id)
+      .map((row) => row.following_id)
       .filter((value): value is string => !!value)
   )
   const creatorSuggestions = (creatorSuggestionsQuery.data ?? [])

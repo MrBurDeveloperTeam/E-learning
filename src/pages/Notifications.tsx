@@ -93,8 +93,10 @@ export function Notifications() {
 
     if (notification.type === 'new_follower') {
       void navigate({
-        to: '/channel/$userId',
-        params: { userId: notification.profiles.user_id },
+        to: '/profile/$userId',
+        params: {
+          userId: notification.profiles?.user_id ?? notification.actor_id,
+        },
       })
       return
     }

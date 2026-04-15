@@ -72,8 +72,10 @@ export function NotificationBell() {
 
     if (notification.type === 'new_follower') {
       void navigate({
-        to: '/channel/$userId',
-        params: { userId: notification.profiles.user_id },
+        to: '/profile/$userId',
+        params: {
+          userId: notification.profiles?.user_id ?? notification.actor_id,
+        },
       })
     } else if (notification.video_id) {
       void navigate({

@@ -6,7 +6,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useProfile } from '@/hooks/useProfile'
+import { useProfile, usePublicProfile } from '@/hooks/useProfile'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -49,16 +49,26 @@ function CardIcon() {
 export function Profile() {
   const { userId } = useParams({ from: '/profile/$userId' })
   const [tab, setTab] = useState<'videos' | 'about'>('videos')
+  const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
-  const profileQuery = useProfile(userId)
-  const profile = profileQuery.data
+  const isAuthLoading = useAuthStore((state) => state.isLoading)
+  const isOwnProfile = currentProfile?.user_id === userId || user?.id === userId
+  const ownProfileQuery = useProfile(userId, isOwnProfile)
+  const publicProfileQuery = usePublicProfile(userId)
+  const profile =
+    isOwnProfile
+      ? ownProfileQuery.data ?? currentProfile
+      : publicProfileQuery.data
   const profileName = getDisplayName(profile, 'DentalLearn member')
   const videosQuery = useCreatorVideos(profile?.is_creator ? userId : '')
   const creatorVideos = videosQuery.data ?? []
   const videoCount = creatorVideos.length
-  const isOwnProfile = currentProfile?.user_id === userId
+  const isLoading =
+    (!profile && isOwnProfile && isAuthLoading) ||
+    ownProfileQuery.isLoading ||
+    publicProfileQuery.isLoading
 
-  if (profileQuery.isLoading) {
+  if (isLoading) {
     return (
       <>
         <Navbar />

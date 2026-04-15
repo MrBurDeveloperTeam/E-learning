@@ -1,4 +1,4 @@
-// ─── Profile ──────────────────────────────────────────
+// Profile
 
 export interface Profile {
   user_id: string
@@ -33,7 +33,26 @@ export interface Profile {
   updated_at: string
 }
 
-// ─── Video ────────────────────────────────────────────
+export interface PublicProfile {
+  user_id: string
+  name: string | null
+  full_name: string | null
+  username: string | null
+  avatar_url: string | null
+  background_url: string | null
+  specialty: string | null
+  bio: string | null
+  institution: string | null
+  is_verified: boolean
+  is_creator: boolean
+  follower_count: number
+  following_count: number
+  video_count: number
+}
+
+export interface PublicCreatorProfile extends PublicProfile {}
+
+// Video
 
 export type VideoStatus =
   | 'processing'
@@ -78,7 +97,7 @@ export interface Video {
 
 export interface VideoWithCreator extends Video {
   profiles: Pick<
-    Profile,
+    PublicCreatorProfile,
     | 'user_id'
     | 'name'
     | 'full_name'
@@ -93,7 +112,7 @@ export interface VideoWithCreator extends Video {
   >
 }
 
-// ─── Comment ──────────────────────────────────────────
+// Comment
 
 export interface Comment {
   id: string
@@ -117,12 +136,12 @@ export interface CommentWithAuthor extends Comment {
     | 'avatar_url'
     | 'is_verified'
     | 'specialty'
-  >
+  > | null
   replies?: CommentWithAuthor[]
   reply_count?: number
 }
 
-// ─── Follow ───────────────────────────────────────────
+// Follow
 
 export interface Follow {
   id: string
@@ -131,7 +150,7 @@ export interface Follow {
   created_at: string
 }
 
-// ─── Notification ─────────────────────────────────────
+// Notification
 
 export type NotificationType =
   | 'new_video'
@@ -155,11 +174,11 @@ export interface NotificationWithActor extends Notification {
   profiles: Pick<
     Profile,
     'user_id' | 'name' | 'full_name' | 'username' | 'avatar_url'
-  >
+  > | null
   videos?: Pick<Video, 'id' | 'title' | 'thumbnail_url'> | null
 }
 
-// ─── Video interactions ───────────────────────────────
+// Video interactions
 
 export interface VideoLike {
   id: string
@@ -186,7 +205,7 @@ export interface VideoView {
   viewed_at: string
 }
 
-// ─── Utility constants ────────────────────────────────
+// Utility constants
 
 export type SortOption = 'newest' | 'most_viewed' | 'most_liked'
 

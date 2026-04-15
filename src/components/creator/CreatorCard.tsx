@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import type { Profile } from '@/types'
+import type { PublicCreatorProfile } from '@/types'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { FollowButton } from './FollowButton'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 
-export function CreatorCard({ profile }: { profile: Profile }) {
+export function CreatorCard({ profile }: { profile: PublicCreatorProfile }) {
   const creatorName = getDisplayName(profile, 'Unknown creator')
 
   return (

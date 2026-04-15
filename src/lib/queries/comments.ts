@@ -1,21 +1,56 @@
 import { supabase } from '../supabase'
 import type { CommentWithAuthor } from '../../types'
 
-const commentAuthorSelect = `
-  *,
-  profiles:profiles!comments_author_id_fkey(
-    user_id,
-    name,
-    full_name,
-    username,
-    avatar_url,
-    is_verified,
-    specialty
-  )
-`
-
 function isNoRowsError(error: { code?: string } | null) {
   return error?.code === 'PGRST116'
+}
+
+type CommentRow = Omit<CommentWithAuthor, 'profiles'> & { profiles?: CommentWithAuthor['profiles'] }
+
+type CommentAuthor = NonNullable<CommentWithAuthor['profiles']>
+
+const commentSelect = `
+  id,
+  video_id,
+  author_id,
+  parent_id,
+  body,
+  is_pinned,
+  like_count,
+  created_at,
+  updated_at
+`
+
+async function attachCommentAuthors(comments: CommentRow[]): Promise<CommentWithAuthor[]> {
+  if (comments.length === 0) {
+    return comments as CommentWithAuthor[]
+  }
+
+  const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))]
+
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select(`
+      user_id,
+      name,
+      full_name,
+      username,
+      avatar_url,
+      is_verified,
+      specialty
+    `)
+    .in('user_id', authorIds)
+
+  if (error) throw error
+
+  const authors = new Map(
+    ((data ?? []) as CommentAuthor[]).map((author) => [author.user_id, author])
+  )
+
+  return comments.map((comment) => ({
+    ...comment,
+    profiles: authors.get(comment.author_id) ?? null,
+  }))
 }
 
 async function fetchReplyCounts(parentIds: string[]) {
@@ -42,7 +77,7 @@ async function fetchReplyCounts(parentIds: string[]) {
 export async function fetchComments(videoId: string): Promise<CommentWithAuthor[]> {
   const { data, error } = await supabase
     .from('comments')
-    .select(commentAuthorSelect)
+    .select(commentSelect)
     .eq('video_id', videoId)
     .is('parent_id', null)
     .order('is_pinned', { ascending: false })
@@ -50,7 +85,7 @@ export async function fetchComments(videoId: string): Promise<CommentWithAuthor[
 
   if (error) throw error
 
-  const comments = (data ?? []) as CommentWithAuthor[]
+  const comments = await attachCommentAuthors((data ?? []) as CommentRow[])
   const replyCounts = await fetchReplyCounts(comments.map((comment) => comment.id))
 
   return comments.map((comment) => ({
@@ -73,13 +108,13 @@ export async function fetchCommentCount(videoId: string): Promise<number> {
 export async function fetchReplies(parentId: string): Promise<CommentWithAuthor[]> {
   const { data, error } = await supabase
     .from('comments')
-    .select(commentAuthorSelect)
+    .select(commentSelect)
     .eq('parent_id', parentId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
 
-  return (data ?? []) as CommentWithAuthor[]
+  return attachCommentAuthors((data ?? []) as CommentRow[])
 }
 
 export async function createComment(payload: {

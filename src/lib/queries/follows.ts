@@ -31,7 +31,10 @@ export async function followUser(
 ): Promise<void> {
   const { error } = await supabase
     .from('follows')
-    .insert({ follower_id: followerId, following_id: followingId })
+    .upsert(
+      { follower_id: followerId, following_id: followingId },
+      { onConflict: 'follower_id,following_id', ignoreDuplicates: true }
+    )
   if (error) throw error
 }
 
@@ -56,7 +59,8 @@ export async function checkIsFollowing(
     .select('id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
-    .single()
+    .limit(1)
+    .maybeSingle()
   return !!data
 }
 

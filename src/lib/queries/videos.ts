@@ -1,6 +1,9 @@
+import { fetchPublicCreatorProfiles } from './profiles'
 import { supabase } from '../supabase'
 import type {
+  PublicCreatorProfile,
   SortOption,
+  Video,
   VideoSaveWithVideo,
   VideoWithCreator,
   VideoVisibility,
@@ -9,11 +12,11 @@ import type {
 const VIDEO_QUERY_TIMEOUT_MS = 8000
 
 type VideoQueryResult = {
-  data: VideoWithCreator[] | null
+  data: Video[] | null
   error: { code?: string; message?: string } | null
 }
 
-const videoSelect = `
+const privateVideoSelect = `
   *,
   profiles:profiles!videos_creator_id_fkey(
     user_id,
@@ -65,6 +68,39 @@ function withTimeout<T>(run: () => PromiseLike<T>, label: string, timeoutMs = VI
   })
 }
 
+function mapVideoCreatorProfile(
+  creatorId: string,
+  creator: PublicCreatorProfile | null | undefined
+): VideoWithCreator['profiles'] {
+  return {
+    user_id: creator?.user_id ?? creatorId,
+    name: creator?.name ?? null,
+    full_name: creator?.full_name ?? null,
+    username: creator?.username ?? null,
+    avatar_url: creator?.avatar_url ?? null,
+    is_verified: creator?.is_verified ?? false,
+    is_creator: creator?.is_creator ?? false,
+    specialty: creator?.specialty ?? null,
+    bio: creator?.bio ?? null,
+    follower_count: creator?.follower_count ?? 0,
+    video_count: creator?.video_count ?? 0,
+  }
+}
+
+async function attachPublicCreators(videos: Video[]): Promise<VideoWithCreator[]> {
+  const creatorsById = await fetchPublicCreatorProfiles(
+    videos.map((video) => video.creator_id)
+  )
+
+  return videos.map((video) => ({
+    ...video,
+    profiles: mapVideoCreatorProfile(
+      video.creator_id,
+      creatorsById.get(video.creator_id)
+    ),
+  }))
+}
+
 export async function fetchVideos({
   category,
   sort = 'newest',
@@ -74,7 +110,7 @@ export async function fetchVideos({
 } = {}): Promise<VideoWithCreator[]> {
   let query = supabase
     .from('videos')
-    .select(videoSelect)
+    .select('*')
     .eq('status', 'published')
     .eq('visibility', 'public')
 
@@ -89,19 +125,20 @@ export async function fetchVideos({
 
   if (error) throw error
 
-  return (data ?? []) as VideoWithCreator[]
+  return attachPublicCreators((data ?? []) as Video[])
 }
 
 export async function fetchVideo(videoId: string): Promise<VideoWithCreator> {
   const { data, error } = await supabase
     .from('videos')
-    .select(videoSelect)
+    .select('*')
     .eq('id', videoId)
     .single()
 
   if (error) throw error
 
-  return data as VideoWithCreator
+  const [video] = await attachPublicCreators([data as Video])
+  return video
 }
 
 export async function fetchRelatedVideos(
@@ -110,7 +147,7 @@ export async function fetchRelatedVideos(
 ): Promise<VideoWithCreator[]> {
   let primaryQuery = supabase
     .from('videos')
-    .select(videoSelect)
+    .select('*')
     .neq('id', videoId)
     .eq('status', 'published')
     .eq('visibility', 'public')
@@ -127,16 +164,16 @@ export async function fetchRelatedVideos(
 
   if (error) throw error
 
-  const related = (data ?? []) as VideoWithCreator[]
+  const related = (data ?? []) as Video[]
   if (related.length >= 6 || !category) {
-    return related
+    return attachPublicCreators(related)
   }
 
   const { data: fallback, error: fallbackError } = await withTimeout<VideoQueryResult>(
     () =>
       supabase
         .from('videos')
-        .select(videoSelect)
+        .select('*')
         .neq('id', videoId)
         .neq('category', category)
         .eq('status', 'published')
@@ -148,7 +185,7 @@ export async function fetchRelatedVideos(
 
   if (fallbackError) throw fallbackError
 
-  return [...related, ...((fallback ?? []) as VideoWithCreator[])]
+  return attachPublicCreators([...related, ...((fallback ?? []) as Video[])])
 }
 
 export async function searchVideos(query: string): Promise<VideoWithCreator[]> {
@@ -158,7 +195,7 @@ export async function searchVideos(query: string): Promise<VideoWithCreator[]> {
   const escaped = term.replace(/[%_,]/g, '')
   const { data, error } = await supabase
     .from('videos')
-    .select(videoSelect)
+    .select('*')
     .eq('status', 'published')
     .eq('visibility', 'public')
     .or(
@@ -168,26 +205,26 @@ export async function searchVideos(query: string): Promise<VideoWithCreator[]> {
 
   if (error) throw error
 
-  return (data ?? []) as VideoWithCreator[]
+  return attachPublicCreators((data ?? []) as Video[])
 }
 
 export async function fetchCreatorVideos(userId: string): Promise<VideoWithCreator[]> {
   const { data, error } = await supabase
     .from('videos')
-    .select(videoSelect)
+    .select('*')
     .eq('creator_id', userId)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
 
   if (error) throw error
 
-  return (data ?? []) as VideoWithCreator[]
+  return attachPublicCreators((data ?? []) as Video[])
 }
 
 export async function fetchMyVideos(userId: string): Promise<VideoWithCreator[]> {
   const { data, error } = await supabase
     .from('videos')
-    .select(videoSelect)
+    .select(privateVideoSelect)
     .eq('creator_id', userId)
     .order('created_at', { ascending: false })
 
@@ -200,32 +237,48 @@ export async function fetchSavedVideos(userId: string): Promise<VideoSaveWithVid
   const { data, error } = await supabase
     .from('video_saves')
     .select(`
+      id,
       user_id,
       video_id,
       created_at,
-      videos:videos!video_saves_video_id_fkey(
-        *,
-        profiles:profiles!videos_creator_id_fkey(
-          user_id,
-          name,
-          full_name,
-          username,
-          avatar_url,
-          is_verified,
-          is_creator,
-          specialty,
-          bio,
-          follower_count,
-          video_count
-        )
-      )
+      videos:videos!video_saves_video_id_fkey(*)
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) throw error
 
-  return ((data ?? []).filter((row) => row.videos) as unknown) as VideoSaveWithVideo[]
+  const rows = (data ?? []) as Array<{
+    id: string
+    user_id: string
+    video_id: string
+    created_at: string
+    videos: Video | Video[] | null
+  }>
+
+  const enrichedVideos = await attachPublicCreators(
+    rows
+      .map((row) => Array.isArray(row.videos) ? row.videos[0] ?? null : row.videos)
+      .filter((video): video is Video => !!video)
+  )
+
+  const videosById = new Map(
+    enrichedVideos.map((video) => [video.id, video])
+  )
+
+  return rows.flatMap((row) => {
+    const rowVideo = Array.isArray(row.videos) ? row.videos[0] ?? null : row.videos
+    const video = rowVideo ? videosById.get(rowVideo.id) : null
+    if (!video) return []
+
+    return [{
+      id: row.id,
+      user_id: row.user_id,
+      video_id: row.video_id,
+      created_at: row.created_at,
+      videos: video,
+    }]
+  })
 }
 
 export async function fetchFollowingVideos(userId: string): Promise<VideoWithCreator[]> {
@@ -241,14 +294,14 @@ export async function fetchFollowingVideos(userId: string): Promise<VideoWithCre
 
   const { data, error } = await supabase
     .from('videos')
-    .select(videoSelect)
+    .select('*')
     .in('creator_id', followingIds)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
 
   if (error) throw error
 
-  return (data ?? []) as VideoWithCreator[]
+  return attachPublicCreators((data ?? []) as Video[])
 }
 
 export async function likeVideo(userId: string, videoId: string) {

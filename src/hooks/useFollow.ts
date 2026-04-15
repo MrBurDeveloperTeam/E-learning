@@ -9,6 +9,7 @@ import {
   fetchFollowers,
   fetchFollowing,
 } from '@/lib/queries/follows'
+import { fetchProfile } from '@/lib/queries/profiles'
 
 export function useIsFollowing(followingId: string) {
   const { profile } = useAuthStore()
@@ -40,6 +41,7 @@ export function useIsFollowing(followingId: string) {
 
 export function useFollowToggle(followingId: string) {
   const { profile } = useAuthStore()
+  const setProfile = useAuthStore((state) => state.setProfile)
   const queryClient = useQueryClient()
   const { data: isFollowing } = useIsFollowing(followingId)
 
@@ -94,14 +96,20 @@ export function useFollowToggle(followingId: string) {
       }
 
       if (followerId && previousCurrentProfile) {
-        queryClient.setQueryData<Profile>(['profile', followerId], {
+        const nextCurrentProfile = {
           ...previousCurrentProfile,
           following_count: Math.max(
             0,
             previousCurrentProfile.following_count +
               (nextIsFollowing ? 1 : -1)
           ),
-        })
+        }
+
+        queryClient.setQueryData<Profile>(['profile', followerId], nextCurrentProfile)
+
+        if (profile?.user_id === followerId) {
+          setProfile(nextCurrentProfile)
+        }
       }
 
       return {
@@ -130,6 +138,10 @@ export function useFollowToggle(followingId: string) {
             ['profile', context.followerId],
             context.previousCurrentProfile
           )
+
+          if (profile?.user_id === context.followerId) {
+            setProfile(context.previousCurrentProfile)
+          }
         }
       }
 
@@ -137,7 +149,7 @@ export function useFollowToggle(followingId: string) {
         err instanceof Error ? err.message : 'Something went wrong'
       toast.error(message || 'Something went wrong')
     },
-    onSettled: () => {
+    onSettled: async () => {
       queryClient.invalidateQueries({
         queryKey: ['is-following', profile?.user_id, followingId],
       })
@@ -148,11 +160,35 @@ export function useFollowToggle(followingId: string) {
         queryKey: ['profile', profile?.user_id],
       })
       queryClient.invalidateQueries({
+        queryKey: ['public-profile', followingId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['public-profile', profile?.user_id],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['public-creator-profile', followingId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['public-creator-profile', profile?.user_id],
+      })
+      queryClient.invalidateQueries({
         queryKey: ['followers', followingId],
       })
       queryClient.invalidateQueries({
         queryKey: ['following', profile?.user_id],
       })
+
+      if (profile?.user_id) {
+        try {
+          const latestProfile = await queryClient.fetchQuery({
+            queryKey: ['profile', profile.user_id],
+            queryFn: () => fetchProfile(profile.user_id),
+          })
+          setProfile(latestProfile)
+        } catch {
+          // Ignore background sync errors and keep optimistic state.
+        }
+      }
     },
   })
 
