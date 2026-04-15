@@ -667,27 +667,37 @@ export function CreatorApplications() {
           showCloseButton={false}
           className="max-w-md rounded-2xl bg-white p-0"
         >
-          <DialogHeader className="px-6 pt-6">
-            <DialogTitle>Reject application?</DialogTitle>
-            <DialogDescription>
+          <DialogHeader className="border-b border-[#EDF2F2] px-6 pt-6 pb-4">
+            <DialogTitle className="text-lg text-[#1E3333]">
+              Reject application?
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-sm text-[#6B8E8E]">
               This will remove the user from the pending queue. They can
               re-apply in the future.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-6 py-4">
-            <label className="text-xs font-medium text-[#3D5C5C] block mb-1.5">
+          <div className="space-y-2 px-6 py-5">
+            <label
+              htmlFor="reject-reason"
+              className="block text-xs font-medium text-[#3D5C5C]"
+            >
               Rejection reason (optional)
             </label>
             <textarea
+              id="reject-reason"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="e.g., Incomplete professional details..."
-              className="input-field w-full h-24 resize-none"
+              className="input-field min-h-28 w-full resize-none"
             />
+            <p className="text-xs leading-5 text-[#6B8E8E]">
+              This note is for the admin action record and helps explain why the
+              application was rejected.
+            </p>
           </div>
 
-          <DialogFooter className="bg-white">
+          <DialogFooter className="mx-0 mb-0 mt-0 gap-3 rounded-b-2xl border-t border-[#EDF2F2] bg-[#FAFCFC] px-6 py-4">
             <button
               type="button"
               onClick={() => {

@@ -1,18 +1,24 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Lock } from 'lucide-react'
+import { FollowButton } from '@/components/creator/FollowButton'
 import { Navbar } from '@/components/layout/Navbar'
 import { RetryCard } from '@/components/shared/RetryCard'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { useFollowing } from '@/hooks/useFollow'
 import { useFollowingVideos } from '@/hooks/useVideos'
+import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
 export function Feed() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
+  const profile = useAuthStore((state) => state.profile)
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const { data: videos = [], isLoading, isError, refetch } = useFollowingVideos()
+  const { data: following = [] } = useFollowing(profile?.user_id ?? '')
 
   return (
     <>
@@ -39,6 +45,55 @@ export function Feed() {
         )}
 
         {session && isError && <RetryCard onRetry={() => void refetch()} />}
+
+        {session && following.length > 0 && (
+          <div className="mb-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-medium text-[#1E3333]">
+                Channels you follow
+              </h2>
+              <span className="text-xs text-[#9BB5B5]">{following.length}</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              {following.map((entry) => {
+                const creator = entry.profiles
+                if (!creator) return null
+
+                return (
+                  <div
+                    key={entry.following_id}
+                    className="flex min-w-[280px] items-center gap-3 rounded-2xl border border-[#D4E8E7] bg-white px-4 py-3"
+                  >
+                    <Link
+                      to="/channel/$userId"
+                      params={{ userId: entry.following_id }}
+                      className="flex min-w-0 flex-1 items-center gap-3"
+                    >
+                      <UserAvatar
+                        name={getDisplayName(creator, 'Unknown creator')}
+                        avatarUrl={creator.avatar_url}
+                        size={40}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[#1E3333]">
+                          {getDisplayName(creator, 'Unknown creator')}
+                        </p>
+                        <p className="truncate text-xs text-[#6B8E8E]">
+                          {creator.specialty ?? 'Dental professional'}
+                        </p>
+                        <p className="text-[11px] text-[#9BB5B5]">
+                          {formatViewCount(creator.follower_count)} followers
+                        </p>
+                      </div>
+                    </Link>
+
+                    <FollowButton userId={entry.following_id} size="sm" />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {session && !isError && videos.length === 0 && !isLoading && (
           <EmptyState

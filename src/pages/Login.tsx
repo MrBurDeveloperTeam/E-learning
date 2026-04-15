@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { Logo } from '../components/brand/Logo'
+import { PasswordField } from '../components/ui/PasswordField'
 
 export default function Login() {
   const { signInWithEmail, user, profile } = useAuth()
@@ -74,11 +75,10 @@ export default function Login() {
           </div>
           <div className="space-y-1.5">
             <label htmlFor="password" className="text-sm font-medium text-neutral-800">Password</label>
-            <input
+            <PasswordField
               id="password"
-              type="password"
               className="input-field"
-              placeholder="••••••••"
+              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

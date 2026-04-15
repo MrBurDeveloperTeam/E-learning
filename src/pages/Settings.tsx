@@ -23,6 +23,7 @@ import { useAuthStore } from '../store/authStore'
 import { useUpdateProfile, useUploadAvatar } from '../hooks/useProfile'
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
+import { PasswordField } from '../components/ui/PasswordField'
 
 type SettingsTab =
   | 'profile'
@@ -461,11 +462,11 @@ export function Settings() {
           <div className="max-w-[400px] space-y-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#3D5C5C]">Current password</label>
-              <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="input-field" placeholder="Enter current password" />
+              <PasswordField value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="input-field" placeholder="Enter current password" />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#3D5C5C]">New password</label>
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-field" placeholder="Enter new password" />
+              <PasswordField value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-field" placeholder="Enter new password" />
               {newPassword && (
                 <div className="mt-2">
                   <div className="mb-1 flex gap-1">
@@ -477,7 +478,7 @@ export function Settings() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#3D5C5C]">Confirm new password</label>
-              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field" placeholder="Confirm new password" />
+              <PasswordField value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field" placeholder="Confirm new password" />
             </div>
             <button type="button" onClick={() => toast.error('Password updates are not available yet')} className="mt-2 rounded-lg bg-[#88C1BD] px-5 py-2 text-sm font-medium text-[#1A4A47] transition-colors hover:bg-[#5A8784] hover:text-[#EAF4F3]">
               Update password

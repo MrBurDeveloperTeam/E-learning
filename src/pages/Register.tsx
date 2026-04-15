@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { Logo } from '../components/brand/Logo'
+import { PasswordField } from '../components/ui/PasswordField'
 
 export default function Register() {
   const { signUp, user } = useAuth()
@@ -12,6 +13,7 @@ export default function Register() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -23,6 +25,10 @@ export default function Register() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
     setLoading(true)
     try {
       await signUp(email, password, {
@@ -90,7 +96,18 @@ export default function Register() {
           </div>
           <div className="space-y-1.5">
             <label htmlFor="reg-password" className="text-sm font-medium text-neutral-800">Password</label>
-            <input id="reg-password" type="password" className="input-field" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordField id="reg-password" className="input-field" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="reg-confirm-password" className="text-sm font-medium text-neutral-800">Confirm password</label>
+            <PasswordField
+              id="reg-confirm-password"
+              className="input-field"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
           </div>
 
           <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
