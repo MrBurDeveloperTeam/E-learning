@@ -52,6 +52,14 @@ export function Channel() {
           </div>
         )}
 
+        {!isLoading && !isError && !profile && (
+          <div className="px-4 md:px-6 py-12">
+            <div className="rounded-2xl border border-[#D4E8E7] bg-white p-8 text-center text-sm text-[#6B8E8E]">
+              This channel is not available.
+            </div>
+          </div>
+        )}
+
         {profile && !isError && !isLoading && (
           <>
             <div className="relative">

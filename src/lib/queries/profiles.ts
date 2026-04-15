@@ -13,7 +13,7 @@ function normalizeProfileVideoCount(profile: Profile | null): Profile | null {
 export async function fetchProfile(userId: string) {
   const [{ data: profile, error: profileError }, { count, error: countError }] =
     await Promise.all([
-      supabase.from('profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
       supabase
         .from('videos')
         .select('id', { count: 'exact', head: true })
@@ -23,11 +23,12 @@ export async function fetchProfile(userId: string) {
 
   if (profileError) throw profileError
   if (countError) throw countError
+  if (!profile) return null
 
   return normalizeProfileVideoCount({
-    ...(profile as Profile),
+    ...profile,
     video_count: count ?? profile.video_count ?? 0,
-  })!
+  })
 }
 
 export async function updateProfile(
