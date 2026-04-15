@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Flag, Heart, MoreHorizontal, Trash2 } from 'lucide-react'
+import { CornerUpLeft, Flag, Heart, MoreHorizontal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { CommentWithAuthor } from '@/types'
@@ -145,6 +145,15 @@ export function CommentItem({
                 align="end"
                 className="w-40 rounded-xl border border-[#D4E8E7] bg-white p-1 text-[#3D5C5C] shadow-lg"
               >
+                {!isReply && (
+                  <DropdownMenuItem
+                    onClick={() => setShowReplyInput((current) => !current)}
+                    className="cursor-pointer"
+                  >
+                    <CornerUpLeft className="h-4 w-4" />
+                    Reply
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleReport} className="cursor-pointer">
                   <Flag className="h-4 w-4" />
                   Report
