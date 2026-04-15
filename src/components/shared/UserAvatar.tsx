@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { getInitials, cn } from '@/lib/utils'
 
 interface UserAvatarProps {
@@ -15,6 +16,12 @@ export function UserAvatar({
   className,
   textClassName,
 }: UserAvatarProps) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [avatarUrl])
+
   return (
     <div
       className={cn(
@@ -23,11 +30,12 @@ export function UserAvatar({
       )}
       style={{ width: size, height: size }}
     >
-      {avatarUrl ? (
+      {avatarUrl && !imageFailed ? (
         <img
           src={avatarUrl}
           alt={name ? `${name} avatar` : 'User avatar'}
           className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <span className={cn('text-xs', textClassName)}>{getInitials(name)}</span>

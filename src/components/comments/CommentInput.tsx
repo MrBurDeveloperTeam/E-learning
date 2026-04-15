@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useCreateComment } from '@/hooks/useComments'
+import { getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
 interface CommentInputProps {
@@ -26,6 +27,13 @@ export function CommentInput({
   const createComment = useCreateComment()
   const [body, setBody] = useState('')
   const [isFocused, setIsFocused] = useState(autoFocus)
+  const avatarName = getDisplayName(
+    {
+      ...profile,
+      email: user?.email ?? null,
+    },
+    'User'
+  )
 
   async function handleSubmit() {
     const trimmed = body.trim()
@@ -59,7 +67,7 @@ export function CommentInput({
   return (
     <div className="flex gap-3">
       <UserAvatar
-        name={profile?.full_name ?? profile?.username ?? user?.email}
+        name={avatarName}
         avatarUrl={profile?.avatar_url}
         size={32}
       />

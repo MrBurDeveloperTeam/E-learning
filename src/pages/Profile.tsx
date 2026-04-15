@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useProfile } from '@/hooks/useProfile'
 import { useCreatorVideos } from '@/hooks/useVideos'
-import { formatViewCount } from '@/lib/utils'
+import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
 function BuildingIcon() {
@@ -52,6 +52,7 @@ export function Profile() {
   const currentProfile = useAuthStore((state) => state.profile)
   const profileQuery = useProfile(userId)
   const profile = profileQuery.data
+  const profileName = getDisplayName(profile, 'DentalLearn member')
   const videosQuery = useCreatorVideos(profile?.is_creator ? userId : '')
   const creatorVideos = videosQuery.data ?? []
   const videoCount = creatorVideos.length
@@ -101,7 +102,7 @@ export function Profile() {
           <div className="px-4 md:px-6 pb-5">
             <div className="flex items-end justify-between -mt-8 mb-4 gap-4">
               <UserAvatar
-                name={profile.full_name ?? profile.username}
+                name={profileName}
                 avatarUrl={profile.avatar_url}
                 size={60}
                 className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] border-4 border-white text-xl"
@@ -120,7 +121,7 @@ export function Profile() {
             </div>
 
             <h1 className="text-lg md:text-xl font-medium text-[#1E3333]">
-              {profile.full_name ?? 'DentalLearn member'}
+              {profileName}
             </h1>
 
             {profile.username && (

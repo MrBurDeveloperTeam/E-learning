@@ -9,7 +9,7 @@ export async function fetchNotifications(
     .select(`
       *,
       profiles!notifications_actor_id_fkey (
-        user_id, full_name, username, avatar_url
+        user_id, name, full_name, username, avatar_url
       ),
       videos (
         id, title, thumbnail_url

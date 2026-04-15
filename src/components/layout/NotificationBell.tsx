@@ -7,13 +7,10 @@ import {
   useNotifications,
   useUnreadCount,
 } from '@/hooks/useNotifications'
-import { cn, getInitials, timeAgo } from '@/lib/utils'
+import { cn, getDisplayName, getInitials, timeAgo } from '@/lib/utils'
 
 function getNotificationMessage(notification: NotificationWithActor) {
-  const actorName =
-    notification.profiles?.full_name ??
-    notification.profiles?.username ??
-    'Someone'
+  const actorName = getDisplayName(notification.profiles, 'Someone')
 
   switch (notification.type) {
     case 'new_follower':
@@ -167,9 +164,7 @@ export function NotificationBell() {
 
             {!isLoading &&
               notifications.map((notification) => {
-                const actorName =
-                  notification.profiles?.full_name ??
-                  notification.profiles?.username
+                const actorName = getDisplayName(notification.profiles, 'Someone')
 
                 return (
                   <div

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { KeyboardEvent } from 'react'
 import type { VideoWithCreator } from '@/types'
-import { cn, formatViewCount, timeAgo } from '@/lib/utils'
+import { cn, formatViewCount, getDisplayName, timeAgo } from '@/lib/utils'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail'
@@ -23,6 +23,7 @@ export function VideoCard({
   const isHorizontal = size === 'horizontal'
   const isSmall = size === 'small'
   const creator = video.profiles
+  const creatorName = getDisplayName(creator, 'Unknown creator')
   const shouldShowAvatar = showCreator && !isSmall && !isHorizontal
 
   function openVideo() {
@@ -68,7 +69,7 @@ export function VideoCard({
               onClick={(event) => event.stopPropagation()}
               className="mb-0.5 flex items-center text-xs text-[#6B8E8E] transition-colors hover:text-[#2D6E6A]"
             >
-              <span className="truncate">{creator?.full_name ?? 'Unknown creator'}</span>
+              <span className="truncate">{creatorName}</span>
               {creator?.is_verified && <VerifiedBadge />}
             </Link>
           )}
@@ -109,7 +110,7 @@ export function VideoCard({
             onClick={(event) => event.stopPropagation()}
           >
             <UserAvatar
-              name={creator?.full_name ?? creator?.username}
+              name={creatorName}
               avatarUrl={creator?.avatar_url}
               size={36}
               className="flex-shrink-0 transition-opacity hover:opacity-80"
@@ -136,7 +137,7 @@ export function VideoCard({
               onClick={(event) => event.stopPropagation()}
               className="mb-0.5 flex items-center text-xs text-[#6B8E8E] transition-colors hover:text-[#2D6E6A]"
             >
-              <span className="truncate">{creator?.full_name ?? 'Unknown creator'}</span>
+              <span className="truncate">{creatorName}</span>
               {creator?.is_verified && <VerifiedBadge />}
             </Link>
           )}

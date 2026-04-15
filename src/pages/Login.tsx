@@ -34,7 +34,11 @@ export default function Login() {
       navigate({ to: redirectTo })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed'
-      toast.error(msg)
+      if (msg === 'Invalid login credentials') {
+        toast.error('Invalid login credentials. Please check your email and password, or verify that you have confirmed your email address.')
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setLoading(false)
     }

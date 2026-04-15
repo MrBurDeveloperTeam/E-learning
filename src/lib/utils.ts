@@ -69,17 +69,51 @@ export function timeAgo(dateString: string): string {
   return `${Math.floor(months / 12)}y ago`
 }
 
+type DisplayNameSource = {
+  full_name?: string | null
+  username?: string | null
+  name?: string | null
+  email?: string | null
+}
+
+export function getDisplayName(
+  profile: DisplayNameSource | null | undefined,
+  fallback = 'Unknown user'
+): string {
+  const candidates = [
+    profile?.full_name,
+    profile?.username,
+    profile?.name,
+    profile?.email?.split('@')[0],
+  ]
+
+  for (const candidate of candidates) {
+    const normalized = candidate?.trim()
+    if (normalized) return normalized
+  }
+
+  return fallback
+}
+
 export function getInitials(name: string | null | undefined): string {
-  if (!name) return '?'
+  const normalizedName = name?.trim()
+  if (!normalizedName) return '?'
 
-  const initials = name
+  const words = normalizedName
+    .replace(/\s+/g, ' ')
     .split(' ')
-    .filter((word) => word.length > 1 && word !== 'Dr.' && word !== 'Dr')
-    .map((word) => word[0].toUpperCase())
-    .slice(0, 2)
-    .join('')
+    .filter((word) => word && word !== 'Dr.' && word !== 'Dr')
 
-  return initials || '?'
+  if (words.length === 0) return '?'
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase()
+  }
+
+  return words
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join('')
 }
 
 export function categoryToSlug(category: string): string {

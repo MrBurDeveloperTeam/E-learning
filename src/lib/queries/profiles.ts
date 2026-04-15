@@ -1,29 +1,33 @@
 import { supabase } from '../supabase'
 import type { Profile } from '../../types'
 
-type ProfileWithVideoAggregate = Profile & {
-  videos?: Array<{ count: number | null }> | null
-}
-
-function normalizeProfileVideoCount(profile: ProfileWithVideoAggregate | null): Profile | null {
+function normalizeProfileVideoCount(profile: Profile | null): Profile | null {
   if (!profile) return null
 
-  const exactVideoCount = profile.videos?.[0]?.count
   return {
     ...profile,
-    video_count: exactVideoCount ?? profile.video_count ?? 0,
+    video_count: profile.video_count ?? 0,
   }
 }
 
 export async function fetchProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*, videos(count)')
-    .eq('videos.status', 'published')
-    .eq('user_id', userId)
-    .single()
-  if (error) throw error
-  return normalizeProfileVideoCount(data as ProfileWithVideoAggregate)!
+  const [{ data: profile, error: profileError }, { count, error: countError }] =
+    await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).single(),
+      supabase
+        .from('videos')
+        .select('id', { count: 'exact', head: true })
+        .eq('creator_id', userId)
+        .eq('status', 'published'),
+    ])
+
+  if (profileError) throw profileError
+  if (countError) throw countError
+
+  return normalizeProfileVideoCount({
+    ...(profile as Profile),
+    video_count: count ?? profile.video_count ?? 0,
+  })!
 }
 
 export async function updateProfile(
@@ -68,17 +72,16 @@ export async function searchCreators(query: string) {
   const escaped = term.replace(/[%_,]/g, '')
   const { data, error } = await supabase
     .from('profiles')
-    .select('*, videos(count)')
+    .select('*')
     .eq('is_creator', true)
-    .eq('videos.status', 'published')
     .or(
-      `full_name.ilike.%${escaped}%,username.ilike.%${escaped}%,specialty.ilike.%${escaped}%`
+      `full_name.ilike.%${escaped}%,username.ilike.%${escaped}%,name.ilike.%${escaped}%,specialty.ilike.%${escaped}%`
     )
     .order('follower_count', { ascending: false })
     .limit(12)
 
   if (error) throw error
 
-  return ((data ?? []) as ProfileWithVideoAggregate[])
+  return ((data ?? []) as Profile[])
     .map((profile) => normalizeProfileVideoCount(profile)!)
 }

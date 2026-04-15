@@ -80,6 +80,7 @@ export interface VideoWithCreator extends Video {
   profiles: Pick<
     Profile,
     | 'user_id'
+    | 'name'
     | 'full_name'
     | 'username'
     | 'avatar_url'
@@ -110,6 +111,7 @@ export interface CommentWithAuthor extends Comment {
   profiles: Pick<
     Profile,
     | 'user_id'
+    | 'name'
     | 'full_name'
     | 'username'
     | 'avatar_url'
@@ -152,7 +154,7 @@ export interface Notification {
 export interface NotificationWithActor extends Notification {
   profiles: Pick<
     Profile,
-    'user_id' | 'full_name' | 'username' | 'avatar_url'
+    'user_id' | 'name' | 'full_name' | 'username' | 'avatar_url'
   >
   videos?: Pick<Video, 'id' | 'title' | 'thumbnail_url'> | null
 }

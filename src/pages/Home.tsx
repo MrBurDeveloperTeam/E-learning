@@ -8,7 +8,7 @@ import { useFollowing } from '@/hooks/useFollow'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
 import { supabase } from '@/lib/supabase'
 import { VIDEO_CATEGORIES, type SortOption } from '@/types'
-import { cn } from '@/lib/utils'
+import { cn, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -69,7 +69,7 @@ export function Home() {
       const { data, error } = await supabase
         .from('profiles')
         .select(
-          'user_id, full_name, username, avatar_url, specialty, is_verified, follower_count, video_count'
+          'user_id, name, full_name, username, avatar_url, specialty, is_verified, follower_count, video_count'
         )
         .eq('is_creator', true)
         .eq('is_verified', true)
@@ -81,6 +81,7 @@ export function Home() {
       return (data ?? []) as Pick<
         Profile,
         | 'user_id'
+        | 'name'
         | 'full_name'
         | 'username'
         | 'avatar_url'
@@ -147,13 +148,13 @@ export function Home() {
                 className="flex items-center gap-2.5 bg-white border border-[#D4E8E7] rounded-2xl px-3 py-2 flex-shrink-0 hover:border-[#88C1BD] transition-colors"
               >
                 <UserAvatar
-                  name={creator.full_name ?? creator.username}
+                  name={getDisplayName(creator, 'Unknown creator')}
                   avatarUrl={creator.avatar_url}
                   size={32}
                 />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-[#1E3333] truncate max-w-[100px]">
-                    {creator.full_name ?? creator.username}
+                    {getDisplayName(creator, 'Unknown creator')}
                   </p>
                   <p className="text-[10px] text-[#9BB5B5] truncate max-w-[100px]">
                     {creator.specialty ?? 'Dental creator'}

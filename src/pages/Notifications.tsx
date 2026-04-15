@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
-import { cn, getInitials, timeAgo } from '@/lib/utils'
+import { cn, getDisplayName, getInitials, timeAgo } from '@/lib/utils'
 import {
   useMarkAllRead,
   useMarkRead,
@@ -64,7 +64,7 @@ export function Notifications() {
         .select(`
           *,
           profiles!notifications_actor_id_fkey (
-            user_id, full_name, username, avatar_url
+            user_id, name, full_name, username, avatar_url
           ),
           videos (
             id, title, thumbnail_url
@@ -166,10 +166,7 @@ export function Notifications() {
 
           {!notificationsQuery.isLoading &&
             notifications.map((notification) => {
-              const actorName =
-                notification.profiles?.full_name ??
-                notification.profiles?.username ??
-                'Someone'
+              const actorName = getDisplayName(notification.profiles, 'Someone')
 
               return (
                 <div

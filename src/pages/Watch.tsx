@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoCard } from '@/components/video/VideoCard'
 import { VideoCardSkeleton } from '@/components/video/VideoCardSkeleton'
-import { cn, formatViewCount, timeAgo } from '@/lib/utils'
+import { cn, formatViewCount, getDisplayName, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import {
   useRecordView,
@@ -38,6 +38,7 @@ export function Watch() {
 
   const videoQuery = useVideo(videoId)
   const video = videoQuery.data
+  const creatorName = getDisplayName(video?.profiles, 'Unknown creator')
   const relatedQuery = useRelatedVideos(videoId, video?.category)
   const { isLiked, toggleLike, isPending: likePending } = useVideoLike(videoId)
   const { isSaved, toggleSave, isPending: savePending } = useVideoSave(videoId)
@@ -324,14 +325,14 @@ export function Watch() {
                   className="group flex items-center gap-3"
                 >
                   <UserAvatar
-                    name={video.profiles?.full_name ?? video.profiles?.username}
+                    name={creatorName}
                     avatarUrl={video.profiles?.avatar_url}
                     size={44}
                   />
                   <div>
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium text-[#1E3333] transition-colors group-hover:text-[#2D6E6A]">
-                        {video.profiles?.full_name ?? 'Unknown creator'}
+                        {creatorName}
                       </p>
                       {video.profiles?.is_verified && <VerifiedBadge />}
                     </div>

@@ -5,6 +5,7 @@ const commentAuthorSelect = `
   *,
   profiles:profiles!comments_author_id_fkey(
     user_id,
+    name,
     full_name,
     username,
     avatar_url,

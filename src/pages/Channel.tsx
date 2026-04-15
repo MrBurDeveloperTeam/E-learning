@@ -8,13 +8,14 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { useProfile } from '@/hooks/useProfile'
 import { useCreatorVideos } from '@/hooks/useVideos'
-import { formatViewCount } from '@/lib/utils'
+import { formatViewCount, getDisplayName } from '@/lib/utils'
 
 export function Channel() {
   const { userId } = useParams({ from: '/channel/$userId' })
   const profileQuery = useProfile(userId)
   const videosQuery = useCreatorVideos(userId)
   const profile = profileQuery.data
+  const profileName = getDisplayName(profile, 'Unknown creator')
   const videos = videosQuery.data ?? []
   const videoCount = videos.length
   const isLoading = profileQuery.isLoading || videosQuery.isLoading
@@ -22,13 +23,13 @@ export function Channel() {
 
   // Dynamic document title
   useEffect(() => {
-    if (profile?.full_name) {
-      document.title = `${profile.full_name} — DentalLearn`
+    if (profile) {
+      document.title = `${profileName} — DentalLearn`
     }
     return () => {
       document.title = 'DentalLearn — Dental Video Community'
     }
-  }, [profile?.full_name])
+  }, [profile, profileName])
 
   return (
     <>
@@ -66,7 +67,7 @@ export function Channel() {
 
               <div className="absolute bottom-0 left-4 md:left-6 translate-y-1/2">
                 <UserAvatar
-                  name={profile.full_name ?? profile.username}
+                  name={profileName}
                   avatarUrl={profile.avatar_url}
                   size={64}
                   className="w-16 h-16 md:w-20 md:h-20 border-4 border-white text-2xl"
@@ -82,7 +83,7 @@ export function Channel() {
             <div className="px-4 md:px-6 pb-4 pt-12 md:pt-14">
               <div className="flex items-center gap-1.5">
                 <h1 className="text-xl md:text-2xl font-medium text-[#1E3333]">
-                  {profile.full_name ?? 'Unknown creator'}
+                  {profileName}
                 </h1>
                 {profile.is_verified && <VerifiedBadge />}
               </div>

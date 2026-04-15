@@ -15,7 +15,7 @@ export async function fetchVideosPaginated(
       `
       *,
       profiles (
-        user_id, full_name, username,
+        user_id, name, full_name, username,
         avatar_url, is_verified, is_creator, specialty
       )
     `

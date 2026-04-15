@@ -17,6 +17,7 @@ const videoSelect = `
   *,
   profiles:profiles!videos_creator_id_fkey(
     user_id,
+    name,
     full_name,
     username,
     avatar_url,
@@ -206,6 +207,7 @@ export async function fetchSavedVideos(userId: string): Promise<VideoSaveWithVid
         *,
         profiles:profiles!videos_creator_id_fkey(
           user_id,
+          name,
           full_name,
           username,
           avatar_url,
