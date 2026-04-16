@@ -1,6 +1,8 @@
 import { supabase } from '../supabase'
 import type { Profile, PublicCreatorProfile, PublicProfile } from '../../types'
 
+const PROFILE_MEDIA_BUCKET = 'avatars'
+
 const publicProfileSelect = `
   user_id,
   name,
@@ -147,28 +149,44 @@ export async function updateProfile(
     .select()
     .single()
   if (error) throw error
-  return data as Profile
+  return normalizePrivateProfile(data as Profile) as Profile
 }
 
-export async function uploadAvatar(userId: string, file: File) {
+async function uploadProfileMedia(
+  userId: string,
+  file: File,
+  kind: 'avatar' | 'background',
+  column: 'avatar_url' | 'background_url'
+) {
   const ext = file.name.split('.').pop()
-  const path = `${userId}/avatar.${ext}`
+  const path = `${userId}/${kind}.${ext}`
 
   const { error: uploadError } = await supabase.storage
-    .from('avatars')
+    .from(PROFILE_MEDIA_BUCKET)
     .upload(path, file, { upsert: true })
   if (uploadError) throw uploadError
 
-  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+  const { data: urlData } = supabase.storage
+    .from(PROFILE_MEDIA_BUCKET)
+    .getPublicUrl(path)
+  const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`
 
   const { data, error } = await supabase
     .from('profiles')
-    .update({ avatar_url: urlData.publicUrl, updated_at: new Date().toISOString() })
+    .update({ [column]: publicUrl, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
     .select()
     .single()
   if (error) throw error
-  return data as Profile
+  return normalizePrivateProfile(data as Profile) as Profile
+}
+
+export async function uploadAvatar(userId: string, file: File) {
+  return uploadProfileMedia(userId, file, 'avatar', 'avatar_url')
+}
+
+export async function uploadBackground(userId: string, file: File) {
+  return uploadProfileMedia(userId, file, 'background', 'background_url')
 }
 
 export async function searchPublicCreators(query: string) {

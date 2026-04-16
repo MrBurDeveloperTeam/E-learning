@@ -6,7 +6,22 @@ import {
   searchPublicCreators,
   updateProfile,
   uploadAvatar,
+  uploadBackground,
 } from '../lib/queries/profiles'
+import { useAuthStore } from '../store/authStore'
+import type { Profile } from '../types'
+
+function syncProfileCaches(queryClient: ReturnType<typeof useQueryClient>, profile: Profile) {
+  const { profile: currentProfile, setProfile } = useAuthStore.getState()
+
+  queryClient.setQueryData(['profile', profile.user_id], profile)
+  queryClient.setQueryData(['public-profile', profile.user_id], profile)
+  queryClient.setQueryData(['public-creator-profile', profile.user_id], profile)
+
+  if (currentProfile?.user_id === profile.user_id) {
+    setProfile(profile)
+  }
+}
 
 export function useProfile(userId: string | undefined, enabled = true) {
   return useQuery({
@@ -42,7 +57,8 @@ export function useUpdateProfile() {
       userId: string
       payload: Parameters<typeof updateProfile>[1]
     }) => updateProfile(userId, payload),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      syncProfileCaches(qc, data)
       qc.invalidateQueries({ queryKey: ['profile', variables.userId] })
       qc.invalidateQueries({ queryKey: ['public-profile', variables.userId] })
       qc.invalidateQueries({ queryKey: ['public-creator-profile', variables.userId] })
@@ -55,7 +71,22 @@ export function useUploadAvatar() {
   return useMutation({
     mutationFn: ({ userId, file }: { userId: string; file: File }) =>
       uploadAvatar(userId, file),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      syncProfileCaches(qc, data)
+      qc.invalidateQueries({ queryKey: ['profile', variables.userId] })
+      qc.invalidateQueries({ queryKey: ['public-profile', variables.userId] })
+      qc.invalidateQueries({ queryKey: ['public-creator-profile', variables.userId] })
+    },
+  })
+}
+
+export function useUploadBackground() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, file }: { userId: string; file: File }) =>
+      uploadBackground(userId, file),
+    onSuccess: (data, variables) => {
+      syncProfileCaches(qc, data)
       qc.invalidateQueries({ queryKey: ['profile', variables.userId] })
       qc.invalidateQueries({ queryKey: ['public-profile', variables.userId] })
       qc.invalidateQueries({ queryKey: ['public-creator-profile', variables.userId] })

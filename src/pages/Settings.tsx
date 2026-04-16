@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import {
+  Camera,
   Bell,
   ChevronDown,
   Clock3,
@@ -20,7 +21,11 @@ import { Switch } from '../components/ui/switch'
 import { cn, getInitials } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
-import { useUpdateProfile, useUploadAvatar } from '../hooks/useProfile'
+import {
+  useUpdateProfile,
+  useUploadAvatar,
+  useUploadBackground,
+} from '../hooks/useProfile'
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { PasswordField } from '../components/ui/PasswordField'
@@ -152,8 +157,12 @@ export function Settings() {
   const { signOut } = useAuth()
   const updateProfile = useUpdateProfile()
   const uploadAvatar = useUploadAvatar()
+  const uploadBackground = useUploadBackground()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
+  const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState(
+    profile?.background_url ?? null
+  )
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -205,6 +214,7 @@ export function Settings() {
       bio: profile?.bio ?? '',
     })
     setAvatarPreviewUrl(profile?.avatar_url ?? null)
+    setBackgroundPreviewUrl(profile?.background_url ?? null)
   }, [profile, reset])
 
 
@@ -240,6 +250,23 @@ export function Settings() {
       toast.success('Avatar updated')
     } catch {
       toast.error('Failed to upload avatar')
+    } finally {
+      e.target.value = ''
+    }
+  }
+
+  async function handleBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    try {
+      const updatedProfile = await uploadBackground.mutateAsync({
+        userId: profile.user_id,
+        file,
+      })
+      setBackgroundPreviewUrl(updatedProfile.background_url)
+      toast.success('Channel background updated')
+    } catch {
+      toast.error('Failed to upload channel background')
     } finally {
       e.target.value = ''
     }
@@ -327,6 +354,69 @@ export function Settings() {
                 >
                   Remove
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-b border-[#D6E0E0] py-6">
+            <SectionLabel>Channel background</SectionLabel>
+            <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-[#F7FAFA]">
+              <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#AEDAD8] via-[#88C1BD] to-[#2D6E6A]">
+                {backgroundPreviewUrl ? (
+                  <img
+                    src={backgroundPreviewUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : null}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1E3333]/30 via-transparent to-transparent" />
+
+                <div className="absolute bottom-4 left-4 flex items-end gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#2D6E6A] text-lg font-medium text-[#EAF4F3] shadow-sm">
+                    {avatarPreviewUrl ? (
+                      <img
+                        src={avatarPreviewUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      getInitials(watchedFullName || avatarName)
+                    )}
+                  </div>
+                  <div className="pb-1 text-white">
+                    <p className="text-sm font-medium">
+                      {watchedFullName || profile?.full_name || 'Your channel'}
+                    </p>
+                    <p className="text-xs text-white/80">
+                      Visible on your creator channel header
+                    </p>
+                  </div>
+                </div>
+
+                {uploadBackground.isPending && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px]">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 px-4 py-4 text-sm text-[#6B8E8E] md:flex-row md:items-center md:justify-between">
+                <p>JPG or PNG, recommended 1600x400px or wider, max 4MB</p>
+                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#D4E8E7] bg-white px-3 py-2 text-xs font-medium text-[#2D6E6A] transition-colors hover:bg-[#EAF4F3]">
+                  {uploadBackground.isPending ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                  {backgroundPreviewUrl ? 'Change background' : 'Upload background'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleBackgroundUpload}
+                  />
+                </label>
               </div>
             </div>
           </div>
