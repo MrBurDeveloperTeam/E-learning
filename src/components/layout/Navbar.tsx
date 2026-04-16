@@ -7,6 +7,7 @@ import { isAdminProfile, isCreatorProfile } from '../../lib/auth'
 import { useAuth } from '../../hooks/useAuth'
 import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
+import { ThemeToggle } from './ThemeToggle'
 
 const navLinks = [
   { label: 'Home', path: '/explore' },
@@ -68,7 +69,7 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full bg-white border-b border-[#D4E8E7] h-14">
+      <nav className="sticky top-0 z-50 w-full bg-background border-b border-border h-14">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           {/* Left — Logo */}
           <Link to={user ? "/explore" : "/"}>
@@ -141,6 +142,7 @@ export function Navbar() {
                 )}
 
                 <NotificationBell />
+                <ThemeToggle />
 
                 {/* Hamburger — mobile */}
                 <button
@@ -177,7 +179,7 @@ export function Navbar() {
                     )}
                   </button>
                   {menuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-[#D4E8E7] bg-white p-1 shadow-lg animate-fade-in">
+                    <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-card p-1 shadow-lg animate-fade-in">
                       <Link
                         to="/channel/$userId"
                         params={{ userId: profile?.user_id ?? user?.id ?? '' }}
@@ -218,7 +220,7 @@ export function Navbar() {
                           Admin
                         </Link>
                       )}
-                      <div className="my-1 h-px bg-[#D4E8E7]" />
+                      <div className="my-1 h-px bg-border" />
                       <button
                         type="button"
                         onClick={(event) => {
@@ -242,7 +244,7 @@ export function Navbar() {
       {/* ─── Mobile slide-down menu ─── */}
       <div
         className={cn(
-          'md:hidden border-t border-[#D4E8E7] bg-white fixed top-14 left-0 right-0 z-[55]',
+          'md:hidden border-t border-border bg-background fixed top-14 left-0 right-0 z-[55]',
           'transition-all duration-200 overflow-hidden',
           mobileMenuOpen
             ? 'max-h-[calc(100vh-3.5rem)] opacity-100 overflow-y-auto'
@@ -316,7 +318,7 @@ export function Navbar() {
               </Link>
 
               {/* Divider */}
-              <div className="my-2 h-px bg-[#D4E8E7]" />
+              <div className="my-2 h-px bg-border" />
 
               {/* User section */}
               <div className="flex items-center gap-3 px-3 py-2.5">
@@ -380,7 +382,7 @@ export function Navbar() {
                 Billing
               </Link>
 
-              <div className="my-2 h-px bg-[#D4E8E7]" />
+              <div className="my-2 h-px bg-border" />
 
               <button
                 type="button"
@@ -417,7 +419,7 @@ export function Navbar() {
       )}
 
       {/* ─── Bottom mobile nav bar ─── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#D4E8E7] flex items-center justify-around px-2 py-2 md:hidden safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border flex items-center justify-around px-2 py-2 md:hidden safe-area-pb">
         <Link to="/explore" onClick={closeMobileMenu}>
           <div
             className={cn(

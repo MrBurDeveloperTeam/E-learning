@@ -38,17 +38,17 @@ function PlaceholderPanel({
   onAction?: () => void
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[#D4E8E7] bg-[#F7FAFA] p-8 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EAF4F3] text-[#2D6E6A]">
+    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Icon size={20} />
       </div>
-      <h3 className="mt-4 text-sm font-medium text-[#1E3333]">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-[#6B8E8E]">{description}</p>
+      <h3 className="mt-4 text-sm font-medium text-foreground">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{description}</p>
       {actionLabel && (
         <button
           type="button"
           onClick={onAction}
-          className="mt-5 rounded-lg border border-[#D4E8E7] bg-white px-4 py-2 text-sm font-medium text-[#2D6E6A] transition-colors hover:bg-[#EAF4F3]"
+          className="mt-5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted"
         >
           {actionLabel}
         </button>
@@ -101,41 +101,41 @@ export function Billing() {
 
     return (
       <div className="px-6 py-6">
-        <div className="border-b border-[#D6E0E0] pb-6">
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#D4E8E7] bg-[#EAF4F3] p-5 lg:flex-row lg:items-center">
+        <div className="border-b border-border pb-6">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border bg-primary/10 p-5 lg:flex-row lg:items-center">
             <div>
-              <div className="mb-1 flex flex-wrap items-center gap-2"><p className="text-base font-medium text-[#1E3333]">{currentPlanName}</p><span className="badge-ce">Active plan</span></div>
-              <p className="text-sm text-[#6B8E8E]">MYR 79/month - renews on 12 Apr 2026</p>
+              <div className="mb-1 flex flex-wrap items-center gap-2"><p className="text-base font-medium text-foreground">{currentPlanName}</p><span className="badge-ce">Active plan</span></div>
+              <p className="text-sm text-muted-foreground">MYR 79/month - renews on 12 Apr 2026</p>
               <div className="mt-2 flex flex-wrap gap-3">
-                {['Unlimited courses', 'CE certificates', 'Priority Q&A'].map((feature) => <span key={feature} className="flex items-center gap-1 text-xs text-[#5A8784]"><Check size={10} className="text-[#88C1BD]" />{feature}</span>)}
+                {['Unlimited courses', 'CE certificates', 'Priority Q&A'].map((feature) => <span key={feature} className="flex items-center gap-1 text-xs text-primary/80"><Check size={10} className="text-primary" />{feature}</span>)}
               </div>
             </div>
-            <button type="button" onClick={() => toast.error('Plan management is not available yet')} className="flex-shrink-0 rounded-lg border-2 border-[#88C1BD] px-4 py-2 text-sm font-medium text-[#2D6E6A] transition-colors hover:bg-[#88C1BD] hover:text-[#1A4A47]">
+            <button type="button" onClick={() => toast.error('Plan management is not available yet')} className="flex-shrink-0 rounded-lg border-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
               Manage plan
             </button>
           </div>
         </div>
 
-        <div className="border-b border-[#D6E0E0] py-6">
-          <p className="mb-4 text-sm font-medium text-[#1E3333]">Available plans</p>
+        <div className="border-b border-border py-6">
+          <p className="mb-4 text-sm font-medium text-foreground">Available plans</p>
           <div className="grid gap-3 lg:grid-cols-3">
             {AVAILABLE_PLANS.map((plan) => {
               const isCurrent = plan.id === currentPlanId
               return (
-                <div key={plan.id} className={cn('rounded-xl border p-4 transition-colors', isCurrent ? 'border-2 border-[#88C1BD] bg-[#EAF4F3]' : 'cursor-pointer border-[#D4E8E7] hover:border-[#88C1BD]')}>
+                <div key={plan.id} className={cn('rounded-xl border p-4 transition-colors', isCurrent ? 'border-2 border-primary bg-primary/10' : 'cursor-pointer border-border hover:border-primary')}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-[#1E3333]">{plan.name}</p>
-                    {plan.badge && <span className="rounded-full bg-[#2D6E6A] px-2 py-0.5 text-[10px] font-medium text-[#E8F5F4]">{plan.badge}</span>}
+                    <p className="text-sm font-medium text-foreground">{plan.name}</p>
+                    {plan.badge && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">{plan.badge}</span>}
                   </div>
-                  <div className="mt-2 flex items-end gap-1"><p className="text-xl font-medium text-[#1E3333]">{plan.price}</p><span className="text-sm text-[#9BB5B5]">/mo</span></div>
+                  <div className="mt-2 flex items-end gap-1"><p className="text-xl font-medium text-foreground">{plan.price}</p><span className="text-sm text-muted-foreground/60">/mo</span></div>
                   <ul className="mt-3 space-y-1.5">
-                    {plan.features.map((feature) => <li key={feature} className="flex items-center gap-1.5 text-xs text-[#6B8E8E]"><Check size={10} className="text-[#88C1BD]" />{feature}</li>)}
+                    {plan.features.map((feature) => <li key={feature} className="flex items-center gap-1.5 text-xs text-muted-foreground"><Check size={10} className="text-primary" />{feature}</li>)}
                   </ul>
                   <button
                     type="button"
                     disabled={isCurrent}
                     onClick={() => toast.error('Plan switching is not available yet')}
-                    className={cn('mt-4 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors', isCurrent ? 'cursor-not-allowed bg-white/80 text-[#9BB5B5]' : 'border border-[#D4E8E7] text-[#2D6E6A] hover:bg-[#EAF4F3]')}
+                    className={cn('mt-4 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors', isCurrent ? 'cursor-not-allowed bg-muted text-muted-foreground/50' : 'border border-border text-primary hover:bg-primary/10')}
                   >
                     {isCurrent ? 'Current plan' : 'Switch to this plan'}
                   </button>
@@ -145,35 +145,35 @@ export function Billing() {
           </div>
         </div>
 
-        <div className="border-b border-[#D6E0E0] py-6">
+        <div className="border-b border-border py-6">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-medium text-[#1E3333]">Payment method</p>
-            <button type="button" onClick={() => toast.error('Adding payment methods is not available yet')} className="text-xs text-[#88C1BD] transition-colors hover:text-[#2D6E6A]">+ Add new</button>
+            <p className="text-sm font-medium text-foreground">Payment method</p>
+            <button type="button" onClick={() => toast.error('Adding payment methods is not available yet')} className="text-xs text-primary transition-colors hover:opacity-80">+ Add new</button>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-[#D4E8E7] p-3">
-            <div className="flex h-6 w-10 items-center justify-center rounded bg-[#EDF2F2] text-xs font-medium text-[#6B8E8E]">VISA</div>
-            <div className="flex-1"><p className="text-sm text-[#1E3333]">**** **** **** 4242</p><p className="text-xs text-[#9BB5B5]">Expires 12/27</p></div>
-            <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 text-[10px] font-medium text-[#059669]">Default</span>
+          <div className="flex items-center gap-3 rounded-xl border border-border p-3">
+            <div className="flex h-6 w-10 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">VISA</div>
+            <div className="flex-1"><p className="text-sm text-foreground">**** **** **** 4242</p><p className="text-xs text-muted-foreground/60">Expires 12/27</p></div>
+            <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Default</span>
           </div>
         </div>
 
         <div className="pt-6">
-          <p className="mb-3 text-sm font-medium text-[#1E3333]">Billing history</p>
-          <div className="overflow-hidden rounded-xl border border-[#D4E8E7]">
+          <p className="mb-3 text-sm font-medium text-foreground">Billing history</p>
+          <div className="overflow-hidden rounded-xl border border-border">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#D4E8E7] bg-[#F7FAFA]">
-                  {['Date', 'Description', 'Amount', 'Status', ''].map((header) => <th key={header || 'actions'} className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-[#9BB5B5]">{header}</th>)}
+                <tr className="border-b border-border bg-muted/30">
+                  {['Date', 'Description', 'Amount', 'Status', ''].map((header) => <th key={header || 'actions'} className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{header}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {BILLING_HISTORY.map((entry) => (
-                  <tr key={`${entry.date}-${entry.amount}`} className="border-b border-[#EDF2F2] transition-colors last:border-0 hover:bg-[#F7FAFA]">
-                    <td className="px-4 py-3 text-sm text-[#6B8E8E]">{entry.date}</td>
-                    <td className="px-4 py-3 text-sm text-[#3D5C5C]">{entry.description}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-[#1E3333]">{entry.amount}</td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 text-[11px] font-medium text-[#059669]">{entry.status}</span></td>
-                    <td className="px-4 py-3"><button type="button" onClick={() => toast.error('Invoice downloads are not available yet')} className="text-[#9BB5B5] transition-colors hover:text-[#88C1BD]"><Download size={14} /></button></td>
+                  <tr key={`${entry.date}-${entry.amount}`} className="border-b border-border/50 transition-colors last:border-0 hover:bg-muted/10">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{entry.date}</td>
+                    <td className="px-4 py-3 text-sm text-foreground/80">{entry.description}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{entry.amount}</td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{entry.status}</span></td>
+                    <td className="px-4 py-3"><button type="button" onClick={() => toast.error('Invoice downloads are not available yet')} className="text-muted-foreground transition-colors hover:text-primary"><Download size={14} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -187,21 +187,21 @@ export function Billing() {
   function renderPaymentHistoryPanel() {
     return (
       <div className="px-6 py-6">
-        <div className="overflow-hidden rounded-xl border border-[#D4E8E7]">
+        <div className="overflow-hidden rounded-xl border border-border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#D4E8E7] bg-[#F7FAFA]">
-                {['Date', 'Description', 'Amount', 'Status', ''].map((header) => <th key={header || 'actions'} className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-[#9BB5B5]">{header}</th>)}
+              <tr className="border-b border-border bg-muted/30">
+                {['Date', 'Description', 'Amount', 'Status', ''].map((header) => <th key={header || 'actions'} className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{header}</th>)}
               </tr>
             </thead>
             <tbody>
               {BILLING_HISTORY.map((entry) => (
-                <tr key={`${entry.date}-${entry.amount}`} className="border-b border-[#EDF2F2] transition-colors last:border-0 hover:bg-[#F7FAFA]">
-                  <td className="px-4 py-3 text-sm text-[#6B8E8E]">{entry.date}</td>
-                  <td className="px-4 py-3 text-sm text-[#3D5C5C]">{entry.description}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-[#1E3333]">{entry.amount}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 text-[11px] font-medium text-[#059669]">{entry.status}</span></td>
-                  <td className="px-4 py-3"><button type="button" onClick={() => toast.error('Invoice downloads are not available yet')} className="text-[#9BB5B5] transition-colors hover:text-[#88C1BD]"><Download size={14} /></button></td>
+                <tr key={`${entry.date}-${entry.amount}`} className="border-b border-border/50 transition-colors last:border-0 hover:bg-muted/10">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{entry.date}</td>
+                  <td className="px-4 py-3 text-sm text-foreground/80">{entry.description}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{entry.amount}</td>
+                  <td className="px-4 py-3"><span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{entry.status}</span></td>
+                  <td className="px-4 py-3"><button type="button" onClick={() => toast.error('Invoice downloads are not available yet')} className="text-muted-foreground transition-colors hover:text-primary"><Download size={14} /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -214,25 +214,25 @@ export function Billing() {
   function renderPayoutPanel() {
     return (
       <div className="px-6 py-6">
-        <div className="mb-6 rounded-xl border border-[#D4E8E7] bg-[#EAF4F3] p-5">
-          <div className="grid gap-4 md:grid-cols-3 md:divide-x md:divide-[#D4E8E7]">
+        <div className="mb-6 rounded-xl border border-border bg-primary/10 p-5">
+          <div className="grid gap-4 md:grid-cols-3 md:divide-x md:divide-border">
             {[
               { label: 'Available balance', value: formatMYR(1840) },
               { label: 'Total earned', value: formatMYR(12450) },
               { label: 'Next payout date', value: '15 Apr 2026' },
-            ].map((item, index) => <div key={item.label} className={cn(index === 0 ? 'md:pl-0' : 'md:pl-5')}><p className="mb-1 text-xs text-[#6B8E8E]">{item.label}</p><p className="text-xl font-medium text-[#1E3333]">{item.value}</p></div>)}
+            ].map((item, index) => <div key={item.label} className={cn(index === 0 ? 'md:pl-0' : 'md:pl-5')}><p className="mb-1 text-xs text-muted-foreground">{item.label}</p><p className="text-xl font-medium text-foreground">{item.value}</p></div>)}
           </div>
         </div>
-        <div className="border-b border-[#D6E0E0] pb-6">
-          <p className="mb-4 text-sm font-medium text-[#1E3333]">Bank account</p>
-          <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#D4E8E7] p-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EDF2F2] text-[#6B8E8E]"><Landmark size={18} /></div>
-            <div className="flex-1"><p className="text-sm text-[#1E3333]">Maybank</p><p className="text-xs text-[#9BB5B5]">Account **** 4821</p></div>
-            <button type="button" onClick={() => toast.error('Bank account removal is not available yet')} className="text-xs text-[#6B8E8E] transition-colors hover:text-[#DC2626]">Remove</button>
+        <div className="border-b border-border pb-6">
+          <p className="mb-4 text-sm font-medium text-foreground">Bank account</p>
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-border p-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Landmark size={18} /></div>
+            <div className="flex-1"><p className="text-sm text-foreground">Maybank</p><p className="text-xs text-muted-foreground/60">Account **** 4821</p></div>
+            <button type="button" onClick={() => toast.error('Bank account removal is not available yet')} className="text-xs text-muted-foreground transition-colors hover:text-destructive">Remove</button>
           </div>
         </div>
         <div className="py-6">
-          <p className="mb-4 text-sm font-medium text-[#1E3333]">Payout schedule</p>
+          <p className="mb-4 text-sm font-medium text-foreground">Payout schedule</p>
           <div className="grid gap-3 md:grid-cols-2">
             {[
               { id: 'monthly', title: 'Monthly', description: '15th of each month' },
@@ -240,10 +240,10 @@ export function Billing() {
             ].map((option) => {
               const selected = payoutSchedule === option.id
               return (
-                <button key={option.id} type="button" onClick={() => setPayoutSchedule(option.id as 'monthly' | 'weekly')} className={cn('rounded-xl p-4 text-left transition-colors', selected ? 'border-2 border-[#88C1BD] bg-[#EAF4F3]' : 'border border-[#D4E8E7] hover:border-[#AEDAD8]')}>
+                <button key={option.id} type="button" onClick={() => setPayoutSchedule(option.id as 'monthly' | 'weekly')} className={cn('rounded-xl p-4 text-left transition-colors', selected ? 'border-2 border-primary bg-primary/10' : 'border border-border hover:border-primary/50')}>
                   <div className="flex items-start gap-3">
-                    <span className={cn('mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border', selected ? 'border-[#88C1BD] bg-[#88C1BD]' : 'border-[#D4E8E7]')}>{selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}</span>
-                    <div><p className="text-sm font-medium text-[#1E3333]">{option.title}</p><p className="mt-0.5 text-xs text-[#6B8E8E]">{option.description}</p></div>
+                    <span className={cn('mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border', selected ? 'border-primary bg-primary' : 'border-border')}>{selected && <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />}</span>
+                    <div><p className="text-sm font-medium text-foreground">{option.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{option.description}</p></div>
                   </div>
                 </button>
               )
@@ -272,20 +272,20 @@ export function Billing() {
 
   return (
     <PageLayout className="p-0" scrollMain={false}>
-      <div className="min-h-screen bg-[#F7FAFA]">
+      <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-medium text-[#1E3333]">Billing</h1>
-            <p className="mt-1 text-sm text-[#6B8E8E]">Manage your subscription, payment methods, and billing history</p>
+            <h1 className="text-2xl font-medium text-foreground">Billing</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your subscription, payment methods, and billing history</p>
           </div>
 
           {/* Mobile tab bar */}
-          <div className="mb-4 rounded-2xl border border-[#D4E8E7] bg-white p-2 md:hidden">
+          <div className="mb-4 rounded-2xl border border-border bg-card p-2 md:hidden">
             <div className="flex min-w-max gap-1 overflow-x-auto">
               {mobileItems.map((item) => {
                 const Icon = item.icon
                 const active = activeTab === item.id
-                return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors', active ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E]')}><Icon size={16} /><span>{item.label}</span></button>
+                return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground')}><Icon size={16} /><span>{item.label}</span></button>
               })}
             </div>
           </div>
@@ -293,26 +293,26 @@ export function Billing() {
           <div className="grid items-start gap-6 md:grid-cols-[220px_1fr]">
             {/* Sidebar — desktop */}
             <div className="sticky top-20 hidden self-start md:block">
-              <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white">
-                <div className="border-b border-[#D4E8E7] p-5">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="border-b border-border p-5">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2D6E6A] text-[#EAF4F3]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-primary">
                       <CreditCard size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-[#1E3333]">Billing</p>
-                      <p className="text-xs text-[#6B8E8E] capitalize">{formatPlanLabel(profile?.plan)} plan</p>
+                      <p className="text-sm font-medium text-foreground">Billing</p>
+                      <p className="text-xs text-muted-foreground capitalize">{formatPlanLabel(profile?.plan)} plan</p>
                     </div>
                   </div>
                 </div>
                 <nav className="p-2">
                   {navGroups.map((group) => (
                     <div key={group.label}>
-                      <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5]">{group.label}</p>
+                      <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{group.label}</p>
                       {group.items.map((item) => {
                         const Icon = item.icon
                         const active = activeTab === item.id
-                        return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150', active ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#F7FAFA] hover:text-[#2D6E6A]')}><Icon size={16} />{item.label}</button>
+                        return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-primary')}><Icon size={16} />{item.label}</button>
                       })}
                     </div>
                   ))}
@@ -321,10 +321,10 @@ export function Billing() {
             </div>
 
             {/* Main content */}
-            <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white">
-              <div className="border-b border-[#D4E8E7] px-6 py-5">
-                <h2 className="text-base font-medium text-[#1E3333]">{currentTabMeta.title}</h2>
-                <p className="mt-0.5 text-xs text-[#6B8E8E]">{currentTabMeta.description}</p>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="border-b border-border px-6 py-5">
+                <h2 className="text-base font-medium text-foreground">{currentTabMeta.title}</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">{currentTabMeta.description}</p>
               </div>
               {renderPanelBody()}
             </div>

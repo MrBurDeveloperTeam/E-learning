@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
-import { formatViewCount, timeAgo } from '@/lib/utils'
+import { cn, formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import type { SidebarItem as SidebarItemType } from '@/components/layout/Sidebar'
@@ -46,16 +46,16 @@ type AdminVideoRow = {
 function AdminGuard() {
   return (
     <div className="text-center py-16">
-      <p className="text-[#DC2626] text-sm">Admin access required</p>
+      <p className="text-destructive text-sm font-medium">Admin access required</p>
     </div>
   )
 }
 
 function StatsCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="card p-4">
-      <p className="text-xs text-[#9BB5B5] mb-1">{label}</p>
-      <p className="text-2xl font-medium text-[#1E3333]">
+    <div className="card p-4 border-border bg-card">
+      <p className="text-xs text-muted-foreground/60 mb-1">{label}</p>
+      <p className="text-2xl font-medium text-foreground">
         {value.toLocaleString()}
       </p>
     </div>
@@ -63,10 +63,10 @@ function StatsCard({ label, value }: { label: string; value: number }) {
 }
 
 const statusStyles: Record<string, string> = {
-  published: 'bg-[#D1FAE5] text-[#059669]',
-  processing: 'bg-[#FEF3C7] text-[#D97706]',
-  removed: 'bg-[#FEE2E2] text-[#DC2626]',
-  unlisted: 'bg-[#EDF2F2] text-[#6B8E8E]',
+  published: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  processing: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  removed: 'bg-destructive/10 text-destructive',
+  unlisted: 'bg-muted text-muted-foreground',
 }
 
 export function ContentReview() {
@@ -189,11 +189,12 @@ export function ContentReview() {
                 key={value}
                 type="button"
                 onClick={() => setFilter(value)}
-                className={
+                className={cn(
+                  'rounded-full px-4 py-1.5 text-sm transition-colors',
                   filter === value
-                    ? 'bg-[#EAF4F3] text-[#2D6E6A] rounded-full px-4 py-1.5 text-sm'
-                    : 'text-[#6B8E8E] rounded-full px-4 py-1.5 text-sm hover:bg-[#EDF2F2]'
-                }
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-muted'
+                )}
               >
                 {label}
               </button>
@@ -219,7 +220,7 @@ export function ContentReview() {
           <div className="card overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#D4E8E7]">
+                <tr className="border-b border-border bg-muted/30">
                   {[
                     'Video',
                     'Creator',
@@ -231,7 +232,7 @@ export function ContentReview() {
                   ].map((heading) => (
                     <th
                       key={heading}
-                      className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#9BB5B5]"
+                      className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
                     >
                       {heading}
                     </th>
@@ -242,7 +243,7 @@ export function ContentReview() {
                 {filteredVideos.map((video) => (
                   <tr
                     key={video.id}
-                    className="border-b border-[#EDF2F2] last:border-0"
+                    className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -256,10 +257,10 @@ export function ContentReview() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-[#1E3333] line-clamp-1">
+                          <p className="text-sm font-medium text-foreground line-clamp-1">
                             {video.title}
                           </p>
-                          <p className="text-xs text-[#9BB5B5] mt-1 line-clamp-1">
+                          <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-1">
                             {(video.tags ?? []).join(', ')}
                           </p>
                         </div>
@@ -273,10 +274,10 @@ export function ContentReview() {
                           size={36}
                         />
                         <div>
-                          <p className="text-sm font-medium text-[#1E3333]">
+                          <p className="text-sm font-medium text-foreground">
                             {video.profiles?.full_name ?? 'Unknown creator'}
                           </p>
-                          <p className="text-xs text-[#6B8E8E]">
+                          <p className="text-xs text-muted-foreground">
                             {video.profiles?.specialty ?? 'Dental professional'}
                           </p>
                         </div>
@@ -285,7 +286,7 @@ export function ContentReview() {
                     <td className="px-5 py-3">
                       <span className="badge-specialty">{video.category}</span>
                     </td>
-                    <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                    <td className="px-5 py-3 text-sm text-muted-foreground">
                       {formatViewCount(video.view_count)}
                     </td>
                     <td className="px-5 py-3">
@@ -295,7 +296,7 @@ export function ContentReview() {
                         {video.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#9BB5B5]">
+                    <td className="px-5 py-3 text-xs text-muted-foreground/60">
                       {timeAgo(video.created_at)}
                     </td>
                     <td className="px-5 py-3">
@@ -304,7 +305,7 @@ export function ContentReview() {
                           to="/watch/$videoId"
                           params={{ videoId: video.id }}
                         >
-                          <button className="rounded-lg p-2 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]">
+                          <button className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary">
                             <Eye className="h-4 w-4" />
                           </button>
                         </Link>
@@ -312,7 +313,7 @@ export function ContentReview() {
                           <button
                             type="button"
                             onClick={() => setVideoToRemove(video.id)}
-                            className="px-3 py-1.5 text-xs text-[#DC2626] border border-[#FEE2E2] rounded-lg hover:bg-[#FEE2E2] transition-colors"
+                            className="px-3 py-1.5 text-xs text-destructive border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-colors"
                           >
                             Remove
                           </button>
@@ -321,7 +322,7 @@ export function ContentReview() {
                           <button
                             type="button"
                             onClick={() => restoreMutation.mutate(video.id)}
-                            className="px-3 py-1.5 text-xs text-[#059669] border border-[#D1FAE5] rounded-lg hover:bg-[#D1FAE5] transition-colors"
+                            className="px-3 py-1.5 text-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/10 transition-colors"
                           >
                             Restore
                           </button>
@@ -340,14 +341,14 @@ export function ContentReview() {
         open={!!videoToRemove}
         onOpenChange={(open) => !open && setVideoToRemove(null)}
       >
-        <DialogContent showCloseButton={false} className="max-w-md rounded-2xl bg-white p-0">
+        <DialogContent showCloseButton={false} className="max-w-md rounded-2xl bg-card border-border p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6">
             <DialogTitle>Remove this video?</DialogTitle>
             <DialogDescription>
               Are you sure you want to remove this video? The creator will be notified.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-6 bg-white">
+          <DialogFooter className="mt-6 bg-muted/30 border-t border-border px-6 py-4">
             <button
               type="button"
               onClick={() => setVideoToRemove(null)}
@@ -362,7 +363,7 @@ export function ContentReview() {
                   ? removeMutation.mutate(videoToRemove)
                   : undefined
               }
-              className="rounded-lg bg-[#DC2626] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#B91C1C]"
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 shadow-sm"
             >
               Remove video
             </button>

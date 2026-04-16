@@ -11,10 +11,10 @@ import { formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
 const statusStyles = {
-  processing: 'bg-[#FEF3C7] text-[#D97706]',
-  published: 'bg-[#D1FAE5] text-[#059669]',
-  unlisted: 'bg-[#EDF2F2] text-[#6B8E8E]',
-  removed: 'bg-[#FEE2E2] text-[#DC2626]',
+  processing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-500',
+  published: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-500',
+  unlisted: 'bg-muted text-muted-foreground',
+  removed: 'bg-destructive/10 text-destructive',
 } as const
 
 export function Studio() {
@@ -69,11 +69,11 @@ export function Studio() {
       <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-8 pb-20 md:pb-8">
         {!session && !isAuthLoading && (
           <div className="py-16 text-center">
-            <Lock className="mx-auto h-8 w-8 text-[#88C1BD]" />
-            <h2 className="mt-4 mb-2 text-lg font-medium text-[#1E3333]">
+            <Lock className="mx-auto h-8 w-8 text-primary" />
+            <h2 className="mt-4 mb-2 text-lg font-medium text-foreground">
               Sign in to access creator studio
             </h2>
-            <p className="mb-6 text-sm text-[#6B8E8E]">
+            <p className="mb-6 text-sm text-muted-foreground">
               Creator studio is available to verified creators
             </p>
             <Link to="/login" className="btn-primary px-6 py-2.5 text-sm">
@@ -83,11 +83,11 @@ export function Studio() {
         )}
 
         {session && !isCreator && !isAuthLoading && (
-          <div className="card p-8 text-center">
-            <h2 className="text-lg font-medium text-[#1E3333]">
+          <div className="card p-8 text-center bg-card border border-border">
+            <h2 className="text-lg font-medium text-foreground">
               Creator studio is not available
             </h2>
-            <p className="mt-2 text-sm text-[#6B8E8E]">
+            <p className="mt-2 text-sm text-muted-foreground">
               Only verified creators can manage videos and analytics here.
             </p>
           </div>
@@ -120,12 +120,12 @@ export function Studio() {
             {!isError && (
               <>
                 <div className="mb-8">
-                  <p className="text-sm font-medium text-[#1E3333] mb-4">
+                  <p className="text-sm font-medium text-foreground mb-4">
                     Performance overview
                   </p>
 
-                  <div className="card p-5">
-                    <p className="text-xs font-medium text-[#9BB5B5] uppercase tracking-wider mb-4">
+                  <div className="card border-border bg-card p-5">
+                    <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">
                       Views by month
                     </p>
                     {/* Desktop chart — all 6 months */}
@@ -142,13 +142,13 @@ export function Studio() {
                             className="flex-1 flex flex-col items-center gap-1"
                           >
                             <div
-                              className="w-full bg-[#88C1BD] rounded-t-sm transition-all duration-500"
+                              className="w-full bg-primary/80 rounded-t-sm transition-all duration-500"
                               style={{
                                 height: `${percentage}%`,
                                 minHeight: bucket.views > 0 ? '4px' : '0',
                               }}
                             />
-                            <p className="text-[10px] text-[#9BB5B5]">
+                            <p className="text-[10px] text-muted-foreground/60">
                               {bucket.label}
                             </p>
                           </div>
@@ -169,13 +169,13 @@ export function Studio() {
                             className="flex-1 flex flex-col items-center gap-1"
                           >
                             <div
-                              className="w-full bg-[#88C1BD] rounded-t-sm transition-all duration-500"
+                              className="w-full bg-primary/80 rounded-t-sm transition-all duration-500"
                               style={{
                                 height: `${percentage}%`,
                                 minHeight: bucket.views > 0 ? '4px' : '0',
                               }}
                             />
-                            <p className="text-[10px] text-[#9BB5B5]">
+                            <p className="text-[10px] text-muted-foreground/60">
                               {bucket.label}
                             </p>
                           </div>
@@ -183,28 +183,28 @@ export function Studio() {
                       })}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-[#D6E0E0]">
+                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
                       <div>
-                        <p className="text-xs text-[#9BB5B5]">
+                        <p className="text-xs text-muted-foreground/60">
                           Avg. views per video
                         </p>
-                        <p className="text-base font-medium text-[#1E3333]">
+                        <p className="text-base font-medium text-foreground">
                           {Math.round(
                             totalViews / Math.max(myVideos.length, 1)
                           ).toLocaleString()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#9BB5B5]">Like rate</p>
-                        <p className="text-base font-medium text-[#1E3333]">
+                        <p className="text-xs text-muted-foreground/60">Like rate</p>
+                        <p className="text-base font-medium text-foreground">
                           {totalViews > 0
                             ? `${((totalLikes / totalViews) * 100).toFixed(1)}%`
                             : '0%'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#9BB5B5]">Comment rate</p>
-                        <p className="text-base font-medium text-[#1E3333]">
+                        <p className="text-xs text-muted-foreground/60">Comment rate</p>
+                        <p className="text-base font-medium text-foreground">
                           {totalViews > 0
                             ? `${((totalComments / totalViews) * 100).toFixed(1)}%`
                             : '0%'}
@@ -214,15 +214,15 @@ export function Studio() {
                   </div>
                 </div>
 
-                <div className="card overflow-hidden mb-6">
-                  <div className="px-5 py-4 border-b border-[#D4E8E7]">
-                    <p className="text-sm font-medium text-[#1E3333]">
+                <div className="card border-border bg-card overflow-hidden mb-6">
+                  <div className="px-5 py-4 border-b border-border">
+                    <p className="text-sm font-medium text-foreground">
                       Top videos by views
                     </p>
                   </div>
-                  <div className="divide-y divide-[#EDF2F2]">
+                  <div className="divide-y divide-border/40">
                     {topVideos.length === 0 ? (
-                      <div className="px-5 py-6 text-sm text-[#9BB5B5]">
+                      <div className="px-5 py-6 text-sm text-muted-foreground/60">
                         Upload videos to see your top performers here.
                       </div>
                     ) : (
@@ -231,7 +231,7 @@ export function Studio() {
                           key={video.id}
                           className="flex items-center gap-4 px-5 py-3"
                         >
-                          <span className="text-sm font-medium text-[#9BB5B5] w-5">
+                          <span className="text-sm font-medium text-muted-foreground/60 w-5">
                             {index + 1}
                           </span>
                           <div className="w-16 flex-shrink-0">
@@ -244,7 +244,7 @@ export function Studio() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[#1E3333] truncate">
+                            <p className="text-sm font-medium text-foreground truncate">
                               {video.title}
                             </p>
                             <span className="badge-specialty text-[10px]">
@@ -252,10 +252,10 @@ export function Studio() {
                             </span>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-medium text-[#1E3333]">
+                            <p className="text-sm font-medium text-foreground">
                               {formatViewCount(video.view_count)} views
                             </p>
-                            <p className="text-xs text-[#9BB5B5]">
+                            <p className="text-xs text-muted-foreground/60">
                               {formatViewCount(video.like_count)} likes
                             </p>
                           </div>
@@ -265,16 +265,16 @@ export function Studio() {
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white">
-                  <div className="flex items-center justify-between border-b border-[#D4E8E7] px-5 py-4">
-                    <p className="text-sm font-medium text-[#1E3333]">My videos</p>
-                    <span className="text-xs text-[#6B8E8E]">All statuses</span>
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                    <p className="text-sm font-medium text-foreground">My videos</p>
+                    <span className="text-xs text-muted-foreground">All statuses</span>
                   </div>
 
                   {/* Mobile card list */}
-                  <div className="md:hidden divide-y divide-[#EDF2F2]">
+                  <div className="md:hidden divide-y divide-border/40">
                     {isLoading && (
-                      <div className="p-4 text-center text-sm text-[#9BB5B5]">
+                      <div className="p-4 text-center text-sm text-muted-foreground/60">
                         Loading videos...
                       </div>
                     )}
@@ -299,13 +299,13 @@ export function Studio() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="line-clamp-2 text-sm font-medium text-[#1E3333]">
+                            <p className="line-clamp-2 text-sm font-medium text-foreground">
                               {video.title}
                             </p>
                             <span className="badge-specialty text-[10px] mt-1 inline-block">
                               {video.category}
                             </span>
-                            <p className="text-xs text-[#9BB5B5] mt-1">
+                            <p className="text-xs text-muted-foreground/60 mt-1">
                               {formatViewCount(video.view_count)} views · {formatViewCount(video.like_count)} likes · {timeAgo(video.created_at)}
                             </p>
                             <div className="flex items-center gap-1 mt-2">
@@ -322,7 +322,7 @@ export function Studio() {
                                     params: { videoId: video.id },
                                   })
                                 }
-                                className="rounded-lg p-1.5 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-primary"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
@@ -334,14 +334,14 @@ export function Studio() {
                                     search: { videoId: video.id },
                                   })
                                 }
-                                className="rounded-lg p-1.5 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-primary"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleDelete(video.id)}
-                                className="rounded-lg p-1.5 text-[#DC2626] transition-colors hover:bg-[#FEE2E2]"
+                                className="rounded-lg p-1.5 text-destructive transition-colors hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -355,11 +355,11 @@ export function Studio() {
                   <div className="hidden md:block">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-[#D4E8E7]">
+                        <tr className="border-b border-border bg-muted/30">
                           {['Video', 'Views', 'Likes', 'Comments', 'Status', 'Date', 'Actions'].map((heading) => (
                             <th
                               key={heading}
-                              className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#9BB5B5]"
+                              className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
                             >
                               {heading}
                             </th>
@@ -369,7 +369,7 @@ export function Studio() {
                       <tbody>
                         {isLoading && (
                           <tr>
-                            <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#9BB5B5]">
+                            <td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground/60">
                               Loading videos...
                             </td>
                           </tr>
@@ -392,7 +392,7 @@ export function Studio() {
                           myVideos.map((video) => (
                             <tr
                               key={video.id}
-                              className="border-b border-[#EDF2F2] transition-colors last:border-0 hover:bg-[#F7FAFA]"
+                              className="border-b border-border/40 transition-colors last:border-0 hover:bg-muted/5"
                             >
                               <td className="px-5 py-3">
                                 <div className="flex items-center gap-3">
@@ -406,7 +406,7 @@ export function Studio() {
                                     />
                                   </div>
                                   <div>
-                                    <p className="line-clamp-1 text-sm font-medium text-[#1E3333]">
+                                    <p className="line-clamp-1 text-sm font-medium text-foreground">
                                       {video.title}
                                     </p>
                                     <span className="badge-specialty text-[10px]">
@@ -415,13 +415,13 @@ export function Studio() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                              <td className="px-5 py-3 text-sm text-muted-foreground">
                                 {formatViewCount(video.view_count)}
                               </td>
-                              <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                              <td className="px-5 py-3 text-sm text-muted-foreground">
                                 {formatViewCount(video.like_count)}
                               </td>
-                              <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                              <td className="px-5 py-3 text-sm text-muted-foreground">
                                 {formatViewCount(video.comment_count)}
                               </td>
                               <td className="px-5 py-3">
@@ -429,7 +429,7 @@ export function Studio() {
                                   {video.status}
                                 </span>
                               </td>
-                              <td className="px-5 py-3 text-xs text-[#9BB5B5]">
+                              <td className="px-5 py-3 text-xs text-muted-foreground/60">
                                 {timeAgo(video.created_at)}
                               </td>
                               <td className="px-5 py-3">
@@ -442,7 +442,7 @@ export function Studio() {
                                         params: { videoId: video.id },
                                       })
                                     }
-                                    className="rounded-lg p-2 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-primary"
                                   >
                                     <Eye className="h-4 w-4" />
                                   </button>
@@ -454,14 +454,14 @@ export function Studio() {
                                         search: { videoId: video.id },
                                       })
                                     }
-                                    className="rounded-lg p-2 text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-primary"
                                   >
                                     <Edit3 className="h-4 w-4" />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => void handleDelete(video.id)}
-                                    className="rounded-lg p-2 text-[#DC2626] transition-colors hover:bg-[#FEE2E2]"
+                                    className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </button>

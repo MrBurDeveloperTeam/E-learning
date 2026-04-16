@@ -7,11 +7,9 @@ import {
   Clock3,
   Lock,
   LogOut,
-  Monitor,
   MoonStar,
   Pencil,
   Shield,
-  Smartphone,
   SunMedium,
   UserRound,
 } from 'lucide-react'
@@ -29,6 +27,7 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { PasswordField } from '../components/ui/PasswordField'
+import { useTheme } from '../components/shared/ThemeProvider'
 
 type SettingsTab =
   | 'profile'
@@ -93,13 +92,8 @@ const NOTIFICATION_GROUPS = [
   },
 ] as const
 
-const SESSION_LIST = [
-  { label: 'MacBook Pro - Chrome', location: 'Kuala Lumpur', lastActive: 'Active now', current: true, icon: Monitor },
-  { label: 'iPhone 15 - Safari', location: 'Petaling Jaya', lastActive: '2 hours ago', current: false, icon: Smartphone },
-]
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="mb-4 text-xs font-medium uppercase tracking-wider text-[#9BB5B5]">{children}</p>
+  return <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{children}</p>
 }
 
 function PlaceholderPanel({
@@ -116,16 +110,16 @@ function PlaceholderPanel({
   onAction?: () => void
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[#D4E8E7] bg-[#F7FAFA] p-8 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EAF4F3] text-[#2D6E6A]">
+    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Icon size={20} />
       </div>
-      <h3 className="mt-4 text-sm font-medium text-[#1E3333]">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-[#6B8E8E]">{description}</p>
+      <h3 className="mt-4 text-sm font-medium text-foreground">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{description}</p>
       <button
         type="button"
         onClick={onAction}
-        className="mt-5 rounded-lg border border-[#D4E8E7] bg-white px-4 py-2 text-sm font-medium text-[#2D6E6A] transition-colors hover:bg-[#EAF4F3]"
+        className="mt-5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted"
       >
         {actionLabel}
       </button>
@@ -144,11 +138,11 @@ function getPasswordStrength(password: string) {
   if (/[A-Z]/.test(password)) score = 2
   if (/\d/.test(password)) score = 3
   if (/[^A-Za-z0-9]/.test(password)) score = 4
-  if (score === 4) return { score, label: 'Strong', color: 'bg-[#059669]' }
-  if (score === 3) return { score, label: 'Good', color: 'bg-[#88C1BD]' }
-  if (score === 2) return { score, label: 'Fair', color: 'bg-[#D97706]' }
-  if (score === 1) return { score, label: 'Weak', color: 'bg-[#DC2626]' }
-  return { score: 0, label: 'Start typing a new password', color: 'bg-[#D4E8E7]' }
+  if (score === 4) return { score, label: 'Strong', color: 'bg-emerald-500' }
+  if (score === 3) return { score, label: 'Good', color: 'bg-primary' }
+  if (score === 2) return { score, label: 'Fair', color: 'bg-amber-500' }
+  if (score === 1) return { score, label: 'Weak', color: 'bg-destructive' }
+  return { score: 0, label: 'Start typing a new password', color: 'bg-muted' }
 }
 
 export function Settings() {
@@ -177,11 +171,13 @@ export function Settings() {
     weeklySummary: true,
     productAnnouncements: false,
   })
-  const [appearanceMode, setAppearanceMode] = useState<'soft' | 'high-contrast'>('soft')
   const [applied, setApplied] = useState(false)
+  const { resolvedTheme, setTheme } = useTheme()
 
   const passwordStrength = getPasswordStrength(newPassword)
   const avatarName = profile?.full_name ?? profile?.name ?? user?.email ?? 'DentalLearn User'
+  const appearanceMode: 'soft' | 'high-contrast' =
+    resolvedTheme === 'dark' ? 'high-contrast' : 'soft'
   const pendingCreatorReview =
     applied ||
     (profile?.account_type === 'individual' &&
@@ -323,12 +319,12 @@ export function Settings() {
     return (
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="px-6 py-6">
-          <div className="flex items-center gap-5 border-b border-[#D6E0E0] pb-6">
+          <div className="flex items-center gap-5 border-b border-border pb-6">
             <div className="relative flex-shrink-0">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-xl font-medium text-[#EAF4F3]">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-primary/20 text-xl font-medium text-primary">
                 {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" className="h-full w-full object-cover" /> : getInitials(watchedFullName || avatarName)}
               </div>
-              <label className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-[#88C1BD] text-white transition-colors hover:bg-[#2D6E6A]">
+              <label className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:opacity-90">
                 {uploadAvatar.isPending ? <LoadingSpinner size="sm" /> : <Pencil size={10} />}
                 <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
               </label>
@@ -340,17 +336,17 @@ export function Settings() {
             </div>
 
             <div>
-              <p className="mb-0.5 text-sm font-medium text-[#1E3333]">Profile photo</p>
-              <p className="mb-3 text-xs text-[#6B8E8E]">JPG or PNG, recommended 400x400px, max 2MB</p>
+              <p className="mb-0.5 text-sm font-medium text-foreground">Profile photo</p>
+              <p className="mb-3 text-xs text-muted-foreground">JPG or PNG, recommended 400x400px, max 2MB</p>
               <div className="flex gap-2">
-                <label className="cursor-pointer rounded-lg border border-[#D4E8E7] bg-[#EAF4F3] px-3 py-1.5 text-xs font-medium text-[#2D6E6A] transition-colors hover:bg-[#D4E8E7]">
+                <label className="cursor-pointer rounded-lg border border-border bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20">
                   Upload new photo
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                 </label>
                 <button
                   type="button"
                   onClick={() => toast.error('Avatar removal is not available yet')}
-                  className="rounded-lg px-3 py-1.5 text-xs text-[#9BB5B5] transition-colors hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
                   Remove
                 </button>
@@ -358,10 +354,10 @@ export function Settings() {
             </div>
           </div>
 
-          <div className="border-b border-[#D6E0E0] py-6">
+          <div className="border-b border-border py-6">
             <SectionLabel>Channel background</SectionLabel>
-            <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-[#F7FAFA]">
-              <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#AEDAD8] via-[#88C1BD] to-[#2D6E6A]">
+            <div className="overflow-hidden rounded-2xl border border-border bg-muted/30">
+              <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary/40 via-primary/60 to-primary/80">
                 {backgroundPreviewUrl ? (
                   <img
                     src={backgroundPreviewUrl}
@@ -370,10 +366,10 @@ export function Settings() {
                   />
                 ) : null}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1E3333]/30 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent" />
 
                 <div className="absolute bottom-4 left-4 flex items-end gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#2D6E6A] text-lg font-medium text-[#EAF4F3] shadow-sm">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-background bg-primary/20 text-lg font-medium text-primary shadow-sm">
                     {avatarPreviewUrl ? (
                       <img
                         src={avatarPreviewUrl}
@@ -395,15 +391,15 @@ export function Settings() {
                 </div>
 
                 {uploadBackground.isPending && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px]">
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/40 backdrop-blur-[1px]">
                     <LoadingSpinner size="sm" />
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 px-4 py-4 text-sm text-[#6B8E8E] md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-3 px-4 py-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                 <p>JPG or PNG, recommended 1600x400px or wider, max 4MB</p>
-                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#D4E8E7] bg-white px-3 py-2 text-xs font-medium text-[#2D6E6A] transition-colors hover:bg-[#EAF4F3]">
+                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-muted">
                   {uploadBackground.isPending ? (
                     <LoadingSpinner size="sm" />
                   ) : (
@@ -421,83 +417,83 @@ export function Settings() {
             </div>
           </div>
 
-          <div className="border-b border-[#D6E0E0] py-6">
+          <div className="border-b border-border py-6">
             <SectionLabel>Personal details</SectionLabel>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="full_name" className="text-xs font-medium text-[#3D5C5C]">Full name<span className="ml-0.5 text-[#DC2626]">*</span></label>
+                <label htmlFor="full_name" className="text-xs font-medium text-foreground/70">Full name<span className="ml-0.5 text-destructive">*</span></label>
                 <input id="full_name" className="input-field" placeholder="Dr. Aina Rahman" {...register('full_name', { required: true })} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="email" className="text-xs font-medium text-[#3D5C5C]">Email address</label>
+                <label htmlFor="email" className="text-xs font-medium text-foreground/70">Email address</label>
                 <div className="relative">
-                  <input id="email" disabled value={profile?.email ?? user?.email ?? ''} className="input-field cursor-not-allowed bg-[#EDF2F2] pr-9 text-[#9BB5B5]" readOnly />
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9BB5B5]"><Lock size={12} /></div>
+                  <input id="email" disabled value={profile?.email ?? user?.email ?? ''} className="input-field cursor-not-allowed bg-muted/50 pr-9 text-muted-foreground" readOnly />
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Lock size={12} /></div>
                 </div>
-                <p className="text-[11px] text-[#9BB5B5]">Cannot be changed</p>
+                <p className="text-[11px] text-muted-foreground/60">Cannot be changed</p>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="phone" className="text-xs font-medium text-[#3D5C5C]">Phone number</label>
+                <label htmlFor="phone" className="text-xs font-medium text-foreground/70">Phone number</label>
                 <input id="phone" className="input-field" placeholder="+60 12-345 6789" {...register('phone')} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="company_name" className="text-xs font-medium text-[#3D5C5C]">Company / clinic name</label>
+                <label htmlFor="company_name" className="text-xs font-medium text-foreground/70">Company / clinic name</label>
                 <input id="company_name" className="input-field" placeholder="Clinic or organisation" {...register('company_name')} />
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label htmlFor="institution" className="text-xs font-medium text-[#3D5C5C]">Institution</label>
+                <label htmlFor="institution" className="text-xs font-medium text-foreground/70">Institution</label>
                 <input id="institution" className="input-field" placeholder="Hospital, university, or training institution" {...register('institution')} />
               </div>
             </div>
           </div>
 
-          <div className="border-b border-[#D6E0E0] py-6">
+          <div className="border-b border-border py-6">
             <SectionLabel>Professional details</SectionLabel>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="specialty" className="text-xs font-medium text-[#3D5C5C]">Specialty</label>
+                <label htmlFor="specialty" className="text-xs font-medium text-foreground/70">Specialty</label>
                 <div className="relative">
-                  <select id="specialty" className="input-field appearance-none pr-9" {...register('specialty')}>
+                  <select id="specialty" className="input-field appearance-none pr-9 bg-transparent" {...register('specialty')}>
                     <option value="">Select specialty</option>
                     {SPECIALTY_OPTIONS.map((specialty) => <option key={specialty} value={specialty}>{specialty}</option>)}
                   </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9BB5B5]"><ChevronDown size={12} /></div>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><ChevronDown size={12} /></div>
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="position" className="text-xs font-medium text-[#3D5C5C]">Position / title</label>
+                <label htmlFor="position" className="text-xs font-medium text-foreground/70">Position / title</label>
                 <input id="position" className="input-field" placeholder="Consultant, lecturer, clinic lead" {...register('position')} />
               </div>
-              <div className="rounded-lg border border-[#D4E8E7] bg-[#F7FAFA] px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-[#9BB5B5]">Account overview</p>
-                <div className="mt-3 flex items-center gap-2 text-sm text-[#3D5C5C]">
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">Account overview</p>
+                <div className="mt-3 flex items-center gap-2 text-sm text-foreground/80">
                   <span className="capitalize">{profile?.role ?? 'member'}</span>
-                  <span className="text-[#D4E8E7]">/</span>
-                  <span className="rounded-full bg-[#2D6E6A] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#E8F5F4]">{formatPlanLabel(profile?.plan)}</span>
+                  <span className="text-border">/</span>
+                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">{formatPlanLabel(profile?.plan)}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {profile?.is_creator === false && profile?.is_verified === false && (
-            <div className="py-6 border-b border-[#D6E0E0]">
-              <p className="text-xs font-medium text-[#9BB5B5] uppercase tracking-wider mb-4">
+            <div className="py-6 border-b border-border">
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">
                 Creator access
               </p>
 
               {pendingCreatorReview ? (
-                <div className="flex items-center gap-2 text-sm text-[#D97706]">
+                <div className="flex items-center gap-2 text-sm text-amber-500">
                   <Clock3 size={14} />
                   Pending admin review
                 </div>
               ) : (
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-[#1E3333]">
+                    <p className="text-sm font-medium text-foreground">
                       Apply for creator access
                     </p>
-                    <p className="text-xs text-[#6B8E8E] mt-1 max-w-sm">
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                       Verified dental professionals can upload videos and build their audience on DentalLearn. Our team will review your application within 1–2 business days.
                     </p>
                   </div>
@@ -513,22 +509,22 @@ export function Settings() {
             </div>
           )}
 
-          <div className="border-b border-[#D6E0E0] py-6">
+          <div className="border-b border-border py-6">
             <SectionLabel>Bio</SectionLabel>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="bio" className="text-xs font-medium text-[#3D5C5C]">Professional bio</label>
+              <label htmlFor="bio" className="text-xs font-medium text-foreground/70">Professional bio</label>
               <textarea id="bio" maxLength={500} className="input-field h-28 resize-none" placeholder="Write a short professional bio visible to other members..." {...register('bio')} />
-              <p className="text-right text-[11px] text-[#9BB5B5]">{watchedBio.length}/500</p>
+              <p className="text-right text-[11px] text-muted-foreground/60">{watchedBio.length}/500</p>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-5">
             <div className="min-h-[20px]">
-              {isDirty && <div className="flex items-center gap-1.5 text-xs text-[#D97706]"><span className="h-1.5 w-1.5 rounded-full bg-[#D97706]" />Unsaved changes</div>}
+              {isDirty && <div className="flex items-center gap-1.5 text-xs text-amber-500"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Unsaved changes</div>}
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={handleReset} className="rounded-lg px-4 py-2 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EDF2F2]">Discard</button>
-              <button type="submit" disabled={updateProfile.isPending} className="flex items-center gap-2 rounded-lg bg-[#88C1BD] px-5 py-2 text-sm font-medium text-[#1A4A47] transition-colors hover:bg-[#5A8784] hover:text-[#EAF4F3] disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={handleReset} className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted">Discard</button>
+              <button type="submit" disabled={updateProfile.isPending} className="flex items-center gap-2 btn-primary px-5 py-2 text-sm">
                 {updateProfile.isPending ? <LoadingSpinner size="sm" /> : null}
                 Save changes
               </button>
@@ -576,40 +572,6 @@ export function Settings() {
           </div>
         </div>
 
-        <div className="border-b border-[#D6E0E0] py-6">
-          <p className="mb-4 text-sm font-medium text-[#1E3333]">Active sessions</p>
-          {SESSION_LIST.map((sessionItem) => {
-            const Icon = sessionItem.icon
-            return (
-              <div key={sessionItem.label} className="flex items-center justify-between border-b border-[#EDF2F2] py-3 last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className="text-[#6B8E8E]"><Icon size={20} /></div>
-                  <div>
-                    <p className="text-sm text-[#1E3333]">{sessionItem.label}</p>
-                    <p className="text-xs text-[#9BB5B5]">{sessionItem.location} - {sessionItem.current ? 'Current session' : sessionItem.lastActive}</p>
-                  </div>
-                </div>
-                {sessionItem.current ? (
-                  <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 text-[10px] font-medium text-[#059669]">Current</span>
-                ) : (
-                  <button type="button" onClick={() => toast.error('Session revocation is not available yet')} className="text-xs text-[#DC2626] hover:underline">Revoke</button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-[#1E3333]">Two-factor authentication</p>
-              <p className="mt-0.5 text-xs text-[#6B8E8E]">Add an extra layer of security to your account</p>
-            </div>
-            <button type="button" onClick={() => toast.error('Two-factor authentication is not available yet')} className="rounded-lg border border-[#D4E8E7] px-4 py-2 text-sm font-medium text-[#3D5C5C] transition-colors hover:border-[#88C1BD] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]">
-              Enable 2FA
-            </button>
-          </div>
-        </div>
       </div>
     )
   }
@@ -646,7 +608,7 @@ export function Settings() {
         <div className="grid gap-4 md:grid-cols-2">
           <button
             type="button"
-            onClick={() => setAppearanceMode('soft')}
+            onClick={() => setTheme('light')}
             className={cn('rounded-xl border p-5 text-left transition-colors', appearanceMode === 'soft' ? 'border-[#88C1BD] bg-[#EAF4F3]' : 'border-[#D4E8E7] hover:border-[#88C1BD]')}
           >
             <div className="mb-3 flex items-center gap-3 text-[#2D6E6A]"><SunMedium size={18} /><p className="text-sm font-medium text-[#1E3333]">Soft daylight</p></div>
@@ -654,7 +616,7 @@ export function Settings() {
           </button>
           <button
             type="button"
-            onClick={() => setAppearanceMode('high-contrast')}
+            onClick={() => setTheme('dark')}
             className={cn('rounded-xl border p-5 text-left transition-colors', appearanceMode === 'high-contrast' ? 'border-[#88C1BD] bg-[#EAF4F3]' : 'border-[#D4E8E7] hover:border-[#88C1BD]')}
           >
             <div className="mb-3 flex items-center gap-3 text-[#2D6E6A]"><MoonStar size={18} /><p className="text-sm font-medium text-[#1E3333]">High contrast preview</p></div>
@@ -691,57 +653,57 @@ export function Settings() {
 
   return (
     <PageLayout className="p-0" scrollMain={false}>
-      <div className="min-h-screen bg-[#F7FAFA]">
+      <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-medium text-[#1E3333]">Settings</h1>
-            <p className="mt-1 text-sm text-[#6B8E8E]">Manage your account, preferences, and billing</p>
+            <h1 className="text-2xl font-medium text-foreground">Settings</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your account, preferences, and billing</p>
           </div>
-          <div className="mb-4 rounded-2xl border border-[#D4E8E7] bg-white p-2 md:hidden">
+          <div className="mb-4 rounded-2xl border border-border bg-card p-2 md:hidden">
             <div className="flex min-w-max gap-1 overflow-x-auto">
               {mobileItems.map((item) => {
                 const Icon = item.icon
                 const active = activeTab === item.id
-                return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors', active ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E]')}><Icon size={16} /><span className="hidden sm:inline">{item.label}</span></button>
+                return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground')}><Icon size={16} /><span className="hidden sm:inline">{item.label}</span></button>
               })}
             </div>
           </div>
           <div className="grid items-start gap-6 md:grid-cols-[220px_1fr]">
             <div className="sticky top-20 hidden self-start md:block">
-              <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white">
-                <div className="border-b border-[#D4E8E7] p-5">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-base font-medium text-[#EAF4F3]">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="border-b border-border p-5">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary/20 text-base font-medium text-primary">
                     {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" className="h-full w-full object-cover" /> : getInitials(watchedFullName || avatarName)}
                   </div>
-                  <p className="truncate text-sm font-medium text-[#1E3333]">{watchedFullName || profile?.full_name || 'DentalLearn User'}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{watchedFullName || profile?.full_name || 'DentalLearn User'}</p>
                   <div className="mt-1 flex items-center gap-1.5">
-                    <span className="text-xs capitalize text-[#6B8E8E]">{profile?.role ?? 'member'}</span>
-                    <span className="text-[#D4E8E7]">/</span>
-                    <span className="rounded-full bg-[#2D6E6A] px-2 py-0.5 text-[10px] font-medium capitalize text-[#E8F5F4]">{formatPlanLabel(profile?.plan)}</span>
+                    <span className="text-xs capitalize text-muted-foreground">{profile?.role ?? 'member'}</span>
+                    <span className="text-border">/</span>
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium capitalize text-primary-foreground">{formatPlanLabel(profile?.plan)}</span>
                   </div>
                 </div>
                 <nav className="p-2">
                   {navGroups.map((group) => (
                     <div key={group.label}>
-                      <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5]">{group.label}</p>
+                      <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{group.label}</p>
                       {group.items.map((item) => {
                         const Icon = item.icon
                         const active = activeTab === item.id
-                        return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150', active ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#F7FAFA] hover:text-[#2D6E6A]')}><Icon size={16} />{item.label}</button>
+                        return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-primary')}><Icon size={16} />{item.label}</button>
                       })}
                     </div>
                   ))}
                   <div>
-                    <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5]">Danger zone</p>
-                    <button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-[#6B8E8E] transition-colors duration-150 hover:bg-[#FEE2E2] hover:text-[#DC2626]"><LogOut size={16} />Sign out</button>
+                    <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Danger zone</p>
+                    <button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"><LogOut size={16} />Sign out</button>
                   </div>
                 </nav>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white">
-              <div className="border-b border-[#D4E8E7] px-6 py-5">
-                <h2 className="text-base font-medium text-[#1E3333]">{currentTabMeta.title}</h2>
-                <p className="mt-0.5 text-xs text-[#6B8E8E]">{currentTabMeta.description}</p>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="border-b border-border px-6 py-5">
+                <h2 className="text-base font-medium text-foreground">{currentTabMeta.title}</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">{currentTabMeta.description}</p>
               </div>
               {renderPanelBody()}
             </div>

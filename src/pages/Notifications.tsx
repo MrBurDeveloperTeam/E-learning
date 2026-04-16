@@ -36,15 +36,15 @@ function getActionText(type: NotificationWithActor['type']) {
 
 function NotificationCardSkeleton() {
   return (
-    <div className="card p-4 flex items-start gap-4">
-      <div className="mt-4 h-2 w-2 rounded-full bg-[#D4E8E7]" />
-      <div className="h-10 w-10 animate-pulse rounded-full bg-[#EDF2F2]" />
+    <div className="card p-4 flex items-start gap-4 border-border bg-card">
+      <div className="mt-4 h-2 w-2 rounded-full bg-muted" />
+      <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
       <div className="flex-1 space-y-2">
-        <div className="h-4 w-3/4 animate-pulse rounded bg-[#EDF2F2]" />
-        <div className="h-3 w-1/2 animate-pulse rounded bg-[#EDF2F2]" />
-        <div className="h-3 w-1/4 animate-pulse rounded bg-[#EDF2F2]" />
+        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/4 animate-pulse rounded bg-muted" />
       </div>
-      <div className="h-7 w-10 animate-pulse rounded-md bg-[#EDF2F2]" />
+      <div className="h-7 w-10 animate-pulse rounded-md bg-muted" />
     </div>
   )
 }
@@ -143,8 +143,8 @@ export function Notifications() {
                 className={cn(
                   'px-4 py-1.5 text-sm transition-colors rounded-full',
                   isActive
-                    ? 'bg-[#EAF4F3] text-[#2D6E6A]'
-                    : 'text-[#6B8E8E] hover:bg-[#EDF2F2]'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted'
                 )}
               >
                 {label}
@@ -176,8 +176,8 @@ export function Notifications() {
                   onClick={() => handleClick(notification)}
                   className={cn(
                     'card p-4 flex items-start gap-4 cursor-pointer',
-                    'hover:border-[#88C1BD] transition-colors',
-                    !notification.is_read && 'border-[#88C1BD] bg-[#EAF4F3]'
+                    'hover:border-primary transition-colors border-border bg-card',
+                    !notification.is_read && 'border-primary bg-primary/10'
                   )}
                 >
                   <div
@@ -185,11 +185,11 @@ export function Notifications() {
                       'mt-4 h-2 w-2 rounded-full flex-shrink-0',
                       notification.is_read
                         ? 'bg-transparent'
-                        : 'bg-[#88C1BD]'
+                        : 'bg-primary'
                     )}
                   />
 
-                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-sm font-medium text-[#EAF4F3] flex-shrink-0">
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-medium text-primary flex-shrink-0">
                     {notification.profiles?.avatar_url ? (
                       <img
                         src={notification.profiles.avatar_url}
@@ -202,22 +202,22 @@ export function Notifications() {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground">
                       <span className="font-medium">{actorName}</span>{' '}
                       {getActionText(notification.type)}
                     </p>
                     {notification.videos?.title && (
-                      <p className="text-xs text-[#6B8E8E] mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {notification.videos.title}
                       </p>
                     )}
-                    <p className="text-xs text-[#9BB5B5] mt-1">
+                    <p className="text-xs text-muted-foreground/60 mt-1">
                       {timeAgo(notification.created_at)}
                     </p>
                   </div>
 
                   {notification.videos && (
-                    <div className="h-7 w-10 flex-shrink-0 overflow-hidden rounded-md bg-[#EDF2F2]">
+                    <div className="h-7 w-10 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                       {notification.videos.thumbnail_url ? (
                         <img
                           src={notification.videos.thumbnail_url}

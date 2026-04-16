@@ -86,7 +86,7 @@ export function Profile() {
       <>
         <Navbar />
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-12">
-          <div className="card p-8 text-center text-sm text-[#6B8E8E]">
+          <div className="card p-8 text-center text-sm text-muted-foreground">
             Profile not found.
           </div>
         </div>
@@ -97,9 +97,10 @@ export function Profile() {
   return (
     <>
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 pb-20 md:pb-6">
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 pb-20 md:pb-6">
         <div className="card overflow-hidden mb-6">
-          <div className="h-[100px] md:h-[120px] bg-gradient-to-br from-[#AEDAD8] to-[#2D6E6A]">
+          <div className="h-[100px] md:h-[120px] bg-gradient-to-br from-primary/40 to-primary/80">
             {profile.background_url ? (
               <img
                 src={profile.background_url}
@@ -115,7 +116,7 @@ export function Profile() {
                 name={profileName}
                 avatarUrl={profile.avatar_url}
                 size={60}
-                className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] border-4 border-white text-xl"
+                className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] border-4 border-background text-xl"
                 textClassName="text-xl"
               />
 
@@ -130,20 +131,20 @@ export function Profile() {
               ) : null}
             </div>
 
-            <h1 className="text-lg md:text-xl font-medium text-[#1E3333]">
+            <h1 className="text-lg md:text-xl font-medium text-foreground">
               {profileName}
             </h1>
 
             {profile.username && (
-              <p className="text-sm text-[#9BB5B5]">@{profile.username}</p>
+              <p className="text-sm text-muted-foreground/70">@{profile.username}</p>
             )}
 
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <p className="text-sm text-[#6B8E8E]">
+              <p className="text-sm text-muted-foreground">
                 {profile.specialty ?? 'Dental professional'}
               </p>
               {profile.is_verified && (
-                <span className="text-[10px] bg-[#D4E8E7] text-[#2D6E6A] px-2 py-0.5 rounded-full font-medium">
+                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium border border-primary/20">
                   Verified dental professional
                 </span>
               )}
@@ -153,35 +154,35 @@ export function Profile() {
             <div className="grid grid-cols-3 gap-2 mt-4 md:flex md:gap-6">
               {profile.is_creator && (
                 <div className="text-center md:text-left">
-                  <p className="text-base font-medium text-[#1E3333]">
+                  <p className="text-base font-medium text-foreground">
                     {videoCount}
                   </p>
-                  <p className="text-xs text-[#9BB5B5]">Videos</p>
+                  <p className="text-xs text-muted-foreground/60">Videos</p>
                 </div>
               )}
               <div className="text-center md:text-left">
-                <p className="text-base font-medium text-[#1E3333]">
+                <p className="text-base font-medium text-foreground">
                   {formatViewCount(profile.follower_count)}
                 </p>
-                <p className="text-xs text-[#9BB5B5]">Followers</p>
+                <p className="text-xs text-muted-foreground/60">Followers</p>
               </div>
               <div className="text-center md:text-left">
-                <p className="text-base font-medium text-[#1E3333]">
+                <p className="text-base font-medium text-foreground">
                   {formatViewCount(profile.following_count)}
                 </p>
-                <p className="text-xs text-[#9BB5B5]">Following</p>
+                <p className="text-xs text-muted-foreground/60">Following</p>
               </div>
             </div>
 
             {profile.bio && (
-              <p className="text-sm text-[#6B8E8E] mt-3 leading-relaxed max-w-lg">
+              <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-lg">
                 {profile.bio}
               </p>
             )}
 
             <div className="flex flex-wrap gap-3 mt-3">
               {profile.institution && (
-                <span className="text-xs text-[#6B8E8E] flex items-center gap-1">
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <BuildingIcon />
                   {profile.institution}
                 </span>
@@ -211,23 +212,23 @@ export function Profile() {
             <TabsContent value="about" className="mt-6">
               <div className="card p-6 space-y-4">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-[#9BB5B5] mb-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">
                     Professional details
                   </p>
-                  <p className="text-sm text-[#6B8E8E]">
+                  <p className="text-sm text-muted-foreground">
                     Specialty: {profile.specialty ?? 'Not specified'}
                   </p>
-                  <p className="text-sm text-[#6B8E8E] mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Institution: {profile.institution ?? 'Not specified'}
                   </p>
 
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-[#9BB5B5] mb-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">
                     Bio
                   </p>
-                  <p className="text-sm text-[#6B8E8E] leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     {profile.bio ?? 'No bio provided yet.'}
                   </p>
                 </div>
@@ -235,10 +236,11 @@ export function Profile() {
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="card p-5 text-sm text-[#6B8E8E]">
+          <div className="card p-5 text-sm text-muted-foreground bg-card border-border">
             This member is not a verified creator.
           </div>
         )}
+      </div>
       </div>
     </>
   )

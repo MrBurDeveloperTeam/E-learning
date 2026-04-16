@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
-import { timeAgo } from '@/lib/utils'
+import { cn, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import type { Profile } from '@/types'
@@ -49,30 +49,34 @@ function AdminGuard() {
 function StatusBadge({ status }: { status: 'pending' | 'approved' | 'rejected' }) {
   const config = {
     pending: {
-      bg: 'bg-[#FEF3C7]',
-      text: 'text-[#92400E]',
-      dot: 'bg-[#D97706]',
+      bg: 'bg-amber-500/10',
+      text: 'text-amber-600 dark:text-amber-400',
+      dot: 'bg-amber-500',
       label: 'Pending review',
     },
     approved: {
-      bg: 'bg-[#D1FAE5]',
-      text: 'text-[#065F46]',
-      dot: 'bg-[#059669]',
+      bg: 'bg-emerald-500/10',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      dot: 'bg-emerald-500',
       label: 'Approved',
     },
     rejected: {
-      bg: 'bg-[#FEE2E2]',
-      text: 'text-[#991B1B]',
-      dot: 'bg-[#DC2626]',
+      bg: 'bg-destructive/10',
+      text: 'text-destructive',
+      dot: 'bg-destructive',
       label: 'Rejected',
     },
   }[status]
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${config.bg} ${config.text}`}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+        config.bg,
+        config.text
+      )}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+      <span className={cn('h-1.5 w-1.5 rounded-full', config.dot)} />
       {config.label}
     </span>
   )
@@ -90,24 +94,27 @@ function StatsCard({
   accent?: 'default' | 'warning' | 'success' | 'danger'
 }) {
   const iconColorMap = {
-    default: 'bg-[#EAF4F3] text-[#2D6E6A]',
-    warning: 'bg-[#FEF3C7] text-[#D97706]',
-    success: 'bg-[#D1FAE5] text-[#059669]',
-    danger: 'bg-[#FEE2E2] text-[#DC2626]',
+    default: 'bg-primary/10 text-primary',
+    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    danger: 'bg-destructive/10 text-destructive',
   }
 
   return (
-    <div className="card p-5 flex items-center gap-4">
+    <div className="card p-5 flex items-center gap-4 border-border bg-card">
       <div
-        className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconColorMap[accent]}`}
+        className={cn(
+          'flex h-11 w-11 items-center justify-center rounded-xl transition-colors',
+          iconColorMap[accent]
+        )}
       >
         <Icon size={20} />
       </div>
       <div>
-        <p className="text-2xl font-semibold text-[#1E3333]">
+        <p className="text-2xl font-semibold text-foreground">
           {value.toLocaleString()}
         </p>
-        <p className="text-xs text-[#9BB5B5] mt-0.5">{label}</p>
+        <p className="text-xs text-muted-foreground/60 mt-0.5">{label}</p>
       </div>
     </div>
   )
@@ -330,19 +337,21 @@ export function CreatorApplications() {
                   key={value}
                   type="button"
                   onClick={() => setFilterStatus(value as FilterStatus)}
-                  className={
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all',
                     filterStatus === value
-                      ? 'flex items-center gap-1.5 bg-[#EAF4F3] text-[#2D6E6A] rounded-full px-4 py-2 text-sm font-medium transition-all'
-                      : 'flex items-center gap-1.5 text-[#6B8E8E] rounded-full px-4 py-2 text-sm hover:bg-[#EDF2F2] transition-all'
-                  }
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted'
+                  )}
                 >
                   {label}
                   <span
-                    className={
+                    className={cn(
+                      'text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center transition-colors',
                       filterStatus === value
-                        ? 'bg-[#2D6E6A] text-[#EAF4F3] text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center'
-                        : 'bg-[#EDF2F2] text-[#9BB5B5] text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center'
-                    }
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground/60'
+                    )}
                   >
                     {count}
                   </span>
@@ -353,7 +362,7 @@ export function CreatorApplications() {
             <div className="relative w-full md:w-64">
               <Search
                 size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BB5B5]"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60"
               />
               <input
                 type="text"
@@ -388,7 +397,7 @@ export function CreatorApplications() {
               {filteredUsers.map((user) => (
                 <div
                   key={user.user_id}
-                  className="card overflow-hidden hover:shadow-md transition-shadow"
+                  className="card overflow-hidden hover:shadow-md transition-shadow border-border bg-card"
                 >
                   <div className="p-5">
                     {/* Top row: avatar + info + status */}
@@ -398,32 +407,32 @@ export function CreatorApplications() {
                           name={user.full_name ?? user.email}
                           avatarUrl={user.avatar_url}
                           size={48}
-                          className="bg-[#D4E8E7] text-[#2D6E6A] flex-shrink-0"
+                          className="bg-primary/10 text-primary flex-shrink-0"
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-[#1E3333] text-[15px]">
+                            <p className="font-medium text-foreground text-[15px]">
                               {user.full_name ?? 'Unnamed applicant'}
                             </p>
                             <StatusBadge status={user._status} />
                           </div>
-                          <p className="text-xs text-[#6B8E8E] mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {user.email}
                           </p>
 
                           <div className="flex items-center gap-3 mt-3 flex-wrap">
                             {user.specialty && (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-[#EAF4F3] px-2 py-1 text-xs text-[#2D6E6A] font-medium">
+                              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary font-medium border border-primary/20">
                                 {user.specialty}
                               </span>
                             )}
                             {user.institution && (
-                              <span className="text-xs text-[#6B8E8E]">
+                              <span className="text-xs text-muted-foreground">
                                 {user.institution}
                               </span>
                             )}
                             {user.position && (
-                              <span className="text-xs text-[#9BB5B5]">
+                              <span className="text-xs text-muted-foreground/60">
                                 · {user.position}
                               </span>
                             )}
@@ -432,7 +441,7 @@ export function CreatorApplications() {
                       </div>
 
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-[#9BB5B5]">
+                        <p className="text-xs text-muted-foreground/60">
                           {user._status === 'pending' ? 'Applied' : 'Updated'}{' '}
                           {timeAgo(
                             user._status === 'pending'
@@ -446,7 +455,7 @@ export function CreatorApplications() {
                     {/* Bio preview */}
                     {user.bio && (
                       <div className="mt-3 ml-16">
-                        <p className="text-sm text-[#6B8E8E] line-clamp-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
                           {user.bio}
                         </p>
                       </div>
@@ -455,11 +464,11 @@ export function CreatorApplications() {
 
                   {/* Action row */}
                   {user._status === 'pending' && (
-                    <div className="flex items-center gap-2 px-5 py-3 border-t border-[#EDF2F2] bg-[#FAFCFC]">
+                    <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-muted/30">
                       <button
                         type="button"
                         onClick={() => setDetailUser(user)}
-                        className="flex items-center gap-1.5 px-3 py-2 text-xs text-[#6B8E8E] border border-[#D4E8E7] rounded-lg hover:bg-[#EAF4F3] hover:text-[#2D6E6A] transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground border border-border rounded-lg hover:bg-primary/10 hover:text-primary transition-colors bg-card shadow-sm"
                       >
                         <Eye size={13} />
                         Review details
@@ -471,7 +480,7 @@ export function CreatorApplications() {
                           setRejectUserId(user.user_id)
                           setRejectReason('')
                         }}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs text-[#DC2626] border border-[#FEE2E2] rounded-lg hover:bg-[#FEE2E2] transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs text-destructive border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-colors bg-card shadow-sm"
                       >
                         <UserX size={13} />
                         Reject
@@ -480,7 +489,7 @@ export function CreatorApplications() {
                         type="button"
                         onClick={() => approveMutation.mutate(user.user_id)}
                         disabled={approveMutation.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-[#D1FAE5] text-[#059669] rounded-lg hover:bg-[#A7F3D0] transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-50 shadow-sm"
                       >
                         <UserCheck size={13} />
                         Approve
@@ -514,24 +523,24 @@ export function CreatorApplications() {
       >
         <DialogContent
           showCloseButton={false}
-          className="max-w-lg rounded-2xl bg-white p-0"
+          className="max-w-lg rounded-2xl bg-card border-border p-0 overflow-hidden"
         >
           {detailUser && (
             <>
-              <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#EDF2F2]">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <DialogTitle className="text-lg">
+                  <DialogTitle className="text-lg text-foreground">
                     Review application
                   </DialogTitle>
                   <button
                     type="button"
                     onClick={() => setDetailUser(null)}
-                    className="text-[#9BB5B5] hover:text-[#3D5C5C] transition-colors"
+                    className="text-muted-foreground/60 hover:text-foreground transition-colors"
                   >
                     <X size={18} />
                   </button>
                 </div>
-                <DialogDescription className="text-[#6B8E8E] text-sm mt-1">
+                <DialogDescription className="text-muted-foreground text-sm mt-1">
                   Review this dental professional's application for creator
                   access
                 </DialogDescription>
@@ -544,13 +553,13 @@ export function CreatorApplications() {
                     name={detailUser.full_name ?? detailUser.email}
                     avatarUrl={detailUser.avatar_url}
                     size={56}
-                    className="bg-[#D4E8E7] text-[#2D6E6A]"
+                    className="bg-primary/10 text-primary"
                   />
                   <div>
-                    <p className="text-base font-medium text-[#1E3333]">
+                    <p className="text-base font-medium text-foreground">
                       {detailUser.full_name ?? 'Unnamed'}
                     </p>
-                    <p className="text-sm text-[#6B8E8E]">
+                    <p className="text-sm text-muted-foreground">
                       {detailUser.email}
                     </p>
                   </div>
@@ -558,51 +567,51 @@ export function CreatorApplications() {
 
                 {/* Details grid */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-1">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
                       Specialty
                     </p>
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground font-medium">
                       {detailUser.specialty || 'Not specified'}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-1">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
                       Position
                     </p>
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground font-medium">
                       {detailUser.position || 'Not specified'}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-1">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
                       Institution
                     </p>
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground font-medium">
                       {detailUser.institution || 'Not specified'}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-1">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
                       Company / Clinic
                     </p>
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground font-medium">
                       {detailUser.company_name || 'Not specified'}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-1">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
                       Phone
                     </p>
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground font-medium">
                       {detailUser.phone || 'Not provided'}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-1">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
                       Applied
                     </p>
-                    <p className="text-sm text-[#1E3333]">
+                    <p className="text-sm text-foreground font-medium">
                       {timeAgo(detailUser.created_at)}
                     </p>
                   </div>
@@ -610,11 +619,11 @@ export function CreatorApplications() {
 
                 {/* Bio */}
                 {detailUser.bio && (
-                  <div className="rounded-xl border border-[#EDF2F2] bg-[#FAFCFC] p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-[#9BB5B5] mb-2">
+                  <div className="rounded-xl border border-border bg-muted/20 p-4">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-2">
                       Professional bio
                     </p>
-                    <p className="text-sm text-[#3D5C5C] leading-relaxed">
+                    <p className="text-sm text-foreground leading-relaxed">
                       {detailUser.bio}
                     </p>
                   </div>
@@ -623,14 +632,14 @@ export function CreatorApplications() {
 
               {/* Actions */}
               {detailUser._status === 'pending' && (
-                <div className="px-6 py-4 border-t border-[#EDF2F2] bg-[#FAFCFC] flex items-center gap-3 justify-end rounded-b-2xl">
+                <div className="px-6 py-4 border-t border-border bg-muted/30 flex items-center gap-3 justify-end rounded-b-2xl">
                   <button
                     type="button"
                     onClick={() => {
                       setRejectUserId(detailUser.user_id)
                       setRejectReason('')
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-[#DC2626] border border-[#FEE2E2] rounded-lg hover:bg-[#FEE2E2] transition-colors"
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-destructive border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-colors bg-card shadow-sm"
                   >
                     <UserX size={14} />
                     Reject
@@ -641,7 +650,7 @@ export function CreatorApplications() {
                       approveMutation.mutate(detailUser.user_id)
                     }
                     disabled={approveMutation.isPending}
-                    className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium bg-[#2D6E6A] text-white rounded-lg hover:bg-[#1A4A47] transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-md"
                   >
                     <Check size={14} />
                     Approve as creator
@@ -665,13 +674,13 @@ export function CreatorApplications() {
       >
         <DialogContent
           showCloseButton={false}
-          className="max-w-md rounded-2xl bg-white p-0"
+          className="max-w-md rounded-2xl bg-card border-border p-0 overflow-hidden"
         >
-          <DialogHeader className="border-b border-[#EDF2F2] px-6 pt-6 pb-4">
-            <DialogTitle className="text-lg text-[#1E3333]">
+          <DialogHeader className="border-b border-border bg-muted/30 px-6 pt-6 pb-4">
+            <DialogTitle className="text-lg text-foreground">
               Reject application?
             </DialogTitle>
-            <DialogDescription className="mt-1 text-sm text-[#6B8E8E]">
+            <DialogDescription className="mt-1 text-sm text-muted-foreground">
               This will remove the user from the pending queue. They can
               re-apply in the future.
             </DialogDescription>
@@ -680,7 +689,7 @@ export function CreatorApplications() {
           <div className="space-y-2 px-6 py-5">
             <label
               htmlFor="reject-reason"
-              className="block text-xs font-medium text-[#3D5C5C]"
+              className="block text-xs font-medium text-foreground"
             >
               Rejection reason (optional)
             </label>
@@ -691,13 +700,13 @@ export function CreatorApplications() {
               placeholder="e.g., Incomplete professional details..."
               className="input-field min-h-28 w-full resize-none"
             />
-            <p className="text-xs leading-5 text-[#6B8E8E]">
+            <p className="text-xs leading-5 text-muted-foreground">
               This note is for the admin action record and helps explain why the
               application was rejected.
             </p>
           </div>
 
-          <DialogFooter className="mx-0 mb-0 mt-0 gap-3 rounded-b-2xl border-t border-[#EDF2F2] bg-[#FAFCFC] px-6 py-4">
+          <DialogFooter className="mx-0 mb-0 mt-0 gap-3 rounded-b-2xl border-t border-border bg-muted/30 px-6 py-4">
             <button
               type="button"
               onClick={() => {
@@ -719,7 +728,7 @@ export function CreatorApplications() {
                   : undefined
               }
               disabled={rejectMutation.isPending}
-              className="rounded-lg bg-[#DC2626] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#B91C1C] disabled:opacity-50"
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50 shadow-sm"
             >
               Reject application
             </button>

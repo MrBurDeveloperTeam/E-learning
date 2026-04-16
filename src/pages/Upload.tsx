@@ -268,11 +268,11 @@ export function Upload() {
   }
 
   if (isAuthLoading) {
-    return <div className="p-8 text-center text-sm text-[#9BB5B5]">Loading...</div>
+    return <div className="p-8 text-center text-sm text-muted-foreground/60">Loading...</div>
   }
 
   if (isEditMode && editVideoQuery.isLoading) {
-    return <div className="p-8 text-center text-sm text-[#9BB5B5]">Loading video data...</div>
+    return <div className="p-8 text-center text-sm text-muted-foreground/60">Loading video data...</div>
   }
 
   if (!session || !profile?.is_verified) {
@@ -293,8 +293,8 @@ export function Upload() {
         />
 
         {isEditMode && editVideoQuery.data && (
-          <div className="mb-6 rounded-xl border border-[#88C1BD] bg-[#EAF4F3]/70 px-4 py-3 text-sm text-[#2D6E6A]">
-            Editing <span className="font-medium">{editVideoQuery.data.title}</span>
+          <div className="mb-6 rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm text-primary">
+            Editing <span className="font-medium text-foreground">{editVideoQuery.data.title}</span>
             {' '} - the original video file stays attached to this post.
           </div>
         )}
@@ -328,27 +328,27 @@ export function Upload() {
 
               <div className="space-y-2">
                 <Label>Custom thumbnail</Label>
-                <div className="rounded-xl border border-dashed border-[#88C1BD] bg-[#EAF4F3]/40 p-4">
+                <div className="rounded-xl border border-dashed border-primary bg-primary/5 p-4">
                   {!thumbnailPreviewUrl ? (
                     <button
                       type="button"
                       onClick={() => thumbnailInputRef.current?.click()}
-                      className="flex w-full flex-col items-center justify-center rounded-lg px-6 py-8 text-center transition-colors hover:bg-white/70"
+                      className="flex w-full flex-col items-center justify-center rounded-lg px-6 py-8 text-center transition-colors hover:bg-muted/50"
                       disabled={uploading}
                     >
-                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-                        <ImageIcon className="h-5 w-5 text-[#2D6E6A]" />
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-card shadow-sm border border-border">
+                        <ImageIcon className="h-5 w-5 text-primary" />
                       </div>
-                      <p className="text-sm font-medium text-[#1E3333]">
+                      <p className="text-sm font-medium text-foreground">
                         Upload a custom thumbnail
                       </p>
-                      <p className="mt-1 text-xs text-[#6B8E8E]">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         JPG, PNG, or WebP up to 2MB
                       </p>
                     </button>
                   ) : (
                     <div className="space-y-3">
-                      <div className="overflow-hidden rounded-lg border border-[#D4E8E7] bg-white">
+                      <div className="overflow-hidden rounded-lg border border-border bg-card">
                         <img
                           src={thumbnailPreviewUrl}
                           alt="Selected thumbnail preview"
@@ -357,10 +357,10 @@ export function Upload() {
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-[#1E3333]">
+                          <p className="truncate text-sm font-medium text-foreground">
                             {thumbnailFile?.name ?? 'Current thumbnail'}
                           </p>
-                          <p className="text-xs text-[#6B8E8E]">
+                          <p className="text-xs text-muted-foreground">
                             {thumbnailFile
                               ? `${(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB`
                               : 'Saved thumbnail preview'}
@@ -371,7 +371,7 @@ export function Upload() {
                             type="button"
                             onClick={() => thumbnailInputRef.current?.click()}
                             disabled={uploading}
-                            className="rounded-lg border border-[#D4E8E7] bg-white px-3 py-1.5 text-xs font-medium text-[#2D6E6A] transition-colors hover:bg-[#EAF4F3]"
+                            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted"
                           >
                             Change
                           </button>
@@ -385,7 +385,7 @@ export function Upload() {
                               }
                             }}
                             disabled={uploading}
-                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#DC2626] transition-colors hover:bg-[#FEE2E2]"
+                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
                           >
                             Remove
                           </button>
@@ -450,41 +450,41 @@ export function Upload() {
             <Label>{isEditMode ? 'Video file' : 'Video File *'}</Label>
             
             {isEditMode ? (
-              <div className="border border-[#D4E8E7] rounded-xl overflow-hidden bg-white p-5">
+              <div className="border border-border rounded-xl overflow-hidden bg-card p-5 shadow-sm">
                 {editVideoQuery.data ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-full bg-[#EAF4F3] flex items-center justify-center">
-                        <Video className="h-5 w-5 text-[#2D6E6A]" />
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Video className="h-5 w-5 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#1E3333] truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {editVideoQuery.data.title}
                         </p>
-                        <p className="text-xs text-[#6B8E8E]">
+                        <p className="text-xs text-muted-foreground">
                           {editVideoQuery.data.status} - {editVideoQuery.data.category}
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs text-[#6B8E8E]">
-                      <div className="rounded-lg bg-[#F7FAFA] px-3 py-2">
+                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                      <div className="rounded-lg bg-muted/50 px-3 py-2 border border-border/10">
                         Duration: {formatDuration(editVideoQuery.data.duration_seconds)}
                       </div>
-                      <div className="rounded-lg bg-[#F7FAFA] px-3 py-2">
+                      <div className="rounded-lg bg-muted/50 px-3 py-2 border border-border/10">
                         Visibility: {editVideoQuery.data.visibility}
                       </div>
                     </div>
-                    <p className="text-xs text-[#9BB5B5]">
+                    <p className="text-xs text-muted-foreground/60">
                       The original video file cannot be replaced from this page. Update the details and thumbnail instead.
                     </p>
                   </div>
                 ) : (
-                  <div className="text-sm text-[#9BB5B5]">Loading video details...</div>
+                  <div className="text-sm text-muted-foreground/60">Loading video details...</div>
                 )}
               </div>
             ) : !file ? (
               <div 
-                className="border-2 border-dashed border-[#88C1BD] rounded-xl flex flex-col items-center justify-center p-12 text-center bg-[#EAF4F3]/50 hover:bg-[#EAF4F3] transition-colors cursor-pointer"
+                className="border-2 border-dashed border-primary/40 rounded-xl flex flex-col items-center justify-center p-12 text-center bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
@@ -496,21 +496,21 @@ export function Upload() {
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
                 />
-                <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                  <UploadIcon className="h-6 w-6 text-[#2D6E6A]" />
+                <div className="h-16 w-16 bg-card rounded-full flex items-center justify-center shadow-sm mb-4 border border-border">
+                  <UploadIcon className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-base font-semibold text-[#1E3333]">Drag & drop video</h3>
-                <p className="text-sm text-[#6B8E8E] mt-1">or click to browse from your device</p>
-                <p className="text-xs text-[#9BB5B5] mt-4">MP4, MOV, WebM up to 2GB</p>
+                <h3 className="text-base font-semibold text-foreground">Drag & drop video</h3>
+                <p className="text-sm text-muted-foreground mt-1">or click to browse from your device</p>
+                <p className="text-xs text-muted-foreground/60 mt-4">MP4, MOV, WebM up to 2GB</p>
               </div>
             ) : (
-             <div className="border border-[#D4E8E7] rounded-xl overflow-hidden bg-white">
-               <div className="bg-[#EAF4F3] p-16 flex items-center justify-center relative">
-                 <Video className="h-12 w-12 text-[#2D6E6A]" />
+             <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+               <div className="bg-primary/10 p-16 flex items-center justify-center relative">
+                 <Video className="h-12 w-12 text-primary" />
                  {!uploading && (
                   <button 
                     onClick={() => setFile(null)} 
-                    className="absolute top-3 right-3 p-1.5 bg-white rounded-full text-[#6B8E8E] hover:text-[#DC2626] transition-colors"
+                    className="absolute top-3 right-3 p-1.5 bg-card rounded-full text-muted-foreground hover:text-destructive shadow-sm border border-border transition-colors"
                   >
                    <X className="h-4 w-4" />
                   </button>
@@ -518,32 +518,32 @@ export function Upload() {
                </div>
                <div className="p-4 flex flex-col space-y-3">
                  <div className="flex items-center justify-between">
-                   <span className="text-sm font-medium text-[#1E3333] truncate pr-4" title={file.name}>
+                   <span className="text-sm font-medium text-foreground truncate pr-4" title={file.name}>
                      {file.name}
                    </span>
-                   <span className="text-xs text-[#6B8E8E] whitespace-nowrap">
+                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                      {(file.size / (1024 * 1024)).toFixed(2)} MB
                    </span>
                  </div>
                  
-                 {uploading && (
-                   <div className="space-y-1 mt-1">
-                     <div className="flex justify-between text-xs text-[#6B8E8E] mb-1">
-                       <span>Uploading...</span>
-                       <span className="font-medium text-[#2D6E6A]">{progress}%</span>
-                     </div>
-                     <div className="h-2 w-full bg-[#EDF2F2] rounded-full overflow-hidden">
-                       <div className="h-full bg-[#88C1BD] transition-all duration-300" style={{ width: `${progress}%` }} />
-                     </div>
-                   </div>
-                 )}
+                  {uploading && (
+                    <div className="space-y-1 mt-1">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Uploading...</span>
+                        <span className="font-medium text-primary">{progress}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+                      </div>
+                    </div>
+                  )}
 
-                 {uploading && progress === 100 && (
-                   <div className="flex items-center gap-2 text-sm text-[#059669] pt-2">
-                     <CheckCircle className="h-4 w-4" />
-                     <span>Upload complete. Processing...</span>
-                   </div>
-                 )}
+                  {uploading && progress === 100 && (
+                    <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 pt-2">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Upload complete. Processing...</span>
+                    </div>
+                  )}
                </div>
              </div>
             )}

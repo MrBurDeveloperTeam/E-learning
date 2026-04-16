@@ -86,7 +86,7 @@ export function Home() {
     <>
       <Navbar />
 
-      <div className="sticky top-14 z-40 border-b border-[#D6E0E0] bg-[#F7FAFA] py-3">
+      <div className="sticky top-14 z-40 border-b border-border bg-background/95 backdrop-blur py-3">
         <div className="mx-auto max-w-[1400px] px-4 md:px-6">
           <div
             ref={categoryScrollRef}
@@ -102,8 +102,8 @@ export function Home() {
                   className={cn(
                     'whitespace-nowrap rounded-full border px-4 py-1.5 text-sm transition-all duration-150 flex-shrink-0',
                     active
-                      ? 'border-[#88C1BD] bg-[#88C1BD] font-medium text-[#1A4A47]'
-                      : 'border-[#D4E8E7] bg-white text-[#6B8E8E] hover:border-[#88C1BD] hover:text-[#2D6E6A]'
+                      ? 'border-primary bg-primary font-medium text-primary-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground'
                   )}
                 >
                   {item}
@@ -115,15 +115,15 @@ export function Home() {
       </div>
 
       {profile && profile.following_count < 5 && creatorSuggestions.length > 0 && (
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-4 border-b border-[#D6E0E0]">
-          <p className="text-sm font-medium text-[#1E3333] mb-3">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-4 border-b border-border">
+          <p className="text-sm font-medium text-foreground mb-3">
             Creators to follow
           </p>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
             {creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex items-center gap-2.5 bg-white border border-[#D4E8E7] rounded-2xl px-3 py-2 flex-shrink-0 hover:border-[#88C1BD] transition-colors"
+                className="flex items-center gap-2.5 bg-card border border-border rounded-2xl px-3 py-2 flex-shrink-0 hover:border-primary transition-colors"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
@@ -131,7 +131,7 @@ export function Home() {
                   size={32}
                 />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-[#1E3333] truncate max-w-[100px]">
+                  <p className="text-xs font-medium text-foreground truncate max-w-[100px]">
                     {getDisplayName(creator, 'Unknown creator')}
                   </p>
                   <p className="text-[10px] text-[#9BB5B5] truncate max-w-[100px]">
@@ -146,13 +146,13 @@ export function Home() {
       )}
 
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 md:px-6 py-4">
-        <p className="text-sm text-[#6B8E8E]">
+        <p className="text-sm text-muted-foreground">
           {category === 'All' ? 'Latest videos' : category}
         </p>
         <select
           value={sort}
           onChange={(event) => setSort(event.target.value as SortOption)}
-          className="hidden sm:block cursor-pointer bg-transparent text-sm text-[#6B8E8E] outline-none"
+          className="hidden sm:block cursor-pointer bg-transparent text-sm text-muted-foreground outline-none"
         >
           <option value="newest">Newest</option>
           <option value="most_viewed">Most viewed</option>

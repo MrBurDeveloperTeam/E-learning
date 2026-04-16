@@ -21,7 +21,7 @@ export function PageLayout({
   scrollMain = true,
 }: PageLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <div className="flex flex-1 max-w-[1400px] mx-auto w-full">
         {showSidebar && sidebarItems && (

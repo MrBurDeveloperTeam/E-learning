@@ -47,15 +47,15 @@ export default function Register() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="card p-8 max-w-sm text-center animate-fade-in">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#D1FAE5]">
-            <svg width="24" height="24" fill="none" stroke="#059669" strokeWidth="2">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+            <svg width="24" height="24" fill="none" stroke="currentColor" className="text-emerald-500" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-lg font-medium text-neutral-900">Check your email</h2>
-          <p className="mt-2 text-sm text-neutral-600">
+          <h2 className="text-lg font-medium text-foreground">Check your email</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             We&apos;ve sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account.
           </p>
           <Link to="/login" search={{ redirect: undefined }}>
@@ -68,38 +68,38 @@ export default function Register() {
 
   if (user && !success && !loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-neutral-50" aria-busy="true">
+      <div className="flex h-screen items-center justify-center bg-background" aria-busy="true">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-[420px] card p-8 animate-fade-in">
         <div className="text-center mb-6">
           <Link to="/" className="flex justify-center">
             <Logo className="mb-2" />
           </Link>
-          <h1 className="text-xl font-medium text-neutral-900 mt-4 mb-1">Create your account</h1>
-          <p className="text-sm text-neutral-400">Join the dental learning community as an individual member</p>
+          <h1 className="text-xl font-medium text-foreground mt-4 mb-1">Create your account</h1>
+          <p className="text-sm text-muted-foreground">Join the dental learning community as an individual member</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="fullName" className="text-sm font-medium text-neutral-800">Full name</label>
+            <label htmlFor="fullName" className="text-sm font-medium text-foreground/80">Full name</label>
             <input id="fullName" className="input-field" placeholder="Dr. Jane Smith" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="reg-email" className="text-sm font-medium text-neutral-800">Email</label>
+            <label htmlFor="reg-email" className="text-sm font-medium text-foreground/80">Email</label>
             <input id="reg-email" type="email" className="input-field" placeholder="you@clinic.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="reg-password" className="text-sm font-medium text-neutral-800">Password</label>
+            <label htmlFor="reg-password" className="text-sm font-medium text-foreground/80">Password</label>
             <PasswordField id="reg-password" className="input-field" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="reg-confirm-password" className="text-sm font-medium text-neutral-800">Confirm password</label>
+            <label htmlFor="reg-confirm-password" className="text-sm font-medium text-foreground/80">Confirm password</label>
             <PasswordField
               id="reg-confirm-password"
               className="input-field"
@@ -110,7 +110,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
             New DentalLearn accounts are created as <strong>individual</strong> accounts with the <strong>member</strong> role.
           </div>
 
@@ -119,9 +119,9 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-neutral-400 mt-5">
+        <p className="text-center text-xs text-muted-foreground mt-5">
           Already have an account?{' '}
-          <Link to="/login" search={{ redirect: undefined }} className="text-teal-400 hover:text-teal-800 transition-colors">
+          <Link to="/login" search={{ redirect: undefined }} className="text-primary hover:opacity-80 transition-colors font-medium">
             Sign in
           </Link>
         </p>

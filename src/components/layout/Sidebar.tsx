@@ -31,7 +31,7 @@ export function Sidebar({
       : 'sidebar-item-active'
 
   return (
-    <aside className={cn('w-[220px] min-h-full bg-white border-r border-teal-100 flex-shrink-0', className)}>
+    <aside className={cn('w-[220px] min-h-full bg-card border-r border-border flex-shrink-0', className)}>
       <nav className="py-4">
         {items.map((item) => {
           const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/')
@@ -40,16 +40,16 @@ export function Sidebar({
             return (
               <div
                 key={item.path + item.label}
-                className="px-4 py-2.5 text-[13px] text-[#9BB5B5] flex items-center gap-2 cursor-not-allowed opacity-70"
+                className="px-4 py-2.5 text-[13px] text-muted-foreground/50 flex items-center gap-2 cursor-not-allowed opacity-60"
               >
                 {item.icon && (
-                  <span className="flex-shrink-0 text-[#9BB5B5]">
+                  <span className="flex-shrink-0 text-muted-foreground/40">
                     {item.icon}
                   </span>
                 )}
                 <span className="flex-1">{item.label}</span>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="ml-auto text-[10px] bg-[#FEE2E2] text-[#DC2626] px-1.5 py-0.5 rounded-full font-medium">
+                  <span className="ml-auto text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-medium">
                     {item.badge}
                   </span>
                 )}
@@ -68,16 +68,16 @@ export function Sidebar({
                   'flex-shrink-0 transition-colors',
                   isActive
                     ? variant === 'admin'
-                      ? 'text-[#D97706]'
-                      : 'text-teal-800'
-                    : 'text-neutral-400 group-hover:text-teal-800'
+                      ? 'text-amber-500'
+                      : 'text-primary'
+                    : 'text-muted-foreground/60 group-hover:text-primary'
                 )}>
                   {item.icon}
                 </span>
               )}
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1 font-medium">{item.label}</span>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="ml-auto text-[10px] bg-[#FEE2E2] text-[#DC2626] px-1.5 py-0.5 rounded-full font-medium">
+                <span className="ml-auto text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-medium shadow-sm">
                   {item.badge}
                 </span>
               )}

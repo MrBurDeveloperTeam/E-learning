@@ -48,21 +48,21 @@ export default function Login() {
   if (user) return null
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-[380px] card p-8 animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-6">
           <Link to="/" className="flex justify-center">
             <Logo className="mb-2" />
           </Link>
-          <h1 className="text-xl font-medium text-neutral-900 mt-4 mb-1">Welcome back</h1>
-          <p className="text-sm text-neutral-400">Sign in to your DentalLearn account</p>
+          <h1 className="text-xl font-medium text-foreground mt-4 mb-1">Welcome back</h1>
+          <p className="text-sm text-muted-foreground">Sign in to your DentalLearn account</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="email" className="text-sm font-medium text-neutral-800">Email</label>
+            <label htmlFor="email" className="text-sm font-medium text-foreground/80">Email</label>
             <input
               id="email"
               type="email"
@@ -74,7 +74,7 @@ export default function Login() {
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="password" className="text-sm font-medium text-neutral-800">Password</label>
+            <label htmlFor="password" className="text-sm font-medium text-foreground/80">Password</label>
             <PasswordField
               id="password"
               className="input-field"
@@ -86,7 +86,7 @@ export default function Login() {
           </div>
 
           <div className="flex justify-end mb-4">
-            <button type="button" className="text-xs text-teal-400 hover:text-teal-800 transition-colors">
+            <button type="button" className="text-xs text-primary hover:opacity-80 transition-colors">
               Forgot password?
             </button>
           </div>
@@ -96,9 +96,9 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-neutral-400 mt-5">
+        <p className="text-center text-xs text-muted-foreground mt-5">
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-teal-400 hover:text-teal-800 transition-colors">
+          <Link to="/register" className="text-primary hover:opacity-80 transition-colors font-medium">
             Sign up
           </Link>
         </p>

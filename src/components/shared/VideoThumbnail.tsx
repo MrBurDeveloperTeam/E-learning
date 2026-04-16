@@ -22,7 +22,7 @@ export function VideoThumbnail({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl bg-[#1E3333]',
+        'relative overflow-hidden rounded-xl bg-muted',
         className
       )}
     >
@@ -37,8 +37,8 @@ export function VideoThumbnail({
           )}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-[#1E3333]">
-          <Play className="h-6 w-6 text-[#3D5C5C]" />
+        <div className="flex h-full w-full items-center justify-center bg-muted">
+          <Play className="h-6 w-6 text-muted-foreground" />
         </div>
       )}
 

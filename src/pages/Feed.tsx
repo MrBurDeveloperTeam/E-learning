@@ -31,11 +31,11 @@ export function Feed() {
 
         {!session && !isAuthLoading && (
           <div className="py-16 text-center">
-            <Lock className="mx-auto h-8 w-8 text-[#88C1BD]" />
-            <h2 className="mt-4 mb-2 text-lg font-medium text-[#1E3333]">
+            <Lock className="mx-auto h-8 w-8 text-primary" />
+            <h2 className="mt-4 mb-2 text-lg font-medium text-foreground">
               Sign in to see your feed
             </h2>
-            <p className="mb-6 text-sm text-[#6B8E8E]">
+            <p className="mb-6 text-sm text-muted-foreground">
               Follow dental professionals to see their latest videos here
             </p>
             <Link to="/login" className="btn-primary px-6 py-2.5 text-sm">
@@ -49,10 +49,10 @@ export function Feed() {
         {session && following.length > 0 && (
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-medium text-[#1E3333]">
+              <h2 className="text-sm font-medium text-foreground">
                 Channels you follow
               </h2>
-              <span className="text-xs text-[#9BB5B5]">{following.length}</span>
+              <span className="text-xs text-muted-foreground/60">{following.length}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
               {following.map((entry) => {
@@ -62,7 +62,7 @@ export function Feed() {
                 return (
                   <div
                     key={entry.following_id}
-                    className="flex min-w-[280px] items-center gap-3 rounded-2xl border border-[#D4E8E7] bg-white px-4 py-3"
+                    className="flex min-w-[280px] items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
                   >
                     <Link
                       to="/channel/$userId"
@@ -75,13 +75,13 @@ export function Feed() {
                         size={40}
                       />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[#1E3333]">
+                        <p className="truncate text-sm font-medium text-foreground">
                           {getDisplayName(creator, 'Unknown creator')}
                         </p>
-                        <p className="truncate text-xs text-[#6B8E8E]">
+                        <p className="truncate text-xs text-muted-foreground">
                           {creator.specialty ?? 'Dental professional'}
                         </p>
-                        <p className="text-[11px] text-[#9BB5B5]">
+                        <p className="text-[11px] text-muted-foreground/60">
                           {formatViewCount(creator.follower_count)} followers
                         </p>
                       </div>

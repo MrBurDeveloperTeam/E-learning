@@ -35,24 +35,24 @@ export function Category() {
     <>
       <Navbar />
 
-      <div className="border-b border-[#D4E8E7] bg-[#EAF4F3]">
+      <div className="border-b border-border bg-primary/5">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 md:px-6 py-6 md:py-8">
           <div>
-            <p className="mb-1 text-xs text-[#9BB5B5]">
-              <Link to="/">Home</Link> / <Link to="/category">Categories</Link> / {categoryName}
+            <p className="mb-1 text-xs text-muted-foreground/60">
+              <Link to="/" className="hover:text-primary transition-colors">Home</Link> / <Link to="/category" className="hover:text-primary transition-colors">Categories</Link> / {categoryName}
             </p>
-            <h1 className="text-2xl font-medium text-[#1E3333]">{categoryName}</h1>
-            <p className="mt-1 text-sm text-[#6B8E8E]">{videos.length} videos</p>
+            <h1 className="text-2xl font-medium text-foreground">{categoryName}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{videos.length} videos</p>
           </div>
 
           <select
             value={sort}
             onChange={(event) => setSort(event.target.value as SortOption)}
-            className="cursor-pointer bg-transparent text-sm text-[#6B8E8E] outline-none"
+            className="cursor-pointer bg-transparent text-sm text-muted-foreground outline-none hover:text-primary transition-colors"
           >
-            <option value="newest">Newest</option>
-            <option value="most_viewed">Most viewed</option>
-            <option value="most_liked">Most liked</option>
+            <option value="newest" className="bg-background">Newest</option>
+            <option value="most_viewed" className="bg-background">Most viewed</option>
+            <option value="most_liked" className="bg-background">Most liked</option>
           </select>
         </div>
       </div>
@@ -60,7 +60,7 @@ export function Category() {
       <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-8 pb-20 md:pb-8">
         <div
           ref={categoryScrollRef}
-          className="mb-6 flex gap-2 overflow-x-auto pb-1"
+          className="mb-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar"
         >
           {VIDEO_CATEGORIES.map((category) => {
             const itemSlug = CATEGORY_SLUGS[category]
@@ -73,8 +73,8 @@ export function Category() {
                 params={{ slug: itemSlug }}
                 className={
                   isActive
-                    ? 'whitespace-nowrap rounded-full border border-[#88C1BD] bg-[#88C1BD] px-4 py-1.5 text-sm font-medium text-[#1A4A47]'
-                    : 'whitespace-nowrap rounded-full border border-[#D4E8E7] bg-white px-4 py-1.5 text-sm text-[#6B8E8E] transition-colors hover:border-[#88C1BD] hover:text-[#2D6E6A]'
+                    ? 'whitespace-nowrap rounded-full border border-primary bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground'
+                    : 'whitespace-nowrap rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary'
                 }
               >
                 {category}

@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
-import { formatViewCount, timeAgo } from '@/lib/utils'
+import { cn, formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import type { Profile } from '@/types'
@@ -31,16 +31,16 @@ type CreatorProfile = Profile & {
 function AdminGuard() {
   return (
     <div className="text-center py-16">
-      <p className="text-[#DC2626] text-sm">Admin access required</p>
+      <p className="text-destructive text-sm font-medium">Admin access required</p>
     </div>
   )
 }
 
 function StatsCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="card p-4">
-      <p className="text-xs text-[#9BB5B5] mb-1">{label}</p>
-      <p className="text-2xl font-medium text-[#1E3333]">
+    <div className="card p-4 border-border bg-card shadow-sm">
+      <p className="text-xs text-muted-foreground/60 mb-1">{label}</p>
+      <p className="text-2xl font-medium text-foreground">
         {value.toLocaleString()}
       </p>
     </div>
@@ -236,11 +236,12 @@ export function UserManagement() {
                 key={value}
                 type="button"
                 onClick={() => setTab(value)}
-                className={
+                className={cn(
+                  'rounded-full px-4 py-1.5 text-sm transition-colors',
                   tab === value
-                    ? 'bg-[#EAF4F3] text-[#2D6E6A] rounded-full px-4 py-1.5 text-sm'
-                    : 'text-[#6B8E8E] rounded-full px-4 py-1.5 text-sm hover:bg-[#EDF2F2]'
-                }
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-muted'
+                )}
               >
                 {label}
               </button>
@@ -257,20 +258,20 @@ export function UserManagement() {
               ) : (
                 <div>
                   {data?.pendingUsers.map((user) => (
-                    <div key={user.user_id} className="card p-5 mb-3">
+                    <div key={user.user_id} className="card p-5 mb-3 border-border bg-card">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3">
                           <UserAvatar
                             name={user.full_name ?? user.email}
                             avatarUrl={user.avatar_url}
                             size={44}
-                            className="bg-[#D4E8E7] text-[#2D6E6A]"
+                            className="bg-primary/10 text-primary"
                           />
                           <div>
-                            <p className="font-medium text-[#1E3333]">
+                            <p className="font-medium text-foreground">
                               {user.full_name ?? 'Unnamed user'}
                             </p>
-                            <p className="text-xs text-[#6B8E8E]">
+                            <p className="text-xs text-muted-foreground">
                               {user.email}
                             </p>
                             {user.specialty && (
@@ -282,17 +283,17 @@ export function UserManagement() {
                         </div>
 
                         <div className="text-right">
-                          <p className="text-xs text-[#9BB5B5]">
+                          <p className="text-xs text-muted-foreground/60">
                             Applied {timeAgo(user.created_at)}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex gap-2 mt-4 pt-4 border-t border-[#D6E0E0]">
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-border">
                         <button
                           type="button"
                           onClick={() => approveMutation.mutate(user.user_id)}
-                          className="flex-1 py-2 text-sm font-medium bg-[#D1FAE5] text-[#059669] rounded-lg hover:bg-[#A7F3D0] transition-colors"
+                          className="flex-1 py-2 text-sm font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors shadow-sm"
                         >
                           Approve as creator
                         </button>
@@ -304,7 +305,7 @@ export function UserManagement() {
                               reason: 'Rejected by admin',
                             })
                           }
-                          className="px-4 py-2 text-sm text-[#DC2626] border border-[#FEE2E2] rounded-lg hover:bg-[#FEE2E2] transition-colors"
+                          className="px-4 py-2 text-sm text-destructive border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-colors bg-card shadow-sm"
                         >
                           Reject
                         </button>
@@ -317,10 +318,10 @@ export function UserManagement() {
           )}
 
           {tab === 'creators' && (
-            <div className="card overflow-hidden">
+            <div className="card overflow-hidden border-border bg-card">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#D4E8E7]">
+                  <tr className="border-b border-border bg-muted/30">
                     {[
                       'Creator',
                       'Specialty',
@@ -331,7 +332,7 @@ export function UserManagement() {
                     ].map((heading) => (
                       <th
                         key={heading}
-                        className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#9BB5B5]"
+                        className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
                       >
                         {heading}
                       </th>
@@ -342,7 +343,7 @@ export function UserManagement() {
                   {data?.creators.map((creator) => (
                     <tr
                       key={creator.user_id}
-                      className="border-b border-[#EDF2F2] last:border-0"
+                      className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                     >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -353,14 +354,14 @@ export function UserManagement() {
                           />
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-[#1E3333]">
+                              <p className="text-sm font-medium text-foreground">
                                 {creator.full_name ?? creator.email}
                               </p>
-                              <span className="text-[10px] bg-[#D4E8E7] text-[#2D6E6A] px-2 py-0.5 rounded-full font-medium">
+                              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium border border-primary/20">
                                 Verified
                               </span>
                             </div>
-                            <p className="text-xs text-[#6B8E8E]">
+                            <p className="text-xs text-muted-foreground/60">
                               {creator.email}
                             </p>
                           </div>
@@ -372,18 +373,18 @@ export function UserManagement() {
                             {creator.specialty}
                           </span>
                         ) : (
-                          <span className="text-sm text-[#9BB5B5]">-</span>
+                          <span className="text-sm text-muted-foreground/40">-</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                      <td className="px-5 py-3 text-sm text-muted-foreground">
                         {creator.video_count ??
                           creator.videos?.[0]?.count ??
                           0}
                       </td>
-                      <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                      <td className="px-5 py-3 text-sm text-muted-foreground">
                         {formatViewCount(creator.follower_count)}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#9BB5B5]">
+                      <td className="px-5 py-3 text-xs text-muted-foreground/60">
                         {timeAgo(creator.created_at)}
                       </td>
                       <td className="px-5 py-3">
@@ -399,7 +400,7 @@ export function UserManagement() {
                           <button
                             type="button"
                             onClick={() => setRevokeUserId(creator.user_id)}
-                            className="px-3 py-1.5 text-xs text-[#DC2626] border border-[#FEE2E2] rounded-lg hover:bg-[#FEE2E2] transition-colors"
+                            className="px-3 py-1.5 text-xs text-destructive border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-colors bg-card shadow-sm"
                           >
                             Revoke
                           </button>
@@ -413,10 +414,10 @@ export function UserManagement() {
           )}
 
           {tab === 'members' && (
-            <div className="card overflow-hidden">
+            <div className="card overflow-hidden border-border bg-card">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#D4E8E7]">
+                  <tr className="border-b border-border bg-muted/30">
                     {[
                       'Member',
                       'Specialty',
@@ -426,7 +427,7 @@ export function UserManagement() {
                     ].map((heading) => (
                       <th
                         key={heading}
-                        className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#9BB5B5]"
+                        className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
                       >
                         {heading}
                       </th>
@@ -437,7 +438,7 @@ export function UserManagement() {
                   {data?.members.map((member) => (
                     <tr
                       key={member.user_id}
-                      className="border-b border-[#EDF2F2] last:border-0"
+                      className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                     >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -447,25 +448,25 @@ export function UserManagement() {
                             size={40}
                           />
                           <div>
-                            <p className="text-sm font-medium text-[#1E3333]">
+                            <p className="text-sm font-medium text-foreground">
                               {member.full_name ?? member.email}
                             </p>
-                            <p className="text-xs text-[#6B8E8E]">
+                            <p className="text-xs text-muted-foreground/60">
                               {member.email}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                      <td className="px-5 py-3 text-sm text-muted-foreground">
                         {member.specialty ?? '-'}
                       </td>
-                      <td className="px-5 py-3 text-sm text-[#6B8E8E]">
+                      <td className="px-5 py-3 text-sm text-muted-foreground">
                         {formatViewCount(member.follower_count)}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#9BB5B5]">
+                      <td className="px-5 py-3 text-xs text-muted-foreground/60">
                         {timeAgo(member.created_at)}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#6B8E8E]">
+                      <td className="px-5 py-3 text-xs text-muted-foreground/60">
                         Member
                       </td>
                     </tr>
@@ -478,14 +479,14 @@ export function UserManagement() {
       )}
 
       <Dialog open={!!revokeUserId} onOpenChange={(open) => !open && setRevokeUserId(null)}>
-        <DialogContent showCloseButton={false} className="max-w-md rounded-2xl bg-white p-0">
+        <DialogContent showCloseButton={false} className="max-w-md rounded-2xl bg-card border-border p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6">
             <DialogTitle>Revoke creator access?</DialogTitle>
             <DialogDescription>
               This user will lose creator and verification status and return to a member account.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-6 bg-white">
+          <DialogFooter className="mt-6 bg-muted/30 border-t border-border px-6 py-4">
             <button
               type="button"
               onClick={() => setRevokeUserId(null)}
@@ -498,7 +499,7 @@ export function UserManagement() {
               onClick={() =>
                 revokeUserId ? revokeMutation.mutate(revokeUserId) : undefined
               }
-              className="rounded-lg bg-[#DC2626] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#B91C1C]"
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 shadow-sm"
             >
               Revoke access
             </button>

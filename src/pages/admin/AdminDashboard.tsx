@@ -4,7 +4,7 @@ import { PageLayout } from '@/components/layout/PageLayout'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
-import { formatViewCount, timeAgo } from '@/lib/utils'
+import { cn, formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import type { SidebarItem } from '@/components/layout/Sidebar'
@@ -13,7 +13,7 @@ import type { Profile, VideoWithCreator } from '@/types'
 function AdminGuard() {
   return (
     <div className="text-center py-16">
-      <p className="text-[#DC2626] text-sm">Admin access required</p>
+      <p className="text-destructive text-sm font-medium">Admin access required</p>
     </div>
   )
 }
@@ -29,14 +29,13 @@ function StatsCard({
 }) {
   return (
     <div
-      className={
-        accent === 'warning'
-          ? 'card bg-[#FEF3C7] border-[#D97706]/20 p-4'
-          : 'card p-4'
-      }
+      className={cn(
+        'card p-4 border-border bg-card shadow-sm',
+        accent === 'warning' && 'bg-amber-50 dark:bg-amber-950/30 border-amber-200/50 dark:border-amber-800/30'
+      )}
     >
-      <p className="text-xs text-[#9BB5B5] mb-1">{label}</p>
-      <p className="text-2xl font-medium text-[#1E3333]">
+      <p className="text-xs text-muted-foreground/60 mb-1">{label}</p>
+      <p className="text-2xl font-medium text-foreground">
         {value.toLocaleString()}
       </p>
     </div>
@@ -209,19 +208,19 @@ export function AdminDashboard() {
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
             <div className="grid gap-6 lg:grid-cols-2">
-              <div className="card overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#D4E8E7]">
-                  <p className="text-sm font-medium text-[#1E3333]">
+              <div className="card overflow-hidden border-border bg-card">
+                <div className="px-5 py-4 border-b border-border bg-muted/30">
+                  <p className="text-sm font-medium text-foreground">
                     Recent uploads
                   </p>
                 </div>
-                <div className="divide-y divide-[#EDF2F2]">
+                <div className="divide-y divide-border">
                   {dashboardQuery.data?.recentVideos.map((video) => (
-                    <div key={video.id} className="px-5 py-3">
-                      <p className="text-sm font-medium text-[#1E3333] line-clamp-1">
+                    <div key={video.id} className="px-5 py-3 hover:bg-muted/50 transition-colors">
+                      <p className="text-sm font-medium text-foreground line-clamp-1">
                         {video.title}
                       </p>
-                      <p className="text-xs text-[#6B8E8E] mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {video.profiles.full_name ?? video.profiles.username} ·{' '}
                         {timeAgo(video.created_at)}
                       </p>
@@ -230,19 +229,19 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="card overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#D4E8E7]">
-                  <p className="text-sm font-medium text-[#1E3333]">
+              <div className="card overflow-hidden border-border bg-card">
+                <div className="px-5 py-4 border-b border-border bg-muted/30">
+                  <p className="text-sm font-medium text-foreground">
                     New users
                   </p>
                 </div>
-                <div className="divide-y divide-[#EDF2F2]">
+                <div className="divide-y divide-border">
                   {dashboardQuery.data?.recentUsers.map((user) => (
-                    <div key={user.user_id} className="px-5 py-3">
-                      <p className="text-sm font-medium text-[#1E3333]">
+                    <div key={user.user_id} className="px-5 py-3 hover:bg-muted/50 transition-colors">
+                      <p className="text-sm font-medium text-foreground">
                         {user.full_name ?? user.email}
                       </p>
-                      <p className="text-xs text-[#6B8E8E] mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {user.email} · {timeAgo(user.created_at)}
                       </p>
                     </div>
@@ -251,8 +250,8 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="card p-5 h-fit">
-              <p className="text-sm font-medium text-[#1E3333] mb-4">
+            <div className="card p-5 h-fit border-border bg-card">
+              <p className="text-sm font-medium text-foreground mb-4">
                 Quick actions
               </p>
               <div className="space-y-3">
@@ -268,11 +267,11 @@ export function AdminDashboard() {
                 </Link>
               </div>
 
-              <div className="mt-5 pt-5 border-t border-[#D6E0E0]">
-                <p className="text-xs text-[#9BB5B5] mb-2">
+              <div className="mt-5 pt-5 border-t border-border">
+                <p className="text-xs text-muted-foreground/60 mb-2">
                   Platform snapshot
                 </p>
-                <p className="text-sm text-[#6B8E8E]">
+                <p className="text-sm text-muted-foreground">
                   {formatViewCount(
                     dashboardQuery.data?.stats.totalVideos ?? 0
                   )}{' '}

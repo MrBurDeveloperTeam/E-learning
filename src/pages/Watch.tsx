@@ -184,10 +184,10 @@ export function Watch() {
         {(videoQuery.isLoading || isAuthLoading) && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] px-4 lg:px-0">
             <div className="space-y-4">
-              <div className="aspect-video animate-pulse rounded-none lg:rounded-xl bg-[#D6E0E0]" />
+              <div className="aspect-video animate-pulse rounded-none lg:rounded-xl bg-muted" />
               <div className="space-y-2">
-                <div className="h-6 w-3/4 animate-pulse rounded bg-[#D6E0E0]" />
-                <div className="h-4 w-1/2 animate-pulse rounded bg-[#D6E0E0]" />
+                <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
               </div>
             </div>
             <div className="hidden lg:block space-y-3">
@@ -226,18 +226,18 @@ export function Watch() {
                     }}
                   />
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#1E3333] px-6 text-center">
-                    <Lock className="h-8 w-8 text-white" />
-                    <p className="font-medium text-white">Sign in to watch this video</p>
-                    <p className="max-w-xs text-sm text-[#9BB5B5]">
+                  <div className="flex h-full flex-col items-center justify-center gap-4 bg-muted/30 px-6 text-center">
+                    <Lock className="h-8 w-8 text-foreground" />
+                    <p className="font-medium text-foreground">Sign in to watch this video</p>
+                    <p className="max-w-xs text-sm text-muted-foreground">
                       Create a free account to watch dental videos from verified professionals
                     </p>
                     <Link to="/register">
-                      <button className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-[#1E3333] transition-colors hover:bg-[#EAF4F3]">
+                      <button className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90">
                         Create free account
                       </button>
                     </Link>
-                    <Link to="/login" className="text-sm text-[#9BB5B5] hover:text-white">
+                    <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
                       Already have an account? Sign in
                     </Link>
                   </div>
@@ -246,12 +246,12 @@ export function Watch() {
 
               {/* Info section — horizontal padding on mobile */}
               <div className="mt-3 px-4 lg:px-0">
-                <h1 className="text-lg md:text-xl font-medium leading-snug text-[#1E3333]">
+                <h1 className="text-lg md:text-xl font-medium leading-snug text-foreground">
                   {video.title}
                 </h1>
 
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                  <p className="flex flex-wrap items-center gap-1 text-sm text-[#6B8E8E]">
+                  <p className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
                     <span>{formatViewCount(video.view_count)} views</span>
                     <span>·</span>
                     <span>{timeAgo(video.created_at)}</span>
@@ -268,8 +268,8 @@ export function Watch() {
                       className={cn(
                         'flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-sm font-medium transition-all',
                         isLiked
-                          ? 'border-[#88C1BD] bg-[#EAF4F3] text-[#2D6E6A]'
-                          : 'border-[#D4E8E7] bg-white text-[#6B8E8E] hover:border-[#88C1BD] hover:text-[#2D6E6A]'
+                          ? 'border-primary bg-primary/20 text-primary'
+                          : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
                       )}
                     >
                       <ThumbsUp className={cn('h-4 w-4', isLiked && 'fill-current')} />
@@ -285,8 +285,8 @@ export function Watch() {
                       className={cn(
                         'flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-sm font-medium transition-all',
                         isSaved
-                          ? 'border-[#88C1BD] bg-[#EAF4F3] text-[#2D6E6A]'
-                          : 'border-[#D4E8E7] bg-white text-[#6B8E8E] hover:border-[#88C1BD] hover:text-[#2D6E6A]'
+                          ? 'border-primary bg-primary/20 text-primary'
+                          : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
                       )}
                     >
                       <Bookmark className={cn('h-4 w-4', isSaved && 'fill-current')} />
@@ -296,7 +296,7 @@ export function Watch() {
                     <button
                       type="button"
                       onClick={() => void copyLink()}
-                      className="flex items-center gap-2 rounded-full border border-[#D4E8E7] bg-white px-3 sm:px-4 py-2 text-sm text-[#6B8E8E] transition-all hover:border-[#88C1BD] hover:text-[#2D6E6A]"
+                      className="flex items-center gap-2 rounded-full border border-border bg-card px-3 sm:px-4 py-2 text-sm text-muted-foreground transition-all hover:border-primary hover:text-primary"
                     >
                       <Share2 className="h-4 w-4" />
                       <span className="hidden sm:inline">Share</span>
@@ -307,7 +307,7 @@ export function Watch() {
                         type="button"
                         disabled={deleteVideoMutation.isPending}
                         onClick={() => void handleDeleteVideo()}
-                        className="flex items-center gap-2 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-3 sm:px-4 py-2 text-sm text-[#DC2626] transition-all hover:border-[#FCA5A5] hover:bg-[#FEE2E2] disabled:opacity-50"
+                        className="flex items-center gap-2 rounded-full border border-destructive/20 bg-destructive/10 px-3 sm:px-4 py-2 text-sm text-destructive transition-all hover:border-destructive/40 hover:bg-destructive/20 disabled:opacity-50"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="hidden sm:inline">Delete</span>
@@ -318,7 +318,7 @@ export function Watch() {
               </div>
 
               {/* Creator card */}
-              <div className="mt-4 flex items-start justify-between border-t border-[#D6E0E0] pt-4 px-4 lg:px-0">
+              <div className="mt-4 flex items-start justify-between border-t border-border pt-4 px-4 lg:px-0">
                 <Link
                   to="/channel/$userId"
                   params={{ userId: video.creator_id }}
@@ -331,12 +331,12 @@ export function Watch() {
                   />
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-medium text-[#1E3333] transition-colors group-hover:text-[#2D6E6A]">
+                      <p className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
                         {creatorName}
                       </p>
                       {video.profiles?.is_verified && <VerifiedBadge />}
                     </div>
-                    <p className="text-xs text-[#6B8E8E]">
+                    <p className="text-xs text-muted-foreground">
                       {video.profiles?.specialty ?? 'Dental professional'} ·{' '}
                       {formatViewCount(video.profiles?.follower_count ?? 0)} followers
                     </p>
@@ -349,7 +349,7 @@ export function Watch() {
               {/* Description */}
               <div
                 className={cn(
-                  'mt-3 rounded-xl bg-[#F7FAFA] p-4 mx-4 lg:mx-0',
+                  'mt-3 rounded-xl bg-muted/50 p-4 mx-4 lg:mx-0',
                   !expanded && 'cursor-pointer'
                 )}
                 onClick={() => {
@@ -358,7 +358,7 @@ export function Watch() {
               >
                 <p
                   className={cn(
-                    'whitespace-pre-line text-sm leading-relaxed text-[#3D5C5C]',
+                    'whitespace-pre-line text-sm leading-relaxed text-foreground/80',
                     !expanded && 'line-clamp-3'
                   )}
                 >
@@ -372,7 +372,7 @@ export function Watch() {
                       event.stopPropagation()
                       setExpanded((current) => !current)
                     }}
-                    className="mt-2 text-xs font-medium text-[#2D6E6A]"
+                    className="mt-2 text-xs font-medium text-primary"
                   >
                     {expanded ? 'Show less' : 'Show more'}
                   </button>
@@ -383,7 +383,7 @@ export function Watch() {
                 <div className="mt-2 flex flex-wrap gap-1.5 px-4 lg:px-0">
                   {video.tags.map((tag) => (
                     <Link key={tag} to="/search" search={{ q: tag }}>
-                      <span className="rounded-full bg-[#EDF2F2] px-2.5 py-1 text-xs text-[#6B8E8E] transition-colors hover:bg-[#D4E8E7] hover:text-[#2D6E6A]">
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/20 hover:text-primary">
                         #{tag}
                       </span>
                     </Link>
@@ -396,9 +396,9 @@ export function Watch() {
                 {isAuthenticated ? (
                   <CommentSection videoId={videoId} commentCount={video.comment_count} />
                 ) : (
-                  <div className="rounded-xl bg-[#F7FAFA] py-8 text-center">
-                    <p className="text-sm text-[#6B8E8E]">
-                      <Link to="/login" className="text-[#88C1BD]">
+                  <div className="rounded-xl bg-muted/30 py-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      <Link to="/login" className="text-primary">
                         Sign in
                       </Link>{' '}
                       to read and post comments
@@ -409,7 +409,7 @@ export function Watch() {
 
               {/* Related videos — mobile only (below comments) */}
               <div className="lg:hidden mt-6 px-4 pb-20">
-                <p className="text-sm font-medium text-[#1E3333] mb-3">
+                <p className="text-sm font-medium text-foreground mb-3">
                   Related videos
                 </p>
                 <div className="space-y-3">
@@ -430,7 +430,7 @@ export function Watch() {
 
             {/* Right sidebar — desktop only */}
             <div className="hidden lg:block space-y-3">
-              <p className="text-sm font-medium text-[#1E3333]">Related videos</p>
+              <p className="text-sm font-medium text-foreground">Related videos</p>
 
               {relatedQuery.isError && <RetryCard onRetry={() => void relatedQuery.refetch()} />}
 

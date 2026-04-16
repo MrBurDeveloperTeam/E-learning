@@ -24,11 +24,11 @@ export function Saved() {
 
         {!session && !isAuthLoading && (
           <div className="py-16 text-center">
-            <Lock className="mx-auto h-8 w-8 text-[#88C1BD]" />
-            <h2 className="mt-4 mb-2 text-lg font-medium text-[#1E3333]">
+            <Lock className="mx-auto h-8 w-8 text-primary" />
+            <h2 className="mt-4 mb-2 text-lg font-medium text-foreground">
               Sign in to view saved videos
             </h2>
-            <p className="mb-6 text-sm text-[#6B8E8E]">
+            <p className="mb-6 text-sm text-muted-foreground">
               Save videos to keep them handy for later
             </p>
             <Link to="/login" className="btn-primary px-6 py-2.5 text-sm">
