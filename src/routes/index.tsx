@@ -26,6 +26,7 @@ import { AdminDashboard } from '@/pages/admin/AdminDashboard'
 import { CreatorApplications } from '@/pages/admin/CreatorApplications'
 import { ContentReview } from '@/pages/admin/ContentReview'
 import { UserManagement } from '@/pages/admin/UserManagement'
+import { AdminFetchVideos } from '@/pages/admin/AdminFetchVideos'
 import { NotFound } from '@/pages/NotFound'
 
 const rootRoute = createRootRoute({
@@ -200,6 +201,16 @@ const adminUsersRoute = createRoute({
   ),
 })
 
+const adminFetchVideosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/fetch-videos',
+  component: () => (
+    <ProtectedRoute requireAdmin>
+      <AdminFetchVideos />
+    </ProtectedRoute>
+  ),
+})
+
 // ─── Not found ────────────────────────────────────────
 
 const notFoundRoute = createRoute({
@@ -232,6 +243,7 @@ const routeTree = rootRoute.addChildren([
   adminApplicationsRoute,
   adminContentRoute,
   adminUsersRoute,
+  adminFetchVideosRoute,
   notFoundRoute,
 ])
 

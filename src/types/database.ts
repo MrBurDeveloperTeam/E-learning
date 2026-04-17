@@ -690,6 +690,47 @@ export interface Database {
           created_at?: string
         }
       }
+      dental_videos: {
+        Row: {
+          id: string
+          video_id: string
+          title: string
+          description: string
+          thumbnail_url: string
+          channel_name: string
+          published_at: string
+          category: string | null
+          confidence_score: number | null
+          tags: string[] | null
+          fetched_at: string
+        }
+        Insert: {
+          id?: string
+          video_id: string
+          title: string
+          description: string
+          thumbnail_url: string
+          channel_name: string
+          published_at: string
+          category?: string | null
+          confidence_score?: number | null
+          tags?: string[] | null
+          fetched_at?: string
+        }
+        Update: {
+          id?: string
+          video_id?: string
+          title?: string
+          description?: string
+          thumbnail_url?: string
+          channel_name?: string
+          published_at?: string
+          category?: string | null
+          confidence_score?: number | null
+          tags?: string[] | null
+          fetched_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

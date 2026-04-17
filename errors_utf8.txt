@@ -1,6 +1,0 @@
-﻿src/pages/Register.tsx(27,18): error TS2322: Type '"/dashboard"' is not assignable to type '"/" | "/feed" | "/login" | "/register" | "/watch/$videoId" | "/category/$slug" | "/search" | "/channel/$userId" | "/saved" | "/upload" | "/studio" | "/profile/$userId" | "/settings" | ... 4 more ... | ".."'.
-src/pages/Settings.tsx(213,24): error TS2367: This comparison appears to be unintentional because the types '"admin" | "creator" | "member" | undefined' and '"instructor"' have no overlap.
-src/pages/Settings.tsx(215,48): error TS2339: Property 'plan' does not exist on type 'Profile'.
-src/pages/Settings.tsx(420,164): error TS2339: Property 'plan' does not exist on type 'Profile'.
-src/pages/Settings.tsx(588,121): error TS2339: Property 'plan' does not exist on type 'Profile'.
-src/pages/Settings.tsx(767,153): error TS2339: Property 'plan' does not exist on type 'Profile'.

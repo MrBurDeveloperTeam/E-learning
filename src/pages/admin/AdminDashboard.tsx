@@ -155,6 +155,10 @@ export function AdminDashboard() {
       path: '/admin/users',
     },
     {
+      label: 'Fetch YouTube videos',
+      path: '/admin/fetch-videos',
+    },
+    {
       label: 'Platform settings',
       path: '/admin/settings',
       disabled: true,
