@@ -9,5 +9,6 @@ export interface DentalVideo {
   category: string | null;
   confidence_score: number | null;
   tags: string[] | null;
+  needs_review: boolean;
   fetched_at: string; // ISO timestamp string
 }
