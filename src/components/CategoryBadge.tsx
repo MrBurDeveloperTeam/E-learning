@@ -26,7 +26,7 @@ export function CategoryBadge({ category, needsReview }: CategoryBadgeProps) {
   else if (label.includes('General')) bgColor = 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800/60';
 
   return (
-    <div className={\`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border \${bgColor}\`}>
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${bgColor}`}>
       {label}
       {needsReview && (
         <span 
