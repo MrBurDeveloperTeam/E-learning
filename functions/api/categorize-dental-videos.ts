@@ -26,7 +26,8 @@ export async function onRequest(context: any) {
     const { data: videos, error: fetchError } = await supabase
       .from("dental_videos")
       .select("id, title, description")
-      .is("category", null);
+      .is("category", null)
+      .limit(20); // Limit to 20 videos to avoid Cloudflare 50 subrequest total limit
 
     if (fetchError) {
       console.error("Supabase fetch error:", fetchError);
