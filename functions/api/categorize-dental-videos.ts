@@ -59,6 +59,8 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
 `;
 
     // Process batched chunks sequentially
+    const errorDetails: string[] = [];
+    
     for (let i = 0; i < videos.length; i += batchSize) {
       const batch = videos.slice(i, i + batchSize);
       
@@ -68,7 +70,7 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           const contentText = `Title: ${video.title}\nDescription: ${video.description}\n\n${promptMessage}`;
           
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
               method: 'POST',
               headers: {
@@ -81,7 +83,9 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           );
 
           if (!geminiRes.ok) {
-            console.error(`Gemini API Error for video ${video.id}:`, await geminiRes.text());
+            const errText = await geminiRes.text();
+            console.error(`Gemini API Error for video ${video.id}:`, errText);
+            errorDetails.push(`Gemini API Error (${geminiRes.status}): ${errText.substring(0, 100)}`);
             failedCount++;
             return;
           }
@@ -91,6 +95,7 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           
           if (!jsonText) {
             console.error(`Invalid Gemini response for video ${video.id}`);
+            errorDetails.push(`Invalid Gemini response format for ${video.id}`);
             failedCount++;
             return;
           }
@@ -101,8 +106,9 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           let parsed;
           try {
             parsed = JSON.parse(jsonText);
-          } catch (e) {
+          } catch (e: any) {
             console.error(`JSON parse error for video ${video.id}:`, jsonText);
+            errorDetails.push(`JSON parse error: ${e?.message}`);
             failedCount++;
             return;
           }
@@ -128,12 +134,14 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
 
           if (updateError) {
             console.error(`Database update error for video ${video.id}:`, updateError);
+            errorDetails.push(`Supabase update error: ${updateError.message}`);
             failedCount++;
           } else {
             updatedCount++;
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error(`Error processing video ${video.id}:`, err);
+          errorDetails.push(`Network/Processing error: ${err.message}`);
           failedCount++;
         }
       });
@@ -150,7 +158,8 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
     return new Response(JSON.stringify({
       processed: videos.length,
       updated: updatedCount,
-      failed: failedCount
+      failed: failedCount,
+      errors: errorDetails.slice(0, 5) // return first 5 errors to frontend
     }), {
       headers: { "Content-Type": "application/json" }
     });

@@ -22,7 +22,7 @@ export function AdminFetchVideos() {
   const [lastFetched, setLastFetched] = useState<string | null>(null)
 
   const [isCategorizing, setIsCategorizing] = useState(false)
-  const [categorizeResult, setCategorizeResult] = useState<{ processed: number; updated: number; failed: number } | null>(null)
+  const [categorizeResult, setCategorizeResult] = useState<{ processed: number; updated: number; failed: number; errors?: string[] } | null>(null)
   const [categorizeError, setCategorizeError] = useState<string | null>(null)
   const [uncategorizedCount, setUncategorizedCount] = useState<number>(0)
 
@@ -287,6 +287,18 @@ export function AdminFetchVideos() {
                 <p className="text-xs text-muted-foreground mt-1">Failed to categorize</p>
               </div>
             </div>
+            
+            {categorizeResult.errors && categorizeResult.errors.length > 0 && (
+              <div className="p-4 border-t border-border bg-red-50/50 dark:bg-red-950/10">
+                <p className="text-sm font-medium text-red-800 dark:text-red-400 mb-2">Sample Errors:</p>
+                <ul className="text-xs text-red-600 dark:text-red-300 space-y-1 list-disc pl-4">
+                  {categorizeResult.errors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
           </div>
         )}
       </div>
