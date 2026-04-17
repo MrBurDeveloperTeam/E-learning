@@ -70,7 +70,7 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           const contentText = `Title: ${video.title}\nDescription: ${video.description}\n\n${promptMessage}`;
           
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemma-2-9b-it:generateContent?key=${GEMINI_API_KEY}`,
             {
               method: 'POST',
               headers: {
