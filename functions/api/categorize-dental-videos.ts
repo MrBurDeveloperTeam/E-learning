@@ -50,6 +50,21 @@ export async function onRequest(context: any) {
       'Pediatric Dentistry', 'Prosthodontics', 'Oral Hygiene',
       'Radiology', 'General Dentistry'
     ];
+    const fallbackCategory = 'General Dentistry';
+
+    const assignFallbackCategory = async (videoId: string, tags: string[] = []) => {
+      const { error } = await supabase
+        .from("dental_videos")
+        .update({
+          category: fallbackCategory,
+          confidence_score: 0,
+          tags,
+          needs_review: true
+        })
+        .eq("id", videoId);
+
+      return error;
+    };
 
     const promptMessage = `
 System context: you are a dental education video classifier
@@ -86,8 +101,14 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           if (!geminiRes.ok) {
             const errText = await geminiRes.text();
             console.error(`Gemini API Error for video ${video.id}:`, errText);
-            errorDetails.push(`Gemini API Error (${geminiRes.status}): ${errText.substring(0, 100)}`);
-            failedCount++;
+            const fallbackError = await assignFallbackCategory(video.id);
+
+            if (fallbackError) {
+              errorDetails.push(`Gemini API Error (${geminiRes.status}) and fallback update failed: ${fallbackError.message}`);
+              failedCount++;
+            } else {
+              updatedCount++;
+            }
             return;
           }
 
@@ -96,8 +117,14 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           
           if (!jsonText) {
             console.error(`Invalid Gemini response for video ${video.id}`);
-            errorDetails.push(`Invalid Gemini response format for ${video.id}`);
-            failedCount++;
+            const fallbackError = await assignFallbackCategory(video.id);
+
+            if (fallbackError) {
+              errorDetails.push(`Invalid Gemini response format for ${video.id}; fallback update failed: ${fallbackError.message}`);
+              failedCount++;
+            } else {
+              updatedCount++;
+            }
             return;
           }
 
@@ -109,14 +136,20 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
             parsed = JSON.parse(jsonText);
           } catch (e: any) {
             console.error(`JSON parse error for video ${video.id}:`, jsonText);
-            errorDetails.push(`JSON parse error: ${e?.message}`);
-            failedCount++;
+            const fallbackError = await assignFallbackCategory(video.id);
+
+            if (fallbackError) {
+              errorDetails.push(`JSON parse error: ${e?.message}; fallback update failed: ${fallbackError.message}`);
+              failedCount++;
+            } else {
+              updatedCount++;
+            }
             return;
           }
 
           let finalCategory = parsed.category;
           if (!validCategories.includes(finalCategory)) {
-            finalCategory = 'General Dentistry';
+            finalCategory = fallbackCategory;
           }
           
           const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0;
@@ -142,8 +175,14 @@ Return strictly valid JSON format only, with no markdown formatting or code bloc
           }
         } catch (err: any) {
           console.error(`Error processing video ${video.id}:`, err);
-          errorDetails.push(`Network/Processing error: ${err.message}`);
-          failedCount++;
+          const fallbackError = await assignFallbackCategory(video.id);
+
+          if (fallbackError) {
+            errorDetails.push(`Network/Processing error: ${err.message}; fallback update failed: ${fallbackError.message}`);
+            failedCount++;
+          } else {
+            updatedCount++;
+          }
         }
       });
 
