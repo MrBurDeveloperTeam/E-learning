@@ -32,6 +32,7 @@ async function attachPublicCreators(videos: Video[]): Promise<VideoWithCreator[]
 export async function fetchVideosPaginated(
   filters?: {
     category?: string
+    q?: string
     sort?: SortOption
   },
   page = 0,
@@ -46,6 +47,13 @@ export async function fetchVideosPaginated(
 
   if (filters?.category) {
     query = query.eq('category', filters.category)
+  }
+
+  if (filters?.q?.trim()) {
+    const escaped = filters.q.trim().replace(/[%_,]/g, '')
+    query = query.or(
+      `title.ilike.%${escaped}%,description.ilike.%${escaped}%,category.ilike.%${escaped}%`
+    )
   }
 
   if (filters?.sort === 'most_viewed') {

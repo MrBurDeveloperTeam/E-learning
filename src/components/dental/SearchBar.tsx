@@ -11,12 +11,11 @@ export function SearchBar({
   value,
   onChange,
   onClear,
-  placeholder = 'Search dental videos…',
+  placeholder = 'Search all videos...',
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Sync external value changes (e.g. URL param resets)
   useEffect(() => {
     setLocalValue(value)
   }, [value])
@@ -31,7 +30,6 @@ export function SearchBar({
     [onChange]
   )
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -58,7 +56,6 @@ export function SearchBar({
 
   return (
     <div className="relative w-full max-w-md">
-      {/* Search icon */}
       <svg
         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
         width="16"
@@ -81,17 +78,16 @@ export function SearchBar({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        aria-label="Search dental videos"
+        aria-label="Search videos"
         className="input-field pl-9 pr-9"
       />
 
-      {/* Clear button — visible only when there is input */}
       {localValue && (
         <button
           type="button"
           onClick={handleClear}
           aria-label="Clear search"
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <svg
             width="14"

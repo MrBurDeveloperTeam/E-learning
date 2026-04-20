@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams, useRouterState } from '@tanstack/react-router'
+import { Link, useParams } from '@tanstack/react-router'
 import { Navbar } from '@/components/layout/Navbar'
 import { CategoryBadge } from '@/components/CategoryBadge'
 import { RetryCard } from '@/components/shared/RetryCard'
@@ -7,9 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getVideoById } from '@/lib/dentalVideosApi'
 import type { DentalVideo } from '@/types/dentalVideo'
 
-/**
- * Format an ISO date string to "Mar 2024" style.
- */
 function formatPublishedDate(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -22,7 +19,6 @@ export function DentalVideoDetail() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // ─── Fetch video ────────────────────────────────────
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
@@ -33,8 +29,9 @@ export function DentalVideoDetail() {
         if (!cancelled) setVideo(data)
       })
       .catch((err) => {
-        if (!cancelled)
+        if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load video')
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -45,7 +42,6 @@ export function DentalVideoDetail() {
     }
   }, [id])
 
-  // ─── SEO ────────────────────────────────────────────
   useEffect(() => {
     if (video) {
       document.title = `${video.title} | Dental Videos | DentalLearn`
@@ -54,23 +50,14 @@ export function DentalVideoDetail() {
     }
   }, [video])
 
-  // Build back link preserving filters from referrer search params
-  const routerState = useRouterState()
-  const previousPath = routerState.location.href
-  const backTo = previousPath.includes('/dental-videos')
-    ? '/dental-videos'
-    : '/dental-videos'
-
   return (
     <>
       <Navbar />
 
-      <div className="mx-auto max-w-[960px] px-4 md:px-6 py-6 pb-20 md:pb-12">
-        {/* Back link */}
+      <div className="mx-auto max-w-[960px] px-4 py-6 pb-20 md:px-6 md:pb-12">
         <Link
-          to="/dental-videos"
-          search={{ category: '', q: '', page: 1 }}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-5"
+          to="/explore"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <svg
             width="16"
@@ -85,7 +72,7 @@ export function DentalVideoDetail() {
           >
             <path d="m15 18-6-6 6-6" />
           </svg>
-          Back to videos
+          Back to library
         </Link>
 
         {error ? (
@@ -105,7 +92,6 @@ export function DentalVideoDetail() {
             message={error}
           />
         ) : isLoading ? (
-          /* Loading skeleton */
           <div className="space-y-4">
             <Skeleton className="aspect-video w-full rounded-xl" />
             <Skeleton className="h-7 w-3/4 rounded-md" />
@@ -117,8 +103,10 @@ export function DentalVideoDetail() {
           </div>
         ) : video ? (
           <div className="space-y-5">
-            {/* YouTube player embed */}
-            <div className="relative w-full overflow-hidden rounded-xl bg-black" style={{ paddingBottom: '56.25%' }}>
+            <div
+              className="relative w-full overflow-hidden rounded-xl bg-black"
+              style={{ paddingBottom: '56.25%' }}
+            >
               <iframe
                 className="absolute inset-0 h-full w-full"
                 src={`https://www.youtube.com/embed/${video.video_id}`}
@@ -129,12 +117,10 @@ export function DentalVideoDetail() {
               />
             </div>
 
-            {/* Title */}
-            <h1 className="text-xl md:text-2xl font-medium text-foreground leading-snug">
+            <h1 className="text-xl font-medium leading-snug text-foreground md:text-2xl">
               {video.title}
             </h1>
 
-            {/* Channel + date */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
               <span className="font-medium text-[#3D5C5C] dark:text-foreground">
                 {video.channel_name}
@@ -144,7 +130,6 @@ export function DentalVideoDetail() {
               </span>
             </div>
 
-            {/* Category badge + confidence score */}
             <div className="flex flex-wrap items-center gap-2">
               {video.category && (
                 <CategoryBadge
@@ -153,7 +138,7 @@ export function DentalVideoDetail() {
                 />
               )}
               {video.confidence_score != null && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 text-xs font-medium border border-emerald-200 dark:border-emerald-800/60">
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-300">
                   <svg
                     width="12"
                     height="12"
@@ -173,13 +158,12 @@ export function DentalVideoDetail() {
               )}
             </div>
 
-            {/* Tags */}
             {video.tags && video.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {video.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs"
+                    className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
                   >
                     {tag}
                   </span>
@@ -187,10 +171,9 @@ export function DentalVideoDetail() {
               </div>
             )}
 
-            {/* Description */}
             {video.description && (
-              <div className="card p-4 mt-4">
-                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+              <div className="card mt-4 p-4">
+                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                   {video.description}
                 </p>
               </div>

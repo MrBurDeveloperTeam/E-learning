@@ -1,9 +1,19 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Navbar } from '@/components/layout/Navbar'
-import { CATEGORY_SLUGS, VIDEO_CATEGORIES } from '@/types'
+import { getCategories } from '@/lib/dentalVideosApi'
+import { buildCombinedCategoryList } from '@/lib/videoLibrary'
+import { categoryToSlug } from '@/lib/utils'
 
 export function Categories() {
+  const { data: dentalCategories = [] } = useQuery({
+    queryKey: ['dental-categories'],
+    queryFn: getCategories,
+    staleTime: 5 * 60 * 1000,
+  })
+  const categories = buildCombinedCategoryList(dentalCategories)
+
   useEffect(() => {
     document.title = 'Categories - DentalLearn'
     return () => {
@@ -18,20 +28,20 @@ export function Categories() {
       <div className="border-b border-border bg-primary/5">
         <div className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 md:py-8">
           <p className="mb-1 text-xs text-muted-foreground/60">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link> / Categories
+            <Link to="/" className="transition-colors hover:text-primary">Home</Link> / Categories
           </p>
           <h1 className="text-2xl font-medium text-foreground">Categories</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Browse the video library by specialty, then open a category page to
-            see all published videos in that area.
+            Browse both community uploads and curated dental videos by specialty,
+            then open a category page to see both sources together.
           </p>
         </div>
       </div>
 
       <div className="mx-auto max-w-[1400px] px-4 py-6 pb-20 md:px-6 md:py-8 md:pb-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {VIDEO_CATEGORIES.map((category) => {
-            const slug = CATEGORY_SLUGS[category]
+          {categories.map((category) => {
+            const slug = categoryToSlug(category)
 
             return (
               <Link
@@ -46,7 +56,7 @@ export function Categories() {
                       {category}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Browse all published videos in {category.toLowerCase()}.
+                      Browse community uploads and curated dental videos in {category.toLowerCase()}.
                     </p>
                   </div>
                   <span className="text-primary transition-transform group-hover:translate-x-0.5">

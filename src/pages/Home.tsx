@@ -1,24 +1,32 @@
 import { useState, useRef, useEffect } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { SearchBar } from '@/components/dental/SearchBar'
+import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
 import { FollowButton } from '@/components/creator/FollowButton'
 import { RetryCard } from '@/components/shared/RetryCard'
-import { VideoGrid } from '@/components/video/VideoGrid'
 import { useFollowing } from '@/hooks/useFollow'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
+import { getCategories } from '@/lib/dentalVideosApi'
+import { fetchUnifiedVideoPage } from '@/lib/libraryFeed'
 import { fetchTopPublicCreators } from '@/lib/queries/profiles'
-import { VIDEO_CATEGORIES, type SortOption } from '@/types'
+import { buildCombinedCategoryList } from '@/lib/videoLibrary'
 import { cn, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { fetchVideosPaginated } from '@/lib/queries/videosPaginated'
 
 export function Home() {
   const [category, setCategory] = useState<string>('All')
-  const [sort, setSort] = useState<SortOption>('newest')
+  const [query, setQuery] = useState('')
   const profile = useAuthStore((state) => state.profile)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const { data: dentalCategories = [] } = useQuery({
+    queryKey: ['dental-categories'],
+    queryFn: getCategories,
+    staleTime: 5 * 60 * 1000,
+  })
+  const sharedCategories = ['All', ...buildCombinedCategoryList(dentalCategories)]
 
   const {
     data,
@@ -30,20 +38,19 @@ export function Home() {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['videos-infinite', category, sort],
+    queryKey: ['unified-videos', category, query],
     queryFn: ({ pageParam = 0 }) =>
-      fetchVideosPaginated(
-        { category: category === 'All' ? undefined : category, sort },
-        pageParam
-      ),
+      fetchUnifiedVideoPage({
+        category: category === 'All' ? undefined : category,
+        q: query || undefined,
+        page: pageParam,
+      }),
     getNextPageParam: (lastPage, pages) =>
-      lastPage.length === 24 ? pages.length : undefined,
+      lastPage.hasMore ? pages.length : undefined,
     initialPageParam: 0,
   })
 
-  const videos = data?.pages.flat() ?? []
-
-  // Intersection observer for infinite scroll
+  const items = data?.pages.flatMap((page) => page.items) ?? []
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -55,9 +62,11 @@ export function Home() {
       },
       { threshold: 0.1 }
     )
+
     if (loadMoreRef.current) {
       observer.observe(loadMoreRef.current)
     }
+
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
@@ -72,6 +81,7 @@ export function Home() {
     enabled:
       !!profile?.user_id && (profile.following_count ?? 0) < 5,
   })
+
   const followingIds = new Set(
     following
       .map((row) => row.following_id)
@@ -86,13 +96,13 @@ export function Home() {
     <>
       <Navbar />
 
-      <div className="sticky top-14 z-40 border-b border-border bg-background/95 backdrop-blur py-3">
+      <div className="sticky top-14 z-40 border-b border-border bg-background/95 py-3 backdrop-blur">
         <div className="mx-auto max-w-[1400px] px-4 md:px-6">
           <div
             ref={categoryScrollRef}
             className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1"
           >
-            {['All', ...VIDEO_CATEGORIES].map((item) => {
+            {sharedCategories.map((item) => {
               const active = item === category
 
               return (
@@ -100,7 +110,7 @@ export function Home() {
                   key={item}
                   onClick={() => setCategory(item)}
                   className={cn(
-                    'whitespace-nowrap rounded-full border px-4 py-1.5 text-sm transition-all duration-150 flex-shrink-0',
+                    'flex-shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-sm transition-all duration-150',
                     active
                       ? 'border-primary bg-primary font-medium text-primary-foreground'
                       : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground'
@@ -115,15 +125,15 @@ export function Home() {
       </div>
 
       {profile && profile.following_count < 5 && creatorSuggestions.length > 0 && (
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-4 border-b border-border">
-          <p className="text-sm font-medium text-foreground mb-3">
+        <div className="mx-auto max-w-[1400px] border-b border-border px-4 py-4 md:px-6">
+          <p className="mb-3 text-sm font-medium text-foreground">
             Creators to follow
           </p>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
             {creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex items-center gap-2.5 bg-card border border-border rounded-2xl px-3 py-2 flex-shrink-0 hover:border-primary transition-colors"
+                className="flex flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
@@ -131,10 +141,10 @@ export function Home() {
                   size={32}
                 />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate max-w-[100px]">
+                  <p className="max-w-[100px] truncate text-xs font-medium text-foreground">
                     {getDisplayName(creator, 'Unknown creator')}
                   </p>
-                  <p className="text-[10px] text-[#9BB5B5] truncate max-w-[100px]">
+                  <p className="max-w-[100px] truncate text-[10px] text-[#9BB5B5]">
                     {creator.specialty ?? 'Dental creator'}
                   </p>
                 </div>
@@ -145,43 +155,50 @@ export function Home() {
         </div>
       )}
 
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 md:px-6 py-4">
-        <p className="text-sm text-muted-foreground">
-          {category === 'All' ? 'Latest videos' : category}
-        </p>
-        <select
-          value={sort}
-          onChange={(event) => setSort(event.target.value as SortOption)}
-          className="hidden sm:block cursor-pointer bg-transparent text-sm text-muted-foreground outline-none"
-        >
-          <option value="newest">Newest</option>
-          <option value="most_viewed">Most viewed</option>
-          <option value="most_liked">Most liked</option>
-        </select>
+      <div className="mx-auto max-w-[1400px] px-4 py-4 md:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-medium text-foreground">All videos</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {category === 'All'
+                ? 'Browse every uploaded and curated video together.'
+                : `Browsing all videos in ${category}.`}
+            </p>
+          </div>
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            onClear={() => setQuery('')}
+          />
+        </div>
       </div>
 
-      <div className="mx-auto max-w-[1400px] px-4 md:px-6 pb-20 md:pb-12">
+      <div className="mx-auto max-w-[1400px] px-4 pb-20 md:px-6 md:pb-12">
         {isError ? (
           <RetryCard
             onRetry={() => void refetch()}
             message={
-              error instanceof Error && error.message.includes('timed out')
-                ? 'Loading videos timed out. Check your local connection or Supabase dev setup, then try again.'
+              error instanceof Error
+                ? error.message
                 : 'Failed to load videos. Please try again.'
             }
           />
         ) : (
           <>
-            <VideoGrid
-              videos={videos}
+            <UnifiedVideoGrid
+              items={items}
               isLoading={isLoading}
-              columns={4}
-              emptyTitle="No videos yet"
-              emptyDescription="Be the first to upload a dental video"
+              emptyTitle="No videos found"
+              emptyDescription={
+                query
+                  ? `No videos matched "${query}". Try another search term.`
+                  : category === 'All'
+                    ? 'No videos are available yet.'
+                    : `No videos are available in ${category} yet.`
+              }
             />
 
-            {/* Infinite scroll sentinel */}
-            <div ref={loadMoreRef} className="h-10 mt-8">
+            <div ref={loadMoreRef} className="mt-8 h-10">
               {isFetchingNextPage && (
                 <div className="flex justify-center">
                   <LoadingSpinner size="md" />
