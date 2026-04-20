@@ -27,6 +27,8 @@ import { CreatorApplications } from '@/pages/admin/CreatorApplications'
 import { ContentReview } from '@/pages/admin/ContentReview'
 import { UserManagement } from '@/pages/admin/UserManagement'
 import { AdminFetchVideos } from '@/pages/admin/AdminFetchVideos'
+import { DentalVideos } from '@/pages/DentalVideos'
+import { DentalVideoDetail } from '@/pages/DentalVideoDetail'
 import { NotFound } from '@/pages/NotFound'
 
 const rootRoute = createRootRoute({
@@ -81,6 +83,25 @@ const categoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/category/$slug',
   component: Category,
+})
+
+// ─── Dental video routes ──────────────────────────────
+
+const dentalVideosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dental-videos',
+  component: DentalVideos,
+  validateSearch: (search: Record<string, unknown>) => ({
+    category: (search.category as string) ?? '',
+    q: (search.q as string) ?? '',
+    page: Number(search.page) || 1,
+  }),
+})
+
+const dentalVideoDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dental-videos/$id',
+  component: DentalVideoDetail,
 })
 
 const searchRoute = createRoute({
@@ -244,6 +265,8 @@ const routeTree = rootRoute.addChildren([
   adminContentRoute,
   adminUsersRoute,
   adminFetchVideosRoute,
+  dentalVideosRoute,
+  dentalVideoDetailRoute,
   notFoundRoute,
 ])
 

@@ -9,11 +9,12 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 
-const navLinks = [
+const navLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
   { label: 'Following', path: '/feed' },
   { label: 'Saved videos', path: '/saved' },
   { label: 'Categories', path: '/category' },
+  { label: 'Dental Videos', path: '/dental-videos', search: { category: '', q: '', page: 1 } },
 ]
 
 export function Navbar() {
@@ -85,6 +86,7 @@ export function Navbar() {
                   <Link
                     key={link.path}
                     to={link.path}
+                    {...(link.search ? { search: link.search } : {})}
                     className={cn(
                       'px-4 py-1.5 text-sm transition-colors duration-150 relative',
                       active
@@ -315,6 +317,22 @@ export function Navbar() {
                   <path d="m16 3-4 4-4-4" />
                 </svg>
                 Saved videos
+              </Link>
+
+              <Link
+                to="/dental-videos"
+                search={{ category: '', q: '', page: 1 }}
+                onClick={closeMobileMenu}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors',
+                  isActive('/dental-videos') ? 'bg-[#EAF4F3] text-[#2D6E6A] font-medium' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
+                )}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11" />
+                  <rect x="2" y="6" width="14" height="12" rx="2" />
+                </svg>
+                Dental Videos
               </Link>
 
               {/* Divider */}
