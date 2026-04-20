@@ -10,14 +10,12 @@ interface VideoCardProps {
   video: VideoWithCreator
   size?: 'default' | 'small' | 'horizontal'
   showCreator?: boolean
-  showCategory?: boolean
 }
 
 export function VideoCard({
   video,
   size = 'default',
   showCreator = true,
-  showCategory = false,
 }: VideoCardProps) {
   const navigate = useNavigate()
   const isHorizontal = size === 'horizontal'
@@ -76,11 +74,6 @@ export function VideoCard({
           <p className="text-xs text-[#9BB5B5]">
             {formatViewCount(video.view_count)} views · {timeAgo(video.created_at)}
           </p>
-          {showCategory && (
-            <span className="badge-specialty mt-1 inline-block">
-              {video.category}
-            </span>
-          )}
         </div>
       </div>
     )
@@ -146,11 +139,6 @@ export function VideoCard({
             {formatViewCount(video.view_count)} views · {timeAgo(video.created_at)}
           </p>
 
-          {showCategory && (
-            <span className="badge-specialty mt-1 inline-block">
-              {video.category}
-            </span>
-          )}
         </div>
       </div>
     </div>

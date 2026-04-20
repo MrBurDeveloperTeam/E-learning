@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import type { DentalVideo } from '@/types/dentalVideo'
-import { CategoryBadge } from '@/components/CategoryBadge'
 
 interface DentalVideoCardProps {
   video: DentalVideo
@@ -55,14 +54,6 @@ export function DentalVideoCard({ video }: DentalVideoCardProps) {
         </div>
 
         {/* Category badge — top-left corner */}
-        {video.category && (
-          <div className="absolute top-2 left-2">
-            <CategoryBadge
-              category={video.category}
-              needsReview={video.needs_review}
-            />
-          </div>
-        )}
       </div>
 
       {/* Meta */}

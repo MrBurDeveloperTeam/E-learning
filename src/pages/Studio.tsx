@@ -247,9 +247,6 @@ export function Studio() {
                             <p className="text-sm font-medium text-foreground truncate">
                               {video.title}
                             </p>
-                            <span className="badge-specialty text-[10px]">
-                              {video.category}
-                            </span>
                           </div>
                           <div className="text-right flex-shrink-0">
                             <p className="text-sm font-medium text-foreground">
@@ -302,9 +299,6 @@ export function Studio() {
                             <p className="line-clamp-2 text-sm font-medium text-foreground">
                               {video.title}
                             </p>
-                            <span className="badge-specialty text-[10px] mt-1 inline-block">
-                              {video.category}
-                            </span>
                             <p className="text-xs text-muted-foreground/60 mt-1">
                               {formatViewCount(video.view_count)} views · {formatViewCount(video.like_count)} likes · {timeAgo(video.created_at)}
                             </p>
@@ -409,9 +403,6 @@ export function Studio() {
                                     <p className="line-clamp-1 text-sm font-medium text-foreground">
                                       {video.title}
                                     </p>
-                                    <span className="badge-specialty text-[10px]">
-                                      {video.category}
-                                    </span>
                                   </div>
                                 </div>
                               </td>

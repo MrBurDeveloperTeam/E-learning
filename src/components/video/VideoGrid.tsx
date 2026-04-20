@@ -11,7 +11,6 @@ interface VideoGridProps {
   emptyTitle?: string
   emptyDescription?: string
   size?: 'default' | 'small'
-  showCategory?: boolean
 }
 
 const columnClasses = {
@@ -28,7 +27,6 @@ export function VideoGrid({
   emptyTitle = 'No videos found',
   emptyDescription = 'Try another category or check back later.',
   size = 'default',
-  showCategory = false,
 }: VideoGridProps) {
   if (isLoading) {
     return (
@@ -54,7 +52,6 @@ export function VideoGrid({
           video={video}
           size={size}
           showCreator={size !== 'small'}
-          showCategory={showCategory}
         />
       ))}
     </div>

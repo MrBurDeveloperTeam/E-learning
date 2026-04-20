@@ -168,7 +168,7 @@ export function Search() {
                 <p className="mb-3 text-sm font-medium text-foreground">
                   Videos ({videos.length})
                 </p>
-                <VideoGrid videos={videos} columns={4} showCategory />
+                <VideoGrid videos={videos} columns={4} />
               </div>
             )}
           </div>

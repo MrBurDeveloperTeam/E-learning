@@ -260,9 +260,6 @@ export function ContentReview() {
                           <p className="text-sm font-medium text-foreground line-clamp-1">
                             {video.title}
                           </p>
-                          <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-1">
-                            {(video.tags ?? []).join(', ')}
-                          </p>
                         </div>
                       </div>
                     </td>
