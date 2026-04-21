@@ -23,7 +23,6 @@ import Login from '@/pages/Login'
 import Register from '@/pages/Register'
 import { Notifications } from '@/pages/Notifications'
 import { AdminDashboard } from '@/pages/admin/AdminDashboard'
-import { CreatorApplications } from '@/pages/admin/CreatorApplications'
 import { ContentReview } from '@/pages/admin/ContentReview'
 import { UserManagement } from '@/pages/admin/UserManagement'
 import { AdminFetchVideos } from '@/pages/admin/AdminFetchVideos'
@@ -197,7 +196,7 @@ const adminApplicationsRoute = createRoute({
   path: '/admin/applications',
   component: () => (
     <ProtectedRoute requireAdmin>
-      <CreatorApplications />
+      <UserManagement />
     </ProtectedRoute>
   ),
 })

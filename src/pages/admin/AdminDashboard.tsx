@@ -1,44 +1,49 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { PageLayout } from '@/components/layout/PageLayout'
-import { PageHeader } from '@/components/ui/PageHeader'
+import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  PlayCircle,
+  Users,
+} from 'lucide-react'
+import { AdminGuard } from '@/components/admin/AdminGuard'
+import { AdminLayout } from '@/components/admin/AdminLayout'
+import {
+  AdminSectionCard,
+  AdminStatCard,
+  AdminStatusBadge,
+} from '@/components/admin/AdminPrimitives'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageLayout } from '@/components/layout/PageLayout'
 import { supabase } from '@/lib/supabase'
-import { cn, formatViewCount, timeAgo } from '@/lib/utils'
+import { formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
-import type { SidebarItem } from '@/components/layout/Sidebar'
 import type { Profile, VideoWithCreator } from '@/types'
 
-function AdminGuard() {
-  return (
-    <div className="text-center py-16">
-      <p className="text-destructive text-sm font-medium">Admin access required</p>
-    </div>
-  )
-}
-
-function StatsCard({
+function ActionLink({
+  to,
   label,
-  value,
-  accent = 'default',
+  description,
 }: {
+  to: '/admin/content' | '/admin/users' | '/admin/fetch-videos'
   label: string
-  value: number
-  accent?: 'default' | 'warning'
+  description: string
 }) {
   return (
-    <div
-      className={cn(
-        'card p-4 border-border bg-card shadow-sm',
-        accent === 'warning' && 'bg-amber-50 dark:bg-amber-950/30 border-amber-200/50 dark:border-amber-800/30'
-      )}
+    <Link
+      to={to}
+      className="group flex items-center justify-between rounded-[22px] border border-border/80 bg-background/80 px-4 py-4 transition-all hover:border-primary/20 hover:bg-primary/5"
     >
-      <p className="text-xs text-muted-foreground/60 mb-1">{label}</p>
-      <p className="text-2xl font-medium text-foreground">
-        {value.toLocaleString()}
-      </p>
-    </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+    </Link>
   )
 }
 
@@ -50,13 +55,13 @@ export function AdminDashboard() {
       async function fetchPlatformStats() {
         const [
           totalUsersResult,
-          totalVideosResult,
+          publishedVideosResult,
           totalCreatorsResult,
           pendingVerificationsResult,
+          processingVideosResult,
+          removedVideosResult,
         ] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true }),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
           supabase
             .from('videos')
             .select('*', { count: 'exact', head: true })
@@ -71,26 +76,38 @@ export function AdminDashboard() {
             .eq('is_verified', false)
             .eq('account_type', 'individual')
             .eq('is_creator', false),
+          supabase
+            .from('videos')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'processing'),
+          supabase
+            .from('videos')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'removed'),
         ])
 
         for (const result of [
           totalUsersResult,
-          totalVideosResult,
+          publishedVideosResult,
           totalCreatorsResult,
           pendingVerificationsResult,
+          processingVideosResult,
+          removedVideosResult,
         ]) {
           if (result.error) throw result.error
         }
 
         return {
           totalUsers: totalUsersResult.count ?? 0,
-          totalVideos: totalVideosResult.count ?? 0,
+          publishedVideos: publishedVideosResult.count ?? 0,
           totalCreators: totalCreatorsResult.count ?? 0,
           pendingVerifications: pendingVerificationsResult.count ?? 0,
+          processingVideos: processingVideosResult.count ?? 0,
+          removedVideos: removedVideosResult.count ?? 0,
         }
       }
 
-      async function fetchAllVideos() {
+      async function fetchRecentVideos() {
         const { data, error } = await supabase
           .from('videos')
           .select(
@@ -103,7 +120,7 @@ export function AdminDashboard() {
           `
           )
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(8)
 
         if (error) throw error
         return (data ?? []) as VideoWithCreator[]
@@ -114,7 +131,7 @@ export function AdminDashboard() {
           .from('profiles')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(8)
 
         if (error) throw error
         return (data ?? []) as Profile[]
@@ -122,7 +139,7 @@ export function AdminDashboard() {
 
       const [stats, recentVideos, recentUsers] = await Promise.all([
         fetchPlatformStats(),
-        fetchAllVideos(),
+        fetchRecentVideos(),
         fetchRecentUsers(),
       ])
 
@@ -139,157 +156,287 @@ export function AdminDashboard() {
     )
   }
 
-  const pendingVerifications =
-    dashboardQuery.data?.stats.pendingVerifications ?? 0
-
-  const adminSidebarItems: SidebarItem[] = [
-    { label: 'Dashboard', path: '/admin' },
-    {
-      label: 'Creator applications',
-      path: '/admin/applications',
-      badge: pendingVerifications,
-    },
-    { label: 'Content review', path: '/admin/content' },
-    {
-      label: 'User management',
-      path: '/admin/users',
-    },
-    {
-      label: 'Fetch YouTube videos',
-      path: '/admin/fetch-videos',
-    },
-    {
-      label: 'Platform settings',
-      path: '/admin/settings',
-      disabled: true,
-    },
-  ]
+  const stats = dashboardQuery.data?.stats
+  const pendingVerifications = stats?.pendingVerifications ?? 0
+  const processingVideos = stats?.processingVideos ?? 0
+  const removedVideos = stats?.removedVideos ?? 0
 
   return (
-    <PageLayout
-      showSidebar={true}
-      sidebarItems={adminSidebarItems}
-      sidebarVariant="admin"
+    <AdminLayout
+      title="Platform overview"
+      subtitle="Monitor creator verification, content health, and ingestion activity from one clean operations view."
+      sidebarBadges={{
+        pendingUsers: pendingVerifications,
+      }}
+      heroAside={
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">
+            Live snapshot
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-lg font-semibold text-foreground">
+                {formatViewCount(stats?.publishedVideos ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">Published videos</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-foreground">
+                {formatViewCount(stats?.totalCreators ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">Creators</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-foreground">
+                {formatViewCount(stats?.totalUsers ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">Users</p>
+            </div>
+          </div>
+        </div>
+      }
     >
-      <PageHeader
-        title="Admin dashboard"
-        subtitle="Platform overview and management"
-      />
-
       {dashboardQuery.isLoading ? (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 rounded-xl" />
+              <Skeleton key={index} className="h-36 rounded-[26px]" />
             ))}
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Skeleton className="h-80 rounded-xl" />
-            <Skeleton className="h-80 rounded-xl" />
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <Skeleton className="h-[320px] rounded-[28px]" />
+            <Skeleton className="h-[320px] rounded-[28px]" />
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Skeleton className="h-[300px] rounded-[28px]" />
+            <Skeleton className="h-[300px] rounded-[28px]" />
           </div>
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
-            <StatsCard
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <AdminStatCard
               label="Total users"
-              value={dashboardQuery.data?.stats.totalUsers ?? 0}
+              value={(stats?.totalUsers ?? 0).toLocaleString()}
+              icon={Users}
+              hint="Registered accounts across the platform"
             />
-            <StatsCard
+            <AdminStatCard
               label="Published videos"
-              value={dashboardQuery.data?.stats.totalVideos ?? 0}
+              value={(stats?.publishedVideos ?? 0).toLocaleString()}
+              icon={PlayCircle}
+              hint="Visible and available in the main library"
             />
-            <StatsCard
+            <AdminStatCard
               label="Verified creators"
-              value={dashboardQuery.data?.stats.totalCreators ?? 0}
+              value={(stats?.totalCreators ?? 0).toLocaleString()}
+              icon={CheckCircle2}
+              accent="success"
+              hint="Profiles currently approved for creator access"
             />
-            <StatsCard
+            <AdminStatCard
               label="Pending verifications"
-              value={pendingVerifications}
+              value={pendingVerifications.toLocaleString()}
+              icon={Clock3}
               accent={pendingVerifications > 0 ? 'warning' : 'default'}
+              hint={
+                pendingVerifications > 0
+                  ? 'Applications currently waiting for review'
+                  : 'No creator applications waiting right now'
+              }
             />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="card overflow-hidden border-border bg-card">
-                <div className="px-5 py-4 border-b border-border bg-muted/30">
-                  <p className="text-sm font-medium text-foreground">
-                    Recent uploads
+          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <AdminSectionCard
+              title="Needs attention"
+              description="Priority queues that require admin review or follow-up."
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <Link
+                  to="/admin/content"
+                  className="rounded-[24px] border border-border/80 bg-background/80 p-4 transition-all hover:border-primary/20 hover:bg-primary/5"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      Content review
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <AdminStatusBadge
+                        label={`${processingVideos} processing`}
+                        tone={processingVideos > 0 ? 'warning' : 'default'}
+                      />
+                      <AdminStatusBadge
+                        label={`${removedVideos} removed`}
+                        tone={removedVideos > 0 ? 'danger' : 'default'}
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Monitor processing inventory and any videos already removed.
                   </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {dashboardQuery.data?.recentVideos.map((video) => (
-                    <div key={video.id} className="px-5 py-3 hover:bg-muted/50 transition-colors">
-                      <p className="text-sm font-medium text-foreground line-clamp-1">
+                </Link>
+
+                <Link
+                  to="/admin/users"
+                  className="rounded-[24px] border border-border/80 bg-background/80 p-4 transition-all hover:border-primary/20 hover:bg-primary/5"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      User management
+                    </p>
+                    <AdminStatusBadge
+                      label={
+                        pendingVerifications > 0
+                          ? `${pendingVerifications} pending`
+                          : 'Clear'
+                      }
+                      tone={pendingVerifications > 0 ? 'warning' : 'success'}
+                      dot={true}
+                    />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Review pending applicants and manage creator access from one place.
+                  </p>
+                </Link>
+              </div>
+            </AdminSectionCard>
+
+            <AdminSectionCard
+              title="Operator actions"
+              description="Direct entry points for common admin tasks."
+            >
+              <div className="space-y-3">
+                <ActionLink
+                  to="/admin/content"
+                  label="Moderate content"
+                  description="Check content status, preview videos, and remove or restore."
+                />
+                <ActionLink
+                  to="/admin/users"
+                  label="Review user access"
+                  description="Open the pending queue and process creator approvals."
+                />
+                <ActionLink
+                  to="/admin/fetch-videos"
+                  label="Run ingestion"
+                  description="Trigger YouTube fetch or AI categorization workflows."
+                />
+              </div>
+            </AdminSectionCard>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <AdminSectionCard
+              title="Recent uploads"
+              description="Newest videos across the creator network."
+            >
+              <div className="space-y-3">
+                {dashboardQuery.data?.recentVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="flex items-start justify-between gap-4 rounded-[22px] border border-border/70 bg-background/75 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {video.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {video.profiles.full_name ?? video.profiles.username} ·{' '}
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {video.profiles.full_name ?? video.profiles.username}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <AdminStatusBadge label={video.status} tone="info" />
+                      <p className="mt-2 text-xs text-muted-foreground/70">
                         {timeAgo(video.created_at)}
                       </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
+            </AdminSectionCard>
 
-              <div className="card overflow-hidden border-border bg-card">
-                <div className="px-5 py-4 border-b border-border bg-muted/30">
-                  <p className="text-sm font-medium text-foreground">
-                    New users
-                  </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {dashboardQuery.data?.recentUsers.map((user) => (
-                    <div key={user.user_id} className="px-5 py-3 hover:bg-muted/50 transition-colors">
-                      <p className="text-sm font-medium text-foreground">
-                        {user.full_name ?? user.email}
+            <AdminSectionCard
+              title="New users"
+              description="Most recent accounts created on the platform."
+            >
+              <div className="space-y-3">
+                {dashboardQuery.data?.recentUsers.map((user) => (
+                  <div
+                    key={user.user_id}
+                    className="flex items-center justify-between gap-4 rounded-[22px] border border-border/70 bg-background/75 px-4 py-3"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar
+                        name={user.full_name ?? user.email}
+                        avatarUrl={user.avatar_url}
+                        size={42}
+                        className="bg-primary/10 text-primary"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {user.full_name ?? user.email}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground/60">
+                        Joined
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {user.email} · {timeAgo(user.created_at)}
+                      <p className="mt-1 text-sm text-foreground">
+                        {timeAgo(user.created_at)}
                       </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className="card p-5 h-fit border-border bg-card">
-              <p className="text-sm font-medium text-foreground mb-4">
-                Quick actions
-              </p>
-              <div className="space-y-3">
-                <Link to="/admin/applications" className="block">
-                  <button className="btn-primary w-full text-sm">
-                    Review pending creators
-                  </button>
-                </Link>
-                <Link to="/admin/content" className="block">
-                  <button className="btn-outline w-full text-sm">
-                    Review content
-                  </button>
-                </Link>
-              </div>
-
-              <div className="mt-5 pt-5 border-t border-border">
-                <p className="text-xs text-muted-foreground/60 mb-2">
-                  Platform snapshot
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatViewCount(
-                    dashboardQuery.data?.stats.totalVideos ?? 0
-                  )}{' '}
-                  published videos across{' '}
-                  {formatViewCount(
-                    dashboardQuery.data?.stats.totalCreators ?? 0
-                  )}{' '}
-                  verified creators.
-                </p>
-              </div>
-            </div>
+            </AdminSectionCard>
           </div>
+
+          <AdminSectionCard
+            title="Operations posture"
+            description="A lightweight summary of the current platform state."
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-[22px] border border-border/70 bg-background/75 p-4">
+                <div className="flex items-center gap-2 text-foreground">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">Publishing health</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {formatViewCount(stats?.publishedVideos ?? 0)} published videos
+                  are currently available across{' '}
+                  {formatViewCount(stats?.totalCreators ?? 0)} creators.
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-border/70 bg-background/75 p-4">
+                <div className="flex items-center gap-2 text-foreground">
+                  <Clock3 className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+                  <p className="text-sm font-semibold">Verification queue</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {pendingVerifications > 0
+                    ? `${pendingVerifications} applications are waiting for review.`
+                    : 'No pending creator applications are waiting for action.'}
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-border/70 bg-background/75 p-4">
+                <div className="flex items-center gap-2 text-foreground">
+                  <PlayCircle className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">Ingestion follow-up</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {processingVideos} videos are still processing and {removedVideos}{' '}
+                  have been removed from the live library.
+                </p>
+              </div>
+            </div>
+          </AdminSectionCard>
         </>
       )}
-    </PageLayout>
+    </AdminLayout>
   )
 }

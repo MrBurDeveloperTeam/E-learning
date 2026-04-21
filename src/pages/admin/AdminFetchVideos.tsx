@@ -1,15 +1,54 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  BrainCircuit,
+  CheckCircle,
+  Loader2,
+  Sparkles,
+  XCircle,
+  Youtube,
+} from 'lucide-react'
+import { AdminGuard } from '@/components/admin/AdminGuard'
+import { AdminLayout } from '@/components/admin/AdminLayout'
+import {
+  AdminSectionCard,
+  AdminStatCard,
+  AdminStatusBadge,
+} from '@/components/admin/AdminPrimitives'
 import { PageLayout } from '@/components/layout/PageLayout'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import type { SidebarItem } from '@/components/layout/Sidebar'
-import { Loader2, Youtube, Code, CheckCircle, XCircle, BrainCircuit } from 'lucide-react'
-function AdminGuard() {
+
+function ResultSummary({
+  fetched,
+  inserted,
+  skipped,
+}: {
+  fetched: number
+  inserted: number
+  skipped: number
+}) {
   return (
-    <div className="text-center py-16">
-      <p className="text-destructive text-sm font-medium">Admin access required</p>
+    <div className="grid gap-4 md:grid-cols-3">
+      <AdminStatCard
+        label="Fetched"
+        value={fetched.toLocaleString()}
+        icon={Youtube}
+        hint="Videos returned from the source fetch"
+      />
+      <AdminStatCard
+        label="Inserted"
+        value={inserted.toLocaleString()}
+        icon={CheckCircle}
+        accent="success"
+        hint="New rows added to dental_videos"
+      />
+      <AdminStatCard
+        label="Skipped"
+        value={skipped.toLocaleString()}
+        icon={Sparkles}
+        hint="Duplicates or entries already present"
+      />
     </div>
   )
 }
@@ -17,19 +56,28 @@ function AdminGuard() {
 export function AdminFetchVideos() {
   const profile = useAuthStore((state) => state.profile)
   const [isFetching, setIsFetching] = useState(false)
-  const [result, setResult] = useState<{ fetched: number; inserted: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{
+    fetched: number
+    inserted: number
+    skipped: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
 
   const [isCategorizing, setIsCategorizing] = useState(false)
-  const [categorizeResult, setCategorizeResult] = useState<{ processed: number; updated: number; failed: number; errors?: string[] } | null>(null)
+  const [categorizeResult, setCategorizeResult] = useState<{
+    processed: number
+    updated: number
+    failed: number
+    errors?: string[]
+  } | null>(null)
   const [categorizeError, setCategorizeError] = useState<string | null>(null)
   const [uncategorizedCount, setUncategorizedCount] = useState<number>(0)
 
   useEffect(() => {
     const storedTimestamp = localStorage.getItem('last_fetched_youtube_videos')
     if (storedTimestamp) {
-      setLastFetched(new Date(parseInt(storedTimestamp)).toLocaleString())
+      setLastFetched(new Date(parseInt(storedTimestamp, 10)).toLocaleString())
     }
   }, [])
 
@@ -38,14 +86,14 @@ export function AdminFetchVideos() {
       .from('dental_videos')
       .select('*', { count: 'exact', head: true })
       .is('category', null)
-      
+
     if (!err && count !== null) {
       setUncategorizedCount(count)
     }
   }
 
   useEffect(() => {
-    fetchUncategorizedCount()
+    void fetchUncategorizedCount()
   }, [])
 
   if (!isAdminProfile(profile)) {
@@ -56,17 +104,6 @@ export function AdminFetchVideos() {
     )
   }
 
-  // We reuse the same admin sidebar items here for consistency, 
-  // though in a larger app we'd abstract this array.
-  const adminSidebarItems: SidebarItem[] = [
-    { label: 'Dashboard', path: '/admin' },
-    { label: 'Creator applications', path: '/admin/applications' },
-    { label: 'Content review', path: '/admin/content' },
-    { label: 'User management', path: '/admin/users' },
-    { label: 'Fetch YouTube videos', path: '/admin/fetch-videos' },
-    { label: 'Platform settings', path: '/admin/settings', disabled: true },
-  ]
-
   const handleFetchVideos = async () => {
     setIsFetching(true)
     setError(null)
@@ -76,21 +113,23 @@ export function AdminFetchVideos() {
       const response = await fetch('/api/fetch-dental-videos', {
         method: 'POST',
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.error || 'Failed to fetch videos from the Cloudflare Function API')
+        throw new Error(
+          errorData?.error ||
+            'Failed to fetch videos from the Cloudflare Function API'
+        )
       }
 
       const data = await response.json()
       setResult(data)
-      
+
       const timestamp = Date.now().toString()
       localStorage.setItem('last_fetched_youtube_videos', timestamp)
-      setLastFetched(new Date(parseInt(timestamp)).toLocaleString())
-      
-      fetchUncategorizedCount()
-      
+      setLastFetched(new Date(parseInt(timestamp, 10)).toLocaleString())
+
+      void fetchUncategorizedCount()
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred')
     } finally {
@@ -100,7 +139,7 @@ export function AdminFetchVideos() {
 
   const handleCategorizeVideos = async () => {
     if (uncategorizedCount === 0) return
-    
+
     setIsCategorizing(true)
     setCategorizeError(null)
     setCategorizeResult(null)
@@ -109,16 +148,18 @@ export function AdminFetchVideos() {
       const response = await fetch('/api/categorize-dental-videos', {
         method: 'POST',
       })
-      
+
       if (!response.ok) {
         const errData = await response.json().catch(() => null)
-        throw new Error(errData?.error || 'Failed to categorize videos from the Cloudflare Function API')
+        throw new Error(
+          errData?.error ||
+            'Failed to categorize videos from the Cloudflare Function API'
+        )
       }
 
       const data = await response.json()
       setCategorizeResult(data)
-      fetchUncategorizedCount()
-      
+      void fetchUncategorizedCount()
     } catch (err: any) {
       setCategorizeError(err.message || 'An unknown error occurred')
     } finally {
@@ -127,181 +168,215 @@ export function AdminFetchVideos() {
   }
 
   return (
-    <PageLayout
-      showSidebar={true}
-      sidebarItems={adminSidebarItems}
-      sidebarVariant="admin"
-    >
-      <PageHeader
-        title="Fetch YouTube Videos"
-        subtitle="Trigger the backend job to ingest new dental videos from YouTube"
-      />
-
-      <div className="max-w-3xl space-y-6">
-        <div className="card p-6 border-border bg-card shadow-sm">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-red-100 dark:bg-red-950/30 rounded-xl">
-                  <Youtube className="w-6 h-6 text-red-600 dark:text-red-500" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-foreground">YouTube Ingestion Job</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Searches dental-specific keywords and automatically upserts videos into the <code>dental_videos</code> table.
-                  </p>
-                </div>
-              </div>
-              
-              {lastFetched && (
-                <p className="text-xs text-muted-foreground">
-                  Last fetched: <span className="font-medium text-foreground">{lastFetched}</span>
-                </p>
-              )}
-            </div>
-            
-            <button 
-              onClick={handleFetchVideos} 
-              disabled={isFetching}
-              className="btn-primary"
-            >
-              {isFetching ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Fetching...
-                </>
-              ) : (
-                'Fetch Dental Videos'
-              )}
-            </button>
+    <AdminLayout
+      title="Video ingestion"
+      subtitle="Run the YouTube import and AI categorization workflows from a cleaner operations view while preserving the current backend jobs."
+      heroAside={
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">
+            Job readiness
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminStatusBadge
+              label={
+                lastFetched ? `Last fetched: ${lastFetched}` : 'No fetch recorded yet'
+              }
+              tone="default"
+            />
+            <AdminStatusBadge
+              label={`${uncategorizedCount} uncategorized`}
+              tone={uncategorizedCount > 0 ? 'warning' : 'success'}
+            />
           </div>
         </div>
-
-        {error && (
-          <div className="card p-5 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/30 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 dark:text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-sm font-medium text-red-800 dark:text-red-400">Error fetching videos</h4>
-              <p className="text-sm text-red-600 dark:text-red-300 mt-1">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {result && (
-          <div className="card border-border bg-card overflow-hidden">
-            <div className="p-5 border-b border-border bg-green-50 dark:bg-green-950/20 flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-medium text-green-800 dark:text-green-400">Job completed successfully</h4>
-                <p className="text-sm text-green-600 dark:text-green-300 mt-1">
-                  Summary stats for the fetch operation.
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <AdminSectionCard
+          title="YouTube ingestion job"
+          description="Search dental-specific keywords and upsert new videos into the dental_videos table."
+        >
+          <div className="flex flex-col gap-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-red-500/10 text-red-600 dark:text-red-400">
+                <Youtube className="h-6 w-6" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Run this when you want to pull the latest dental videos from the configured YouTube source terms.
                 </p>
+                {lastFetched && (
+                  <p className="text-sm text-foreground">
+                    Last fetched at <span className="font-semibold">{lastFetched}</span>
+                  </p>
+                )}
               </div>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-border">
-              <div className="p-4 text-center">
-                <p className="text-2xl font-semibold text-foreground">{result.fetched}</p>
-                <p className="text-xs text-muted-foreground mt-1">Videos fetched from YouTube</p>
-              </div>
-              <div className="p-4 text-center">
-                <p className="text-2xl font-semibold text-green-600 dark:text-green-500">{result.inserted}</p>
-                <p className="text-xs text-muted-foreground mt-1">New videos inserted</p>
-              </div>
-              <div className="p-4 text-center">
-                <p className="text-2xl font-semibold text-foreground">{result.skipped}</p>
-                <p className="text-xs text-muted-foreground mt-1">Skipped (duplicates)</p>
-              </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <AdminStatusBadge label="Source: YouTube" tone="info" />
+              <button
+                type="button"
+                onClick={handleFetchVideos}
+                disabled={isFetching}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Fetching videos
+                  </>
+                ) : (
+                  <>
+                    <Youtube className="h-4 w-4" />
+                    Fetch dental videos
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        )}
+        </AdminSectionCard>
 
-        <div className="card p-6 border-border bg-card shadow-sm mt-8">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-indigo-100 dark:bg-indigo-950/30 rounded-xl">
-                  <BrainCircuit className="w-6 h-6 text-indigo-600 dark:text-indigo-500" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-foreground">AI Video Categorization</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Uses Gemini AI to assign categories, tags, and confidence scores to unclassified videos.
-                  </p>
+        <AdminSectionCard
+          title="AI categorization job"
+          description="Assign categories, tags, and confidence scores to uncategorized videos."
+        >
+          <div className="flex flex-col gap-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
+                <BrainCircuit className="h-6 w-6" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Use the existing categorization endpoint to enrich pending videos with structured metadata.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <AdminStatusBadge
+                    label={`${uncategorizedCount} pending`}
+                    tone={uncategorizedCount > 0 ? 'warning' : 'success'}
+                  />
+                  <AdminStatusBadge label="AI assisted" tone="info" />
                 </div>
               </div>
-              
-              <p className="text-xs font-medium px-2.5 py-1 rounded-full bg-secondary/50 text-secondary-foreground border border-border inline-flex w-max">
-                {uncategorizedCount} Pending Videos
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm text-muted-foreground">
+                Categorization is only available when uncategorized videos exist.
+              </span>
+              <button
+                type="button"
+                onClick={handleCategorizeVideos}
+                disabled={isCategorizing || uncategorizedCount === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isCategorizing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Categorizing
+                  </>
+                ) : (
+                  <>
+                    <BrainCircuit className="h-4 w-4" />
+                    Categorize videos
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </AdminSectionCard>
+      </div>
+
+      {error && (
+        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Error fetching videos
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            </div>
+          </div>
+        </AdminSectionCard>
+      )}
+
+      {result && (
+        <AdminSectionCard
+          title="Fetch result"
+          description="Summary stats returned by the existing ingestion endpoint."
+        >
+          <ResultSummary
+            fetched={result.fetched}
+            inserted={result.inserted}
+            skipped={result.skipped}
+          />
+        </AdminSectionCard>
+      )}
+
+      {categorizeError && (
+        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Error categorizing videos
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {categorizeError}
               </p>
             </div>
-            
-            <button 
-              onClick={handleCategorizeVideos} 
-              disabled={isCategorizing || uncategorizedCount === 0}
-              className="btn-primary bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white border-0"
-            >
-              {isCategorizing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Categorizing...
-                </>
-              ) : (
-                'Categorize Videos'
-              )}
-            </button>
           </div>
-        </div>
+        </AdminSectionCard>
+      )}
 
-        {categorizeError && (
-          <div className="card p-5 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/30 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 dark:text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-sm font-medium text-red-800 dark:text-red-400">Error categorizing videos</h4>
-              <p className="text-sm text-red-600 dark:text-red-300 mt-1">{categorizeError}</p>
-            </div>
+      {categorizeResult && (
+        <AdminSectionCard
+          title="Categorization result"
+          description="Current output from the AI categorization workflow."
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <AdminStatCard
+              label="Processed"
+              value={categorizeResult.processed.toLocaleString()}
+              icon={BrainCircuit}
+              hint="Videos sent through the categorization pass"
+            />
+            <AdminStatCard
+              label="Updated"
+              value={categorizeResult.updated.toLocaleString()}
+              icon={CheckCircle}
+              accent="success"
+              hint="Videos successfully enriched with metadata"
+            />
+            <AdminStatCard
+              label="Failed"
+              value={categorizeResult.failed.toLocaleString()}
+              icon={XCircle}
+              accent={categorizeResult.failed > 0 ? 'danger' : 'default'}
+              hint="Videos that could not be categorized"
+            />
           </div>
-        )}
 
-        {categorizeResult && (
-          <div className="card border-border bg-card overflow-hidden">
-            <div className="p-5 border-b border-border bg-indigo-50 dark:bg-indigo-950/20 flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-medium text-indigo-800 dark:text-indigo-400">Categorization completed</h4>
-                <p className="text-sm text-indigo-600 dark:text-indigo-300 mt-1">
-                  Summary stats for the AI categorization operation.
-                </p>
+          {categorizeResult.errors && categorizeResult.errors.length > 0 && (
+            <div className="mt-5 rounded-[22px] border border-border/80 bg-background/75 p-4">
+              <p className="text-sm font-semibold text-foreground">
+                Error details
+              </p>
+              <div className="mt-3 space-y-2">
+                {categorizeResult.errors.map((entry, index) => (
+                  <div
+                    key={`${entry}-${index}`}
+                    className="rounded-xl border border-destructive/10 bg-destructive/5 px-3 py-2 text-sm text-muted-foreground"
+                  >
+                    {entry}
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-border">
-              <div className="p-4 text-center">
-                <p className="text-2xl font-semibold text-foreground">{categorizeResult.processed}</p>
-                <p className="text-xs text-muted-foreground mt-1">Videos processed</p>
-              </div>
-              <div className="p-4 text-center">
-                <p className="text-2xl font-semibold text-green-600 dark:text-green-500">{categorizeResult.updated}</p>
-                <p className="text-xs text-muted-foreground mt-1">Successfully updated</p>
-              </div>
-              <div className="p-4 text-center">
-                <p className="text-2xl font-semibold text-red-600 dark:text-red-500">{categorizeResult.failed}</p>
-                <p className="text-xs text-muted-foreground mt-1">Failed to categorize</p>
-              </div>
-            </div>
-            
-            {categorizeResult.errors && categorizeResult.errors.length > 0 && (
-              <div className="p-4 border-t border-border bg-red-50/50 dark:bg-red-950/10">
-                <p className="text-sm font-medium text-red-800 dark:text-red-400 mb-2">Sample Errors:</p>
-                <ul className="text-xs text-red-600 dark:text-red-300 space-y-1 list-disc pl-4">
-                  {categorizeResult.errors.map((err, i) => (
-                    <li key={i}>{err}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-          </div>
-        )}
-      </div>
-    </PageLayout>
+          )}
+        </AdminSectionCard>
+      )}
+    </AdminLayout>
   )
 }

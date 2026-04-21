@@ -30,11 +30,40 @@ export function Sidebar({
       ? 'sidebar-item-admin-active'
       : 'sidebar-item-active'
 
+  function isItemActive(path: string) {
+    if (path === '/admin') {
+      return currentPath === path
+    }
+
+    return currentPath === path || currentPath.startsWith(path + '/')
+  }
+
   return (
-    <aside className={cn('w-[220px] min-h-full bg-card border-r border-border flex-shrink-0', className)}>
+    <aside
+      className={cn(
+        'hidden md:sticky md:top-14 md:flex md:h-[calc(100vh-3.5rem)] md:w-[248px] md:flex-shrink-0 md:self-start md:flex-col md:overflow-y-auto md:border-r md:border-border/80',
+        variant === 'admin'
+          ? 'md:bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(234,244,243,0.86))] dark:md:bg-[linear-gradient(180deg,rgba(15,23,23,0.96),rgba(10,20,20,0.9))]'
+          : 'md:bg-card',
+        className
+      )}
+    >
+      {variant === 'admin' && (
+        <div className="border-b border-border/70 px-5 py-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/60">
+            Workspace
+          </p>
+          <p className="mt-2 text-sm font-semibold text-foreground">
+            Platform operations
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Review creators, moderate content, and monitor ingestion workflows.
+          </p>
+        </div>
+      )}
       <nav className="py-4">
         {items.map((item) => {
-          const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/')
+          const isActive = isItemActive(item.path)
 
           if (item.disabled) {
             return (

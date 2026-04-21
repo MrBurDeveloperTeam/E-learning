@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 
-const navLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
+const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
   { label: 'Following', path: '/feed' },
   { label: 'Saved videos', path: '/saved' },
@@ -29,6 +29,9 @@ export function Navbar() {
   const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
   const canAccessCreatorTools = isCreatorProfile(profile)
   const canAccessAdmin = isAdminProfile(profile)
+  const navLinks = canAccessAdmin
+    ? [...baseNavLinks, { label: 'Admin', path: '/admin' }]
+    : baseNavLinks
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -201,15 +204,6 @@ export function Navbar() {
                       >
                         Billing
                       </Link>
-                      {canAccessAdmin && (
-                        <Link
-                          to="/admin"
-                          className="block rounded-md px-3 py-1.5 text-[13px] text-[#3D5C5C] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                          onClick={() => setMenuOpen(false)}
-                        >
-                          Admin
-                        </Link>
-                      )}
                       <div className="my-1 h-px bg-border" />
                       <button
                         type="button"
@@ -303,6 +297,23 @@ export function Navbar() {
                 </svg>
                 Saved videos
               </Link>
+
+              {canAccessAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={closeMobileMenu}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
+                    isActive('/admin') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
+                  )}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4Z" />
+                    <path d="M9.5 12.5 11 14l3.5-3.5" />
+                  </svg>
+                  Admin
+                </Link>
+              )}
 
               <div className="my-2 h-px bg-border" />
 

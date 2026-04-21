@@ -23,14 +23,14 @@ export function PageLayout({
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <div className="flex flex-1 max-w-[1400px] mx-auto w-full">
+      <div className="flex flex-1 min-w-0 max-w-[1520px] mx-auto w-full">
         {showSidebar && sidebarItems && (
           <Sidebar items={sidebarItems} variant={sidebarVariant} />
         )}
         <main className={cn(
-          'flex-1 pb-16 md:pb-0',
+          'flex-1 min-w-0 pb-16 md:pb-0',
           scrollMain && 'overflow-y-auto',
-          showSidebar ? 'p-6' : 'p-0',
+          showSidebar ? 'p-4 md:p-6' : 'p-0',
           className
         )}>
           {children}
