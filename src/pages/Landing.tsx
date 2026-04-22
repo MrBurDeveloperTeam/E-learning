@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 import { Logo } from '../components/brand/Logo'
+import { ThemeToggle } from '../components/layout/ThemeToggle'
 
 export function Landing() {
   const user = useAuthStore((state) => state.user)
@@ -26,7 +27,8 @@ export function Landing() {
           <Link to="/" className="flex items-center gap-2">
             <Logo />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle className="rounded-full border border-border bg-card/80 shadow-sm backdrop-blur hover:bg-muted" />
             <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Log in
             </Link>
