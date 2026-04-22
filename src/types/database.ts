@@ -89,6 +89,35 @@ export interface Database {
           updated_at?: string
         }
       }
+      creator_applications: {
+        Row: {
+          user_id: string
+          status: string
+          submitted_at: string
+          reviewed_at: string | null
+          rejection_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          status?: string
+          submitted_at?: string
+          reviewed_at?: string | null
+          rejection_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          status?: string
+          submitted_at?: string
+          reviewed_at?: string | null
+          rejection_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       videos: {
         Row: {
           id: string

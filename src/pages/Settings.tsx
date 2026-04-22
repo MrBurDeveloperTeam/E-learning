@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
   Camera,
   Bell,
+  CheckCircle2,
   ChevronDown,
   Clock3,
   Lock,
@@ -16,6 +18,7 @@ import {
 import { PageLayout } from '../components/layout/PageLayout'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Switch } from '../components/ui/switch'
+import { submitCreatorApplication } from '../lib/creatorApplications'
 import { cn, getInitials } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -28,6 +31,7 @@ import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { PasswordField } from '../components/ui/PasswordField'
 import { useTheme } from '../components/shared/ThemeProvider'
+import type { CreatorApplication } from '../types'
 
 type SettingsTab =
   | 'profile'
@@ -148,6 +152,7 @@ function getPasswordStrength(password: string) {
 export function Settings() {
   const user = useAuthStore((s) => s.user)
   const profile = useAuthStore((s) => s.profile)
+  const queryClient = useQueryClient()
   const { signOut } = useAuth()
   const updateProfile = useUpdateProfile()
   const uploadAvatar = useUploadAvatar()
@@ -160,6 +165,7 @@ export function Settings() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [isApplyingForCreator, setIsApplyingForCreator] = useState(false)
   const [notificationSettings, setNotificationSettings] = useState<Record<string, boolean>>({
     certificateReady: true,
     lessonReminder: true,
@@ -171,18 +177,35 @@ export function Settings() {
     weeklySummary: true,
     productAnnouncements: false,
   })
-  const [applied, setApplied] = useState(false)
   const { resolvedTheme, setTheme } = useTheme()
 
   const passwordStrength = getPasswordStrength(newPassword)
   const avatarName = profile?.full_name ?? profile?.name ?? user?.email ?? 'DentalLearn User'
   const appearanceMode: 'soft' | 'high-contrast' =
     resolvedTheme === 'dark' ? 'high-contrast' : 'soft'
-  const pendingCreatorReview =
-    applied ||
-    (profile?.account_type === 'individual' &&
-      profile?.is_creator === false &&
-      profile?.is_verified === false)
+  const creatorApplicationQuery = useQuery({
+    queryKey: ['creator-application', profile?.user_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('creator_applications')
+        .select('*')
+        .eq('user_id', profile!.user_id)
+        .maybeSingle()
+
+      if (error) throw error
+      return (data ?? null) as CreatorApplication | null
+    },
+    enabled: !!profile?.user_id,
+  })
+  const creatorApplication = creatorApplicationQuery.data
+  const creatorApplicationStatus = creatorApplication?.status ?? null
+  const isVerificationApproved =
+    profile?.is_verified === true || creatorApplicationStatus === 'approved'
+  const pendingCreatorReview = creatorApplicationStatus === 'pending'
+  const canApplyForCreator =
+    creatorApplicationStatus === null ||
+    creatorApplicationStatus === 'rejected' ||
+    creatorApplicationStatus === 'revoked'
 
   const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<ProfileFormValues>({
     defaultValues: {
@@ -294,25 +317,166 @@ export function Settings() {
   }
 
   async function handleApplyForCreator() {
-    if (!profile) return
+    if (!profile || isApplyingForCreator) return
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ account_type: 'individual' })
-        .eq('user_id', profile.user_id)
+      setIsApplyingForCreator(true)
+      const data = await submitCreatorApplication(
+        profile.user_id,
+        creatorApplication ?? null
+      )
 
-      if (error) throw error
-
-      setApplied(true)
+      console.log('[verification-request][settings] creator_applications upsert succeeded', data)
+      queryClient.setQueryData(
+        ['creator-application', profile.user_id],
+        data as CreatorApplication
+      )
+      queryClient.invalidateQueries({
+        queryKey: ['creator-application', profile.user_id],
+      })
       toast.success(
         'Application submitted! We will review your application within 1–2 business days.'
       )
     } catch (error) {
+      console.error('[verification-request][settings] creator_applications upsert failed', error)
       toast.error(
         error instanceof Error ? error.message : 'Something went wrong'
       )
+    } finally {
+      setIsApplyingForCreator(false)
     }
+  }
+
+  function renderVerificationSection() {
+    if (profile?.is_creator !== false || profile?.is_verified !== false) {
+      return null
+    }
+
+    return (
+      <div className="border-b border-border py-6">
+        <SectionLabel>Verification</SectionLabel>
+
+        {creatorApplicationQuery.isLoading ? (
+          <p className="text-xs text-muted-foreground">
+            Loading creator application status...
+          </p>
+        ) : pendingCreatorReview ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+            <div className="flex items-center gap-2 text-sm text-amber-700">
+              <Clock3 size={14} />
+              Pending admin review
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Your application is in the review queue. We will update your access after review.
+            </p>
+          </div>
+        ) : creatorApplicationStatus === 'rejected' ? (
+          <div className="flex flex-col gap-4 rounded-2xl border border-destructive/15 bg-destructive/5 p-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Verification was rejected
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground max-w-sm">
+                {creatorApplication?.rejection_reason ||
+                  'Your last creator application was rejected. You can update your profile and request verification again.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyForCreator}
+              disabled={isApplyingForCreator}
+              className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
+            >
+              {isApplyingForCreator ? 'Requesting...' : 'Request verification again'}
+            </button>
+          </div>
+        ) : creatorApplicationStatus === 'revoked' ? (
+          <div className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Verification was revoked
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground max-w-sm">
+                Your account is back on member access. You can request verification again when ready.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyForCreator}
+              disabled={isApplyingForCreator}
+              className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
+            >
+              {isApplyingForCreator ? 'Requesting...' : 'Request verification again'}
+            </button>
+          </div>
+        ) : canApplyForCreator ? (
+          <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Request verification
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground max-w-sm">
+                Request a review for your professional profile. Our team will verify your application within 1-2 business days.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyForCreator}
+              disabled={isApplyingForCreator}
+              className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
+            >
+              {isApplyingForCreator ? 'Requesting...' : 'Request verification'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Creator application status is being updated. Refresh this page if the latest state does not appear yet.
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  function renderProfileHeaderAction() {
+    if (
+      activeTab !== 'profile' ||
+      creatorApplicationQuery.isLoading
+    ) {
+      return null
+    }
+
+    if (isVerificationApproved) {
+      return (
+        <div className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">
+          <CheckCircle2 size={16} />
+          Verified
+        </div>
+      )
+    }
+
+    if (profile?.is_creator !== false || profile?.is_verified !== false) {
+      return null
+    }
+
+    const buttonLabel =
+      creatorApplicationStatus === 'pending'
+        ? 'Verification pending'
+        : isApplyingForCreator
+          ? 'Requesting...'
+        : creatorApplicationStatus === 'rejected' || creatorApplicationStatus === 'revoked'
+          ? 'Request verification again'
+          : 'Request verification'
+
+    return (
+      <button
+        type="button"
+        onClick={handleApplyForCreator}
+        disabled={creatorApplicationStatus === 'pending' || isApplyingForCreator}
+        className="btn-primary px-4 py-2 text-sm disabled:opacity-60"
+      >
+        {buttonLabel}
+      </button>
+    )
   }
 
   function renderProfilePanel() {
@@ -353,6 +517,8 @@ export function Settings() {
               </div>
             </div>
           </div>
+
+          {renderVerificationSection()}
 
           <div className="border-b border-border py-6">
             <SectionLabel>Channel background</SectionLabel>
@@ -476,22 +642,68 @@ export function Settings() {
             </div>
           </div>
 
-          {profile?.is_creator === false && profile?.is_verified === false && (
+          {false && (
             <div className="py-6 border-b border-border">
               <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">
-                Creator access
+                Verification
               </p>
 
-              {pendingCreatorReview ? (
-                <div className="flex items-center gap-2 text-sm text-amber-500">
-                  <Clock3 size={14} />
-                  Pending admin review
+              {creatorApplicationQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground">
+                  Loading creator application status...
+                </p>
+              ) : pendingCreatorReview ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-amber-500">
+                    <Clock3 size={14} />
+                    Pending admin review
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your application is in the review queue. We will update your access after review.
+                  </p>
                 </div>
-              ) : (
+              ) : creatorApplicationStatus === 'rejected' ? (
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Apply for creator access
+                      Verification was rejected
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                      {creatorApplication?.rejection_reason ||
+                        'Your last creator application was rejected. You can update your profile and apply again.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyForCreator}
+                    className="btn-primary text-sm px-4 py-2 flex-shrink-0"
+                  >
+                    Request verification again
+                  </button>
+                </div>
+              ) : creatorApplicationStatus === 'revoked' ? (
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Verification was revoked
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                      Your account is back on member access. You can submit a new application when ready.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyForCreator}
+                    className="btn-primary text-sm px-4 py-2 flex-shrink-0"
+                  >
+                    Request verification again
+                  </button>
+                </div>
+              ) : canApplyForCreator ? (
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Request verification
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                       Verified dental professionals can upload videos and build their audience on DentalLearn. Our team will review your application within 1–2 business days.
@@ -502,9 +714,13 @@ export function Settings() {
                     onClick={handleApplyForCreator}
                     className="btn-primary text-sm px-4 py-2 flex-shrink-0"
                   >
-                    Apply now
+                    Request verification
                   </button>
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Creator application status is being updated. Refresh this page if the latest state does not appear yet.
+                </p>
               )}
             </div>
           )}
@@ -702,8 +918,13 @@ export function Settings() {
             </div>
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <div className="border-b border-border px-6 py-5">
-                <h2 className="text-base font-medium text-foreground">{currentTabMeta.title}</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">{currentTabMeta.description}</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-base font-medium text-foreground">{currentTabMeta.title}</h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{currentTabMeta.description}</p>
+                  </div>
+                  {renderProfileHeaderAction()}
+                </div>
               </div>
               {renderPanelBody()}
             </div>

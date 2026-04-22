@@ -1,5 +1,7 @@
 import { Link, useParams } from '@tanstack/react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { CheckCircle2 } from 'lucide-react'
 import { FollowButton } from '@/components/creator/FollowButton'
 import { Navbar } from '@/components/layout/Navbar'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -7,9 +9,13 @@ import { VideoGrid } from '@/components/video/VideoGrid'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useProfile, usePublicProfile } from '@/hooks/useProfile'
+import { supabase } from '@/lib/supabase'
+import { submitCreatorApplication } from '@/lib/creatorApplications'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
+import { toast } from 'sonner'
+import type { CreatorApplication } from '@/types'
 
 function BuildingIcon() {
   return (
@@ -49,9 +55,11 @@ function CardIcon() {
 export function Profile() {
   const { userId } = useParams({ from: '/profile/$userId' })
   const [tab, setTab] = useState<'videos' | 'about'>('videos')
+  const [isRequestingVerification, setIsRequestingVerification] = useState(false)
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
   const isAuthLoading = useAuthStore((state) => state.isLoading)
+  const queryClient = useQueryClient()
   const isOwnProfile = currentProfile?.user_id === userId || user?.id === userId
   const ownProfileQuery = useProfile(userId, isOwnProfile)
   const publicProfileQuery = usePublicProfile(userId)
@@ -63,10 +71,55 @@ export function Profile() {
   const videosQuery = useCreatorVideos(profile?.is_creator ? userId : '')
   const creatorVideos = videosQuery.data ?? []
   const videoCount = creatorVideos.length
+  const creatorApplicationQuery = useQuery({
+    queryKey: ['creator-application', currentProfile?.user_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('creator_applications')
+        .select('*')
+        .eq('user_id', currentProfile!.user_id)
+        .maybeSingle()
+
+      if (error) throw error
+      return (data ?? null) as CreatorApplication | null
+    },
+    enabled: isOwnProfile && !!currentProfile?.user_id && profile?.is_verified !== true,
+  })
+  const creatorApplication = creatorApplicationQuery.data
+  const creatorApplicationStatus = creatorApplication?.status ?? null
+  const isVerificationApproved =
+    profile?.is_verified === true || creatorApplicationStatus === 'approved'
   const isLoading =
     (!profile && isOwnProfile && isAuthLoading) ||
     ownProfileQuery.isLoading ||
     publicProfileQuery.isLoading
+
+  async function handleRequestVerification() {
+    if (!currentProfile || isRequestingVerification) return
+
+    try {
+      setIsRequestingVerification(true)
+      const data = await submitCreatorApplication(
+        currentProfile.user_id,
+        creatorApplication ?? null
+      )
+
+      console.log('[verification-request][profile] creator_applications upsert succeeded', data)
+      queryClient.setQueryData(
+        ['creator-application', currentProfile.user_id],
+        data as CreatorApplication
+      )
+      queryClient.invalidateQueries({
+        queryKey: ['creator-application', currentProfile.user_id],
+      })
+      toast.success('Verification request submitted.')
+    } catch (error) {
+      console.error('[verification-request][profile] creator_applications upsert failed', error)
+      toast.error(error instanceof Error ? error.message : 'Unable to request verification')
+    } finally {
+      setIsRequestingVerification(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -121,11 +174,38 @@ export function Profile() {
               />
 
               {isOwnProfile ? (
-                <Link to="/settings">
-                  <button className="btn-outline text-sm px-4 py-2 w-full md:w-auto">
-                    Edit profile
-                  </button>
-                </Link>
+                <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
+                  <Link to="/settings">
+                    <button className="btn-outline text-sm px-4 py-2 w-full md:w-auto">
+                      Edit profile
+                    </button>
+                  </Link>
+                  {isVerificationApproved ? (
+                    <div className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 w-full md:w-auto">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Verified
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleRequestVerification}
+                      disabled={
+                        isRequestingVerification ||
+                        creatorApplicationQuery.isLoading ||
+                        creatorApplicationStatus === 'pending'
+                      }
+                      className="btn-primary text-sm px-4 py-2 w-full md:w-auto disabled:opacity-60"
+                    >
+                      {creatorApplicationStatus === 'pending'
+                        ? 'Verification pending'
+                        : creatorApplicationStatus === 'rejected' || creatorApplicationStatus === 'revoked'
+                          ? 'Request verification again'
+                          : isRequestingVerification
+                            ? 'Requesting...'
+                            : 'Request verification'}
+                    </button>
+                  )}
+                </div>
               ) : currentProfile ? (
                 <FollowButton userId={userId} />
               ) : null}
@@ -236,8 +316,41 @@ export function Profile() {
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="card p-5 text-sm text-muted-foreground bg-card border-border">
-            This member is not a verified creator.
+          <div className="card p-5 bg-card border-border">
+            <p className="text-sm text-muted-foreground">
+              This member is not a verified creator.
+            </p>
+            {isOwnProfile && !profile.is_verified && (
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {creatorApplicationStatus === 'pending'
+                    ? 'Your verification request is pending admin review.'
+                    : creatorApplicationStatus === 'rejected'
+                      ? 'Your previous verification request was rejected. You can request verification again.'
+                      : creatorApplicationStatus === 'revoked'
+                        ? 'Your verification was revoked. You can request verification again.'
+                        : 'Request verification to be reviewed by the admin team.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleRequestVerification}
+                  disabled={
+                    isRequestingVerification ||
+                    creatorApplicationQuery.isLoading ||
+                    creatorApplicationStatus === 'pending'
+                  }
+                  className="btn-primary text-sm px-4 py-2 w-full sm:w-auto disabled:opacity-60"
+                >
+                  {creatorApplicationStatus === 'pending'
+                    ? 'Verification pending'
+                    : creatorApplicationStatus === 'rejected' || creatorApplicationStatus === 'revoked'
+                      ? 'Request verification again'
+                      : isRequestingVerification
+                        ? 'Requesting...'
+                        : 'Request verification'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

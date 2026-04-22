@@ -40,7 +40,7 @@ import { supabase } from '@/lib/supabase'
 import { formatViewCount, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
-import type { Profile } from '@/types'
+import type { CreatorApplication, Profile } from '@/types'
 
 type UserManagementTab = 'pending' | 'creators' | 'members'
 
@@ -48,12 +48,61 @@ type CreatorProfile = Profile & {
   videos?: { count: number }[] | null
 }
 
+type CreatorApplicationRow = Profile & {
+  application_status: CreatorApplication['status']
+  application_submitted_at: string
+  application_reviewed_at: string | null
+  application_rejection_reason: string | null
+}
+
+type PendingCreatorApplicationRow = CreatorApplicationRow
+
+function normalizeApplicationProfile(
+  value: Profile | Profile[] | null
+): Profile | null {
+  if (!value) return null
+  return Array.isArray(value) ? value[0] ?? null : value
+}
+
+function mapApplicationWithProfile(
+  application: Pick<
+    CreatorApplication,
+    'user_id' | 'status' | 'submitted_at' | 'reviewed_at' | 'rejection_reason'
+  > & { profiles: Profile | Profile[] | null }
+): CreatorApplicationRow | null {
+  const resolvedProfile = normalizeApplicationProfile(application.profiles)
+  if (!resolvedProfile) return null
+
+  return {
+    ...resolvedProfile,
+    application_status: application.status,
+    application_submitted_at: application.submitted_at,
+    application_reviewed_at: application.reviewed_at,
+    application_rejection_reason: application.rejection_reason,
+  }
+}
+
+function matchesApplicationSearch(
+  user: CreatorApplicationRow,
+  searchQuery: string
+) {
+  if (!searchQuery.trim()) return true
+
+  const query = searchQuery.toLowerCase()
+  return (
+    (user.full_name ?? '').toLowerCase().includes(query) ||
+    user.email.toLowerCase().includes(query) ||
+    (user.specialty ?? '').toLowerCase().includes(query) ||
+    (user.institution ?? '').toLowerCase().includes(query)
+  )
+}
+
 export function UserManagement() {
   const profile = useAuthStore((state) => state.profile)
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<UserManagementTab>('pending')
   const [searchQuery, setSearchQuery] = useState('')
-  const [detailUser, setDetailUser] = useState<Profile | null>(null)
+  const [detailUser, setDetailUser] = useState<PendingCreatorApplicationRow | null>(null)
   const [rejectUserId, setRejectUserId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [revokeUserId, setRevokeUserId] = useState<string | null>(null)
@@ -63,15 +112,29 @@ export function UserManagement() {
     queryFn: async () => {
       async function fetchPendingVerification() {
         const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('is_creator', false)
-          .eq('is_verified', false)
-          .eq('account_type', 'individual')
-          .order('created_at', { ascending: false })
+          .from('creator_applications')
+          .select(
+            `
+            user_id,
+            status,
+            submitted_at,
+            reviewed_at,
+            rejection_reason,
+            profiles!creator_applications_user_id_fkey(*)
+          `
+          )
+          .eq('status', 'pending')
+          .order('submitted_at', { ascending: false })
 
         if (error) throw error
-        return (data ?? []) as Profile[]
+        return ((data ?? []) as Array<
+          Pick<
+            CreatorApplication,
+            'user_id' | 'status' | 'submitted_at' | 'reviewed_at' | 'rejection_reason'
+          > & { profiles: Profile | Profile[] | null }
+        >)
+          .map(mapApplicationWithProfile)
+          .filter((application): application is PendingCreatorApplicationRow => !!application)
       }
 
       async function fetchAllCreators() {
@@ -110,12 +173,30 @@ export function UserManagement() {
 
   const approveMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_verified: true, is_creator: true, role: 'creator' })
-        .eq('user_id', userId)
+      const reviewedAt = new Date().toISOString()
+      const [profileResult, applicationResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .update({
+            is_verified: true,
+            is_creator: true,
+            role: 'creator',
+            updated_at: reviewedAt,
+          })
+          .eq('user_id', userId),
+        supabase
+          .from('creator_applications')
+          .update({
+            status: 'approved',
+            reviewed_at: reviewedAt,
+            rejection_reason: null,
+            updated_at: reviewedAt,
+          })
+          .eq('user_id', userId),
+      ])
 
-      if (error) throw error
+      if (profileResult.error) throw profileResult.error
+      if (applicationResult.error) throw applicationResult.error
     },
     onSuccess: () => {
       toast.success('Creator approved')
@@ -136,9 +217,15 @@ export function UserManagement() {
       userId: string
       reason: string
     }) => {
+      const reviewedAt = new Date().toISOString()
       const { error } = await supabase
-        .from('profiles')
-        .update({ is_creator: false, is_verified: false })
+        .from('creator_applications')
+        .update({
+          status: 'rejected',
+          reviewed_at: reviewedAt,
+          rejection_reason: reason,
+          updated_at: reviewedAt,
+        })
         .eq('user_id', userId)
 
       if (error) throw error
@@ -159,12 +246,31 @@ export function UserManagement() {
 
   const revokeMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_creator: false, is_verified: false, role: 'member' })
-        .eq('user_id', userId)
+      const reviewedAt = new Date().toISOString()
+      const [profileResult, applicationResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .update({
+            is_creator: false,
+            is_verified: false,
+            role: 'member',
+            updated_at: reviewedAt,
+          })
+          .eq('user_id', userId),
+        supabase
+          .from('creator_applications')
+          .upsert({
+            user_id: userId,
+            status: 'revoked',
+            submitted_at: reviewedAt,
+            reviewed_at: reviewedAt,
+            rejection_reason: null,
+            updated_at: reviewedAt,
+          }, { onConflict: 'user_id' }),
+      ])
 
-      if (error) throw error
+      if (profileResult.error) throw profileResult.error
+      if (applicationResult.error) throw applicationResult.error
     },
     onSuccess: () => {
       toast.success('Creator access revoked')
@@ -189,22 +295,14 @@ export function UserManagement() {
   const pendingCount = data?.pendingUsers.length ?? 0
   const creatorCount = data?.creators.length ?? 0
   const memberCount = data?.members.length ?? 0
-  const filteredPendingUsers = (data?.pendingUsers ?? []).filter((user) => {
-    if (!searchQuery.trim()) return true
-
-    const query = searchQuery.toLowerCase()
-    return (
-      (user.full_name ?? '').toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query) ||
-      (user.specialty ?? '').toLowerCase().includes(query) ||
-      (user.institution ?? '').toLowerCase().includes(query)
-    )
-  })
+  const filteredPendingUsers = (data?.pendingUsers ?? []).filter((user) =>
+    matchesApplicationSearch(user, searchQuery)
+  )
 
   return (
     <AdminLayout
       title="User management"
-      subtitle="Review creator verification requests, inspect approved creators, and manage member accounts from a single professional workspace."
+      subtitle="Review creator verification requests and manage member and creator access from a single professional workspace."
       sidebarBadges={{
         pendingUsers: pendingCount,
       }}
@@ -227,7 +325,7 @@ export function UserManagement() {
     >
       {userManagementQuery.isLoading ? (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-36 rounded-[26px]" />
             ))}
@@ -237,7 +335,7 @@ export function UserManagement() {
         </>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AdminStatCard
               label="Pending verification"
               value={pendingCount.toLocaleString()}
@@ -262,7 +360,7 @@ export function UserManagement() {
 
           <AdminSectionCard
             title="Account views"
-            description="Creator application review is now merged into this page under the pending verification tab."
+            description="Creator application review and account access are managed from this workspace."
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <AdminFilterTabs
@@ -275,7 +373,7 @@ export function UserManagement() {
                 ]}
               />
               {tab === 'pending' && (
-                <div className="w-full lg:max-w-sm">
+                <div className="flex w-full flex-col gap-3 lg:max-w-2xl lg:flex-row lg:justify-end">
                   <AdminSearchField
                     type="text"
                     placeholder="Search name, email, specialty, or institution"
@@ -363,7 +461,7 @@ export function UserManagement() {
                                   Applied
                                 </p>
                                 <p className="mt-1 font-medium text-foreground">
-                                  {timeAgo(user.created_at)}
+                                  {timeAgo(user.application_submitted_at)}
                                 </p>
                               </div>
                               <div>
@@ -639,7 +737,7 @@ export function UserManagement() {
                     ['Institution', detailUser.institution || 'Not specified'],
                     ['Company / Clinic', detailUser.company_name || 'Not specified'],
                     ['Phone', detailUser.phone || 'Not provided'],
-                    ['Applied', timeAgo(detailUser.created_at)],
+                    ['Applied', timeAgo(detailUser.application_submitted_at)],
                   ].map(([label, value]) => (
                     <div
                       key={label}
@@ -712,7 +810,7 @@ export function UserManagement() {
               Reject application?
             </DialogTitle>
             <DialogDescription className="mt-1 text-sm text-muted-foreground">
-              This removes the applicant from the pending queue. They can apply again later.
+              This moves the application out of the pending queue. The user can reapply later.
             </DialogDescription>
           </DialogHeader>
 
@@ -736,7 +834,7 @@ export function UserManagement() {
               </div>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              This note is for the admin action record and does not change the backend flow.
+              This reason is saved to the creator application record so the user can see why the application was rejected.
             </p>
           </div>
 

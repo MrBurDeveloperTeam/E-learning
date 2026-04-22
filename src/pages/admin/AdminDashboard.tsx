@@ -71,11 +71,9 @@ export function AdminDashboard() {
             .select('*', { count: 'exact', head: true })
             .eq('is_creator', true),
           supabase
-            .from('profiles')
+            .from('creator_applications')
             .select('*', { count: 'exact', head: true })
-            .eq('is_verified', false)
-            .eq('account_type', 'individual')
-            .eq('is_creator', false),
+            .eq('status', 'pending'),
           supabase
             .from('videos')
             .select('*', { count: 'exact', head: true })

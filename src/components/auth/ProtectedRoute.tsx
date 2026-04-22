@@ -67,7 +67,7 @@ export function CreatorRoute({ children }: CreatorRouteProps) {
         </p>
         <a href="/settings"
            className="btn-primary px-6 py-2.5 text-sm inline-block">
-          Apply for creator access
+          Request verification
         </a>
       </div>
     )

@@ -34,11 +34,9 @@ export function AdminLayout({
     queryKey: ['admin-sidebar-badges'],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from('profiles')
+        .from('creator_applications')
         .select('*', { count: 'exact', head: true })
-        .eq('is_creator', false)
-        .eq('is_verified', false)
-        .eq('account_type', 'individual')
+        .eq('status', 'pending')
 
       if (error) throw error
       return count ?? 0

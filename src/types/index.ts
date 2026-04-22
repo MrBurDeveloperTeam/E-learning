@@ -52,6 +52,22 @@ export interface PublicProfile {
 
 export interface PublicCreatorProfile extends PublicProfile {}
 
+export type CreatorApplicationStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'revoked'
+
+export interface CreatorApplication {
+  user_id: string
+  status: CreatorApplicationStatus
+  submitted_at: string
+  reviewed_at: string | null
+  rejection_reason: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Video
 
 export type VideoStatus =
