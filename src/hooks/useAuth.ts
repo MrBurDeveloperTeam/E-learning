@@ -278,12 +278,29 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }
 
   async function signOutUser() {
+    try {
+      // Step 1: Call worker logout endpoint to clear SSO cookies and Odoo session
+      await fetch(getApiUrl('/api/logout'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error) {
+      // Continue with local logout even if worker logout fails
+      console.warn('[useAuth] Worker logout failed:', error)
+    }
+
+    // Step 2: Sign out from Supabase locally
     const { error } = await supabase.auth.signOut({ scope: 'local' })
 
+    // Step 3: Clear local session data
     clearPersistedSupabaseSession()
     clearStore()
     setIsLoading(false)
     queryClient.clear()
+
+    // Step 4: Redirect to Snabbb main app
+    window.location.href = 'https://app.snabbb.com/'
 
     if (error) throw error
   }

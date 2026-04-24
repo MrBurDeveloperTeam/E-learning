@@ -57,9 +57,11 @@ export function Navbar() {
 
     try {
       await signOut()
-      void navigate({ to: '/login', replace: true })
+      // Note: signOut now automatically redirects to Snabbb main app
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to sign out')
+      console.error('Sign out failed:', error)
+      // Fallback: redirect to login if signOut fails
+      void navigate({ to: '/login', replace: true })
     }
   }
 

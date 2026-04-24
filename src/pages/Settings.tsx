@@ -306,9 +306,11 @@ export function Settings() {
   async function handleSignOut() {
     try {
       await signOut()
-      window.location.href = '/login'
+      // Note: signOut now automatically redirects to Snabbb main app
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to sign out')
+      console.error('Sign out failed:', error)
+      // Fallback: redirect to login if signOut fails
+      window.location.href = '/login'
     }
   }
 
