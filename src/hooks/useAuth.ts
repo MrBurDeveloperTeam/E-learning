@@ -218,8 +218,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    // Step 1: Create user in both Odoo and Supabase via worker endpoint
-    // The worker handles creating the user in both systems
+    // Step 1: Create user in Odoo via worker endpoint
     const response = await fetch(getApiUrl('/api/e-learning/sign-up'), {
       method: 'POST',
       credentials: 'include',
@@ -243,9 +242,33 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       throw new Error(errorMsg)
     }
 
-    // Step 2: Sign in with the newly created credentials
-    // Since the worker creates the user with email_confirm: true,
-    // the user should be able to sign in immediately
+    // Step 2: Create user in Supabase
+    // We do this in the frontend to ensure it happens
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: metadata?.full_name || email.split('@')[0],
+          role: metadata?.role || 'member',
+          account_type: metadata?.account_type || 'individual',
+          odoo_user_id: data?.odoo?.user_id || null,
+          sso: 'odoo',
+        },
+      },
+    })
+
+    if (signUpError) {
+      // If user already exists in Supabase, try to sign in instead
+      if (signUpError.message.includes('already registered') || 
+          signUpError.message.includes('already exists')) {
+        console.log('[useAuth] User already exists in Supabase, attempting sign-in')
+      } else {
+        throw signUpError
+      }
+    }
+
+    // Step 3: Sign in with the newly created credentials
     try {
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
