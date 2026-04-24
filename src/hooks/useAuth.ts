@@ -33,8 +33,6 @@ function clearPersistedSupabaseSession() {
   }
 }
 
-const SSO_EXCHANGE_PATHS = ['/api/sso', '/api/sso/exchange'] as const
-
 // Helper to get API base URL
 const getApiBaseUrl = () => (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
@@ -44,20 +42,25 @@ function getApiUrl(path: string) {
 }
 
 async function fetchSsoExchange() {
-  for (const path of SSO_EXCHANGE_PATHS) {
-    const response = await fetch(getApiUrl(path), {
+  try {
+    const response = await fetch(getApiUrl('/api/sso/exchange'), {
       method: 'GET',
       credentials: 'include',
     })
 
-    if (response.status === 404 || response.status === 405) {
-      continue
+    // Only return if we got a valid JSON response
+    if (response.ok) {
+      const contentType = response.headers.get('content-type')
+      if (contentType?.includes('application/json')) {
+        return response
+      }
     }
 
-    return response
+    return null
+  } catch (error) {
+    console.warn('[useAuth] fetchSsoExchange error:', error)
+    return null
   }
-
-  return null
 }
 
 export function useAuth({ initialize = false }: UseAuthOptions = {}) {
