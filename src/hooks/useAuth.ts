@@ -224,26 +224,28 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    const res = await fetch(getApiUrl('/api/sign-up'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, metadata }),
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: metadata?.full_name || email.split('@')[0],
+          role: metadata?.role || 'member',
+          account_type: metadata?.account_type || 'individual',
+        },
+      },
     })
-    
-    const data = await res.json()
-    if (!res.ok) {
-      throw new Error(data.error || 'Sign up failed')
-    }
-    
-    if (data.access_token && data.refresh_token) {
-      const { error } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
+
+    if (error) throw error
+
+    // signUp returns a session immediately if email confirmation is disabled,
+    // otherwise data.session is null and the user gets a confirmation email.
+    if (data.session) {
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
       })
-      if (error) throw error
-    } else {
-      throw new Error('Invalid response from sign up endpoint')
+      if (setErr) throw setErr
     }
   }
 
