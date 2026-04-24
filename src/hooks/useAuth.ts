@@ -93,6 +93,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
           try {
             const ssoRes = await fetch(`${getApiBaseUrl()}/api/sso`, {
               method: 'GET',
+              credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
             })
             if (ssoRes.ok) {
@@ -160,6 +161,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   async function signInWithEmail(email: string, password: string) {
     const res = await fetch(`${getApiBaseUrl()}/api/login`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
@@ -199,6 +201,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   ) {
     const res = await fetch(`${getApiBaseUrl()}/api/sign-up`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, metadata }),
     })

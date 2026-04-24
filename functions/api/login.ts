@@ -1,7 +1,8 @@
-import { getSupabaseUserByEmail, signHS256, buildSetCookie } from './_shared/auth'
+import { getSupabaseUserByEmail, signHS256, buildSetCookie, getCookieOptions } from './_shared/auth'
 
 export const onRequestPost = async (context: any) => {
   const { request, env } = context
+  const cookieOptions = getCookieOptions(request, env)
   
   // Handle CORS preflight if necessary (handled by _middleware if one exists, but safe to include)
   const origin = request.headers.get("Origin") || "*"
@@ -162,7 +163,7 @@ export const onRequestPost = async (context: any) => {
 
     // Also set the mrbur_sso cookie for seamless login to other apps
     if (sessionCookie) {
-      responseHeaders.append("Set-Cookie", buildSetCookie("mrbur_sso", sessionCookie))
+      responseHeaders.append("Set-Cookie", buildSetCookie("mrbur_sso", sessionCookie, cookieOptions))
     }
 
     return new Response(JSON.stringify(responseBody), {

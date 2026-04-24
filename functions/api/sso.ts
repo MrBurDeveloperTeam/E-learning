@@ -1,7 +1,8 @@
-import { getSupabaseUserByEmail, signHS256, verifyHS256, getTokenFromRequest, buildSetCookie, buildClearCookie } from './_shared/auth'
+import { getSupabaseUserByEmail, signHS256, verifyHS256, getTokenFromRequest, buildSetCookie, buildClearCookie, getCookieOptions } from './_shared/auth'
 
 export const onRequestGet = async (context: any) => {
   const { request, env } = context
+  const cookieOptions = getCookieOptions(request, env)
   
   const origin = request.headers.get("Origin") || "*"
   const corsHeaders = {
@@ -20,7 +21,7 @@ export const onRequestGet = async (context: any) => {
         headers: {
           "Content-Type": "application/json",
           ...corsHeaders,
-          "Set-Cookie": buildClearCookie(),
+          "Set-Cookie": buildClearCookie("mrbur_sso", cookieOptions),
         },
       })
     }
@@ -144,7 +145,7 @@ export const onRequestGet = async (context: any) => {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Set-Cookie": buildSetCookie("mrbur_sso", token), // refresh cookie
+        "Set-Cookie": buildSetCookie("mrbur_sso", token, cookieOptions), // refresh cookie
         ...corsHeaders,
       },
     })

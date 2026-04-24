@@ -68,28 +68,55 @@ export async function verifyHS256({ token, secret }: { token: string, secret: st
   }
 }
 
-export function buildSetCookie(name: string, value: string, domain: string = ".mrbur.shop", maxAge: number = 60 * 60): string {
-  return [
-    `${name}=${encodeURIComponent(value)}`,
-    "Path=/",
-    `Domain=${domain}`,
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    `Max-Age=${maxAge}`,
-  ].join("; ");
+export interface CookieOptions {
+  domain?: string | null
+  maxAge?: number
+  path?: string
+  httpOnly?: boolean
+  sameSite?: "Strict" | "Lax" | "None"
+  secure?: boolean
 }
 
-export function buildClearCookie(name: string = "mrbur_sso", domain: string = ".mrbur.shop"): string {
-  return [
-    `${name}=`,
-    "Path=/",
-    `Domain=${domain}`,
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    "Max-Age=0",
-  ].join("; ");
+function isLocalHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
+}
+
+export function getCookieOptions(req: Request, env: any, maxAge: number = 60 * 60): CookieOptions {
+  const { hostname, protocol } = new URL(req.url)
+  const configuredDomain = String(env?.COOKIE_DOMAIN || "").trim() || null
+  const local = isLocalHostname(hostname)
+  const domain = configuredDomain && !isLocalHostname(configuredDomain.replace(/^\./, "")) ? configuredDomain : null
+
+  return {
+    domain: local ? null : (domain || ".mrbur.shop"),
+    maxAge,
+    path: "/",
+    httpOnly: true,
+    sameSite: "Lax",
+    secure: !local && protocol === "https:",
+  }
+}
+
+export function buildSetCookie(name: string, value: string, options: CookieOptions = {}): string {
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Path=${options.path || "/"}`,
+    `SameSite=${options.sameSite || "Lax"}`,
+    `Max-Age=${options.maxAge ?? 60 * 60}`,
+  ]
+
+  if (options.domain) parts.push(`Domain=${options.domain}`)
+  if (options.httpOnly ?? true) parts.push("HttpOnly")
+  if (options.secure ?? true) parts.push("Secure")
+
+  return parts.join("; ")
+}
+
+export function buildClearCookie(name: string = "mrbur_sso", options: CookieOptions = {}): string {
+  return buildSetCookie(name, "", {
+    ...options,
+    maxAge: 0,
+  })
 }
 
 export function getTokenFromRequest(req: Request): string | null {

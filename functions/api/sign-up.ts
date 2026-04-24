@@ -1,7 +1,8 @@
-import { getSupabaseUserByEmail, signHS256, buildSetCookie, createOdooUser } from './_shared/auth'
+import { getSupabaseUserByEmail, signHS256, buildSetCookie, createOdooUser, getCookieOptions } from './_shared/auth'
 
 export const onRequestPost = async (context: any) => {
   const { request, env } = context
+  const cookieOptions = getCookieOptions(request, env)
   
   const origin = request.headers.get("Origin") || "*"
   const corsHeaders = {
@@ -168,7 +169,7 @@ export const onRequestPost = async (context: any) => {
     })
 
     if (sessionCookie) {
-      responseHeaders.append("Set-Cookie", buildSetCookie("mrbur_sso", sessionCookie))
+      responseHeaders.append("Set-Cookie", buildSetCookie("mrbur_sso", sessionCookie, cookieOptions))
     }
 
     return new Response(JSON.stringify(responseBody), {
