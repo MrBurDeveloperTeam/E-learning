@@ -184,26 +184,20 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    const res = await fetch(getApiUrl('/api/login'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+    // E-learning uses Supabase authentication directly
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
-    
-    const data = await res.json()
-    if (!res.ok) {
-      throw new Error(data.error || 'Login failed')
-    }
-    
-    if (data.access_token && data.refresh_token) {
-      const { error } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
+
+    if (error) throw error
+
+    if (data.session) {
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
       })
-      if (error) throw error
-    } else {
-      throw new Error('Invalid response from login endpoint')
+      if (setErr) throw setErr
     }
   }
 
@@ -224,28 +218,66 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: metadata?.full_name || email.split('@')[0],
-          role: metadata?.role || 'member',
-          account_type: metadata?.account_type || 'individual',
-        },
-      },
+    // Step 1: Create user in both Odoo and Supabase via worker endpoint
+    // The worker handles creating the user in both systems
+    const response = await fetch(getApiUrl('/api/e-learning/sign-up'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        name: metadata?.full_name || email.split('@')[0],
+      }),
     })
 
-    if (error) throw error
+    const data = await response.json()
+    
+    if (!response.ok) {
+      // Extract error message from various possible response formats
+      const errorMsg = 
+        data?.error || 
+        data?.data?.error?.message || 
+        data?.details?.message ||
+        'Failed to create account'
+      throw new Error(errorMsg)
+    }
 
-    // signUp returns a session immediately if email confirmation is disabled,
-    // otherwise data.session is null and the user gets a confirmation email.
-    if (data.session) {
-      const { error: setErr } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
+    // Step 2: Sign in with the newly created credentials
+    // Since the worker creates the user with email_confirm: true,
+    // the user should be able to sign in immediately
+    try {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
-      if (setErr) throw setErr
+
+      if (signInError) {
+        // If sign-in fails, check if it's due to email confirmation
+        if (signInError.message.includes('Email not confirmed') || 
+            signInError.message.includes('not confirmed')) {
+          // User needs to confirm email - don't throw error
+          // The Register component will show the confirmation message
+          return
+        }
+        
+        // For other errors, throw them
+        throw signInError
+      }
+
+      // If we got a session, set it
+      if (signInData.session) {
+        const { error: setErr } = await supabase.auth.setSession({
+          access_token: signInData.session.access_token,
+          refresh_token: signInData.session.refresh_token,
+        })
+        if (setErr) throw setErr
+      }
+    } catch (signInErr) {
+      // If sign-in fails but user was created successfully,
+      // log the error but don't fail the registration
+      console.warn('[useAuth] User created but auto sign-in failed:', signInErr)
+      // User can manually sign in from the login page
     }
   }
 
