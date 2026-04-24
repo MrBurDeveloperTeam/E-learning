@@ -33,6 +33,9 @@ function clearPersistedSupabaseSession() {
   }
 }
 
+// Helper to get API base URL
+const getApiBaseUrl = () => import.meta.env.VITE_API_BASE_URL || ''
+
 export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   const {
     user,
@@ -86,7 +89,34 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
             // profile may not exist yet
           }
         } else {
-          clearStore()
+          // Attempt seamless SSO if no Supabase session exists
+          try {
+            const ssoRes = await fetch(`${getApiBaseUrl()}/api/sso`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            })
+            if (ssoRes.ok) {
+              const data = await ssoRes.json()
+              if (data.access_token && data.refresh_token) {
+                // Set the generated Supabase session
+                const { error: setSessionError } = await supabase.auth.setSession({
+                  access_token: data.access_token,
+                  refresh_token: data.refresh_token,
+                })
+                if (setSessionError) {
+                  console.warn('[useAuth] failed to set SSO session:', setSessionError)
+                  clearStore()
+                }
+              } else {
+                clearStore()
+              }
+            } else {
+              clearStore()
+            }
+          } catch (ssoError) {
+            console.warn('[useAuth] seamless SSO check failed:', ssoError)
+            clearStore()
+          }
         }
       } catch (err) {
         console.warn('[useAuth] init failed:', err)
@@ -128,8 +158,26 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    const res = await fetch(`${getApiBaseUrl()}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || 'Login failed')
+    }
+    
+    if (data.access_token && data.refresh_token) {
+      const { error } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      })
+      if (error) throw error
+    } else {
+      throw new Error('Invalid response from login endpoint')
+    }
   }
 
   async function signInWithGoogle() {
@@ -149,12 +197,26 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: metadata },
+    const res = await fetch(`${getApiBaseUrl()}/api/sign-up`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, metadata }),
     })
-    if (error) throw error
+    
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || 'Sign up failed')
+    }
+    
+    if (data.access_token && data.refresh_token) {
+      const { error } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      })
+      if (error) throw error
+    } else {
+      throw new Error('Invalid response from sign up endpoint')
+    }
   }
 
   async function signOutUser() {
