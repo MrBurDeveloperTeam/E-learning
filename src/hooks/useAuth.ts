@@ -33,8 +33,32 @@ function clearPersistedSupabaseSession() {
   }
 }
 
+const SSO_EXCHANGE_PATHS = ['/api/sso', '/api/sso/exchange'] as const
+
 // Helper to get API base URL
-const getApiBaseUrl = () => import.meta.env.VITE_API_BASE_URL || ''
+const getApiBaseUrl = () => (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
+function getApiUrl(path: string) {
+  const baseUrl = getApiBaseUrl()
+  return baseUrl ? `${baseUrl}${path}` : path
+}
+
+async function fetchSsoExchange() {
+  for (const path of SSO_EXCHANGE_PATHS) {
+    const response = await fetch(getApiUrl(path), {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    if (response.status === 404 || response.status === 405) {
+      continue
+    }
+
+    return response
+  }
+
+  return null
+}
 
 export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   const {
@@ -91,11 +115,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         } else {
           // Attempt seamless SSO if no Supabase session exists
           try {
-            const ssoRes = await fetch(`${getApiBaseUrl()}/api/sso`, {
-              method: 'GET',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-            })
+            const ssoRes = await fetchSsoExchange()
+            if (!ssoRes) {
+              clearStore()
+              return
+            }
+
             if (ssoRes.ok) {
               const data = await ssoRes.json()
               if (data.access_token && data.refresh_token) {
@@ -159,7 +184,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    const res = await fetch(`${getApiBaseUrl()}/api/login`, {
+    const res = await fetch(getApiUrl('/api/login'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -199,7 +224,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    const res = await fetch(`${getApiBaseUrl()}/api/sign-up`, {
+    const res = await fetch(getApiUrl('/api/sign-up'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
