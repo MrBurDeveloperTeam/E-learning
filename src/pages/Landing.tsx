@@ -24,9 +24,9 @@ export function Landing() {
       {/* Navigation - simplified for landing */}
       <nav className="fixed top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Logo />
-          </Link>
+          </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle className="rounded-full border border-border bg-card/80 shadow-sm backdrop-blur hover:bg-muted" />
             <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">

@@ -52,9 +52,9 @@ export default function Login() {
       <div className="w-full max-w-[380px] card p-8 animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-6">
-          <Link to="/" className="flex justify-center">
+          <div className="flex justify-center">
             <Logo className="mb-2" />
-          </Link>
+          </div>
           <h1 className="text-xl font-medium text-foreground mt-4 mb-1">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Sign in to your DentalLearn account</p>
         </div>

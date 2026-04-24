@@ -71,9 +71,7 @@ export function Navbar() {
     <>
       <nav className="sticky top-0 z-50 h-14 w-full border-b border-border bg-background">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 md:px-6">
-          <Link to={user ? '/explore' : '/'}>
-            <Logo />
-          </Link>
+          <Logo />
 
           {user && (
             <div className="hidden items-center gap-1 md:flex">

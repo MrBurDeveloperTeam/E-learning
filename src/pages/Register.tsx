@@ -78,9 +78,9 @@ export default function Register() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-[420px] card p-8 animate-fade-in">
         <div className="text-center mb-6">
-          <Link to="/" className="flex justify-center">
+          <div className="flex justify-center">
             <Logo className="mb-2" />
-          </Link>
+          </div>
           <h1 className="text-xl font-medium text-foreground mt-4 mb-1">Create your account</h1>
           <p className="text-sm text-muted-foreground">Join the dental learning community as an individual member</p>
         </div>
