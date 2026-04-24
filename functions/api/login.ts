@@ -26,7 +26,7 @@ export const onRequestPost = async (context: any) => {
     }
 
     const ODOO_BASE = env.ODOO_BASE || "https://mrbur.odoo.com"
-    const ODOO_DB = env.ODOO_DB || "mrbur"
+    const ODOO_DB = env.ODOO_DB || "aht-systemadmin-mrbur-main-20994444"
 
     // 1. Authenticate with Odoo
     const rpcBody = {
