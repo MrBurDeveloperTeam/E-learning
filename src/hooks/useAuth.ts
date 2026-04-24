@@ -218,33 +218,49 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    // Step 1: Call the worker — creates the user in both Odoo and Supabase.
-    // The worker uses the admin API with email_confirm: true, so the account
-    // is immediately active with no email confirmation required.
-    const response = await fetch(getApiUrl('/api/e-learning/sign-up'), {
+    const name = metadata?.full_name || email.split('@')[0]
+
+    // Step 1: Create user in Odoo via worker
+    const odooRes = await fetch(getApiUrl('/api/e-learning/sign-up'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    })
+
+    const odooData = await odooRes.json()
+
+    if (!odooRes.ok) {
+      const errorMsg =
+        odooData?.error ||
+        odooData?.data?.error?.message ||
+        odooData?.details?.message ||
+        'Failed to create account'
+      throw new Error(errorMsg)
+    }
+
+    // Step 2: Create confirmed Supabase user via worker admin endpoint.
+    // This uses the service role key server-side, so email_confirm: true
+    // is set and the user can sign in immediately without email verification.
+    const sbRes = await fetch(getApiUrl('/api/auth/create-user'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email,
         password,
-        name: metadata?.full_name || email.split('@')[0],
+        name,
+        account_type: metadata?.account_type || 'individual',
       }),
     })
 
-    const workerData = await response.json()
+    const sbData = await sbRes.json()
 
-    if (!response.ok) {
-      const errorMsg =
-        workerData?.error ||
-        workerData?.data?.error?.message ||
-        workerData?.details?.message ||
-        'Failed to create account'
-      throw new Error(errorMsg)
+    if (!sbRes.ok) {
+      throw new Error(sbData?.error || 'Failed to create Supabase account')
     }
 
-    // Step 2: Sign in directly — no supabase.auth.signUp() needed because
-    // the worker already created the confirmed Supabase user via the admin API.
+    // Step 3: Sign in directly — user is confirmed so this works immediately
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
