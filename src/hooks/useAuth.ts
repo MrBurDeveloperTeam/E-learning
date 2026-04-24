@@ -218,7 +218,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       account_type?: 'individual' | 'company' | 'admin'
     }
   ) {
-    // Step 1: Create user in Odoo via worker endpoint
+    // Step 1: Call the worker — creates the user in both Odoo and Supabase.
+    // The worker uses the admin API with email_confirm: true, so the account
+    // is immediately active with no email confirmation required.
     const response = await fetch(getApiUrl('/api/e-learning/sign-up'), {
       method: 'POST',
       credentials: 'include',
@@ -230,77 +232,32 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       }),
     })
 
-    const data = await response.json()
-    
+    const workerData = await response.json()
+
     if (!response.ok) {
-      // Extract error message from various possible response formats
-      const errorMsg = 
-        data?.error || 
-        data?.data?.error?.message || 
-        data?.details?.message ||
+      const errorMsg =
+        workerData?.error ||
+        workerData?.data?.error?.message ||
+        workerData?.details?.message ||
         'Failed to create account'
       throw new Error(errorMsg)
     }
 
-    // Step 2: Create user in Supabase
-    // We do this in the frontend to ensure it happens
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    // Step 2: Sign in directly — no supabase.auth.signUp() needed because
+    // the worker already created the confirmed Supabase user via the admin API.
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
-      options: {
-        data: {
-          name: metadata?.full_name || email.split('@')[0],
-          role: metadata?.role || 'member',
-          account_type: metadata?.account_type || 'individual',
-          odoo_user_id: data?.odoo?.user_id || null,
-          sso: 'odoo',
-        },
-      },
     })
 
-    if (signUpError) {
-      // If user already exists in Supabase, try to sign in instead
-      if (signUpError.message.includes('already registered') || 
-          signUpError.message.includes('already exists')) {
-        console.log('[useAuth] User already exists in Supabase, attempting sign-in')
-      } else {
-        throw signUpError
-      }
-    }
+    if (signInError) throw signInError
 
-    // Step 3: Sign in with the newly created credentials
-    try {
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+    if (signInData.session) {
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
       })
-
-      if (signInError) {
-        // If sign-in fails, check if it's due to email confirmation
-        if (signInError.message.includes('Email not confirmed') || 
-            signInError.message.includes('not confirmed')) {
-          // User needs to confirm email - don't throw error
-          // The Register component will show the confirmation message
-          return
-        }
-        
-        // For other errors, throw them
-        throw signInError
-      }
-
-      // If we got a session, set it
-      if (signInData.session) {
-        const { error: setErr } = await supabase.auth.setSession({
-          access_token: signInData.session.access_token,
-          refresh_token: signInData.session.refresh_token,
-        })
-        if (setErr) throw setErr
-      }
-    } catch (signInErr) {
-      // If sign-in fails but user was created successfully,
-      // log the error but don't fail the registration
-      console.warn('[useAuth] User created but auto sign-in failed:', signInErr)
-      // User can manually sign in from the login page
+      if (setErr) throw setErr
     }
   }
 
