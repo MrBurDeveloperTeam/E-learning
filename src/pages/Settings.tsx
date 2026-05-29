@@ -742,7 +742,7 @@ export function Settings() {
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={handleReset} className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted">Discard</button>
-              <button type="submit" disabled={updateProfile.isPending} className="flex items-center gap-2 btn-primary px-5 py-2 text-sm">
+              <button type="submit" disabled={updateProfile.isPending} className="flex text-white items-center gap-2 btn-primary px-5 py-2 text-sm">
                 {updateProfile.isPending ? <LoadingSpinner size="sm" /> : null}
                 Save changes
               </button>
