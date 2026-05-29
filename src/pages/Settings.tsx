@@ -469,16 +469,16 @@ export function Settings() {
           ? 'Request verification again'
           : 'Request verification'
 
-    return (
-      <button
-        type="button"
-        onClick={handleApplyForCreator}
-        disabled={creatorApplicationStatus === 'pending' || isApplyingForCreator}
-        className="btn-primary px-4 py-2 text-sm disabled:opacity-60"
-      >
-        {buttonLabel}
-      </button>
-    )
+    // return (
+    //   <button
+    //     type="button"
+    //     onClick={handleApplyForCreator}
+    //     disabled={creatorApplicationStatus === 'pending' || isApplyingForCreator}
+    //     className="btn-primary px-4 py-2 text-sm disabled:opacity-60"
+    //   >
+    //     {buttonLabel}
+    //   </button>
+    // )
   }
 
   function renderProfilePanel() {
@@ -520,7 +520,7 @@ export function Settings() {
             </div>
           </div>
 
-        {/* {renderVerificationSection()} */}
+         {renderVerificationSection()}
 
           <div className="border-b border-border py-6">
             <SectionLabel>Channel background</SectionLabel>
