@@ -897,7 +897,7 @@ export function Settings() {
                   <div className="mt-1 flex items-center gap-1.5">
                     <span className="text-xs capitalize text-muted-foreground">{profile?.role ?? 'member'}</span>
                     <span className="text-border">/</span>
-                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium capitalize text-primary-foreground">{formatPlanLabel(profile?.plan)}</span>
+                    <span className="rounded-full text-white bg-primary px-2 py-0.5 text-[10px] font-medium capitalize text-primary-foreground">{formatPlanLabel(profile?.plan)}</span>
                   </div>
                 </div>
                 <nav className="p-2">
