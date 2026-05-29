@@ -414,7 +414,7 @@ export function Settings() {
         ) : canApplyForCreator ? (
           <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm text-white font-medium text-foreground">
                 Request verification
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
