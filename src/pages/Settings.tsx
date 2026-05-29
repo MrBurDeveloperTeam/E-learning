@@ -414,7 +414,7 @@ export function Settings() {
         ) : canApplyForCreator ? (
           <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-sm text-white font-medium text-foreground">
+              <p className="text-sm font-medium text-foreground">
                 Request verification
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
@@ -425,7 +425,7 @@ export function Settings() {
               type="button"
               onClick={handleApplyForCreator}
               disabled={isApplyingForCreator}
-              className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
+              className="btn-primary text-white text-sm px-4 py-2 md:flex-shrink-0"
             >
               {isApplyingForCreator ? 'Requesting...' : 'Request verification'}
             </button>
@@ -667,7 +667,7 @@ export function Settings() {
               ) : creatorApplicationStatus === 'rejected' ? (
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-white font-medium text-foreground">
+                    <p className="text-sm font-medium text-foreground">
                       Verification was rejected
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -678,7 +678,7 @@ export function Settings() {
                   <button
                     type="button"
                     onClick={handleApplyForCreator}
-                    className="btn-primary text-white text-sm px-4 py-2 flex-shrink-0"
+                    className="btn-primary text-sm px-4 py-2 flex-shrink-0"
                   >
                     Request verification again
                   </button>
@@ -686,7 +686,7 @@ export function Settings() {
               ) : creatorApplicationStatus === 'revoked' ? (
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-white font-medium text-foreground">
+                    <p className="text-sm font-medium text-foreground">
                       Verification was revoked
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -696,7 +696,7 @@ export function Settings() {
                   <button
                     type="button"
                     onClick={handleApplyForCreator}
-                    className="btn-primary text-white text-sm px-4 py-2 flex-shrink-0"
+                    className="btn-primary text-sm px-4 py-2 flex-shrink-0"
                   >
                     Request verification again
                   </button>
@@ -704,7 +704,7 @@ export function Settings() {
               ) : canApplyForCreator ? (
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-white font-medium text-foreground">
+                    <p className="text-sm font-medium text-foreground">
                       Request verification
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -714,7 +714,7 @@ export function Settings() {
                   <button
                     type="button"
                     onClick={handleApplyForCreator}
-                    className="btn-primary text-white text-sm px-4 py-2 flex-shrink-0"
+                    className="btn-primary text-sm px-4 py-2 flex-shrink-0"
                   >
                     Request verification
                   </button>
