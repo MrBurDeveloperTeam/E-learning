@@ -520,7 +520,7 @@ export function Settings() {
             </div>
           </div>
 
-          {renderVerificationSection()}
+        {/* {renderVerificationSection()} */}
 
           <div className="border-b border-border py-6">
             <SectionLabel>Channel background</SectionLabel>
