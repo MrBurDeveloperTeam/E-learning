@@ -491,7 +491,7 @@ export function Settings() {
                 {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" className="h-full w-full object-cover" /> : getInitials(watchedFullName || avatarName)}
               </div>
               <label className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:opacity-90">
-                {uploadAvatar.isPending ? <LoadingSpinner size="sm" /> : <Pencil size={10} />}
+                {uploadAvatar.isPending ? <LoadingSpinner size="sm" /> : <Pencil size={10} color='white' />}
                 <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
               </label>
               {uploadAvatar.isPending && (
