@@ -32,20 +32,20 @@ function ResultSummary({
     <div className="grid gap-4 md:grid-cols-3">
       <AdminStatCard
         label="Fetched"
-        value={fetched.toLocaleString()}
+        value={(fetched ?? 0).toLocaleString()}
         icon={Youtube}
         hint="Videos returned from the source fetch"
       />
       <AdminStatCard
         label="Inserted"
-        value={inserted.toLocaleString()}
+        value={(inserted ?? 0).toLocaleString()}
         icon={CheckCircle}
         accent="success"
         hint="New rows added to dental_videos"
       />
       <AdminStatCard
         label="Skipped"
-        value={skipped.toLocaleString()}
+        value={(skipped ?? 0).toLocaleString()}
         icon={Sparkles}
         hint="Duplicates or entries already present"
       />
