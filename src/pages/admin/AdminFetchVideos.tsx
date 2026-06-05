@@ -123,6 +123,7 @@ export function AdminFetchVideos() {
       }
 
       const data = await response.json()
+      console.log("this data received from the fetch endpoint", data)
       setResult(data)
 
       const timestamp = Date.now().toString()
