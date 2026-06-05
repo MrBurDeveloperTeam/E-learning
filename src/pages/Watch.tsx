@@ -203,28 +203,42 @@ export function Watch() {
             <div>
               {/* Video player — no border-radius on mobile */}
               <div className="w-full aspect-video bg-black lg:rounded-xl overflow-hidden">
-                {isAuthenticated && video.mux_playback_id ? (
-                  <MuxPlayer
-                    ref={playerRef}
-                    playbackId={video.mux_playback_id}
-                    streamType="on-demand"
-                    autoPlay={false}
-                    className="h-full w-full"
-                    onPlay={() => {
-                      if (!hasRecordedView.current) startViewTracking()
-                    }}
-                    onPause={() => {
-                      samplePlaybackProgress()
-                      stopViewTracking()
-                      lastTrackedTime.current = null
-                    }}
-                    onEnded={() => {
-                      samplePlaybackProgress()
-                      maybeRecordMeaningfulView()
-                      stopViewTracking()
-                      lastTrackedTime.current = null
-                    }}
-                  />
+                {isAuthenticated ? (
+                  video.mux_playback_id ? (
+                    <MuxPlayer
+                      ref={playerRef}
+                      playbackId={video.mux_playback_id}
+                      streamType="on-demand"
+                      autoPlay={false}
+                      className="h-full w-full"
+                      onPlay={() => {
+                        if (!hasRecordedView.current) startViewTracking()
+                      }}
+                      onPause={() => {
+                        samplePlaybackProgress()
+                        stopViewTracking()
+                        lastTrackedTime.current = null
+                      }}
+                      onEnded={() => {
+                        samplePlaybackProgress()
+                        maybeRecordMeaningfulView()
+                        stopViewTracking()
+                        lastTrackedTime.current = null
+                      }}
+                    />
+                  ) : video.video_id ? (
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${video.video_id}?autoplay=0&rel=0`}
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={video.title}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-muted/30">
+                      <p className="text-sm text-muted-foreground">No video available</p>
+                    </div>
+                  )
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center gap-4 bg-muted/30 px-6 text-center">
                     <Lock className="h-8 w-8 text-foreground" />
