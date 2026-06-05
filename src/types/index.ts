@@ -97,7 +97,6 @@ export interface Video {
   description: string | null
   category: VideoCategory
   tags: string[]
-  video_id: string | null
   mux_asset_id: string | null
   mux_playback_id: string | null
   mux_upload_id: string | null
@@ -127,8 +126,6 @@ export interface VideoWithCreator extends Video {
     | 'follower_count'
     | 'video_count'
   >
-  video_id: string | null
-  mux_playback_id: string | null
 }
 
 // Comment
