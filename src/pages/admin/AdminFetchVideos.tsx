@@ -124,7 +124,11 @@ export function AdminFetchVideos() {
 
       const data = await response.json()
       console.log("this data received from the fetch endpoint", data)
-      setResult(data)
+      setResult({
+        fetched: data.fetched ?? 0,
+        inserted: data.inserted ?? 0,
+        skipped: data.skipped ?? 0,
+      })
 
       const timestamp = Date.now().toString()
       localStorage.setItem('last_fetched_youtube_videos', timestamp)
