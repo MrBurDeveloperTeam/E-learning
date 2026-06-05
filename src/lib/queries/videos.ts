@@ -109,7 +109,7 @@ export async function fetchVideos({
   sort?: SortOption
 } = {}): Promise<VideoWithCreator[]> {
   let query = supabase
-    .from('videos')
+    .from('dental_videos')
     .select('*')
     .eq('status', 'published')
     .eq('visibility', 'public')
@@ -130,7 +130,7 @@ export async function fetchVideos({
 
 export async function fetchVideo(videoId: string): Promise<VideoWithCreator> {
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .select('*')
     .eq('id', videoId)
     .single()
@@ -146,7 +146,7 @@ export async function fetchRelatedVideos(
   category?: string | null
 ): Promise<VideoWithCreator[]> {
   let primaryQuery = supabase
-    .from('videos')
+    .from('dental_videos')
     .select('*')
     .neq('id', videoId)
     .eq('status', 'published')
@@ -172,7 +172,7 @@ export async function fetchRelatedVideos(
   const { data: fallback, error: fallbackError } = await withTimeout<VideoQueryResult>(
     () =>
       supabase
-        .from('videos')
+        .from('dental_videos')
         .select('*')
         .neq('id', videoId)
         .neq('category', category)
@@ -194,7 +194,7 @@ export async function searchVideos(query: string): Promise<VideoWithCreator[]> {
 
   const escaped = term.replace(/[%_,]/g, '')
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .select('*')
     .eq('status', 'published')
     .eq('visibility', 'public')
@@ -210,7 +210,7 @@ export async function searchVideos(query: string): Promise<VideoWithCreator[]> {
 
 export async function fetchCreatorVideos(userId: string): Promise<VideoWithCreator[]> {
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .select('*')
     .eq('creator_id', userId)
     .eq('status', 'published')
@@ -223,7 +223,7 @@ export async function fetchCreatorVideos(userId: string): Promise<VideoWithCreat
 
 export async function fetchMyVideos(userId: string): Promise<VideoWithCreator[]> {
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .select(privateVideoSelect)
     .eq('creator_id', userId)
     .order('created_at', { ascending: false })
@@ -293,7 +293,7 @@ export async function fetchFollowingVideos(userId: string): Promise<VideoWithCre
   if (followingIds.length === 0) return []
 
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .select('*')
     .in('creator_id', followingIds)
     .eq('status', 'published')
@@ -379,7 +379,7 @@ export async function recordVideoView(userId: string, videoId: string) {
 }
 
 export async function deleteVideo(videoId: string) {
-  const { error } = await supabase.from('videos').delete().eq('id', videoId)
+  const { error } = await supabase.from('dental_videos').delete().eq('id', videoId)
   if (error) throw error
 }
 
@@ -440,7 +440,7 @@ export async function updateVideo(params: UpdateVideoParams) {
   }
 
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .update(updates)
     .eq('id', params.videoId)
     .eq('creator_id', params.user_id)
@@ -464,7 +464,7 @@ export type CreateVideoParams = {
 
 export async function createVideo(params: CreateVideoParams) {
   const { data, error } = await supabase
-    .from('videos')
+    .from('dental_videos')
     .insert({
       creator_id: params.creator_id,
       title: params.title,
