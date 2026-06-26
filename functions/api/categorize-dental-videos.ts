@@ -4,7 +4,7 @@ export async function onRequest(context: any) {
   try {
     const SUPABASE_URL = context.env.SUPABASE_URL || context.env.VITE_SUPABASE_URL;
     const SUPABASE_SERVICE_ROLE_KEY = context.env.SUPABASE_SERVICE_ROLE_KEY;
-    const GEMINI_API_KEY = context.env.GEMINI_API_KEY;
+    const GEMINI_API_KEY = context.env.GEMINI_API_KEY || context.env.VITE_GEMINI_API_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return new Response(JSON.stringify({ error: "Missing Supabase environment variables" }), { 
