@@ -110,8 +110,14 @@ export function AdminFetchVideos() {
     setResult(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
       const response = await fetch('/api/fetch-dental-videos', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       })
 
       if (!response.ok) {
@@ -150,8 +156,14 @@ export function AdminFetchVideos() {
     setCategorizeResult(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
       const response = await fetch('/api/categorize-dental-videos', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       })
 
       if (!response.ok) {
