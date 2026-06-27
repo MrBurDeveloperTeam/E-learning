@@ -2,12 +2,10 @@ import { VIDEO_CATEGORIES } from '@/types'
 import type { DentalCategory } from '@/types/dentalVideo'
 
 const CATEGORY_NORMALIZATION_MAP: Record<string, string> = {
-  'Pediatric Dentistry': 'Paediatric Dentistry',
   Periodontics: 'Periodontology',
 }
 
 const DENTAL_CATEGORY_FILTER_MAP: Record<string, string> = {
-  'Paediatric Dentistry': 'Pediatric Dentistry',
   Periodontology: 'Periodontics',
 }
 

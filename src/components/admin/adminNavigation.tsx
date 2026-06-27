@@ -9,12 +9,14 @@ import type { SidebarItem } from '@/components/layout/Sidebar'
 
 export type AdminSidebarBadges = {
   pendingUsers?: number
+  dentalReviewCount?: number
 }
 
 export function getAdminSidebarItems(
   badges: AdminSidebarBadges = {}
 ): SidebarItem[] {
   const pendingUsers = badges.pendingUsers ?? 0
+  const dentalReview = badges.dentalReviewCount ?? 0
 
   return [
     {
@@ -31,6 +33,7 @@ export function getAdminSidebarItems(
     {
       label: 'Content review',
       path: '/admin/content',
+      badge: dentalReview,
       icon: <ShieldEllipsis className="h-4 w-4" />,
     },
     {

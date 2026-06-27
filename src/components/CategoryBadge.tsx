@@ -24,6 +24,7 @@ export function CategoryBadge({ category, needsReview }: CategoryBadgeProps) {
   else if (label.includes('Oral Hygiene')) bgColor = 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/60';
   else if (label.includes('Radiology')) bgColor = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/60';
   else if (label.includes('General')) bgColor = 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800/60';
+  else if (label.includes('Implantology')) bgColor = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/60';
 
   return (
     <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${bgColor}`}>

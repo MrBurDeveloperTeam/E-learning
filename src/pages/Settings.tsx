@@ -57,9 +57,8 @@ const SPECIALTY_OPTIONS = [
   'Endodontics',
   'Periodontology',
   'Oral Surgery',
-  'Paediatric Dentistry',
+  'Pediatric Dentistry',
   'Prosthodontics',
-  'Practice Management',
 ]
 
 const TAB_META: Record<SettingsTab, { title: string; description: string }> = {
