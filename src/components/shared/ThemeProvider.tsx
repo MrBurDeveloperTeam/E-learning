@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import {
   applyThemeToDocument,
   broadcastTheme,
   normalizeTheme,
   persistTheme,
   pushThemeToOdoo,
+  readThemeCookie,
   readStoredTheme,
   resolveTheme,
   syncThemeFromOdoo,
@@ -46,6 +47,13 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(getInitialTheme)
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(getInitialTheme()))
 
+  const applySyncedTheme = useCallback((nextTheme: ThemePreference, options?: { broadcast?: boolean }) => {
+    setThemeState((currentTheme) => (currentTheme === nextTheme ? currentTheme : nextTheme))
+    applyThemeToDocument(nextTheme)
+    setResolvedTheme(resolveTheme(nextTheme))
+    if (options?.broadcast) broadcastTheme(nextTheme)
+  }, [])
+
   useEffect(() => {
     const nextResolvedTheme = resolveTheme(theme)
     applyThemeToDocument(theme)
@@ -66,21 +74,51 @@ export function ThemeProvider({
 
   useEffect(() => {
     syncThemeFromOdoo((odooTheme) => {
-      setThemeState(odooTheme)
-      applyThemeToDocument(odooTheme)
-      setResolvedTheme(resolveTheme(odooTheme))
-      broadcastTheme(odooTheme)
+      applySyncedTheme(odooTheme, { broadcast: true })
     })
-  }, [])
+  }, [applySyncedTheme])
+
+  useEffect(() => {
+    let lastCookie = readThemeCookie()
+
+    const syncFromCookie = () => {
+      const nextTheme = readThemeCookie()
+      if (!nextTheme) return
+
+      const currentPreference = normalizeTheme(document.documentElement.dataset.themePreference)
+      const needsCorrection = currentPreference !== nextTheme
+
+      if (nextTheme !== lastCookie || needsCorrection) {
+        lastCookie = nextTheme
+        applySyncedTheme(nextTheme)
+      }
+    }
+
+    // First run corrects stale Worker-injected or local theme immediately.
+    syncFromCookie()
+
+    const cookieInterval = window.setInterval(syncFromCookie, 1000)
+    const handleFocus = () => syncFromCookie()
+    const handleVisibilityChange = () => {
+      if (!document.hidden) syncFromCookie()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.clearInterval(cookieInterval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [applySyncedTheme])
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (!event.key || !['theme', 'vite-ui-theme', 'snabbb-theme'].includes(event.key)) return
       const nextTheme = normalizeTheme(event.newValue)
       if (!nextTheme) return
-      setThemeState(nextTheme)
-      applyThemeToDocument(nextTheme)
-      setResolvedTheme(resolveTheme(nextTheme))
+      applySyncedTheme(nextTheme)
     }
 
     const handleThemeSync = (event: Event) => {
@@ -88,9 +126,7 @@ export function ThemeProvider({
       if (customEvent.detail?.source === THEME_SYNC.appSource) return
       const nextTheme = normalizeTheme(customEvent.detail?.theme)
       if (!nextTheme) return
-      setThemeState(nextTheme)
-      applyThemeToDocument(nextTheme)
-      setResolvedTheme(resolveTheme(nextTheme))
+      applySyncedTheme(nextTheme)
     }
 
     const handlePostMessage = (event: MessageEvent) => {
@@ -98,9 +134,7 @@ export function ThemeProvider({
       if (data?.type !== THEME_SYNC.messageType || data?.source === THEME_SYNC.appSource) return
       const nextTheme = normalizeTheme(data.theme)
       if (!nextTheme) return
-      setThemeState(nextTheme)
-      applyThemeToDocument(nextTheme)
-      setResolvedTheme(resolveTheme(nextTheme))
+      applySyncedTheme(nextTheme)
     }
 
     window.addEventListener('storage', handleStorage)
@@ -112,7 +146,7 @@ export function ThemeProvider({
       window.removeEventListener(THEME_SYNC.eventName, handleThemeSync)
       window.removeEventListener('message', handlePostMessage)
     }
-  }, [])
+  }, [applySyncedTheme])
 
   const value = {
     theme,

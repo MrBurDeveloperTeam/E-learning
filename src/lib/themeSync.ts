@@ -2,8 +2,8 @@
  * themeSync.ts — Single source of truth for Snabbb theme sync.
  *
  * Snabbb mini-app strategy:
- * 1. Read the Worker-injected theme first: window.__SNABBB_THEME__.
- * 2. Read the cross-subdomain `snabbb-theme` cookie.
+ * 1. Read the cross-subdomain `snabbb-theme` cookie first.
+ * 2. Read the Worker-injected theme: window.__SNABBB_THEME__.
  * 3. Read Snabbb's Zustand localStorage key safely as a read-only fallback.
  * 4. Store this E-learning mini-app's fallback in localStorage['theme'] only.
  * 5. Apply the resolved theme to <html data-theme="..."> and Tailwind's .dark class globally.
@@ -111,11 +111,13 @@ const safeLocalStorageSet = (key: string, value: string): void => {
 export const readStoredTheme = (): ThemePreference | null => {
   if (typeof window === 'undefined') return null
 
-  const injectedTheme = normalizeTheme(window.__SNABBB_THEME__)
-  if (injectedTheme) return injectedTheme
-
+  // The shared cookie is the live cross-subdomain source of truth.
+  // It must win over Worker-injected values because injected HTML can be stale.
   const cookieTheme = readThemeCookie()
   if (cookieTheme) return cookieTheme
+
+  const injectedTheme = normalizeTheme(window.__SNABBB_THEME__)
+  if (injectedTheme) return injectedTheme
 
   // Read-only: owned by Snabbb's Zustand store on app.snabbb.com.
   const snabbbTheme = normalizeTheme(safeLocalStorageGet('snabbb-theme'))
@@ -203,11 +205,13 @@ export const syncThemeFromOdoo = async (onThemeChange?: (theme: ThemePreference)
     if (!odooTheme) return
 
     const cookieTheme = readThemeCookie()
-    if (odooTheme !== cookieTheme) {
-      writeThemeCookie(odooTheme)
-      writeStoredTheme(odooTheme)
-      onThemeChange?.(odooTheme)
-    }
+    // Appointment-style behavior: if a shared cookie already exists, it is the
+    // live source of truth. Do not let an older Odoo value overwrite it.
+    if (cookieTheme) return
+
+    writeThemeCookie(odooTheme)
+    writeStoredTheme(odooTheme)
+    onThemeChange?.(odooTheme)
   } catch {
     // Network/Odoo unavailable — cookie/local theme remains active.
   } finally {

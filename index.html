@@ -37,8 +37,8 @@
         function safeGet(key) {
           try { return window.localStorage.getItem(key); } catch (error) { return null; }
         }
-        var preferredTheme = normalizeTheme(window.__SNABBB_THEME__) ||
-          normalizeTheme(readCookie('snabbb-theme')) ||
+        var preferredTheme = normalizeTheme(readCookie('snabbb-theme')) ||
+          normalizeTheme(window.__SNABBB_THEME__) ||
           normalizeTheme(safeGet('snabbb-theme')) ||
           normalizeTheme(safeGet('theme')) ||
           normalizeTheme(safeGet('vite-ui-theme')) ||
