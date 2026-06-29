@@ -10,6 +10,7 @@ import {
   Lock,
   LogOut,
   MoonStar,
+  Monitor,
   Pencil,
   Shield,
   SunMedium,
@@ -177,12 +178,10 @@ export function Settings() {
     weeklySummary: true,
     productAnnouncements: false,
   })
-  const { resolvedTheme, setTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme } = useTheme()
 
   const passwordStrength = getPasswordStrength(newPassword)
   const avatarName = profile?.full_name ?? profile?.name ?? user?.email ?? 'DentalLearn User'
-  const appearanceMode: 'soft' | 'high-contrast' =
-    resolvedTheme === 'dark' ? 'high-contrast' : 'soft'
   const creatorApplicationQuery = useQuery({
     queryKey: ['creator-application', profile?.user_id],
     queryFn: async () => {
@@ -823,29 +822,55 @@ export function Settings() {
   function renderAppearancePanel() {
     return (
       <div className="px-6 py-6">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="mb-5 rounded-xl border border-[#D4E8E7] bg-white/80 p-4 text-xs text-[#6B8E8E] dark:border-border dark:bg-card/80 dark:text-muted-foreground">
+          Current Snabbb theme: <span className="font-medium text-[#1E3333] dark:text-foreground">{theme}</span> · Resolved as <span className="font-medium text-[#1E3333] dark:text-foreground">{resolvedTheme}</span>.
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
           <button
             type="button"
             onClick={() => setTheme('light')}
-            className={cn('rounded-xl border p-5 text-left transition-colors', appearanceMode === 'soft' ? 'border-[#88C1BD] bg-[#EAF4F3]' : 'border-[#D4E8E7] hover:border-[#88C1BD]')}
+            className={cn(
+              'rounded-xl border p-5 text-left transition-colors dark:bg-card dark:text-foreground',
+              theme === 'light'
+                ? 'border-[#88C1BD] bg-[#EAF4F3] dark:border-primary dark:bg-primary/10'
+                : 'border-[#D4E8E7] hover:border-[#88C1BD] dark:border-border dark:hover:border-primary'
+            )}
           >
-            <div className="mb-3 flex items-center gap-3 text-[#2D6E6A]"><SunMedium size={18} /><p className="text-sm font-medium text-[#1E3333]">Soft daylight</p></div>
-            <p className="text-xs text-[#6B8E8E]">Keep the current bright palette with soft teal accents and clean contrast.</p>
+            <div className="mb-3 flex items-center gap-3 text-[#2D6E6A] dark:text-primary"><SunMedium size={18} /><p className="text-sm font-medium text-[#1E3333] dark:text-foreground">Light</p></div>
+            <p className="text-xs text-[#6B8E8E] dark:text-muted-foreground">Use the bright Snabbb learning interface with soft teal accents.</p>
           </button>
           <button
             type="button"
             onClick={() => setTheme('dark')}
-            className={cn('rounded-xl border p-5 text-left transition-colors', appearanceMode === 'high-contrast' ? 'border-[#88C1BD] bg-[#EAF4F3]' : 'border-[#D4E8E7] hover:border-[#88C1BD]')}
+            className={cn(
+              'rounded-xl border p-5 text-left transition-colors dark:bg-card dark:text-foreground',
+              theme === 'dark'
+                ? 'border-[#88C1BD] bg-[#EAF4F3] dark:border-primary dark:bg-primary/10'
+                : 'border-[#D4E8E7] hover:border-[#88C1BD] dark:border-border dark:hover:border-primary'
+            )}
           >
-            <div className="mb-3 flex items-center gap-3 text-[#2D6E6A]"><MoonStar size={18} /><p className="text-sm font-medium text-[#1E3333]">High contrast preview</p></div>
-            <p className="text-xs text-[#6B8E8E]">Preview a stronger contrast direction for future readability controls and theme options.</p>
+            <div className="mb-3 flex items-center gap-3 text-[#2D6E6A] dark:text-primary"><MoonStar size={18} /><p className="text-sm font-medium text-[#1E3333] dark:text-foreground">Dark</p></div>
+            <p className="text-xs text-[#6B8E8E] dark:text-muted-foreground">Use the darker Snabbb mode for lower-light viewing.</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTheme('system')}
+            className={cn(
+              'rounded-xl border p-5 text-left transition-colors dark:bg-card dark:text-foreground',
+              theme === 'system'
+                ? 'border-[#88C1BD] bg-[#EAF4F3] dark:border-primary dark:bg-primary/10'
+                : 'border-[#D4E8E7] hover:border-[#88C1BD] dark:border-border dark:hover:border-primary'
+            )}
+          >
+            <div className="mb-3 flex items-center gap-3 text-[#2D6E6A] dark:text-primary"><Monitor size={18} /><p className="text-sm font-medium text-[#1E3333] dark:text-foreground">System</p></div>
+            <p className="text-xs text-[#6B8E8E] dark:text-muted-foreground">Follow the user’s device preference while staying synced with Snabbb.</p>
           </button>
         </div>
         <div className="mt-6">
           <PlaceholderPanel
             icon={MoonStar}
-            title="Appearance preferences are being prepared"
-            description="This section is ready for theme, density, and accessibility controls once those preferences are connected to the product shell."
+            title="Snabbb appearance sync is active"
+            description="Theme changes are shared through the Snabbb theme cookie and synced with Odoo when the user is authenticated."
             actionLabel="Keep current appearance"
             onAction={() => toast.success('Current appearance retained')}
           />

@@ -49,8 +49,22 @@
     --brand-neutral-600: 180 16% 49%;
     --brand-neutral-800: 180 20% 30%;
     --brand-neutral-900: 180 25% 16%;
+
+    /* Snabbb mini-app compatibility aliases */
+    --bg-primary: hsl(var(--background));
+    --bg-card: hsl(var(--card));
+    --bg-secondary: hsl(var(--secondary));
+    --surface: hsl(var(--card));
+    --surface-muted: hsl(var(--muted));
+    --text-primary: hsl(var(--foreground));
+    --text-secondary: hsl(var(--muted-foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --primary-color: hsl(var(--primary));
+    --border-color: hsl(var(--border));
+    --input-bg: hsl(var(--card));
   }
 
+  :root[data-theme="dark"],
   .dark {
     --background: 222 47% 6%;
     --foreground: 213 31% 91%;
@@ -80,6 +94,26 @@
     --brand-teal-600: 177 30% 75%;
     --brand-teal-800: 177 30% 85%;
     --brand-teal-900: 177 30% 92%;
+    --brand-neutral-50: 222 47% 8%;
+    --brand-neutral-100: 222 47% 12%;
+    --brand-neutral-200: 217 32% 17%;
+    --brand-neutral-400: 215 20% 65%;
+    --brand-neutral-600: 213 16% 78%;
+    --brand-neutral-800: 213 31% 91%;
+    --brand-neutral-900: 210 40% 98%;
+
+    /* Snabbb mini-app compatibility aliases */
+    --bg-primary: hsl(var(--background));
+    --bg-card: hsl(var(--card));
+    --bg-secondary: hsl(var(--secondary));
+    --surface: hsl(var(--card));
+    --surface-muted: hsl(var(--muted));
+    --text-primary: hsl(var(--foreground));
+    --text-secondary: hsl(var(--muted-foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --primary-color: hsl(var(--primary));
+    --border-color: hsl(var(--border));
+    --input-bg: hsl(var(--card));
   }
 }
 

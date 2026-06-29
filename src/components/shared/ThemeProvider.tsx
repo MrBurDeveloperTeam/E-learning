@@ -1,6 +1,19 @@
 import { createContext, useContext, useEffect, useState } from "react"
+import {
+  applyThemeToDocument,
+  broadcastTheme,
+  normalizeTheme,
+  persistTheme,
+  pushThemeToOdoo,
+  readStoredTheme,
+  resolveTheme,
+  syncThemeFromOdoo,
+  THEME_SYNC,
+  type ResolvedTheme,
+  type ThemePreference,
+} from "@/lib/themeSync"
 
-type Theme = "dark" | "light" | "system"
+type Theme = ThemePreference
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -10,7 +23,7 @@ type ThemeProviderProps = {
 
 type ThemeProviderState = {
   theme: Theme
-  resolvedTheme: Exclude<Theme, "system">
+  resolvedTheme: ResolvedTheme
   setTheme: (theme: Theme) => void
 }
 
@@ -22,56 +35,96 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
-function getSystemTheme(): Exclude<Theme, "system"> {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light"
-}
-
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "vite-ui-theme",
+  storageKey: _storageKey,
   ...props
 }: ThemeProviderProps) {
-  const [resolvedTheme, setResolvedTheme] = useState<Exclude<Theme, "system">>(
-    () => {
-      const savedTheme = (localStorage.getItem(storageKey) as Theme) || defaultTheme
-      return savedTheme === "system" ? getSystemTheme() : savedTheme
-    }
-  )
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
+  const getInitialTheme = () => readStoredTheme() || defaultTheme
+
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(getInitialTheme()))
 
   useEffect(() => {
-    const root = window.document.documentElement
-    const applyTheme = (nextTheme: Exclude<Theme, "system">) => {
-      root.classList.remove("light", "dark")
-      root.classList.add(nextTheme)
-      root.style.colorScheme = nextTheme
-      setResolvedTheme(nextTheme)
+    const nextResolvedTheme = resolveTheme(theme)
+    applyThemeToDocument(theme)
+    setResolvedTheme(nextResolvedTheme)
+
+    if (theme !== "system") return
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const syncSystemTheme = () => {
+      applyThemeToDocument("system")
+      setResolvedTheme(resolveTheme("system"))
+      broadcastTheme("system")
     }
 
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-      const syncSystemTheme = () => applyTheme(getSystemTheme())
-
-      syncSystemTheme()
-      mediaQuery.addEventListener("change", syncSystemTheme)
-
-      return () => mediaQuery.removeEventListener("change", syncSystemTheme)
-    }
-
-    applyTheme(theme)
+    mediaQuery.addEventListener("change", syncSystemTheme)
+    return () => mediaQuery.removeEventListener("change", syncSystemTheme)
   }, [theme])
+
+  useEffect(() => {
+    syncThemeFromOdoo((odooTheme) => {
+      setThemeState(odooTheme)
+      applyThemeToDocument(odooTheme)
+      setResolvedTheme(resolveTheme(odooTheme))
+      broadcastTheme(odooTheme)
+    })
+  }, [])
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || !['theme', 'vite-ui-theme', 'snabbb-theme'].includes(event.key)) return
+      const nextTheme = normalizeTheme(event.newValue)
+      if (!nextTheme) return
+      setThemeState(nextTheme)
+      applyThemeToDocument(nextTheme)
+      setResolvedTheme(resolveTheme(nextTheme))
+    }
+
+    const handleThemeSync = (event: Event) => {
+      const customEvent = event as CustomEvent<{ theme?: unknown; source?: string }>
+      if (customEvent.detail?.source === THEME_SYNC.appSource) return
+      const nextTheme = normalizeTheme(customEvent.detail?.theme)
+      if (!nextTheme) return
+      setThemeState(nextTheme)
+      applyThemeToDocument(nextTheme)
+      setResolvedTheme(resolveTheme(nextTheme))
+    }
+
+    const handlePostMessage = (event: MessageEvent) => {
+      const data = event.data
+      if (data?.type !== THEME_SYNC.messageType || data?.source === THEME_SYNC.appSource) return
+      const nextTheme = normalizeTheme(data.theme)
+      if (!nextTheme) return
+      setThemeState(nextTheme)
+      applyThemeToDocument(nextTheme)
+      setResolvedTheme(resolveTheme(nextTheme))
+    }
+
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(THEME_SYNC.eventName, handleThemeSync)
+    window.addEventListener('message', handlePostMessage)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(THEME_SYNC.eventName, handleThemeSync)
+      window.removeEventListener('message', handlePostMessage)
+    }
+  }, [])
 
   const value = {
     theme,
     resolvedTheme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    setTheme: (nextTheme: Theme) => {
+      const normalizedTheme = normalizeTheme(nextTheme) || defaultTheme
+      setThemeState(normalizedTheme)
+      persistTheme(normalizedTheme)
+      applyThemeToDocument(normalizedTheme)
+      setResolvedTheme(resolveTheme(normalizedTheme))
+      broadcastTheme(normalizedTheme)
+      pushThemeToOdoo(normalizedTheme)
     },
   }
 

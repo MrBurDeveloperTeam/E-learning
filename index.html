@@ -5,6 +5,54 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <script>
+      (function () {
+        var validThemes = { light: true, dark: true, system: true };
+        function normalizeTheme(value) {
+          if (!value) return null;
+          var raw = String(value).trim();
+          try {
+            var parsed = JSON.parse(raw);
+            if (typeof parsed === 'string') raw = parsed;
+            else if (parsed && parsed.state && parsed.state.theme) raw = parsed.state.theme;
+            else if (parsed && parsed.theme) raw = parsed.theme;
+          } catch (error) {}
+          raw = String(raw).trim().toLowerCase();
+          return validThemes[raw] ? raw : null;
+        }
+        function readCookie(name) {
+          var parts = document.cookie ? document.cookie.split(';') : [];
+          for (var i = 0; i < parts.length; i += 1) {
+            var part = parts[i].trim();
+            if (part.indexOf(name + '=') === 0) return decodeURIComponent(part.slice(name.length + 1));
+          }
+          return null;
+        }
+        function getSystemTheme() {
+          return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        function resolveTheme(theme) {
+          return theme === 'system' ? getSystemTheme() : (theme === 'dark' ? 'dark' : 'light');
+        }
+        function safeGet(key) {
+          try { return window.localStorage.getItem(key); } catch (error) { return null; }
+        }
+        var preferredTheme = normalizeTheme(window.__SNABBB_THEME__) ||
+          normalizeTheme(readCookie('snabbb-theme')) ||
+          normalizeTheme(safeGet('snabbb-theme')) ||
+          normalizeTheme(safeGet('theme')) ||
+          normalizeTheme(safeGet('vite-ui-theme')) ||
+          'light';
+        var resolvedTheme = resolveTheme(preferredTheme);
+        window.__SNABBB_THEME__ = preferredTheme;
+        document.documentElement.setAttribute('data-theme', resolvedTheme);
+        document.documentElement.setAttribute('data-theme-preference', preferredTheme);
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(resolvedTheme);
+        document.documentElement.style.colorScheme = resolvedTheme;
+      })();
+    </script>
+
     <!-- Primary meta -->
     <title>DentalLearn — Dental Video Community</title>
     <meta name="description"
