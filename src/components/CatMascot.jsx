@@ -2,28 +2,75 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getPetOption, normalizePetId } from '../VirtualPet/petOptions';
 
-const MALLOW_SPRITESHEET_URL = '/images/mallow-spritesheet.webp';
 const MALLOW_FRAME_WIDTH = 192;
 const MALLOW_FRAME_HEIGHT = 208;
 const MALLOW_SCALE = 0.42;
+const PET_SLEEPING_KEY = 'pet_is_sleeping';
+const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
 const MALLOW_ROWS = {
   idle: { row: 0, frames: 6, duration: '1.1s' },
   runRight: { row: 1, frames: 8, duration: '0.7s' },
   runLeft: { row: 2, frames: 8, duration: '0.7s' },
   wave: { row: 3, frames: 4, duration: '0.8s' },
-  review: { row: 8, frames: 6, duration: '1.5s' },
+  review: { row: 3, frames: 4, duration: '0.8s' },
+  sleep: { row: 5, frames: 1, duration: '1s', frame: 4 },
 };
 
-function MallowMascotSprite({ isWalking, facingLeft, isMeowing, isHovered, onHoverStart, onHoverEnd }) {
-  const shouldReview = isHovered && !isWalking;
-  const stateClass = shouldReview ? 'review' : isWalking ? (facingLeft ? 'run-left' : 'run-right') : 'idle';
-  const config = shouldReview ? MALLOW_ROWS.review : isMeowing && !isWalking ? MALLOW_ROWS.wave : facingLeft && isWalking ? MALLOW_ROWS.runLeft : isWalking ? MALLOW_ROWS.runRight : MALLOW_ROWS.idle;
+function MallowMascotSprite({
+  spriteSheetUrl,
+  sleepHoldFrame,
+  idleFrames,
+  idleDuration,
+  hoverRow,
+  hoverFrames,
+  hoverDuration,
+  clickRow,
+  clickFrames,
+  clickDuration,
+  isWalking,
+  facingLeft,
+  isMeowing,
+  isHovered,
+  isSleeping,
+  onHoverStart,
+  onHoverEnd,
+}) {
+  const shouldSleep = isSleeping && !isWalking && !isMeowing;
+  const shouldReview = isHovered && !isWalking && !shouldSleep;
+  const stateClass = shouldSleep ? 'sleep' : shouldReview ? 'review' : isWalking ? (facingLeft ? 'run-left' : 'run-right') : 'idle';
+  const reviewConfig = {
+    row: hoverRow ?? MALLOW_ROWS.review.row,
+    frames: hoverFrames ?? MALLOW_ROWS.review.frames,
+    duration: hoverDuration ?? MALLOW_ROWS.review.duration,
+  };
+  const clickConfig = {
+    row: clickRow ?? MALLOW_ROWS.wave.row,
+    frames: clickFrames ?? MALLOW_ROWS.wave.frames,
+    duration: clickDuration ?? MALLOW_ROWS.wave.duration,
+  };
+  const idleConfig = {
+    ...MALLOW_ROWS.idle,
+    frames: idleFrames ?? MALLOW_ROWS.idle.frames,
+    duration: idleDuration ?? MALLOW_ROWS.idle.duration,
+  };
+  const config = shouldSleep
+    ? { ...MALLOW_ROWS.sleep, frame: sleepHoldFrame ?? MALLOW_ROWS.sleep.frame }
+    : shouldReview
+      ? reviewConfig
+      : isMeowing && !isWalking
+        ? clickConfig
+        : facingLeft && isWalking
+          ? MALLOW_ROWS.runLeft
+          : isWalking
+            ? MALLOW_ROWS.runRight
+            : idleConfig;
 
   return (
     <div
       className={`mallow-mascot ${stateClass} frames-${config.frames} ${isMeowing ? 'is-talking' : ''}`}
-      aria-label={`Mallow pet ${stateClass}`}
+      aria-label={`Selected pet ${stateClass}`}
       onPointerEnter={onHoverStart}
       onMouseEnter={onHoverStart}
       onMouseOver={onHoverStart}
@@ -33,6 +80,8 @@ function MallowMascotSprite({ isWalking, facingLeft, isMeowing, isHovered, onHov
         '--sprite-row': config.row,
         '--sprite-frames': config.frames,
         '--sprite-duration': config.duration,
+        '--sprite-frame': config.frame ?? 0,
+        '--pet-spritesheet': `url("${spriteSheetUrl}")`,
       }}
     />
   );
@@ -44,6 +93,9 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMeowing, setIsMeowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isPetSleeping, setIsPetSleeping] = useState(false);
+  const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(localStorage.getItem('pet_name')));
+  const selectedPet = getPetOption(selectedPetId);
   const [walkDuration, setWalkDuration] = useState(0.8);
 
   const [dialogStep, setDialogStep] = useState(0);
@@ -134,6 +186,37 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       try { updateStateFromStats(JSON.parse(saved), lastSavedAt); } catch (e) { /* ignore */ }
     }
 
+    const readLocalSleepState = () => {
+      const savedSleeping = localStorage.getItem(PET_SLEEPING_KEY);
+      if (savedSleeping !== null) {
+        setIsPetSleeping(savedSleeping === 'true');
+      }
+    };
+
+    readLocalSleepState();
+    setSelectedPetId(normalizePetId(localStorage.getItem('pet_name')));
+
+    const handlePetSleepChange = (event) => {
+      setIsPetSleeping(!!event.detail);
+    };
+
+    const handlePetSelectionChange = (event) => {
+      setSelectedPetId(normalizePetId(event.detail));
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === PET_SLEEPING_KEY) {
+        setIsPetSleeping(event.newValue === 'true');
+      }
+      if (event.key === 'pet_name') {
+        setSelectedPetId(normalizePetId(event.newValue));
+      }
+    };
+
+    window.addEventListener('virtual-pet-sleep-change', handlePetSleepChange);
+    window.addEventListener('virtual-pet-selection-change', handlePetSelectionChange);
+    window.addEventListener('storage', handleStorage);
+
     // 2. Fetch from Supabase for latest data
     const fetchStats = async () => {
       if (document.visibilityState !== 'visible') return;
@@ -143,11 +226,16 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
         const { data, error } = await supabase
           .from('inventory_pet')
-          .select('hunger, hygiene, energy, happiness, updated_at')
+          .select('hunger, hygiene, energy, happiness, is_sleeping, pet_name, updated_at')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
         if (data && !error) {
+          const nextSleeping = !!data.is_sleeping;
+          setIsPetSleeping(nextSleeping);
+          localStorage.setItem(PET_SLEEPING_KEY, String(nextSleeping));
+          localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, data.updated_at || new Date().toISOString());
+          setSelectedPetId(normalizePetId(data.pet_name));
           updateStateFromStats(data, data.updated_at);
         }
       } catch (err) {
@@ -157,7 +245,12 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
     fetchStats();
     const interval = setInterval(fetchStats, 120000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('virtual-pet-sleep-change', handlePetSleepChange);
+      window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [disabled]);
 
   useEffect(() => {
@@ -540,9 +633,10 @@ export default function CatMascot({ onCatClick, disabled = false }) {
           text-rendering: optimizeLegibility;
         }
         .mallow-mascot {
+          position: relative;
           width: ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px;
           height: ${MALLOW_FRAME_HEIGHT * MALLOW_SCALE}px;
-          background-image: url("${MALLOW_SPRITESHEET_URL}");
+          background-image: var(--pet-spritesheet);
           background-repeat: no-repeat;
           background-size: ${MALLOW_FRAME_WIDTH * 8 * MALLOW_SCALE}px ${MALLOW_FRAME_HEIGHT * 9 * MALLOW_SCALE}px;
           background-position-y: calc(-1 * var(--sprite-row) * ${MALLOW_FRAME_HEIGHT * MALLOW_SCALE}px);
@@ -562,15 +656,13 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         .mallow-mascot.review {
           animation-name: mallow-sprite;
         }
-        .mallow-mascot.idle:hover {
-          --sprite-row: 8 !important;
-          --sprite-frames: 6 !important;
-          --sprite-duration: 1s !important;
-          animation-name: mallow-sprite;
-        }
         @keyframes mallow-sprite {
           from { background-position-x: 0; }
           to { background-position-x: calc(-1 * var(--sprite-frames) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px); }
+        }
+        @keyframes mascot-sleep-float {
+          0%, 100% { transform: translateY(0); opacity: 0.65; }
+          50% { transform: translateY(-4px); opacity: 1; }
         }
       `}</style>
 
@@ -668,10 +760,21 @@ export default function CatMascot({ onCatClick, disabled = false }) {
           style={{ pointerEvents: 'auto' }}
         >
           <MallowMascotSprite
+            spriteSheetUrl={selectedPet.spriteSheetUrl}
+            sleepHoldFrame={selectedPet.sleepHoldFrame}
+            idleFrames={selectedPet.idleFrames}
+            idleDuration={selectedPet.idleDuration}
+            hoverRow={selectedPet.hoverRow}
+            hoverFrames={selectedPet.hoverFrames}
+            hoverDuration={selectedPet.hoverDuration}
+            clickRow={selectedPet.clickRow}
+            clickFrames={selectedPet.clickFrames}
+            clickDuration={selectedPet.clickDuration}
             isWalking={isWalking}
             facingLeft={facingLeft}
             isMeowing={isMeowing}
             isHovered={isHovered}
+            isSleeping={isPetSleeping}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
           />

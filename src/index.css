@@ -10,6 +10,56 @@
   font-family: "Fredoka", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.pet-interface {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.pet-interface .text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.pet-interface .text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.pet-interface .text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.pet-interface .text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.pet-interface .text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.pet-interface .text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.pet-interface .text-3xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
+.pet-interface .text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+}
+
+.pet-interface .text-5xl {
+  font-size: 3rem;
+  line-height: 1;
+}
+
 @layer base {
   :root {
     --background: 173 20% 97%;
@@ -215,6 +265,13 @@
     scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
   .safe-area-pb {
