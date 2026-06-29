@@ -1,16 +1,49 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { PetStats, PetColor, RoomType, FoodItem } from '../types';
-import { INITIAL_STATS, XP_TO_LEVEL_UP, INITIAL_INVENTORY, FOOD_ITEMS } from '../constants';
+import { PetStats, RoomType, FoodItem } from '../types';
+import { BED_ITEMS, INITIAL_STATS, XP_TO_LEVEL_UP, INITIAL_INVENTORY, FOOD_ITEMS, TOY_ITEMS } from '../constants';
 import { supabase } from '../../lib/supabase';
+import { DEFAULT_PET_ID, normalizePetId } from '../petOptions';
 
+type SoapInventory = Record<'soap' | 'soap2', number>;
+type PricingItemRow = {
+    item_id: string;
+    name: string;
+    emoji?: string | null;
+    category_id?: string | null;
+    base_price_usd?: string | number | null;
+    hunger?: number | null;
+    happiness?: number | null;
+    hygiene?: number | null;
+    energy_gain?: number | null;
+    image_src?: string | null;
+    unlock_level?: number | null;
+};
+
+const DEFAULT_CURRENCY_CODE = 'USD';
+
+const normalizeCurrencyCode = (currency?: string | null) => {
+    const normalized = (currency || '').trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(normalized) ? normalized : DEFAULT_CURRENCY_CODE;
+};
+type PetInventoryRow = {
+    item_id: string;
+    quantity: number;
+};
+const TOY_ITEM_IDS = TOY_ITEMS.map((toy) => toy.id);
+const ACTIVE_BED_KEY = 'pet_active_bed';
+const ACTIVE_BED_DEFAULT_MIGRATION_KEY = 'pet_active_bed_default_none_v1';
+const PET_SLEEPING_KEY = 'pet_is_sleeping';
+const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
+const PET_ADOPTION_CONFIRMED_KEY = 'pet_adoption_confirmed';
 
 interface GameStateContextType {
     stats: PetStats;
     setStats: React.Dispatch<React.SetStateAction<PetStats>>;
     petName: string;
     setPetName: (name: string) => void;
-    petColor: PetColor;
-    setPetColor: (color: PetColor) => void;
+    hasAdoptedPet: boolean;
+    isPetAdoptionReady: boolean;
+    adoptPet: (name: string) => Promise<boolean>;
     currentRoom: RoomType;
     setCurrentRoom: (room: RoomType) => void;
     isSleeping: boolean;
@@ -20,11 +53,15 @@ interface GameStateContextType {
     isPlaying: boolean;
     setIsPlaying: (is: boolean) => void;
     inventory: Record<string, number>;
+    soapInventory: SoapInventory;
+    setSoapInventory: React.Dispatch<React.SetStateAction<SoapInventory>>;
     buyItem: (itemId: string, price: number) => boolean;
     consumeItem: (itemId: string) => void;
     addXP: (amount: number) => void;
     activeBallId: string;
     setActiveBallId: (id: string) => void;
+    activeBedId: string | null;
+    setActiveBedId: (id: string | null) => void;
     foodItems: FoodItem[];
     isFoodLoading: boolean;
     currencyCode: string;
@@ -33,20 +70,26 @@ interface GameStateContextType {
 
 const GameStateContext = createContext<GameStateContextType | undefined>(undefined);
 
-export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCode?: string }> = ({ children, currencyCode: initialCurrencyCode = 'USD' }) => {
+export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCode?: string }> = ({ children, currencyCode: initialCurrencyCode = DEFAULT_CURRENCY_CODE }) => {
     const [userId, setUserId] = useState<string | null>(null);
     const [stats, setStats] = useState<PetStats>(INITIAL_STATS);
-    const [petName, setPetName] = useState("Molar");
-    const [petColor, setPetColor] = useState<PetColor>(PetColor.POTATO);
+    const [petName, _setPetName] = useState(DEFAULT_PET_ID);
+    const [hasAdoptedPet, setHasAdoptedPet] = useState(false);
+    const [isPetAdoptionReady, setIsPetAdoptionReady] = useState(false);
+    const setPetName = (name: string) => {
+        if (!hasAdoptedPet) _setPetName(normalizePetId(name));
+    };
     const [currentRoom, setCurrentRoom] = useState<RoomType>(RoomType.KITCHEN);
     const [inventory, setInventory] = useState<Record<string, number>>(INITIAL_INVENTORY);
+    const [soapInventory, setSoapInventory] = useState<SoapInventory>({ soap: 0, soap2: 0 });
     const [isSleeping, setIsSleeping] = useState(false);
     const [isEating, setIsEating] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeBallId, setActiveBallId] = useState<string>('ball_red');
+    const [activeBedId, setActiveBedId] = useState<string | null>(null);
     const [foodItems, setFoodItems] = useState<FoodItem[]>(FOOD_ITEMS);
     const [isFoodLoading, setIsFoodLoading] = useState(true);
-    const [currencyCode, setCurrencyCode] = useState(initialCurrencyCode);
+    const [currencyCode, setCurrencyCode] = useState(() => normalizeCurrencyCode(initialCurrencyCode));
     const [currencyRate, setCurrencyRate] = useState(1);
 
     const isHydrated = useRef(false);
@@ -59,18 +102,21 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             try {
                 const { data, error } = await supabase
                     .from('aiboard_pricing_items')
-                    .select('item_id, name, emoji, category_id, base_price_usd, hunger, happiness, unlock_level')
+                    .select('item_id, name, emoji, category_id, base_price_usd, hunger, happiness, hygiene, energy_gain, image_src, unlock_level')
                     .order('unlock_level', { ascending: true });
 
                 if (data && !error && data.length > 0) {
-                    const mapped: FoodItem[] = data.map(row => ({
+                    const mapped: FoodItem[] = data.map((row: PricingItemRow) => ({
                         id: row.item_id,
                         icon: row.emoji || '🍽️',
                         label: row.name,
                         hunger: row.hunger ?? 10,
                         happiness: row.happiness ?? 0,
-                        xp: Math.max(1, Math.round((row.hunger ?? 10) / 2)),
-                        price: parseFloat(row.base_price_usd) || 0,
+                        hygiene: row.hygiene ?? 0,
+                        energyGain: row.energy_gain ?? 0,
+                        imageSrc: row.image_src || undefined,
+                        xp: Math.max(1, Math.round(Math.max(row.hunger ?? 0, row.happiness ?? 0, row.hygiene ?? 0, row.energy_gain ?? 0, 2) / 2)),
+                        price: parseFloat(String(row.base_price_usd ?? 0)) || 0,
                         category: row.category_id
                             ? row.category_id.charAt(0).toUpperCase() + row.category_id.slice(1)
                             : 'Other',
@@ -91,8 +137,9 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
     // Fetch currency rate from Supabase when currencyCode changes
     useEffect(() => {
         const fetchRate = async () => {
-            if (!initialCurrencyCode || initialCurrencyCode === 'USD') {
-                setCurrencyCode('USD');
+            const requestedCurrency = normalizeCurrencyCode(initialCurrencyCode);
+            if (requestedCurrency === DEFAULT_CURRENCY_CODE) {
+                setCurrencyCode(DEFAULT_CURRENCY_CODE);
                 setCurrencyRate(1);
                 return;
             }
@@ -100,21 +147,21 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                 const { data, error } = await supabase
                     .from('aiboard_pricing_currencies')
                     .select('currency_code, rate')
-                    .eq('currency_code', initialCurrencyCode)
+                    .ilike('currency_code', requestedCurrency)
                     .maybeSingle();
 
                 if (data && !error) {
-                    setCurrencyCode(data.currency_code);
-                    setCurrencyRate(parseFloat(data.rate));
+                    setCurrencyCode(normalizeCurrencyCode(data.currency_code));
+                    setCurrencyRate(Number(data.rate) || 1);
                     console.log(`[Currency] ${data.currency_code} rate: ${data.rate}`);
                 } else {
                     // Fallback to USD if not found
-                    setCurrencyCode('USD');
+                    setCurrencyCode(DEFAULT_CURRENCY_CODE);
                     setCurrencyRate(1);
                 }
             } catch (err) {
                 console.warn('[Currency] Failed to fetch rate:', err);
-                setCurrencyCode('USD');
+                setCurrencyCode(DEFAULT_CURRENCY_CODE);
                 setCurrencyRate(1);
             }
         };
@@ -138,9 +185,11 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             // Load from localStorage as fallback
             const savedStats = localStorage.getItem('pet_stats');
             const savedName = localStorage.getItem('pet_name');
-            const savedColor = localStorage.getItem('pet_color');
+            const savedPetAdoptionConfirmed = localStorage.getItem(PET_ADOPTION_CONFIRMED_KEY) === 'true';
             const savedInv = localStorage.getItem('pet_inventory');
             const savedLastSavedAt = localStorage.getItem('pet_last_saved_at');
+            const savedSleeping = localStorage.getItem(PET_SLEEPING_KEY);
+            const savedSleepingUpdatedAt = localStorage.getItem(PET_SLEEPING_UPDATED_AT_KEY);
 
             let loadedStats: PetStats | null = savedStats ? JSON.parse(savedStats) : null;
 
@@ -160,11 +209,27 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             }
 
             if (loadedStats) setStats(loadedStats);
-            if (savedName) setPetName(savedName);
-            if (savedColor) setPetColor(savedColor as PetColor);
+            if (savedSleeping !== null) setIsSleeping(savedSleeping === 'true');
+            if (savedName && savedPetAdoptionConfirmed) {
+                const adoptedPet = normalizePetId(savedName);
+                _setPetName(adoptedPet);
+                setHasAdoptedPet(true);
+            }
             const savedBall = localStorage.getItem('pet_active_ball');
             if (savedBall) setActiveBallId(savedBall);
+            const savedBed = localStorage.getItem(ACTIVE_BED_KEY);
+            const hasMigratedDefaultBed = localStorage.getItem(ACTIVE_BED_DEFAULT_MIGRATION_KEY) === 'true';
+            if (savedBed === 'bed_grey' && !hasMigratedDefaultBed) {
+                localStorage.removeItem(ACTIVE_BED_KEY);
+                localStorage.setItem(ACTIVE_BED_DEFAULT_MIGRATION_KEY, 'true');
+            } else {
+                if (savedBed) setActiveBedId(savedBed);
+                if (!hasMigratedDefaultBed) {
+                    localStorage.setItem(ACTIVE_BED_DEFAULT_MIGRATION_KEY, 'true');
+                }
+            }
             if (savedInv) setInventory(JSON.parse(savedInv));
+            localStorage.removeItem('virtual_pet_bathroom_soap_inventory');
 
             // Load from Supabase if logged in (overriding localStorage)
             if (currentUserId) {
@@ -174,6 +239,13 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                         .select('*')
                         .eq('user_id', currentUserId)
                         .maybeSingle();
+
+                    if (!petData && !petErr) {
+                        _setPetName(DEFAULT_PET_ID);
+                        setHasAdoptedPet(false);
+                        localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
+                        localStorage.removeItem('pet_name');
+                    }
 
                     if (petData && !petErr) {
                         // Apply offline decay using Supabase updated_at timestamp
@@ -202,10 +274,33 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                             console.log(`[VirtualPet] Applied ${Math.round(elapsedSecs)}s of offline decay (Supabase)`);
                         }
 
+                        const localSleepUpdatedAt = savedSleepingUpdatedAt
+                            ? new Date(savedSleepingUpdatedAt).getTime()
+                            : 0;
+                        const remoteUpdatedAt = petData.updated_at
+                            ? new Date(petData.updated_at).getTime()
+                            : 0;
+                        const shouldUseLocalSleep =
+                            savedSleeping !== null &&
+                            localSleepUpdatedAt > 0 &&
+                            localSleepUpdatedAt >= remoteUpdatedAt;
+
                         setStats(decayedStats);
-                        if (petData.pet_name) setPetName(petData.pet_name);
-                        if (petData.pet_color) setPetColor(petData.pet_color as PetColor);
+                        if (petData.pet_name) {
+                            const adoptedPet = normalizePetId(petData.pet_name);
+                            _setPetName(adoptedPet);
+                            setHasAdoptedPet(true);
+                            localStorage.setItem('pet_name', adoptedPet);
+                            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+                        } else {
+                            _setPetName(DEFAULT_PET_ID);
+                            setHasAdoptedPet(false);
+                            localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
+                            localStorage.removeItem('pet_name');
+                        }
+                        setIsSleeping(shouldUseLocalSleep ? savedSleeping === 'true' : !!petData.is_sleeping);
                         if (petData.active_ball_id) setActiveBallId(petData.active_ball_id);
+                        setActiveBedId(petData.active_bed_id || null);
                     }
 
                     const { data: invData, error: invErr } = await supabase
@@ -215,8 +310,13 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
 
                     if (invData && !invErr && invData.length > 0) {
                         const newInv: Record<string, number> = {};
-                        invData.forEach(row => {
-                            newInv[row.item_id] = row.quantity;
+                        invData.forEach((row: PetInventoryRow) => {
+                            if (row.item_id === 'soap' || row.item_id === 'soap2') return;
+                            if (TOY_ITEM_IDS.includes(row.item_id)) {
+                                newInv[row.item_id] = row.quantity > 0 ? 1 : 0;
+                            } else {
+                                newInv[row.item_id] = row.quantity;
+                            }
                         });
                         setInventory(newInv);
                     }
@@ -225,6 +325,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                 }
             }
             
+            setIsPetAdoptionReady(true);
             isHydrated.current = true;
         };
 
@@ -239,18 +340,28 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
 
         saveTimeout.current = setTimeout(async () => {
             localStorage.setItem('pet_stats', JSON.stringify(stats));
-            localStorage.setItem('pet_name', petName);
-            localStorage.setItem('pet_color', petColor);
+            if (hasAdoptedPet) {
+                localStorage.setItem('pet_name', petName);
+                localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+            } else {
+                localStorage.removeItem('pet_name');
+                localStorage.removeItem(PET_ADOPTION_CONFIRMED_KEY);
+            }
             localStorage.setItem('pet_active_ball', activeBallId);
+            if (activeBedId) {
+                localStorage.setItem(ACTIVE_BED_KEY, activeBedId);
+            } else {
+                localStorage.removeItem(ACTIVE_BED_KEY);
+            }
             localStorage.setItem('pet_inventory', JSON.stringify(inventory));
+            localStorage.setItem(PET_SLEEPING_KEY, String(isSleeping));
             localStorage.setItem('pet_last_saved_at', new Date().toISOString());
 
             if (userId) {
                 try {
                     await supabase.from('inventory_pet').upsert({
                         user_id: userId,
-                        pet_name: petName,
-                        pet_color: petColor,
+                        pet_name: hasAdoptedPet ? petName : null,
                         hunger: stats.hunger,
                         energy: stats.energy,
                         happiness: stats.happiness,
@@ -260,16 +371,21 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
                         coins: stats.coins,
                         is_sleeping: isSleeping,
                         active_ball_id: activeBallId,
+                        active_bed_id: activeBedId,
                         updated_at: new Date().toISOString()
                     });
 
                     // Fast full sync for pet_inventory: delete all & re-insert
                     await supabase.from('pet_inventory').delete().eq('user_id', userId);
                     
-                    const invRows = Object.entries(inventory).map(([itemId, qty]) => ({
+                    const combinedInventory: Record<string, number> = inventory;
+
+                    const invRows = Object.entries(combinedInventory)
+                        .filter(([, qty]) => qty > 0)
+                        .map(([itemId, qty]) => ({
                         user_id: userId,
                         item_id: itemId,
-                        quantity: qty
+                        quantity: TOY_ITEM_IDS.includes(itemId) ? 1 : qty
                     }));
 
                     if (invRows.length > 0) {
@@ -284,16 +400,37 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         return () => {
             if (saveTimeout.current) clearTimeout(saveTimeout.current);
         };
-    }, [stats, petName, petColor, inventory, isSleeping, activeBallId, userId]);
+    }, [stats, petName, hasAdoptedPet, inventory, isSleeping, activeBallId, activeBedId, userId]);
+
+    useEffect(() => {
+        if (!isHydrated.current) return;
+
+        localStorage.setItem(PET_SLEEPING_KEY, String(isSleeping));
+        localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, new Date().toISOString());
+        window.dispatchEvent(new CustomEvent('virtual-pet-sleep-change', { detail: isSleeping }));
+    }, [isSleeping]);
+
+    useEffect(() => {
+        if (!isHydrated.current) return;
+
+        const activePetId = normalizePetId(petName);
+        if (hasAdoptedPet) {
+            localStorage.setItem('pet_name', activePetId);
+            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+        }
+        window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: activePetId }));
+    }, [petName, hasAdoptedPet]);
 
     // Game Loop (Stats decay)
     useEffect(() => {
         const timer = setInterval(() => {
             setStats(prev => {
                 if (isSleeping) {
+                    const activeBed = foodItems.find(item => item.id === activeBedId && item.category === 'Beds');
+                    const fallbackBed = BED_ITEMS.find(bed => bed.id === activeBedId);
                     return {
                         ...prev,
-                        energy: Math.min(100, prev.energy + 2),
+                        energy: Math.min(100, prev.energy + (activeBed?.energyGain || fallbackBed?.energyGain || 1)),
                         hunger: Math.max(0, prev.hunger - 0.2),
                         hygiene: Math.max(0, prev.hygiene - 0.1)
                     };
@@ -310,7 +447,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         }, 5000); // Slower decay for background sync
 
         return () => clearInterval(timer);
-    }, [isSleeping]);
+    }, [isSleeping, activeBedId, foodItems]);
 
     const addXP = (amount: number) => {
         setStats(prev => {
@@ -332,6 +469,44 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
             }
             return { ...prev, xp: newXP, level: newLevel };
         });
+    };
+
+    const adoptPet = async (name: string) => {
+        if (hasAdoptedPet) return false;
+
+        const adoptedPet = normalizePetId(name);
+
+        try {
+            if (userId) {
+                const { error } = await supabase.from('inventory_pet').upsert({
+                    user_id: userId,
+                    pet_name: adoptedPet,
+                    hunger: stats.hunger,
+                    energy: stats.energy,
+                    happiness: stats.happiness,
+                    hygiene: stats.hygiene,
+                    level: stats.level,
+                    xp: stats.xp,
+                    coins: stats.coins,
+                    is_sleeping: isSleeping,
+                    active_ball_id: activeBallId,
+                    active_bed_id: activeBedId,
+                    updated_at: new Date().toISOString()
+                });
+
+                if (error) throw error;
+            }
+
+            _setPetName(adoptedPet);
+            setHasAdoptedPet(true);
+            localStorage.setItem('pet_name', adoptedPet);
+            localStorage.setItem(PET_ADOPTION_CONFIRMED_KEY, 'true');
+            window.dispatchEvent(new CustomEvent('virtual-pet-selection-change', { detail: adoptedPet }));
+            return true;
+        } catch (err) {
+            console.error('Failed to adopt pet', err);
+            return false;
+        }
     };
 
     const buyItem = (itemId: string, price: number) => {
@@ -362,17 +537,23 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode; currencyCo
         <GameStateContext.Provider value={{
             stats, setStats,
             petName, setPetName,
-            petColor, setPetColor,
+            hasAdoptedPet,
+            isPetAdoptionReady,
+            adoptPet,
             currentRoom, setCurrentRoom,
             isSleeping, setIsSleeping,
             isEating, setIsEating,
             isPlaying, setIsPlaying,
             inventory,
+            soapInventory,
+            setSoapInventory,
             buyItem,
             consumeItem,
             addXP,
             activeBallId,
             setActiveBallId,
+            activeBedId,
+            setActiveBedId,
             foodItems,
             isFoodLoading,
             currencyCode,

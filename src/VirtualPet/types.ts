@@ -8,15 +8,6 @@ export enum RoomType {
   GAMES = 'GAMES'
 }
 
-export enum PetColor {
-  POTATO = '#E8C39E',
-  PINK = '#FDA4BA',
-  BLUE = '#A0C4FF',
-  GREEN = '#B9FBC0',
-  PURPLE = '#E2C2FF',
-  ORANGE = '#FFC8A2'
-}
-
 export interface PetStats {
   hunger: number; // 0-100 (100 is full)
   energy: number; // 0-100 (100 is rested)
@@ -30,7 +21,6 @@ export interface PetStats {
 export interface GameState {
   stats: PetStats;
   name: string;
-  color: PetColor;
   isSleeping: boolean;
   lastInteraction: number;
   inventory: Record<string, number>;
@@ -51,6 +41,9 @@ export interface FoodItem {
   price: number;
   energy?: number;
   happiness?: number;
+  hygiene?: number;
+  energyGain?: number;
+  imageSrc?: string;
   category: string;
   levelReq?: number;
 }
@@ -68,6 +61,15 @@ export interface ToyItem {
   label: string;
   price: number;
   color: string;
+  levelReq?: number;
+}
+
+export interface BedItem {
+  id: string;
+  label: string;
+  price: number;
+  src: string;
+  energyGain: number;
   levelReq?: number;
 }
 
