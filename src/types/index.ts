@@ -86,9 +86,9 @@ export type VideoCategory =
   | 'Endodontics'
   | 'Periodontology'
   | 'Oral Surgery'
-  | 'Paediatric Dentistry'
+  | 'Pediatric Dentistry'
   | 'Prosthodontics'
-  | 'Practice Management'
+  | 'Oral Hygiene'
 
 export interface Video {
   id: string
@@ -233,9 +233,9 @@ export const VIDEO_CATEGORIES: VideoCategory[] = [
   'Endodontics',
   'Periodontology',
   'Oral Surgery',
-  'Paediatric Dentistry',
+  'Pediatric Dentistry',
   'Prosthodontics',
-  'Practice Management',
+  'Oral Hygiene',
 ]
 
 export const CATEGORY_SLUGS: Record<VideoCategory, string> = {
@@ -246,9 +246,9 @@ export const CATEGORY_SLUGS: Record<VideoCategory, string> = {
   Endodontics: 'endodontics',
   Periodontology: 'periodontology',
   'Oral Surgery': 'oral-surgery',
-  'Paediatric Dentistry': 'paediatric-dentistry',
+  'Pediatric Dentistry': 'pediatric-dentistry',
   Prosthodontics: 'prosthodontics',
-  'Practice Management': 'practice-management',
+  'Oral Hygiene': 'oral-hygiene',
 }
 
 export const SLUG_TO_CATEGORY: Record<string, VideoCategory> =

@@ -44,9 +44,25 @@ export function AdminLayout({
     staleTime: 30_000,
   })
 
+  const dentalReviewQuery = useQuery({
+    queryKey: ['admin-dental-review-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('dental_videos')
+        .select('*', { count: 'exact', head: true })
+        .eq('needs_review', true)
+
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 30_000,
+  })
+
   const resolvedSidebarBadges: AdminSidebarBadges = {
     pendingUsers:
       sidebarBadges?.pendingUsers ?? pendingUsersQuery.data ?? 0,
+    dentalReviewCount:
+      sidebarBadges?.dentalReviewCount ?? dentalReviewQuery.data ?? 0,
   }
 
   const sidebarItems = getAdminSidebarItems(resolvedSidebarBadges)
