@@ -52,7 +52,10 @@ function InnerApp() {
       <RouterProvider router={router} />
       {!isAuthRoute && (
         <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
+          {/* key forces remount when auth state changes: 'guest' → userId
+              This makes the entry-walk animation play after login, not before. */}
           <CatMascot
+            key={session?.user?.id ?? 'guest'}
             disabled={isLoading || !session?.user}
             onCatClick={() => setIsVirtualPetOpen(true)}
           />
