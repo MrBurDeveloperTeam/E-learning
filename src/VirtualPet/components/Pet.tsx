@@ -177,7 +177,8 @@ const Pet = forwardRef<HTMLDivElement, PetProps>(({
     : `0 -${sprite.row * FRAME_HEIGHT}px`;
   const isClickSprite = isClickReacting && !isSleeping && sleepFrame === null;
   const clickFrameDistance = FRAME_WIDTH * Math.max(0, sprite.frames - 1);
-  const spriteAnimation = sleepFrame !== null
+  // Keep the fixed mouth overlay aligned with the same sprite frame while eating.
+  const spriteAnimation = sleepFrame !== null || showOpenMouth
     ? 'none'
     : isClickSprite
       ? `mallow-vpet-click ${sprite.duration} steps(${sprite.frames - 1}, end) 1 forwards`
@@ -232,7 +233,7 @@ const Pet = forwardRef<HTMLDivElement, PetProps>(({
           <div className="pointer-events-none absolute inset-0" aria-hidden="true">
             <span
               className={[
-                'mallow-chew-mouth absolute -translate-x-1/2',
+                'mallow-chew-mouth absolute',
                 showChewingEffect ? 'mallow-chew-mouth-active' : 'mallow-chew-mouth-idle',
               ].join(' ')}
               style={{
@@ -438,6 +439,22 @@ const Pet = forwardRef<HTMLDivElement, PetProps>(({
         .mallow-fly-layer {
           overflow: visible;
         }
+
+        @keyframes breathe {
+          0%, 100% { transform: scale(1) translateY(0); }
+          50% { transform: scale(1.02) translateY(-2px); }
+        }
+        .animate-breathe { animation: breathe 3s infinite ease-in-out; }
+        @keyframes bounce-custom {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-15px); }
+        }
+        .animate-bounce-custom { animation: bounce-custom 0.6s ease-in-out; }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
       `}</style>
     </div>
   );

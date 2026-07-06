@@ -93,7 +93,9 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMeowing, setIsMeowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isPetSleeping, setIsPetSleeping] = useState(false);
+  const [isPetSleeping, setIsPetSleeping] = useState(() => {
+    try { return localStorage.getItem(PET_SLEEPING_KEY) === 'true'; } catch { return false; }
+  });
   const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(localStorage.getItem('pet_name')));
   const selectedPet = getPetOption(selectedPetId);
   const [walkDuration, setWalkDuration] = useState(0.8);
@@ -245,8 +247,13 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
     fetchStats();
     const interval = setInterval(fetchStats, 120000);
+    // Staggered retries: SSO exchange can take 0.5–4s; the first successful call wins
+    const r1 = setTimeout(fetchStats, 500);
+    const r2 = setTimeout(fetchStats, 2000);
+    const r3 = setTimeout(fetchStats, 5000);
     return () => {
       clearInterval(interval);
+      clearTimeout(r1); clearTimeout(r2); clearTimeout(r3);
       window.removeEventListener('virtual-pet-sleep-change', handlePetSleepChange);
       window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);
       window.removeEventListener('storage', handleStorage);
@@ -655,6 +662,21 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         .mallow-mascot.run-right,
         .mallow-mascot.review {
           animation-name: mallow-sprite;
+        }
+        .mallow-mascot.sleep {
+          animation-name: none;
+          background-position-x: calc(-1 * var(--sprite-frame) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px);
+        }
+        .mallow-mascot.sleep::after {
+          content: 'Zzz...';
+          position: absolute;
+          left: 64%;
+          top: -5px;
+          color: #94a3b8;
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.02em;
+          animation: mascot-sleep-float 1.8s ease-in-out infinite;
         }
         @keyframes mallow-sprite {
           from { background-position-x: 0; }
