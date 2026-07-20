@@ -8,6 +8,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut } from 'lucide-react'
+import { useAppLink } from '../../lib/useAppLink'
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -27,11 +30,33 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
+  const badgeLabel = profile?.position || profile?.company_name
   const canAccessCreatorTools = isCreatorProfile(profile)
   const canAccessAdmin = isAdminProfile(profile)
   const navLinks = canAccessAdmin
     ? [...baseNavLinks, { label: 'Admin', path: '/admin' }]
     : baseNavLinks
+  const { mutateAsync: getAppLink } = useAppLink()
+
+  // Opens another Snabbb app (e.g. the rewards app) via an SSO handoff so
+  // the destination recognizes the session instead of bouncing to its own
+  // login/home page.
+  async function openAppLink(appCode: string, targetUrl: string) {
+    setMenuOpen(false)
+    const win = window.open('', '_blank')
+    try {
+      const res = await getAppLink({
+        app: appCode,
+        email: user?.email || '',
+        name: avatarLabel || '',
+      })
+      const url = res?.result?.url || targetUrl
+      if (win) win.location.href = url
+    } catch (err) {
+      console.error(`Failed to create SSO link for "${appCode}":`, err)
+      if (win) win.location.href = targetUrl
+    }
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -171,53 +196,149 @@ export function Navbar() {
                       getInitials(avatarLabel)
                     )}
                   </button>
-                  {menuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-card p-1 shadow-lg animate-fade-in">
-                      <Link
-                        to="/channel/$userId"
-                        params={{ userId: profile?.user_id ?? user?.id ?? '' }}
-                        className="block rounded-md px-3 py-1.5 text-[13px] text-[#3D5C5C] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                        onClick={() => setMenuOpen(false)}
+                  <AnimatePresence>
+                    {menuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full z-50 mt-3 w-80 overflow-hidden rounded-3xl border border-border bg-card shadow-modal"
                       >
-                        My channel
-                      </Link>
-                      {canAccessCreatorTools && (
-                        <Link
-                          to="/studio"
-                          className="block rounded-md px-3 py-1.5 text-[13px] text-[#3D5C5C] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                          onClick={() => setMenuOpen(false)}
-                        >
-                          Creator studio
-                        </Link>
-                      )}
-                      <Link
-                        to="/settings"
-                        className="block rounded-md px-3 py-1.5 text-[13px] text-[#3D5C5C] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        Settings
-                      </Link>
-                      <Link
-                        to="/billing"
-                        className="block rounded-md px-3 py-1.5 text-[13px] text-[#3D5C5C] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        Billing
-                      </Link>
-                      <div className="my-1 h-px bg-border" />
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          void handleSignOut()
-                        }}
-                        className="block w-full rounded-md px-3 py-1.5 text-left text-[13px] text-[#DC2626] transition-colors hover:bg-[#FEE2E2]"
-                      >
-                        Sign out
-                      </button>
-                    </div>
-                  )}
+                        {/* Profile Info */}
+                        <div className="border-b border-border bg-muted/50 p-6">
+                          <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                            Profile Info
+                          </p>
+
+                          <div className="flex flex-col gap-3">
+                            <div>
+                              <p className="truncate text-base font-bold leading-tight text-foreground">
+                                {profile?.full_name ?? profile?.name ?? 'User'}
+                              </p>
+
+                              {badgeLabel && (
+                                <div className="mt-1.5 inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary">
+                                  {badgeLabel}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Mail className="h-3 w-3 shrink-0" />
+                                <p className="truncate text-xs font-semibold">{user?.email}</p>
+                              </div>
+
+                              {profile?.phone && (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Phone className="h-3 w-3 shrink-0" />
+                                  <p className="truncate text-xs font-semibold">{profile.phone}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Nav Items */}
+                        <div className="border-b border-border p-2">
+                          <Link
+                            to="/channel/$userId"
+                            params={{ userId: profile?.user_id ?? user?.id ?? '' }}
+                            onClick={() => setMenuOpen(false)}
+                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
+                          >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                              <Tv className="h-3.5 w-3.5 text-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold leading-tight text-foreground">My Channel</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Manage your channel</p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                          </Link>
+
+                          {canAccessCreatorTools && (
+                            <Link
+                              to="/studio"
+                              onClick={() => setMenuOpen(false)}
+                              className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
+                            >
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-purple-500/10">
+                                <Video className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold leading-tight text-foreground">Creator Studio</p>
+                                <p className="truncate text-[11px] font-semibold text-muted-foreground">Manage your content</p>
+                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                            </Link>
+                          )}
+
+                          {/* Snabbb Credit — a separate Snabbb app, opened via SSO handoff */}
+                          <button
+                            type="button"
+                            onClick={() => void openAppLink('reward', 'https://reward.snabbb.com')}
+                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
+                          >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+                              <Wallet className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold leading-tight text-foreground">Snabbb Credit</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">View your balance & rewards</p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                          </button>
+
+                          <Link
+                            to="/settings"
+                            onClick={() => setMenuOpen(false)}
+                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
+                          >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-muted">
+                              <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold leading-tight text-foreground">Settings</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Account & preferences</p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                          </Link>
+
+                          <Link
+                            to="/billing"
+                            onClick={() => setMenuOpen(false)}
+                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
+                          >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-muted">
+                              <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold leading-tight text-foreground">Billing</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Plans & payment history</p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                          </Link>
+                        </div>
+
+                        {/* Log Out */}
+                        <div className="p-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              void handleSignOut()
+                            }}
+                            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-bold text-destructive transition-all hover:bg-destructive/10"
+                          >
+                            <LogOut className="h-4 w-4" /> Log Out
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             )}
