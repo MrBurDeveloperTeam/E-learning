@@ -164,7 +164,7 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 h-14 w-full border-b border-border bg-background">
+      <nav className="sticky top-0 z-[110] h-14 w-full border-b border-border bg-background">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 md:px-6">
           <Logo />
 

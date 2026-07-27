@@ -734,7 +734,7 @@ export function Settings() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-5">
+          <div className="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-h-[20px]">
               {isDirty && <div className="flex items-center gap-1.5 text-xs text-amber-500"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Unsaved changes</div>}
             </div>
@@ -896,7 +896,7 @@ export function Settings() {
   return (
     <PageLayout className="p-0" scrollMain={false}>
       <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
+        <div className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(11rem+env(safe-area-inset-bottom))] md:px-6 md:py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-medium text-foreground">Settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">Manage your account, preferences, and billing</p>

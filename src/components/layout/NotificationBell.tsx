@@ -119,7 +119,7 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-[360px] bg-white border border-[#D4E8E7] rounded-2xl shadow-lg z-50 overflow-hidden animate-fade-in">
+        <div className="fixed left-4 right-4 top-16 z-[120] overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white shadow-lg animate-fade-in md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-[360px]">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#D4E8E7]">
             <p className="text-sm font-medium text-[#1E3333]">
               Notifications
@@ -135,7 +135,7 @@ export function NotificationBell() {
             )}
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto md:max-h-[400px]">
             {isLoading &&
               Array.from({ length: 3 }).map((_, index) => (
                 <NotificationRowSkeleton key={index} />
