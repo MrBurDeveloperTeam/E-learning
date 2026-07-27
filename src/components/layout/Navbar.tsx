@@ -28,6 +28,11 @@ export function Navbar() {
   const currentPath = router.location.pathname
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [creditBalance, setCreditBalance] = useState<number | null>(
+    null,
+  )
+  const [creditLoading, setCreditLoading] = useState(false)
+  const [creditError, setCreditError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
   const badgeLabel = profile?.position || profile?.company_name
@@ -58,6 +63,49 @@ export function Navbar() {
     }
   }
 
+  async function loadCreditBalance() {
+    if (!user) {
+      setCreditBalance(null)
+      return
+    }
+
+    setCreditLoading(true)
+    setCreditError(null)
+
+    try {
+      const response = await fetch('/api/wallet', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+        },
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.ok) {
+        throw new Error(
+          data?.error || 'Unable to retrieve credit balance',
+        )
+      }
+
+      const balance = Number(data.balance)
+
+      if (!Number.isFinite(balance)) {
+        throw new Error('Invalid credit balance')
+      }
+
+      setCreditBalance(balance)
+    } catch (error) {
+      console.error('Failed to load Snabbb Credit:', error)
+
+      setCreditBalance(null)
+      setCreditError('Unable to load balance')
+    } finally {
+      setCreditLoading(false)
+    }
+  }
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -75,6 +123,16 @@ export function Navbar() {
   function closeMobileMenu() {
     setMobileMenuOpen(false)
   }
+
+  useEffect(() => {
+    if (!user) {
+      setCreditBalance(null)
+      setCreditError(null)
+      return
+    }
+
+    void loadCreditBalance()
+  }, [user?.id])
 
   async function handleSignOut() {
     setMenuOpen(false)
@@ -286,7 +344,15 @@ export function Navbar() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">Snabbb Credit</p>
-                              <p className="truncate text-[11px] font-semibold text-muted-foreground">View your balance & rewards</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">
+                                {creditLoading
+                                  ? 'Loading...'
+                                  : creditError
+                                    ? creditError
+                                    : creditBalance !== null
+                                      ? `${creditBalance.toLocaleString()} credits`
+                                      : 'Balance unavailable'}
+                              </p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </button>
