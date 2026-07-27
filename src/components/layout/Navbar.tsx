@@ -64,8 +64,11 @@ export function Navbar() {
   }
 
   async function loadCreditBalance() {
-    if (!user) {
+    const email = user?.email?.trim()
+
+    if (!email) {
       setCreditBalance(null)
+      setCreditError('User email is missing')
       return
     }
 
@@ -73,13 +76,16 @@ export function Navbar() {
     setCreditError(null)
 
     try {
-      const response = await fetch('/api/wallet', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
+      const response = await fetch(
+        `/api/wallet?email=${encodeURIComponent(email)}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
         },
-      })
+      )
 
       const data = await response.json().catch(() => null)
 
