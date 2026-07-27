@@ -95,7 +95,11 @@ export function Navbar() {
         )
       }
 
-      const balance = Number(data.balance)
+      const rawBalance =
+        data?.data?.snabbb_balance ??
+        data?.data?.balance
+
+      const balance = Number(rawBalance)
 
       if (!Number.isFinite(balance)) {
         throw new Error('Invalid credit balance')
