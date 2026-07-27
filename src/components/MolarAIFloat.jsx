@@ -128,7 +128,7 @@ export default function MolarAIFloat({ userContext, disabled = false, onPetToggl
     <>
       {/* Floating trigger button - SuperApp Style */}
       {!isChatOpen && (
-        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+1rem)] right-4 z-[90] flex flex-col items-center group md:bottom-6 md:right-6 md:z-[60]">
+        <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-center group">
           <div className="relative flex items-center justify-center">
             <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
               <AnimatePresence mode="wait">
@@ -146,13 +146,13 @@ export default function MolarAIFloat({ userContext, disabled = false, onPetToggl
             <button
               onClick={() => setIsChatOpen(true)}
               disabled={disabled}
-              className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 hover:shadow-xl transition-all shadow-[#1F7A6F]/30 relative overflow-hidden ${disabled ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70' : 'bg-[#1F7A6F]'}`}
+              className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 hover:shadow-xl transition-all shadow-[#1F7A6F]/30 relative overflow-hidden ${disabled ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70' : 'bg-[#1F7A6F]'}`}
             >
               
               <img 
                 src="/images/ai_logo.png" 
                 alt="Molar AI" 
-                className={`w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-sm transition-transform ${disabled ? 'brightness-80' : ''}`} 
+                className={`w-10 h-10 object-contain drop-shadow-sm transition-transform ${disabled ? 'brightness-80' : ''}`} 
               />
             </button>
           </div>
