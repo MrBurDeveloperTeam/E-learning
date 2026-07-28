@@ -248,48 +248,29 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       throw new Error(errorMsg)
     }
 
-    // Step 2: Create confirmed Supabase user via worker admin endpoint.
-    // This uses the service role key server-side, so email_confirm: true
-    // is set and the user can sign in immediately without email verification.
-    const sbRes = await fetch(getApiUrl('/api/auth/create-user'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        password,
-        name,
-        account_type: metadata?.account_type || 'individual',
-        phone: metadata?.phone,
-        position: metadata?.position,
-        company_name: metadata?.company_name,
-        dob: metadata?.dob,
-        country: metadata?.country,
-        agreed_to_terms: metadata?.agreed_to_terms,
-      }),
-    })
-
-    const sbData = await sbRes.json()
-
-    if (!sbRes.ok) {
-      throw new Error(sbData?.error || 'Failed to create Supabase account')
-    }
-
-    // Step 3: Sign in directly — user is confirmed so this works immediately
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // Step 2: Same as Inventory — create the Supabase Auth user directly
+    // and save all form fields in Auth user_metadata.
+    const inventorySignUp = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          name,
+          account_type: metadata?.account_type || 'individual',
+          phone: metadata?.phone || null,
+          position: metadata?.position || null,
+          company_name: metadata?.company_name || null,
+          dob: metadata?.dob || null,
+          country: metadata?.country || null,
+          agreed_to_terms: Boolean(metadata?.agreed_to_terms),
+        },
+      },
     })
 
-    if (signInError) throw signInError
+    if (inventorySignUp.error) throw inventorySignUp.error
+    return inventorySignUp.data
 
-    if (signInData.session) {
-      const { error: setErr } = await supabase.auth.setSession({
-        access_token: signInData.session.access_token,
-        refresh_token: signInData.session.refresh_token,
-      })
-      if (setErr) throw setErr
-    }
+    // Step 3: Sign in directly — user is confirmed so this works immediately
   }
 
   async function signOutUser() {
