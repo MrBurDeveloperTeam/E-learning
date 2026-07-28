@@ -519,8 +519,9 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     audioRef.current = new Audio('/images/cat-meow.mp3');
 
     // Walk into screen from left
-    const destX = 20 + Math.random() * 60;
-    const destY = 80 + Math.random() * 10;
+    const isMobile = window.innerWidth < 768;
+    const destX = isMobile ? 50 : 20 + Math.random() * 60;
+    const destY = isMobile ? 72 : 80 + Math.random() * 10;
     const duration = 2.8; // Entry walk duration
 
     lastMoveStartPos.current = { x: -10, y: 85 };
@@ -558,8 +559,22 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       const targetX_px = e.clientX;
       const targetY_px = e.clientY;
 
-      const targetX = (targetX_px / window.innerWidth) * 100;
-      const targetY = (targetY_px / window.innerHeight) * 100;
+      const rawTargetX = (targetX_px / window.innerWidth) * 100;
+      const rawTargetY = (targetY_px / window.innerHeight) * 100;
+      const isMobile = window.innerWidth < 768;
+
+      const dialogWidth = Math.min(280, window.innerWidth - 32);
+      const safeMinX = ((dialogWidth / 2 + 16) / window.innerWidth) * 100;
+      const safeMaxX = 100 - safeMinX;
+
+      const targetX = isMobile
+        ? Math.min(safeMaxX, Math.max(safeMinX, rawTargetX))
+        : rawTargetX;
+
+      const targetY = isMobile
+        ? Math.min(76, Math.max(40, rawTargetY))
+        : rawTargetY;
+
       const currentPos = getInterpolatedPos();
       const currentX_px = (currentPos.x / 100) * window.innerWidth;
       const currentY_px = (currentPos.y / 100) * window.innerHeight;
@@ -713,7 +728,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="cat-mascot-dialog w-max shrink-0 max-w-[280px] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
+              className="cat-mascot-dialog w-[calc(100vw-2rem)] max-w-[280px] shrink-0 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 cursor-default md:w-max md:mr-1"
               onClick={(e) => e.stopPropagation()}
             >
               <div
@@ -761,9 +776,9 @@ export default function CatMascot({ onCatClick, disabled = false }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -5, scale: 0.95 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm relative pointer-events-auto mb-4 cursor-default"
+              className="max-w-[calc(100vw-2rem)] px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm relative pointer-events-auto mb-4 cursor-default md:max-w-none"
             >
-              <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{meowMsg}</span>
+              <span className="block break-words whitespace-pre-wrap text-center text-sm font-semibold text-slate-700 md:inline md:break-normal md:whitespace-nowrap md:text-left">{meowMsg}</span>
               <div className="absolute -bottom-2 left-1/2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
             </motion.div>
           )}
