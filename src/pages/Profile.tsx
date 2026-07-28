@@ -176,7 +176,7 @@ export function Profile() {
               {isOwnProfile ? (
                 <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
                   <Link to="/settings">
-                    <button className="btn-outline text-sm px-4 py-2 w-full md:w-auto [html.light_&]:text-[#1E4F4B]">
+                    <button className="btn-outline text-sm px-4 py-2 w-full md:w-auto [html.light_&]:text-[#4F7F7C]">
                       Edit profile
                     </button>
                   </Link>
