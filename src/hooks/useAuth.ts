@@ -219,6 +219,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       full_name?: string
       role?: 'member' | 'creator' | 'admin'
       account_type?: 'individual' | 'company' | 'admin'
+      phone?: string
+      position?: string
+      company_name?: string
+      dob?: string
+      country?: string
+      agreed_to_terms?: boolean
     }
   ) {
     const name = metadata?.full_name || email.split('@')[0]
@@ -228,7 +234,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, phone: metadata?.phone, position: metadata?.position, account_type: metadata?.account_type || 'individual', company_name: metadata?.company_name, dob: metadata?.dob, country: metadata?.country }),
     })
 
     const odooData = await odooRes.json()
@@ -254,6 +260,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         password,
         name,
         account_type: metadata?.account_type || 'individual',
+        phone: metadata?.phone,
+        position: metadata?.position,
+        company_name: metadata?.company_name,
+        dob: metadata?.dob,
+        country: metadata?.country,
+        agreed_to_terms: metadata?.agreed_to_terms,
       }),
     })
 
