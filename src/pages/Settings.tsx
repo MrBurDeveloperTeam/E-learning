@@ -366,7 +366,7 @@ export function Settings() {
               <Clock3 size={14} />
               Pending admin review
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-700">
               Your application is in the review queue. We will update your access after review.
             </p>
           </div>
@@ -738,7 +738,7 @@ export function Settings() {
             <div className="min-h-[20px]">
               {isDirty && <div className="flex items-center gap-1.5 text-xs text-amber-500"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Unsaved changes</div>}
             </div>
-            <div className="flex gap-2">
+            <div className="-mb-3 flex w-full justify-end gap-2 sm:mb-0 sm:w-auto">
               <button type="button" onClick={handleReset} className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted">Discard</button>
               <button type="submit" disabled={updateProfile.isPending} className="flex text-white items-center gap-2 btn-primary px-5 py-2 text-sm">
                 {updateProfile.isPending ? <LoadingSpinner size="sm" /> : null}
@@ -896,7 +896,7 @@ export function Settings() {
   return (
     <PageLayout className="p-0" scrollMain={false}>
       <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(11rem+env(safe-area-inset-bottom))] md:px-6 md:py-8">
+        <div className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-medium text-foreground">Settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">Manage your account, preferences, and billing</p>
