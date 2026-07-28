@@ -43,7 +43,7 @@ export default function Register() {
 
     setLoading(true)
     try {
-      await signUp(email, password, {
+      const signUpResult = await signUp(email, password, {
         full_name: name.trim(),
         role: 'member',
         account_type: accountType,
@@ -54,8 +54,12 @@ export default function Register() {
         country,
         agreed_to_terms: agreedToTerms,
       })
-      toast.success('Your account has been created.')
-      navigate({ to: '/explore', replace: true })
+      if (signUpResult.session) {
+        toast.success('Your account has been created.')
+        navigate({ to: '/explore', replace: true })
+      } else {
+        toast.success('Sign up successful. Please check your email to confirm your account.')
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Registration failed.')
     } finally {
