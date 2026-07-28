@@ -1,6 +1,3 @@
-// Auth Utilities for Cloudflare Pages Functions
-// Extracted from Snabbb worker logic
-
 export function base64UrlEncodeBytes(bytes: Uint8Array): string {
   let binary = "";
   const len = bytes.length;
@@ -190,7 +187,9 @@ export async function createOdooUser(env: any, params: any) {
       account_type: params.account_type,
       job_position: params.position,
       company_name: params.company_name,
-      company_id: 2, // adjust if needed
+      ...(params.dob && { date_of_birth: params.dob }),
+      ...(params.country && { country_id: Number(params.country) }),
+      company_id: 2,
     },
     id: 1,
   };
@@ -200,7 +199,7 @@ export async function createOdooUser(env: any, params: any) {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "X-SSO-API-KEY": env.ODOO_SSO_API_KEY || "", // Assuming this is needed or optional
+      "X-SSO-API-KEY": env.ODOO_SSO_API_KEY || "",
     },
     body: JSON.stringify(requestData),
   });
