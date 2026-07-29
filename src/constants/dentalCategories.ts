@@ -5,7 +5,7 @@ export const dentalCategories = [
   { id: 'periodontics', label: 'Periodontics' },
   { id: 'pediatric-dentistry', label: 'Pediatric Dentistry' },
   { id: 'prosthodontics', label: 'Prosthodontics' },
-  { id: 'restorative', label: 'Restorative' },
+  { id: 'others', label: 'Others' },
   { id: 'oral-hygiene', label: 'Oral Hygiene' },
   { id: 'general-dentistry', label: 'General Dentistry' },
   { id: 'implantology', label: 'Implantology' },

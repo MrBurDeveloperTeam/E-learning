@@ -80,7 +80,7 @@ export type VideoVisibility = 'public' | 'followers_only'
 
 export type VideoCategory =
   | 'General Dentistry'
-  | 'Restorative'
+  | 'Others'
   | 'Implantology'
   | 'Orthodontics'
   | 'Endodontics'
@@ -227,7 +227,7 @@ export type SortOption = 'newest' | 'most_viewed' | 'most_liked'
 
 export const VIDEO_CATEGORIES: VideoCategory[] = [
   'General Dentistry',
-  'Restorative',
+  'Others',
   'Implantology',
   'Orthodontics',
   'Endodontics',
@@ -240,7 +240,7 @@ export const VIDEO_CATEGORIES: VideoCategory[] = [
 
 export const CATEGORY_SLUGS: Record<VideoCategory, string> = {
   'General Dentistry': 'general-dentistry',
-  Restorative: 'restorative',
+  Others: 'others',
   Implantology: 'implantology',
   Orthodontics: 'orthodontics',
   Endodontics: 'endodontics',
