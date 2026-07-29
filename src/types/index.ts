@@ -227,7 +227,6 @@ export type SortOption = 'newest' | 'most_viewed' | 'most_liked'
 
 export const VIDEO_CATEGORIES: VideoCategory[] = [
   'General Dentistry',
-  'Others',
   'Implantology',
   'Orthodontics',
   'Endodontics',
@@ -236,6 +235,7 @@ export const VIDEO_CATEGORIES: VideoCategory[] = [
   'Pediatric Dentistry',
   'Prosthodontics',
   'Oral Hygiene',
+  'Others',
 ]
 
 export const CATEGORY_SLUGS: Record<VideoCategory, string> = {
