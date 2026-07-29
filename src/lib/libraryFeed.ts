@@ -61,7 +61,12 @@ export async function fetchUnifiedVideoPage({
       kind: 'community' as const,
       id: `community-${video.id}`,
       sortDate: video.created_at,
-      video,
+      video: {
+        ...video,
+        category: (
+          normalizeLibraryCategory(video.category) ?? 'Others'
+        ) as VideoWithCreator['category'],
+      },
     })),
     ...dentalResponse.data.map((video) => ({
       kind: 'dental' as const,
@@ -69,7 +74,7 @@ export async function fetchUnifiedVideoPage({
       sortDate: getDentalSortDate(video),
       video: {
         ...video,
-        category: normalizeLibraryCategory(video.category) ?? video.category,
+        category: normalizeLibraryCategory(video.category) ?? 'Others',
       },
     })),
   ].sort(
