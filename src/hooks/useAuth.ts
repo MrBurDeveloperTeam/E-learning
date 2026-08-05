@@ -186,33 +186,80 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialize])
 
-  async function signInWithEmail(email: string, password: string) {
-    // Odoo is the single source of truth for credentials. This endpoint
-    // returns Supabase tokens only for E-learning's protected data session.
-    // Keep this relative so Cloudflare Pages always invokes E-learning's own
-    // login Function instead of an unrelated VITE_API_BASE_URL service.
-    const response = await fetch('/api/login', {
+  async function signInWithEmail(email: string, password: string): Promise<void> {
+    const normalizedEmail = email.trim()
+
+    // Match the established Snabbb mini-app flow: authenticate against the
+    // main app first so Odoo remains the source of truth for credentials.
+    const loginResponse = await fetch('https://app.snabbb.com/api/web/session/authenticate', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password }),
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-SSO-API-KEY': 'my-sso-secret-123',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: 'aht-systemadmin-mrbur-main-20994444',
+          login: normalizedEmail,
+          password,
+        },
+        id: 1,
+      }),
     })
-    const data = await response.json().catch(() => null)
-    const sessionData = data?.data ?? data?.result ?? data
+    const loginData = await loginResponse.json().catch(() => null)
+    const odooUser = loginData?.result
 
-    if (!response.ok) {
-      throw new Error(data?.error || data?.details || 'Invalid login credentials')
+    if (!loginResponse.ok || loginData?.error || !odooUser?.uid) {
+      const message =
+        loginData?.error?.data?.message ||
+        loginData?.error?.message ||
+        'Invalid login credentials'
+      throw new Error(message)
     }
 
-    if (!sessionData?.access_token || !sessionData?.refresh_token) {
-      throw new Error('The main app did not return a valid E-learning session.')
+    // Ask the E-learning SSO proxy for its signed launch URL. The destination
+    // exchanges that handoff through the existing SSO/session initializer.
+    const appLinkResponse = await fetch('https://e-learning.snabbb.com/api/v1/sso/app_link', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          app_code: 'e-learning',
+          email: odooUser.username || normalizedEmail,
+          name: odooUser.name || odooUser.partner_display_name || normalizedEmail,
+          company_id: 2,
+          portal: true,
+        },
+        id: 1,
+      }),
+    })
+    const appLinkData = await appLinkResponse.json().catch(() => null)
+    const launchUrl = appLinkData?.result?.url
+
+    if (!appLinkResponse.ok || !launchUrl) {
+      throw new Error(
+        appLinkData?.error?.data?.message ||
+        appLinkData?.error?.message ||
+        'Unable to start the E-learning session.',
+      )
     }
 
-    const { error: setErr } = await supabase.auth.setSession({
-      access_token: sessionData.access_token,
-      refresh_token: sessionData.refresh_token,
-    })
-    if (setErr) throw setErr
+    window.location.assign(launchUrl)
+
+    // Keep the submit state active while the browser leaves this page. This
+    // prevents Login.tsx from navigating locally before the SSO redirect wins.
+    await new Promise<void>(() => undefined)
   }
 
   async function signInWithGoogle() {
