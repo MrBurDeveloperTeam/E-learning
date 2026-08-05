@@ -189,25 +189,28 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   async function signInWithEmail(email: string, password: string) {
     // Odoo is the single source of truth for credentials. This endpoint
     // returns Supabase tokens only for E-learning's protected data session.
-    const response = await fetch(getApiUrl('/api/login'), {
+    // Keep this relative so Cloudflare Pages always invokes E-learning's own
+    // login Function instead of an unrelated VITE_API_BASE_URL service.
+    const response = await fetch('/api/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), password }),
     })
     const data = await response.json().catch(() => null)
+    const sessionData = data?.data ?? data?.result ?? data
 
     if (!response.ok) {
       throw new Error(data?.error || data?.details || 'Invalid login credentials')
     }
 
-    if (!data?.access_token || !data?.refresh_token) {
+    if (!sessionData?.access_token || !sessionData?.refresh_token) {
       throw new Error('The main app did not return a valid E-learning session.')
     }
 
     const { error: setErr } = await supabase.auth.setSession({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
+      access_token: sessionData.access_token,
+      refresh_token: sessionData.refresh_token,
     })
     if (setErr) throw setErr
   }
