@@ -187,21 +187,29 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    // E-learning uses Supabase authentication directly
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // Odoo is the single source of truth for credentials. This endpoint
+    // returns Supabase tokens only for E-learning's protected data session.
+    const response = await fetch(getApiUrl('/api/login'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password }),
     })
+    const data = await response.json().catch(() => null)
 
-    if (error) throw error
-
-    if (data.session) {
-      const { error: setErr } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      })
-      if (setErr) throw setErr
+    if (!response.ok) {
+      throw new Error(data?.error || data?.details || 'Invalid login credentials')
     }
+
+    if (!data?.access_token || !data?.refresh_token) {
+      throw new Error('The main app did not return a valid E-learning session.')
+    }
+
+    const { error: setErr } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+    if (setErr) throw setErr
   }
 
   async function signInWithGoogle() {
@@ -249,31 +257,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       throw new Error(errorMsg)
     }
 
-    // Step 2: Same as Inventory — create the Supabase Auth user directly
-    // and save all form fields in Auth user_metadata.
-    const inventorySignUp = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          full_name: name,
-          account_type: metadata?.account_type || 'individual',
-          phone: metadata?.phone || null,
-          position: metadata?.position || null,
-          company_name: metadata?.company_name || null,
-          referral_code: metadata?.referral_code || null,
-          dob: metadata?.dob || null,
-          country: metadata?.country || null,
-          agreed_to_terms: Boolean(metadata?.agreed_to_terms),
-        },
-      },
-    })
-
-    if (inventorySignUp.error) throw inventorySignUp.error
-    return inventorySignUp.data
-
-    // Step 3: Sign in directly — user is confirmed so this works immediately
+    // The main Snabbb account owns verification. Supabase is created/synced
+    // later by the Odoo login endpoint without sending a second email.
+    return { user: null, session: null }
   }
 
   async function signOutUser() {
