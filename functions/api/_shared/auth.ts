@@ -176,17 +176,21 @@ export async function createOdooUser(env: any, params: any) {
   const baseUrl = env.ODOO_API_URL || env.ODOO_BASE || "https://mrbur.odoo.com";
   const upstreamUrl = `${baseUrl}/api/v1/users`;
 
+  const isCompany = params.account_type === "company";
   const requestData = {
     jsonrpc: "2.0",
     method: "call",
     params: {
       email: params.email,
-      name: params.name || params.email.split('@')[0],
+      name: isCompany ? (params.company_name || params.name) : (params.name || params.email.split('@')[0]),
       password: params.password,
       phone: params.phone,
       account_type: params.account_type,
+      company_type: isCompany ? "company" : "person",
+      ...(isCompany && params.name && { contact_name: params.name }),
       job_position: params.position,
       company_name: params.company_name,
+      ...(params.referral_code && { referral_code: params.referral_code }),
       ...(params.dob && { date_of_birth: params.dob }),
       ...(params.country && { country_id: Number(params.country) }),
       company_id: 2,

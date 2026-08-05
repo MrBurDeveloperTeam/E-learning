@@ -53,7 +53,7 @@ export default function Login() {
   if (user) return null
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <main className="w-full max-w-xl rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-2xl sm:p-8 lg:p-10">
         <div className="mb-8 text-left">
           <Logo className="mb-5" imageClassName="h-7" />
@@ -101,8 +101,8 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          <Link to="/register" className="font-bold text-[hsl(180_14%_49%)] hover:underline">Don&apos;t have an account? Sign up</Link>
+        <p className="mt-6 text-center text-xs font-medium text-slate-500">
+          Don&apos;t have an account? <Link to="/register" className="font-bold text-tiffany-600 hover:underline">Sign Up</Link>
         </p>
       </main>
     </div>

@@ -222,6 +222,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       phone?: string
       position?: string
       company_name?: string
+      referral_code?: string
       dob?: string
       country?: string
       agreed_to_terms?: boolean
@@ -234,7 +235,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, phone: metadata?.phone, position: metadata?.position, account_type: metadata?.account_type || 'individual', company_name: metadata?.company_name, dob: metadata?.dob, country: metadata?.country }),
+      body: JSON.stringify({ email, password, name, phone: metadata?.phone, position: metadata?.position, account_type: metadata?.account_type || 'individual', company_name: metadata?.company_name, referral_code: metadata?.referral_code, dob: metadata?.dob, country: metadata?.country }),
     })
 
     const odooData = await odooRes.json()
@@ -256,10 +257,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       options: {
         data: {
           name,
+          full_name: name,
           account_type: metadata?.account_type || 'individual',
           phone: metadata?.phone || null,
           position: metadata?.position || null,
           company_name: metadata?.company_name || null,
+          referral_code: metadata?.referral_code || null,
           dob: metadata?.dob || null,
           country: metadata?.country || null,
           agreed_to_terms: Boolean(metadata?.agreed_to_terms),

@@ -12,7 +12,7 @@ export const onRequestPost = async ({ request, env }: any) => {
     const password = String(body?.password || '')
     const name = String(body?.name || '').trim()
     if (!email || !password || !name) return json({ error: 'Name, email, and password are required.' }, 400, cors)
-    const result = await createOdooUser(env, { email, password, name, phone: body.phone || undefined, account_type: body.account_type || 'individual', position: body.position || undefined, company_name: body.company_name || undefined, dob: body.dob || undefined, country: body.country || undefined })
+    const result = await createOdooUser(env, { email, password, name, phone: body.phone || undefined, account_type: body.account_type || 'individual', position: body.position || undefined, company_name: body.company_name || undefined, referral_code: body.referral_code || undefined, dob: body.dob || undefined, country: body.country || undefined })
     return json({ result }, 201, cors)
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'Unable to create the Snabbb account.' }, 400, cors)
