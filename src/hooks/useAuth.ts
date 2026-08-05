@@ -187,21 +187,95 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    // Preserve the known-working login flow from fix/nicole/addReferral.
+    const normalizedEmail = email.trim().toLowerCase()
+
+    // Preserve direct Supabase login for legacy E-learning accounts.
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     })
 
-    if (error) throw error
-
-    if (data.session) {
+    if (!error && data.session) {
       const { error: setErr } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
       })
       if (setErr) throw setErr
+      return
     }
+
+    // New ecosystem accounts exist in the main Snabbb/Odoo identity store,
+    // not as password users in this Supabase project. Authenticate them using
+    // the same main-app endpoint used by Inventory and Todo.
+    const loginResponse = await fetch('https://app.snabbb.com/api/web/session/authenticate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-SSO-API-KEY': 'my-sso-secret-123',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: 'aht-systemadmin-mrbur-main-20994444',
+          login: normalizedEmail,
+          password,
+        },
+        id: 1,
+      }),
+    })
+    const loginData = await loginResponse.json().catch(() => null)
+    const odooUser = loginData?.result
+
+    if (!loginResponse.ok || loginData?.error || !odooUser?.uid) {
+      throw new Error(
+        loginData?.error?.data?.message ||
+        loginData?.error?.message ||
+        error?.message ||
+        'Invalid login credentials',
+      )
+    }
+
+    // Request the signed E-learning launch URL. Its redirect returns through
+    // the existing /api/sso/exchange initialization path.
+    const appLinkResponse = await fetch('https://e-learning.snabbb.com/api/v1/sso/app_link', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          app_code: 'e-learning',
+          email: odooUser.username || normalizedEmail,
+          name: odooUser.name || odooUser.partner_display_name || normalizedEmail,
+          company_id: 2,
+          portal: true,
+        },
+        id: 1,
+      }),
+    })
+    const appLinkData = await appLinkResponse.json().catch(() => null)
+    const launchUrl = appLinkData?.result?.url
+
+    if (!appLinkResponse.ok || !launchUrl) {
+      throw new Error(
+        appLinkData?.error?.data?.message ||
+        appLinkData?.error?.message ||
+        'Unable to start the E-learning session.',
+      )
+    }
+
+    window.location.assign(launchUrl)
+
+    // Prevent the login page from navigating locally before the SSO handoff.
+    await new Promise<void>(() => undefined)
   }
 
   async function signInWithGoogle() {
