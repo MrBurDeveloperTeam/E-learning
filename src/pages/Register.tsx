@@ -32,6 +32,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     if (user && !loading) navigate({ to: '/explore', replace: true })
@@ -39,6 +40,7 @@ export default function Register() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    setSuccessMessage('')
     const effectivePosition = position === 'OTHER' ? customPosition.trim() : position
     if (password !== confirmPassword) return toast.error('Passwords do not match.')
     if (!name.trim() || !email.trim() || !phone.trim() || !dob || !effectivePosition || !country) return toast.error('Please complete all required fields.')
@@ -63,7 +65,7 @@ export default function Register() {
         toast.success('Your account has been created.')
         navigate({ to: '/explore', replace: true })
       } else {
-        toast.success('Sign up successful. Please check your email to confirm your account.')
+        setSuccessMessage('Registration successful! Check your email to verify your account.')
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Registration failed.')
@@ -85,6 +87,12 @@ export default function Register() {
         <button type="button" onClick={() => setAccountType('individual')} className={`flex items-center justify-center gap-2 py-3 text-sm font-bold ${accountType === 'individual' ? 'bg-tiffany-600 text-white' : 'bg-white text-slate-500'}`}><User size={16} />Individual</button>
         <button type="button" onClick={() => setAccountType('company')} className={`flex items-center justify-center gap-2 border-l border-slate-200 py-3 text-sm font-bold ${accountType === 'company' ? 'bg-tiffany-600 text-white' : 'bg-white text-slate-500'}`}><Building2 size={16} />Company</button>
       </div>
+
+      {successMessage && (
+        <div role="status" className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          {successMessage}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {accountType === 'company' && <><Field label="Company Name" icon={<Building2 className={iconClass} />}><input className={inputClass} value={companyName} onChange={(event) => setCompanyName(event.target.value)} placeholder="e.g. DENTA TECH" required /></Field><Field label="Company Email" icon={<Mail className={iconClass} />}><input type="email" className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="e.g. hello@denta.tech" required /></Field></>}
