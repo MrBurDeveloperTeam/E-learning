@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { logElearningActivity } from '../logActivityToOdoo'
 import type { Profile } from '../../types'
 
 type FollowProfile = Pick<
@@ -36,6 +37,7 @@ export async function followUser(
       { onConflict: 'follower_id,following_id', ignoreDuplicates: true }
     )
   if (error) throw error
+  logElearningActivity('creator_followed', `Followed creator ${followingId}`)
 }
 
 export async function unfollowUser(
@@ -48,6 +50,7 @@ export async function unfollowUser(
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
   if (error) throw error
+  logElearningActivity('creator_unfollowed', `Unfollowed creator ${followingId}`)
 }
 
 export async function checkIsFollowing(

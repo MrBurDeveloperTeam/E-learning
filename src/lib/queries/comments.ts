@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { logElearningActivity } from '../logActivityToOdoo'
 import type { CommentWithAuthor } from '../../types'
 
 function isNoRowsError(error: { code?: string } | null) {
@@ -130,12 +131,14 @@ export async function createComment(payload: {
     .single()
 
   if (error) throw error
+  logElearningActivity('comment_posted', `Posted a comment on video ${payload.video_id}`)
   return data
 }
 
 export async function deleteComment(id: string) {
   const { error } = await supabase.from('comments').delete().eq('id', id)
   if (error) throw error
+  logElearningActivity('comment_deleted', `Deleted comment ${id}`)
 }
 
 export async function deleteOwnComment(userId: string, commentId: string) {
@@ -150,6 +153,7 @@ export async function deleteOwnComment(userId: string, commentId: string) {
   if (!data?.length) {
     throw new Error('Comment not found or you do not have permission to delete it.')
   }
+  logElearningActivity('comment_deleted', `Deleted comment ${commentId}`)
 }
 
 export async function likeComment(userId: string, commentId: string) {

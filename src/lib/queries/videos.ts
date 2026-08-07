@@ -1,5 +1,6 @@
 import { fetchPublicCreatorProfiles } from './profiles'
 import { supabase } from '../supabase'
+import { logElearningActivity } from '../logActivityToOdoo'
 import type {
   PublicCreatorProfile,
   SortOption,
@@ -412,6 +413,7 @@ export async function deleteOwnVideo(userId: string, videoId: string) {
   if (!response.ok) {
     throw new Error(result?.error || 'Failed to delete the video.')
   }
+  logElearningActivity('video_deleted', `Deleted video ${videoId}`)
 }
 
 export type UpdateVideoParams = {
@@ -448,6 +450,7 @@ export async function updateVideo(params: UpdateVideoParams) {
     .single()
 
   if (error) throw error
+  logElearningActivity('video_updated', `Updated video: ${params.title}`)
   return data
 }
 
@@ -480,6 +483,7 @@ export async function createVideo(params: CreateVideoParams) {
     .single()
 
   if (error) throw error
+  logElearningActivity('video_uploaded', `Uploaded video: ${params.title}`)
   return data
 }
 
