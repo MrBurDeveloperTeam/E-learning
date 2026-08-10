@@ -10,39 +10,45 @@ function formatPrice(price: number, currency: string) {
   }
 }
 
+const SNABBB_SSO_AMBIENT_REDIRECT_URL = 'https://app.snabbb.com/api/sso/ambient-redirect'
+
 /**
- * Appends attribution params to a Snabbb product URL so the purchase can be
- * traced back to this video/creator when Odoo reports the order as paid
- * (see functions/api/products/purchase-webhook.ts).
+ * Appends attribution params to a Snabbb product URL, then explicitly routes
+ * the click through app.snabbb.com's SSO ambient-redirect bridge so a
+ * doctor who's logged in on E-Learning lands on the shop already
+ * authenticated instead of as a guest.
+ *
+ * We do the wrapping here ourselves rather than relying on Odoo's
+ * product_url already being wrapped, because whether that's true depends on
+ * which Odoo build is currently live - Odoo.sh only picks up the wrapping
+ * once the branch has actually rebuilt with the latest commit, which isn't
+ * always in sync with when this frontend deploys. Explicitly wrapping here
+ * means this works regardless of Odoo's deploy state: if product_url is
+ * already wrapped we unwrap it first (to avoid double-wrapping), attach
+ * attribution to the real destination underneath, then (re-)wrap it
+ * ourselves. ambient-redirect itself already falls back to a plain redirect
+ * to return_url if there's no active Snabbb session, so this is safe for
+ * logged-out visitors too. See purchase-webhook.ts for how ref_video/
+ * ref_creator get read back on the paid-order side.
  */
 function buildAttributedUrl(productUrl: string, videoId: string, creatorId: string) {
   try {
     const url = new URL(productUrl)
 
-    // Odoo's product_url may be wrapped through the app.snabbb.com SSO
-    // bridge (/api/sso/ambient-redirect?return_url=<shop link>) so a doctor
-    // who's logged in on E-Learning lands on the shop already authenticated.
-    // That endpoint only reads return_url and ignores every other query
-    // param, so attribution params have to go on the INNER return_url, not
-    // the outer wrapper - setting them on the wrapper would silently drop
-    // them and break purchase-webhook attribution.
-    const returnUrlParam = url.searchParams.get('return_url')
-    if (returnUrlParam) {
-      const inner = new URL(returnUrlParam)
-      inner.searchParams.set('utm_source', 'elearning')
-      inner.searchParams.set('utm_medium', 'video')
-      inner.searchParams.set('ref_video', videoId)
-      inner.searchParams.set('ref_creator', creatorId)
-      url.searchParams.set('return_url', inner.toString())
-      return url.toString()
-    }
+    const existingReturnUrl = url.searchParams.get('return_url')
+    const target = existingReturnUrl ? new URL(existingReturnUrl) : url
 
-    url.searchParams.set('utm_source', 'elearning')
-    url.searchParams.set('utm_medium', 'video')
-    url.searchParams.set('ref_video', videoId)
-    url.searchParams.set('ref_creator', creatorId)
-    return url.toString()
+    target.searchParams.set('utm_source', 'elearning')
+    target.searchParams.set('utm_medium', 'video')
+    target.searchParams.set('ref_video', videoId)
+    target.searchParams.set('ref_creator', creatorId)
+
+    const wrapped = new URL(SNABBB_SSO_AMBIENT_REDIRECT_URL)
+    wrapped.searchParams.set('return_url', target.toString())
+    return wrapped.toString()
   } catch {
+    // productUrl wasn't a valid absolute URL - best-effort fallback with no
+    // SSO wrapping, same as before.
     const separator = productUrl.includes('?') ? '&' : '?'
     return `${productUrl}${separator}utm_source=elearning&utm_medium=video&ref_video=${encodeURIComponent(
       videoId
