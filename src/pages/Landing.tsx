@@ -30,11 +30,11 @@ export function Landing() {
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle className="rounded-full border border-border bg-card/80 shadow-sm backdrop-blur hover:bg-muted" />
             <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Log in
+              Log In
             </Link>
             <Link to="/register">
               <button className="bg-foreground text-background px-5 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-lg active:scale-95">
-                Join Now
+                Sign Up
               </button>
             </Link>
           </div>
