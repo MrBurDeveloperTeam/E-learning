@@ -2,6 +2,22 @@ import { supabase } from '../supabase'
 import { logElearningActivity } from '../logActivityToOdoo'
 import type { PartnerProduct, SnabbbCreditSettings, VideoProduct, VideoProductPurchase } from '../../types'
 
+// Mirrors useAppLink.ts's getApiBaseUrl(): a shared "SSO Gateways Active"
+// worker sits in front of the /api/* namespace on the custom domain and
+// only forwards a fixed set of known routes (see /api/wallet), returning a
+// static placeholder for anything else — including this feature's two new
+// endpoints. Setting VITE_API_BASE_URL to this Pages project's own
+// *.pages.dev domain (not covered by that worker's route) sends requests
+// straight to these Cloudflare Pages Functions instead. Falls back to a
+// same-origin relative call if unset, which only works once that gateway
+// also forwards these paths through.
+const getApiBaseUrl = () => (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
+function getApiUrl(path: string) {
+  const baseUrl = getApiBaseUrl()
+  return baseUrl ? `${baseUrl}${path}` : path
+}
+
 /**
  * Searches the Snabbb partner product catalog (proxied through Odoo — see
  * functions/api/products/search.ts) for the "Add product" picker.
@@ -11,7 +27,7 @@ export async function searchPartnerProducts(query: string): Promise<PartnerProdu
   if (query.trim()) params.set('q', query.trim())
   params.set('limit', '20')
 
-  const response = await fetch(`/api/products/search?${params.toString()}`)
+  const response = await fetch(getApiUrl(`/api/products/search?${params.toString()}`))
   const result = (await response.json().catch(() => null)) as
     | { ok: boolean; products?: PartnerProduct[]; error?: string }
     | null

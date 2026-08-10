@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Adds a standalone notebook tab rather than xpath-ing into an
+         existing group, since exact group names on the product form drift
+         between Odoo versions/editions. A dedicated page is the more
+         stable extension point; adjust the xpath target if your instance's
+         product.product_template_form_view doesn't have a <notebook/>
+         (unlikely, but possible on heavily customised forms). -->
+    <record id="product_template_form_view_snabbb_elearning" model="ir.ui.view">
+        <field name="name">product.template.form.snabbb.elearning</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page name="snabbb_elearning" string="Snabbb E-Learning">
+                    <group>
+                        <field name="is_snabbb_partner_product"/>
+                    </group>
+                    <div class="text-muted" invisible="not is_snabbb_partner_product">
+                        Doctors can attach this product to their E-Learning videos as a featured
+                        product. It will appear in the E-Learning app's "Add product" search.
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_search_view_snabbb_elearning" model="ir.ui.view">
+        <field name="name">product.template.search.snabbb.elearning</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="Snabbb Partner Product" name="is_snabbb_partner_product"
+                        domain="[('is_snabbb_partner_product', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
