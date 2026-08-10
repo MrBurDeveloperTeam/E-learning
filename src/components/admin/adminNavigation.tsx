@@ -44,7 +44,6 @@ export function getAdminSidebarItems(
     {
       label: 'Platform settings',
       path: '/admin/settings',
-      disabled: true,
       icon: <SlidersHorizontal className="h-4 w-4" />,
     },
   ]

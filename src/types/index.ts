@@ -128,6 +128,70 @@ export interface VideoWithCreator extends Video {
   >
 }
 
+// Featured products (E-Learning product purchase feature)
+
+export interface VideoProduct {
+  id: string
+  video_id: string
+  creator_id: string
+  product_ref: string
+  product_name: string
+  product_image_url: string | null
+  product_price: number
+  currency: string
+  product_url: string
+  cta_label: string
+  position: number
+  created_at: string
+  updated_at: string
+}
+
+/** A Snabbb partner product returned by the catalog search API, before it's attached to a video. */
+export interface PartnerProduct {
+  product_ref: string
+  name: string
+  image_url: string | null
+  price: number
+  currency: string
+  product_url: string
+  in_stock?: boolean
+}
+
+export type PurchaseOrderStatus = 'pending' | 'paid' | 'cancelled' | 'refunded' | 'failed'
+export type CreditStatus = 'pending' | 'awarded' | 'failed' | 'not_applicable'
+
+export interface VideoProductPurchase {
+  id: string
+  video_id: string
+  video_product_id: string | null
+  product_ref: string
+  doctor_id: string
+  odoo_order_id: string
+  odoo_order_line_id: string | null
+  buyer_partner_id: string | null
+  buyer_email: string | null
+  amount: number
+  currency: string
+  order_status: PurchaseOrderStatus
+  credit_amount: number | null
+  credit_status: CreditStatus
+  credited_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SnabbbCreditType = 'flat' | 'percentage'
+
+export interface SnabbbCreditSettings {
+  credit_type: SnabbbCreditType
+  credit_value: number
+  currency: string
+  is_active: boolean
+  updated_by: string | null
+  updated_at: string
+  created_at: string
+}
+
 // Comment
 
 export interface Comment {
