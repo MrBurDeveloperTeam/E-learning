@@ -18,6 +18,25 @@ function formatPrice(price: number, currency: string) {
 function buildAttributedUrl(productUrl: string, videoId: string, creatorId: string) {
   try {
     const url = new URL(productUrl)
+
+    // Odoo's product_url may be wrapped through the app.snabbb.com SSO
+    // bridge (/api/sso/ambient-redirect?return_url=<shop link>) so a doctor
+    // who's logged in on E-Learning lands on the shop already authenticated.
+    // That endpoint only reads return_url and ignores every other query
+    // param, so attribution params have to go on the INNER return_url, not
+    // the outer wrapper - setting them on the wrapper would silently drop
+    // them and break purchase-webhook attribution.
+    const returnUrlParam = url.searchParams.get('return_url')
+    if (returnUrlParam) {
+      const inner = new URL(returnUrlParam)
+      inner.searchParams.set('utm_source', 'elearning')
+      inner.searchParams.set('utm_medium', 'video')
+      inner.searchParams.set('ref_video', videoId)
+      inner.searchParams.set('ref_creator', creatorId)
+      url.searchParams.set('return_url', inner.toString())
+      return url.toString()
+    }
+
     url.searchParams.set('utm_source', 'elearning')
     url.searchParams.set('utm_medium', 'video')
     url.searchParams.set('ref_video', videoId)
