@@ -8,6 +8,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { useProfile, usePublicCreatorProfile } from '@/hooks/useProfile'
+import { useProfileImage } from '@/hooks/useProfileImage'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -17,6 +18,7 @@ export function Channel() {
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
   const isOwnChannel = currentProfile?.user_id === userId || user?.id === userId
+  const { profileImageUrl } = useProfileImage(Boolean(user))
   const ownProfileQuery = useProfile(userId, isOwnChannel)
   const publicCreatorProfileQuery = usePublicCreatorProfile(userId, !isOwnChannel)
   const videosQuery = useCreatorVideos(userId)
@@ -110,7 +112,11 @@ export function Channel() {
                 <div className="absolute bottom-0 left-4 translate-y-1/2 md:left-6">
                   <UserAvatar
                     name={profileName}
-                    avatarUrl={profile.avatar_url}
+                    avatarUrl={
+                      isOwnChannel && profileImageUrl
+                        ? profileImageUrl
+                        : profile.avatar_url
+                    }
                     size={64}
                     className="h-16 w-16 border-4 border-background text-2xl md:h-20 md:w-20"
                     textClassName="text-2xl"
