@@ -5,7 +5,10 @@ export function useProfileImage(isLoggedIn: boolean | null) {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoggedIn) return; // ← only fetch when logged in
+    if (!isLoggedIn) {
+      setProfileImageUrl(null);
+      return;
+    }
 
     fetch("https://account.snabbb.com/api/account/profile", {
       method: "GET",

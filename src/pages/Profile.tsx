@@ -170,7 +170,11 @@ export function Profile() {
             <div className="flex items-end justify-between -mt-8 mb-4 gap-4">
               <UserAvatar
                 name={profileName}
-                avatarUrl={profileImageUrl || profile.avatar_url}
+                avatarUrl={
+                  isOwnProfile && profileImageUrl
+                    ? profileImageUrl
+                    : profile.avatar_url
+                }
                 size={60}
                 className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] border-4 border-background text-xl"
                 textClassName="text-xl"
