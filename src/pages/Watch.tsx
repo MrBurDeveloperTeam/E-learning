@@ -23,6 +23,7 @@ import {
   useVideoSave,
 } from '@/hooks/useVideos'
 import { useVideoProducts } from '@/hooks/useProducts'
+import { useProfileImage } from '@/hooks/useProfileImage'
 
 export function Watch() {
   const { videoId } = useParams({ from: '/watch/$videoId' })
@@ -47,6 +48,14 @@ export function Watch() {
   const recordView = useRecordView()
   const deleteVideoMutation = useDeleteVideo()
   const featuredProductsQuery = useVideoProducts(videoId)
+  const loggedInUser = useAuthStore((state) => state.user)
+  const isOwnVideo = loggedInUser?.id === video?.creator_id
+  const { profileImageUrl } = useProfileImage(Boolean(loggedInUser))
+
+  const creatorAvatarUrl =
+    isOwnVideo && profileImageUrl
+      ? profileImageUrl
+      : video?.profiles?.avatar_url
 
   function getViewThresholdSeconds(durationSeconds: number | null | undefined) {
     if (!durationSeconds || durationSeconds <= 0) return 30
@@ -340,7 +349,7 @@ export function Watch() {
                 >
                   <UserAvatar
                     name={creatorName}
-                    avatarUrl={video.profiles?.avatar_url}
+                    avatarUrl={creatorAvatarUrl}
                     size={44}
                   />
                   <div>

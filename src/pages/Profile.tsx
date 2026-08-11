@@ -1,4 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
+import { useProfileImage } from '@/hooks/useProfileImage'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
@@ -16,6 +17,7 @@ import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import type { CreatorApplication } from '@/types'
+
 
 function BuildingIcon() {
   return (
@@ -61,6 +63,7 @@ export function Profile() {
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const queryClient = useQueryClient()
   const isOwnProfile = currentProfile?.user_id === userId || user?.id === userId
+  const { profileImageUrl } = useProfileImage(Boolean(user))
   const ownProfileQuery = useProfile(userId, isOwnProfile)
   const publicProfileQuery = usePublicProfile(userId)
   const profile =
@@ -167,7 +170,7 @@ export function Profile() {
             <div className="flex items-end justify-between -mt-8 mb-4 gap-4">
               <UserAvatar
                 name={profileName}
-                avatarUrl={profile.avatar_url}
+                avatarUrl={profileImageUrl || profile.avatar_url}
                 size={60}
                 className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] border-4 border-background text-xl"
                 textClassName="text-xl"
