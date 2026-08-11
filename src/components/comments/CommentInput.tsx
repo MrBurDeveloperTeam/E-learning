@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 
 interface CommentInputProps {
   videoId: string
+  currentUserAvatarUrl?: string | null
   parentId?: string
   onCancel?: () => void
   placeholder?: string
@@ -15,6 +16,7 @@ interface CommentInputProps {
 
 export function CommentInput({
   videoId,
+  currentUserAvatarUrl,
   parentId,
   onCancel,
   placeholder,
@@ -68,7 +70,7 @@ export function CommentInput({
     <div className="flex gap-3">
       <UserAvatar
         name={avatarName}
-        avatarUrl={profile?.avatar_url}
+        avatarUrl={currentUserAvatarUrl || profile?.avatar_url}
         size={32}
       />
       <div className="flex-1">

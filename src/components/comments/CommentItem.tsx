@@ -22,12 +22,14 @@ interface CommentItemProps {
   comment: CommentWithAuthor
   videoId: string
   isReply?: boolean
+  currentUserAvatarUrl?: string | null
 }
 
 export function CommentItem({
   comment,
   videoId,
   isReply = false,
+  currentUserAvatarUrl,
 }: CommentItemProps) {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
@@ -77,7 +79,11 @@ export function CommentItem({
       <Link to="/channel/$userId" params={{ userId: comment.author_id }}>
         <UserAvatar
           name={authorName}
-          avatarUrl={comment.profiles?.avatar_url}
+          avatarUrl={
+            isOwnComment && currentUserAvatarUrl
+              ? currentUserAvatarUrl
+              : comment.profiles?.avatar_url
+          }
           size={isReply ? 28 : 36}
           className={isReply ? 'bg-[#D4E8E7] text-[#2D6E6A]' : 'bg-[#D4E8E7] text-[#2D6E6A]'}
         />
@@ -195,6 +201,7 @@ export function CommentItem({
           <div className="mt-3">
             <CommentInput
               videoId={videoId}
+              currentUserAvatarUrl={currentUserAvatarUrl}
               parentId={comment.id}
               placeholder="Write a reply..."
               autoFocus
@@ -222,6 +229,7 @@ export function CommentItem({
                 comment={reply}
                 videoId={videoId}
                 isReply
+                currentUserAvatarUrl={currentUserAvatarUrl}
               />
             ))}
           </div>
