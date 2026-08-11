@@ -11,6 +11,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
+import { useProfileImage } from '@/hooks/useProfileImage';
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -22,6 +23,8 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
 export function Navbar() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
+  const { profileImageUrl } = useProfileImage(Boolean(user))
+  const avatarSrc = profileImageUrl || profile?.avatar_url
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const router = useRouterState()
@@ -254,9 +257,9 @@ export function Navbar() {
                     onClick={() => setMenuOpen(!menuOpen)}
                     className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-[13px] font-medium text-[#EAF4F3] transition-opacity hover:opacity-90"
                   >
-                    {profile?.avatar_url ? (
+                    {avatarSrc ? (
                       <img
-                        src={profile.avatar_url}
+                        src={avatarSrc}
                         alt={avatarLabel ? `${avatarLabel} avatar` : 'Profile avatar'}
                         className="h-full w-full object-cover"
                       />
@@ -516,8 +519,8 @@ export function Navbar() {
 
               <div className="flex items-center gap-3 px-3 py-2.5">
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-xs font-medium text-[#EAF4F3]">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
                   ) : (
                     getInitials(avatarLabel)
                   )}
