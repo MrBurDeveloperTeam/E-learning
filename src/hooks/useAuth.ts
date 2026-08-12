@@ -207,9 +207,18 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
     })
 
     const data = await response.json().catch(() => null)
-    const odooUser = data?.result
+    // snabbb-worker wraps Odoo's original response as
+    // { ok, sessionInfo, data: { result } }; direct/local Odoo calls return
+    // { result }. Accept both shapes so a successful login is not mistaken
+    // for invalid credentials.
+    const odooUser = data?.data?.result ?? data?.result ?? data?.sessionInfo
     if (!response.ok || data?.error || !odooUser?.uid) {
-      throw new Error(data?.error?.message || data?.error || 'Invalid login credentials')
+      throw new Error(
+        data?.error?.message ||
+        data?.error ||
+        data?.data?.error?.message ||
+        'Invalid login credentials',
+      )
     }
 
     const appLinkResponse = await fetch('/api/v1/sso/app_link', {
@@ -221,7 +230,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         method: 'call',
         params: {
           app_code: 'elearning',
-          email: odooUser.username || email.trim().toLowerCase(),
+          email: odooUser.username || odooUser.email || email.trim().toLowerCase(),
           name: odooUser.name || odooUser.partner_display_name || email.split('@')[0],
           company_id: 2,
           portal: true,
