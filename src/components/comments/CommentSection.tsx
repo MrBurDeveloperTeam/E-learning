@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useCommentCount, useComments } from '@/hooks/useComments'
+import { useProfileImage } from '@/hooks/useProfileImage'
+import { useAuthStore } from '@/store/authStore'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CommentInput } from './CommentInput'
@@ -14,6 +16,8 @@ export function CommentSection({
   videoId,
   commentCount,
 }: CommentSectionProps) {
+  const user = useAuthStore((state) => state.user)
+  const { profileImageUrl } = useProfileImage(Boolean(user))
   const [sort, setSort] = useState<'top' | 'newest'>('top')
   const { data: comments = [], isLoading, isError, refetch } = useComments(videoId)
   const commentCountQuery = useCommentCount(videoId)
@@ -43,7 +47,10 @@ export function CommentSection({
         </select>
       </div>
 
-      <CommentInput videoId={videoId} />
+      <CommentInput
+        videoId={videoId}
+        currentUserAvatarUrl={profileImageUrl}
+      />
 
       <div className="divider my-5" />
 
@@ -67,7 +74,12 @@ export function CommentSection({
       {!isLoading && !isError && sortedComments.length > 0 && (
         <div className="space-y-5">
           {sortedComments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} videoId={videoId} />
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              videoId={videoId}
+              currentUserAvatarUrl={profileImageUrl}
+            />
           ))}
         </div>
       )}

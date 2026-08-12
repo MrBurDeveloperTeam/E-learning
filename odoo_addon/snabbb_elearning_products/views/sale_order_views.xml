@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Adds a dedicated notebook page rather than xpath-ing into an
+         existing named page (page[@name='other_information'] isn't
+         guaranteed present/named that on every instance — this is the same
+         class of mismatch that broke the settings view on first install).
+         <notebook> itself is about as safe an anchor as exists on
+         sale.view_order_form; a brand new page just appends after the
+         existing tabs instead of injecting into one of them. -->
+    <record id="sale_order_form_view_snabbb_elearning" model="ir.ui.view">
+        <field name="name">sale.order.form.snabbb.elearning</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page name="snabbb_elearning" string="E-Learning attribution"
+                      invisible="not elearning_ref_video_id">
+                    <group>
+                        <field name="elearning_ref_video_id" readonly="1"/>
+                        <field name="elearning_ref_creator_id" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

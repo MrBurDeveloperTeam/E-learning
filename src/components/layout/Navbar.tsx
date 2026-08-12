@@ -11,6 +11,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
+import { useProfileImage } from '@/hooks/useProfileImage';
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -22,12 +23,19 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
 export function Navbar() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
+  const { profileImageUrl } = useProfileImage(Boolean(user))
+  const avatarSrc = profileImageUrl || profile?.avatar_url
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const router = useRouterState()
   const currentPath = router.location.pathname
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [creditBalance, setCreditBalance] = useState<number | null>(
+    null,
+  )
+  const [creditLoading, setCreditLoading] = useState(false)
+  const [creditError, setCreditError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
   const badgeLabel = profile?.position || profile?.company_name
@@ -58,6 +66,59 @@ export function Navbar() {
     }
   }
 
+  async function loadCreditBalance() {
+    const email = user?.email?.trim()
+
+    if (!email) {
+      setCreditBalance(null)
+      setCreditError('User email is missing')
+      return
+    }
+
+    setCreditLoading(true)
+    setCreditError(null)
+
+    try {
+      const response = await fetch(
+        `/api/wallet?email=${encodeURIComponent(email)}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
+        },
+      )
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.ok) {
+        throw new Error(
+          data?.error || 'Unable to retrieve credit balance',
+        )
+      }
+
+      const rawBalance =
+        data?.data?.snabbb_balance ??
+        data?.data?.balance
+
+      const balance = Number(rawBalance)
+
+      if (!Number.isFinite(balance)) {
+        throw new Error('Invalid credit balance')
+      }
+
+      setCreditBalance(balance)
+    } catch (error) {
+      console.error('Failed to load Snabbb Credit:', error)
+
+      setCreditBalance(null)
+      setCreditError('Unable to load balance')
+    } finally {
+      setCreditLoading(false)
+    }
+  }
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -75,6 +136,16 @@ export function Navbar() {
   function closeMobileMenu() {
     setMobileMenuOpen(false)
   }
+
+  useEffect(() => {
+    if (!user) {
+      setCreditBalance(null)
+      setCreditError(null)
+      return
+    }
+
+    void loadCreditBalance()
+  }, [user?.id])
 
   async function handleSignOut() {
     setMenuOpen(false)
@@ -186,9 +257,9 @@ export function Navbar() {
                     onClick={() => setMenuOpen(!menuOpen)}
                     className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-[13px] font-medium text-[#EAF4F3] transition-opacity hover:opacity-90"
                   >
-                    {profile?.avatar_url ? (
+                    {avatarSrc ? (
                       <img
-                        src={profile.avatar_url}
+                        src={avatarSrc}
                         alt={avatarLabel ? `${avatarLabel} avatar` : 'Profile avatar'}
                         className="h-full w-full object-cover"
                       />
@@ -286,7 +357,15 @@ export function Navbar() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">Snabbb Credit</p>
-                              <p className="truncate text-[11px] font-semibold text-muted-foreground">View your balance & rewards</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">
+                                {creditLoading
+                                  ? 'Loading...'
+                                  : creditError
+                                    ? creditError
+                                    : creditBalance !== null
+                                      ? `${creditBalance.toLocaleString()} credits`
+                                      : 'Balance unavailable'}
+                              </p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </button>
@@ -440,8 +519,8 @@ export function Navbar() {
 
               <div className="flex items-center gap-3 px-3 py-2.5">
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-xs font-medium text-[#EAF4F3]">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
                   ) : (
                     getInitials(avatarLabel)
                   )}

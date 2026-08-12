@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Deliberately NOT inheriting base.res_config_settings_view_form: its
+         internal div/class structure (e.g. div.settings) varies across Odoo
+         versions/customisations and is fragile to xpath into (this is what
+         broke on first install — see the module's git history/changelog).
+         A small standalone form view on the same res.config.settings model
+         sidesteps that entirely and is just as functional: it still reads
+         from and writes to the same config_parameter-backed fields. -->
+    <record id="res_config_settings_view_form_snabbb_elearning" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.snabbb.elearning</field>
+        <field name="model">res.config.settings</field>
+        <field name="arch" type="xml">
+            <form string="Snabbb E-Learning Settings">
+                <header>
+                    <button string="Save" type="object" name="execute" class="oe_highlight" data-hotkey="s"/>
+                    <button string="Discard" type="object" name="cancel" class="oe_link" data-hotkey="j"/>
+                </header>
+                <sheet>
+                    <h2>E-Learning product purchases</h2>
+                    <p class="text-muted">
+                        Connects this database to the DentalLearn E-Learning app's featured
+                        product buttons: which products it can search, where order status
+                        updates are sent, and how Snabbb Credit gets awarded to doctors.
+                    </p>
+                    <group>
+                        <field name="snabbb_elearning_enabled"/>
+                        <field name="snabbb_elearning_webhook_url"
+                               placeholder="https://your-dentallearn-domain/api/products/purchase-webhook"/>
+                        <field name="snabbb_elearning_webhook_secret" password="True"/>
+                        <field name="snabbb_elearning_sso_api_key" password="True"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_snabbb_elearning_settings" model="ir.actions.act_window">
+        <field name="name">Snabbb E-Learning</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="res_config_settings_view_form_snabbb_elearning"/>
+        <field name="target">inline</field>
+    </record>
+
+    <menuitem id="menu_snabbb_elearning_settings"
+              name="Snabbb E-Learning"
+              parent="base.menu_administration"
+              action="action_snabbb_elearning_settings"
+              sequence="60"
+              groups="base.group_system"/>
+</odoo>

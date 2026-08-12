@@ -61,6 +61,40 @@ function sanitiseSearchQuery(raw: string): string {
     .join(" & ");
 }
 
+const OTHERS_CATEGORY = "Others";
+
+function isOthersCategory(category: string | null): boolean {
+  return category?.trim().toLowerCase() === "others";
+}
+
+function applyCategoryFilter(query: any, category: string | null) {
+  if (!category) return query;
+
+  if (isOthersCategory(category)) {
+    return query.or(
+      "category.is.null,category.eq.Restorative,category.eq.Others"
+    );
+  }
+
+  return query.eq("category", category);
+}
+
+function normalizeVideoCategory(video: any) {
+  const category =
+    typeof video?.category === "string"
+      ? video.category.trim()
+      : "";
+
+  if (!category || category === "Restorative") {
+    return {
+      ...video,
+      category: OTHERS_CATEGORY,
+    };
+  }
+
+  return video;
+}
+
 // ---------------------------------------------------------------------------
 // OPTIONS preflight
 // ---------------------------------------------------------------------------
@@ -130,7 +164,7 @@ export async function onRequestGet(context: {
         return jsonResponse({ error: "Video not found" }, 404);
       }
 
-      return jsonResponse(data);
+      return jsonResponse(normalizeVideoCategory(data));
     }
 
     // -----------------------------------------------------------------------
@@ -162,6 +196,51 @@ export async function onRequestGet(context: {
     // If full-text search is requested, use an RPC call for the tsquery.
     // Otherwise use the standard query builder.
     if (q) {
+      if (isOthersCategory(category)) {
+        const escapedQuery = q.trim().replace(/[%_,]/g, "");
+
+        let othersQuery = supabase
+          .from("dental_videos")
+          .select("*", { count: "exact" })
+          .eq("needs_review", false)
+          .or(
+            `title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`
+          )
+          .or(
+            "category.is.null,category.eq.Restorative,category.eq.Others"
+          )
+          .order(sortColumn, { ascending })
+          .range(from, to);
+
+        const {
+          data: othersData,
+          error: othersError,
+          count: othersCount,
+        } = await othersQuery;
+
+        if (othersError) {
+          console.error(
+            "dental-videos Others search error:",
+            othersError
+          );
+
+          return jsonResponse(
+            { error: "Database error" },
+            500
+          );
+        }
+
+        const total = othersCount ?? 0;
+
+        return jsonResponse({
+          data: (othersData || []).map(normalizeVideoCategory),
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        });
+      }
+
       const tsquery = sanitiseSearchQuery(q);
       if (!tsquery) {
         return jsonResponse({
@@ -195,7 +274,7 @@ export async function onRequestGet(context: {
           .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
 
         if (category) {
-          query = query.eq("category", category);
+          query = applyCategoryFilter(query, category);
         }
 
         query = query.order(sortColumn, { ascending }).range(from, to);
@@ -209,7 +288,7 @@ export async function onRequestGet(context: {
 
         const total = count ?? 0;
         return jsonResponse({
-          data: fallbackData || [],
+          data: (fallbackData || []).map(normalizeVideoCategory),
           total,
           page,
           limit,
@@ -223,7 +302,7 @@ export async function onRequestGet(context: {
       // Strip the _total_count helper field from each row
       const cleaned = rows.map((row: any) => {
         const { _total_count, ...rest } = row;
-        return rest;
+        return normalizeVideoCategory(rest);
       });
 
       return jsonResponse({
@@ -242,7 +321,7 @@ export async function onRequestGet(context: {
       .eq("needs_review", false);
 
     if (category) {
-      query = query.eq("category", category);
+      query = applyCategoryFilter(query, category);
     }
 
     query = query.order(sortColumn, { ascending }).range(from, to);
@@ -257,7 +336,7 @@ export async function onRequestGet(context: {
     const total = count ?? 0;
 
     return jsonResponse({
-      data: data || [],
+      data: (data || []).map(normalizeVideoCategory),
       total,
       page,
       limit,

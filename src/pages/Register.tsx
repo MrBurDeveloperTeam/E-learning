@@ -1,131 +1,119 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { Building2, BriefcaseBusiness, ChevronDown, Globe2, Mail, Phone, Share2, ShieldCheck, User } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { Logo } from '../components/brand/Logo'
-import { PasswordField } from '../components/ui/PasswordField'
+import { DOBPicker } from '../components/auth/DOBPicker'
+import { COUNTRIES, DENTAL_POSITIONS } from '../constants/signupOptions'
+
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition focus:border-tiffany-600 focus:outline-none focus:ring-2 focus:ring-tiffany-600/20'
+const labelClass = 'mb-1.5 ml-1 block text-[10px] font-black uppercase tracking-[0.15em] text-slate-400'
+const iconClass = 'pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300'
 
 export default function Register() {
   const { signUp, user } = useAuth()
   const navigate = useNavigate()
-
-  const [fullName, setFullName] = useState('')
+  const [accountType, setAccountType] = useState<'individual' | 'company'>('individual')
+  const [name, setName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
+  const [referralCode, setReferralCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('referral') || params.get('referral_code') || params.get('ref') || ''
+  })
+  const [phone, setPhone] = useState('')
+  const [position, setPosition] = useState('')
+  const [customPosition, setCustomPosition] = useState('')
+  const [dob, setDob] = useState('')
+  const [country, setCountry] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
-    if (user && !success && !loading) {
-      navigate({ to: '/explore', replace: true })
-    }
-  }, [loading, navigate, success, user])
+    if (user && !loading) navigate({ to: '/explore', replace: true })
+  }, [loading, navigate, user])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    setSuccessMessage('')
+    const effectivePosition = position === 'OTHER' ? customPosition.trim() : position
+    if (password !== confirmPassword) return toast.error('Passwords do not match.')
+    if (!name.trim() || !email.trim() || !phone.trim() || !dob || !effectivePosition || !country) return toast.error('Please complete all required fields.')
+    if (accountType === 'company' && !companyName.trim()) return toast.error('Please enter your company name.')
+    if (!agreedToTerms) return toast.error('You must agree to the Terms of Service, Privacy Policy and Disclaimer.')
+
     setLoading(true)
     try {
-      await signUp(email, password, {
-        full_name: fullName,
+      const signUpResult = await signUp(email, password, {
+        full_name: name.trim(),
         role: 'member',
-        account_type: 'individual',
+        account_type: accountType,
+        phone: phone.trim(),
+        position: effectivePosition,
+        company_name: accountType === 'company' ? companyName.trim() : undefined,
+        referral_code: referralCode.trim() || undefined,
+        dob,
+        country,
+        agreed_to_terms: agreedToTerms,
       })
-      setSuccess(true)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed'
-      toast.error(msg)
+      if (signUpResult.session) {
+        toast.success('Your account has been created.')
+        navigate({ to: '/explore', replace: true })
+      } else {
+        setSuccessMessage('Registration successful! Check your email to verify your account.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Registration failed.')
     } finally {
       setLoading(false)
     }
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="card p-8 max-w-sm text-center animate-fade-in">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-            <svg width="24" height="24" fill="none" stroke="currentColor" className="text-emerald-500" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-medium text-foreground">Check your email</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            We&apos;ve sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account.
-          </p>
-          <Link to="/login" search={{ redirect: undefined }}>
-            <button type="button" className="btn-outline mt-6">Back to login</button>
-          </Link>
+  return <div className="min-h-screen bg-slate-100 px-4 py-6 sm:flex sm:items-center sm:justify-center sm:px-6 sm:py-10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <main className="mx-auto w-full max-w-xl rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-2xl sm:p-8 lg:p-10">
+      <header className="mb-8 text-left">
+        <Logo className="mb-5" imageClassName="h-7" />
+        <h1 className="text-3xl font-black tracking-tighter text-slate-900">Create Account</h1>
+        <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">Build your dental skills and advance your clinical career.</p>
+      </header>
+
+      <p className={labelClass}>Account Type</p>
+      <div className="mb-6 grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200">
+        <button type="button" onClick={() => setAccountType('individual')} className={`flex items-center justify-center gap-2 py-3 text-sm font-bold ${accountType === 'individual' ? 'bg-tiffany-600 text-white' : 'bg-white text-slate-500'}`}><User size={16} />Individual</button>
+        <button type="button" onClick={() => setAccountType('company')} className={`flex items-center justify-center gap-2 border-l border-slate-200 py-3 text-sm font-bold ${accountType === 'company' ? 'bg-tiffany-600 text-white' : 'bg-white text-slate-500'}`}><Building2 size={16} />Company</button>
+      </div>
+
+      {successMessage && (
+        <div role="status" className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          {successMessage}
         </div>
-      </div>
-    )
-  }
+      )}
 
-  if (user && !success && !loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background" aria-busy="true">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {accountType === 'company' && <><Field label="Company Name" icon={<Building2 className={iconClass} />}><input className={inputClass} value={companyName} onChange={(event) => setCompanyName(event.target.value)} placeholder="e.g. DENTA TECH" required /></Field><Field label="Company Email" icon={<Mail className={iconClass} />}><input type="email" className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="e.g. hello@denta.tech" required /></Field></>}
+        {accountType === 'individual' && <Field label="Your Email" icon={<Mail className={iconClass} />} help="This will be your login email."><input type="email" className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="e.g. nur@email.com" required /></Field>}
+        <Field label="Referred by (optional)" icon={<Share2 className={iconClass} />} help="Referred by a doctor already on Snabbb? Enter their code, email, or share their link to auto-fill this."><input className={inputClass} value={referralCode} onChange={(event) => setReferralCode(event.target.value)} placeholder="Referral code" autoComplete="off" /></Field>
+        <Field label="Your Name" icon={<User className={iconClass} />} help={accountType === 'company' ? 'Your name as the company representative.' : undefined}><input className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder={accountType === 'individual' ? 'e.g. Nour AYACHE' : 'e.g. Ahmad Nizam'} required /></Field>
+        <Field label={accountType === 'individual' ? 'Phone (WhatsApp)' : 'Phone'} icon={<Phone className={iconClass} />}><input type="tel" className={inputClass} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="e.g. +60123456789" required /></Field>
+        <div><label className={labelClass}>Date of Birth</label><DOBPicker value={dob} onChange={setDob} />{accountType === 'company' && <p className="mt-1 text-[10px] text-slate-400">Date of birth of the company representative.</p>}</div>
+        <Field label="Job Position" icon={<BriefcaseBusiness className={iconClass} />}><span className="relative block"><select className={`${inputClass} appearance-none pr-10`} value={position} onChange={(event) => setPosition(event.target.value)} required><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((item) => <option key={item} value={item}>{item}</option>)}<option value="OTHER">Other</option></select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" /></span></Field>
+        {position === 'OTHER' && <Field label="Specify Position" icon={<BriefcaseBusiness className={iconClass} />}><input className={inputClass} value={customPosition} onChange={(event) => setCustomPosition(event.target.value)} placeholder="e.g. Clinic Manager" required /></Field>}
+        <Field label="Country" icon={<Globe2 className={iconClass} />}><span className="relative block"><select className={`${inputClass} appearance-none pr-10`} value={country} onChange={(event) => setCountry(event.target.value)} required><option value="">-- Select Country --</option>{COUNTRIES.map(([id, countryName]) => <option key={id} value={id}>{countryName}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" /></span></Field>
+        <Field label="Password" icon={<ShieldCheck className={iconClass} />}><input type="password" className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" required minLength={6} /></Field>
+        <Field label="Confirm Password" icon={<ShieldCheck className={iconClass} />}><input type="password" className={inputClass} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" required minLength={6} /></Field>
+        <label className="flex items-start gap-2 text-[11px] text-slate-500"><input type="checkbox" className="mt-0.5 accent-tiffany-600" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} required /><span>I agree to the <a className="font-semibold text-tiffany-600 hover:underline" href="https://app.snabbb.com/terms" target="_blank" rel="noreferrer">Terms of Service</a>, <a className="font-semibold text-tiffany-600 hover:underline" href="https://app.snabbb.com/privacy" target="_blank" rel="noreferrer">Privacy Policy</a> and <a className="font-semibold text-tiffany-600 hover:underline" href="https://app.snabbb.com/disclaimer" target="_blank" rel="noreferrer">Disclaimer</a>.</span></label>
+        <button type="submit" disabled={loading} className="mt-2 rounded-xl bg-slate-900 py-3 text-base font-bold text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">{loading ? <LoadingSpinner size="sm" /> : 'Sign up'}</button>
+      </form>
+      <p className="mt-6 text-center text-xs font-medium text-slate-500">Already have an account? <Link to="/login" className="font-bold text-tiffany-600 hover:underline">Log In</Link></p>
+    </main>
+  </div>
+}
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-[420px] card p-8 animate-fade-in">
-        <div className="text-center mb-6">
-          <div className="flex justify-center">
-            <Logo className="mb-2" />
-          </div>
-          <h1 className="text-xl font-medium text-foreground mt-4 mb-1">Create your account</h1>
-          <p className="text-sm text-muted-foreground">Join the dental learning community as an individual member</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="fullName" className="text-sm font-medium text-foreground/80">Full name</label>
-            <input id="fullName" className="input-field" placeholder="Dr. Jane Smith" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="reg-email" className="text-sm font-medium text-foreground/80">Email</label>
-            <input id="reg-email" type="email" className="input-field" placeholder="you@clinic.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="reg-password" className="text-sm font-medium text-foreground/80">Password</label>
-            <PasswordField id="reg-password" className="input-field" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="reg-confirm-password" className="text-sm font-medium text-foreground/80">Confirm password</label>
-            <PasswordField
-              id="reg-confirm-password"
-              className="input-field"
-              placeholder="Confirm password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
-            New DentalLearn accounts are created as <strong>individual</strong> accounts with the <strong>member</strong> role.
-          </div>
-
-          <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? <LoadingSpinner size="sm" /> : 'Create account'}
-          </button>
-        </form>
-
-        <p className="text-center text-xs text-muted-foreground mt-5">
-          Already have an account?{' '}
-          <Link to="/login" search={{ redirect: undefined }} className="text-primary hover:opacity-80 transition-colors font-medium">
-            Sign in
-          </Link>
-        </p>
-      </div>
-    </div>
-  )
+function Field({ label, icon, help, children }: { label: string; icon: React.ReactNode; help?: string; children: React.ReactNode }) {
+  return <div><label className={labelClass}>{label}</label><div className="relative">{icon}{children}</div>{help && <p className="mt-0.5 text-[10px] text-slate-400">{help}</p>}</div>
 }

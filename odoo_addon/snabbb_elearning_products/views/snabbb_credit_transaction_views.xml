@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="snabbb_credit_transaction_view_list" model="ir.ui.view">
+        <field name="name">snabbb.credit.transaction.view.list</field>
+        <field name="model">snabbb.credit.transaction</field>
+        <field name="arch" type="xml">
+            <list string="Snabbb Credit transactions" create="0" edit="0">
+                <field name="create_date" string="Date"/>
+                <field name="partner_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="reason"/>
+                <field name="state" decoration-danger="state == 'failed'" decoration-success="state == 'done'"/>
+                <field name="source_reference"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="snabbb_credit_transaction_view_form" model="ir.ui.view">
+        <field name="name">snabbb.credit.transaction.view.form</field>
+        <field name="model">snabbb.credit.transaction</field>
+        <field name="arch" type="xml">
+            <form string="Snabbb Credit transaction" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <field name="partner_id"/>
+                        <field name="amount"/>
+                        <field name="currency_id"/>
+                        <field name="reason"/>
+                        <field name="state"/>
+                        <field name="source_reference"/>
+                        <field name="idempotency_key"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="snabbb_credit_transaction_action" model="ir.actions.act_window">
+        <field name="name">Snabbb Credit transactions</field>
+        <field name="res_model">snabbb.credit.transaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Snabbb Credit has been awarded yet.
+            </p>
+            <p>
+                Entries appear here when a doctor earns Snabbb Credit from a paid
+                purchase made through a featured E-Learning product.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="snabbb_credit_transaction_menu"
+              name="Snabbb Credit transactions"
+              parent="sale.sale_menu_root"
+              action="snabbb_credit_transaction_action"
+              sequence="90"
+              groups="sales_team.group_sale_manager"/>
+</odoo>

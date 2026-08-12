@@ -6,6 +6,10 @@ export default {
   theme: {
     extend: {
       colors: {
+        tiffany: {
+          600: '#14b8b8',
+          700: '#0f9f9f',
+        },
         teal: {
           50:  '#EAF4F3',
           100: '#D4E8E7',
@@ -52,6 +56,10 @@ export default {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
         },
       },
       fontFamily: {

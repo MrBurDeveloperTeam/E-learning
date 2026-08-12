@@ -11,6 +11,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoCard } from '@/components/video/VideoCard'
 import { VideoCardSkeleton } from '@/components/video/VideoCardSkeleton'
+import { FeaturedProductsList } from '@/components/video/FeaturedProductCard'
 import { cn, formatViewCount, getDisplayName, timeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import {
@@ -21,6 +22,8 @@ import {
   useVideoLike,
   useVideoSave,
 } from '@/hooks/useVideos'
+import { useVideoProducts } from '@/hooks/useProducts'
+import { useProfileImage } from '@/hooks/useProfileImage'
 
 export function Watch() {
   const { videoId } = useParams({ from: '/watch/$videoId' })
@@ -44,6 +47,15 @@ export function Watch() {
   const { isSaved, toggleSave, isPending: savePending } = useVideoSave(videoId)
   const recordView = useRecordView()
   const deleteVideoMutation = useDeleteVideo()
+  const featuredProductsQuery = useVideoProducts(videoId)
+  const loggedInUser = useAuthStore((state) => state.user)
+  const isOwnVideo = loggedInUser?.id === video?.creator_id
+  const { profileImageUrl } = useProfileImage(Boolean(loggedInUser))
+
+  const creatorAvatarUrl =
+    isOwnVideo && profileImageUrl
+      ? profileImageUrl
+      : video?.profiles?.avatar_url
 
   function getViewThresholdSeconds(durationSeconds: number | null | undefined) {
     if (!durationSeconds || durationSeconds <= 0) return 30
@@ -317,6 +329,17 @@ export function Watch() {
                 </div>
               </div>
 
+              {/* Featured products */}
+              {isAuthenticated && !!featuredProductsQuery.data?.length && (
+                <div className="mt-4">
+                  <FeaturedProductsList
+                    products={featuredProductsQuery.data}
+                    videoId={video.id}
+                    creatorId={video.creator_id}
+                  />
+                </div>
+              )}
+
               {/* Creator card */}
               <div className="mt-4 flex items-start justify-between border-t border-border pt-4 px-4 lg:px-0">
                 <Link
@@ -326,7 +349,7 @@ export function Watch() {
                 >
                   <UserAvatar
                     name={creatorName}
-                    avatarUrl={video.profiles?.avatar_url}
+                    avatarUrl={creatorAvatarUrl}
                     size={44}
                   />
                   <div>

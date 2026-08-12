@@ -119,7 +119,7 @@ export async function onRequest(context: any) {
     const validCategories = [
       'Orthodontics', 'Oral Surgery', 'Endodontics', 'Periodontics',
       'Pediatric Dentistry', 'Prosthodontics', 'Oral Hygiene',
-      'Radiology', 'General Dentistry', 'Implantology', 'Restorative'
+      'Radiology', 'General Dentistry', 'Implantology', 'Others'
     ];
     const fallbackCategory = 'General Dentistry';
 
@@ -151,7 +151,7 @@ Category definitions:
 - Implantology: dental implants, osseointegration, implant placement surgery, abutments, sinus lift, All-on-4, All-on-6, immediate loading, flapless surgery
 - Oral Hygiene: brushing, flossing, preventive care, patient education on home care
 - Radiology: X-rays, CBCT, imaging interpretation, radiographic diagnosis
-- Restorative: fillings, composite restorations, amalgam restorations, direct restorations, indirect restorations, inlays, onlays, tooth-colored fillings, cavity preparation, bonding procedures, restorative dentistry techniques
+- Others: fillings, composite restorations, amalgam restorations, direct restorations, indirect restorations, inlays, onlays, tooth-colored fillings, cavity preparation, bonding procedures, restorative dentistry techniques, or dental content that does not fit the other categories
 - General Dentistry: routine checkups, dental exams, teeth cleaning (non-periodontal), fluoride treatments, dental anxiety, tooth sensitivity, tooth decay prevention. Use ONLY when no specialist category above fits.
 
 Critical decision rules:
@@ -176,7 +176,7 @@ Format: { "category": "...", "confidence": 0.0-1.0, "tags": ["...", "..."] }`;
       'Implantology': ['implantology', 'dental implant', 'implant placement', 'osseointegration', 'sinus lift', 'all-on-4', 'all-on-6', 'flapless'],
       'Oral Hygiene': ['oral hygiene', 'brushing', 'flossing', 'preventive care', 'plaque removal'],
       'Radiology': ['radiology', 'x-ray', 'xray', 'cbct', 'radiograph', 'imaging'],
-      'Restorative': ['restorative', 'filling', 'composite restoration', 'amalgam restoration', 'inlay', 'onlay', 'bonding', 'direct restoration', 'indirect restoration', 'cavity preparation'],
+      'Others': ['restorative', 'filling', 'composite restoration', 'amalgam restoration', 'inlay', 'onlay', 'bonding', 'direct restoration', 'indirect restoration', 'cavity preparation'],
     };
 
     function detectCategoryHint(title: string, description: string, tags: string[]): string | null {

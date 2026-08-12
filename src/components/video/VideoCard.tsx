@@ -5,6 +5,8 @@ import { cn, formatViewCount, getDisplayName, timeAgo } from '@/lib/utils'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail'
+import { useProfileImage } from '@/hooks/useProfileImage'
+import { useAuthStore } from '@/store/authStore'
 
 interface VideoCardProps {
   video: VideoWithCreator
@@ -23,6 +25,14 @@ export function VideoCard({
   const creator = video.profiles
   const creatorName = getDisplayName(creator, 'Unknown creator')
   const shouldShowAvatar = showCreator && !isSmall && !isHorizontal
+  const loggedInUser = useAuthStore((state) => state.user)
+const isOwnVideo = loggedInUser?.id === video.creator_id
+const { profileImageUrl } = useProfileImage(Boolean(loggedInUser))
+
+const creatorAvatarUrl =
+  isOwnVideo && profileImageUrl
+    ? profileImageUrl
+    : creator?.avatar_url
 
   function openVideo() {
     navigate({
@@ -104,7 +114,7 @@ export function VideoCard({
           >
             <UserAvatar
               name={creatorName}
-              avatarUrl={creator?.avatar_url}
+              avatarUrl={creatorAvatarUrl}
               size={36}
               className="flex-shrink-0 transition-opacity hover:opacity-80"
             />

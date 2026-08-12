@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_snabbb_credit_transaction_user,snabbb.credit.transaction.user,model_snabbb_credit_transaction,base.group_user,1,0,0,0
+access_snabbb_credit_transaction_sales_manager,snabbb.credit.transaction.sales_manager,model_snabbb_credit_transaction,sales_team.group_sale_manager,1,1,1,1
+access_snabbb_credit_transaction_system,snabbb.credit.transaction.system,model_snabbb_credit_transaction,base.group_system,1,1,1,1

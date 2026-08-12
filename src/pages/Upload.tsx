@@ -4,6 +4,8 @@ import { Upload as UploadIcon, CheckCircle, Image as ImageIcon, Video, X } from 
 import * as UpChunk from '@mux/upchunk'
 import { useAuthStore } from '@/store/authStore'
 import { useCreateVideo, useUpdateVideo, useUploadVideoThumbnail, useVideo } from '@/hooks/useVideos'
+import { useSaveVideoProducts, useVideoProducts } from '@/hooks/useProducts'
+import { ProductPicker } from '@/components/creator/ProductPicker'
 import { Navbar } from '@/components/layout/Navbar'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -11,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { VIDEO_CATEGORIES, type VideoCategory } from '@/types'
+import { VIDEO_CATEGORIES, type PartnerProduct, type VideoCategory } from '@/types'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -37,6 +39,8 @@ export function Upload() {
   const { mutateAsync: updateVideo } = useUpdateVideo()
   const { mutateAsync: uploadThumbnail } = useUploadVideoThumbnail()
   const editVideoQuery = useVideo(videoId)
+  const existingProductsQuery = useVideoProducts(videoId)
+  const { mutateAsync: saveVideoProducts } = useSaveVideoProducts()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -50,7 +54,8 @@ export function Upload() {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
-  
+  const [selectedProducts, setSelectedProducts] = useState<PartnerProduct[]>([])
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
@@ -66,6 +71,7 @@ export function Upload() {
     setFile(null)
     setUploading(false)
     setProgress(0)
+    setSelectedProducts([])
   }, [videoId])
 
   useEffect(() => {
@@ -94,6 +100,21 @@ export function Upload() {
 
     return () => URL.revokeObjectURL(objectUrl)
   }, [thumbnailFile, originalThumbnailUrl])
+
+  useEffect(() => {
+    if (!isEditMode || !existingProductsQuery.data) return
+
+    setSelectedProducts(
+      existingProductsQuery.data.map((product) => ({
+        product_ref: product.product_ref,
+        name: product.product_name,
+        image_url: product.product_image_url,
+        price: product.product_price,
+        currency: product.currency,
+        product_url: product.product_url,
+      }))
+    )
+  }, [isEditMode, existingProductsQuery.data])
 
   useEffect(() => {
     if (!isEditMode || isAuthLoading || !profile || !editVideoQuery.data) return
@@ -196,6 +217,25 @@ export function Upload() {
           thumbnail_url: thumbnailUrl,
         })
 
+        try {
+          await saveVideoProducts({
+            videoId,
+            creatorId: profile.user_id,
+            products: selectedProducts.map((product) => ({
+              product_ref: product.product_ref,
+              product_name: product.name,
+              product_image_url: product.image_url,
+              product_price: product.price,
+              currency: product.currency,
+              product_url: product.product_url,
+              cta_label: 'View Product',
+            })),
+          })
+        } catch (productError) {
+          console.error('Failed to save featured products:', productError)
+          toast.error('Video saved, but featured products failed to update.')
+        }
+
         toast.success('Video updated successfully.')
         navigate({ to: '/studio', replace: true })
         return
@@ -227,7 +267,7 @@ export function Upload() {
       }
 
       // 2. Insert DB record as processing
-      await createVideo({
+      const createdVideo = await createVideo({
         creator_id: profile.user_id,
         title,
         description,
@@ -237,6 +277,27 @@ export function Upload() {
         mux_upload_id: uploadId,
         thumbnail_url: createThumbnailUrl,
       })
+
+      if (createdVideo?.id && selectedProducts.length > 0) {
+        try {
+          await saveVideoProducts({
+            videoId: createdVideo.id,
+            creatorId: profile.user_id,
+            products: selectedProducts.map((product) => ({
+              product_ref: product.product_ref,
+              product_name: product.name,
+              product_image_url: product.image_url,
+              product_price: product.price,
+              currency: product.currency,
+              product_url: product.product_url,
+              cta_label: 'View Product',
+            })),
+          })
+        } catch (productError) {
+          console.error('Failed to save featured products:', productError)
+          toast.error('Video created, but featured products failed to save.')
+        }
+      }
 
       // 3. Upload file to Mux using UpChunk
       const upload = UpChunk.createUpload({
@@ -435,11 +496,24 @@ export function Upload() {
 
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (comma separated)</Label>
-                <Input 
-                  id="tags" 
-                  placeholder="orthodontics, brackets, tips" 
-                  value={tags} 
-                  onChange={e => setTags(e.target.value)} 
+                <Input
+                  id="tags"
+                  placeholder="orthodontics, brackets, tips"
+                  value={tags}
+                  onChange={e => setTags(e.target.value)}
+                  disabled={uploading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Featured products</Label>
+                <p className="text-xs text-muted-foreground">
+                  Attach Snabbb partner products to show as clickable buttons on this video. You
+                  earn Snabbb Credit on every successful purchase made through your link.
+                </p>
+                <ProductPicker
+                  selected={selectedProducts}
+                  onChange={setSelectedProducts}
                   disabled={uploading}
                 />
               </div>

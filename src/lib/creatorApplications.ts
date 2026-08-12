@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { logElearningActivity } from './logActivityToOdoo'
 import type { CreatorApplication } from '@/types'
 
 export async function submitCreatorApplication(
@@ -30,6 +31,7 @@ export async function submitCreatorApplication(
       .single()
 
     if (error) throw error
+    logElearningActivity('creator_application_resubmitted', 'Resubmitted creator verification application')
     return data as CreatorApplication
   }
 
@@ -47,5 +49,6 @@ export async function submitCreatorApplication(
     .single()
 
   if (error) throw error
+  logElearningActivity('creator_application_submitted', 'Submitted creator verification application')
   return data as CreatorApplication
 }
