@@ -202,6 +202,20 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       })
       if (setErr) throw setErr
     }
+
+    // Best-effort: authenticate against Odoo so that the session_id cookie
+    // gets set on .mrbur.shop. This means when the user clicks a featured
+    // product link and lands on mrbur.shop, Odoo will recognise their session
+    // and auto-log them in — no ambient-redirect magic required.
+    // We fire-and-forget; an Odoo failure must never block the Supabase login.
+    fetch(getApiUrl('/api/login'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).catch((err) => {
+      console.warn('[useAuth] Odoo session setup failed (non-fatal):', err)
+    })
   }
 
   async function signInWithGoogle() {
