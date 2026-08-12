@@ -262,7 +262,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       throw new Error(errorMsg)
     }
 
-    return { pendingVerification: true, result: odooData?.result }
+    const odooResult = odooData?.data?.result ?? odooData?.result
+    if (odooResult?.ok === false) {
+      throw new Error(odooResult?.message || odooResult?.error || 'Failed to create account')
+    }
+
+    return { pendingVerification: true, result: odooResult }
   }
 
   async function signOutUser() {

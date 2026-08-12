@@ -1,4 +1,4 @@
-import { getSupabaseUserByEmail, signHS256, buildSetCookie, getCookieOptions } from './_shared/auth'
+import { issueSupabaseSession, buildSetCookie, getCookieOptions } from './_shared/auth'
 
 export const onRequestPost = async (context: any) => {
   const { request, env } = context
@@ -73,88 +73,9 @@ export const onRequestPost = async (context: any) => {
 
     const name = result?.name ?? result?.partner_display_name ?? ""
 
-    // 3. Get or Create Supabase User
-    let sbUser = await getSupabaseUserByEmail(env, email)
-    if (!sbUser) {
-      // Create user
-      const createRes = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users`, {
-        method: "POST",
-        headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          email_confirm: true,
-          password: crypto.randomUUID() + crypto.randomUUID(), // Random password since Odoo is truth
-          user_metadata: {
-            sso: "odoo",
-            name,
-            odoo_sub: uid,
-          },
-        }),
-      })
-
-      const created = await createRes.json().catch(() => null) as any
-      if (!createRes.ok) {
-        if (created?.error_code === "email_exists" || created?.msg?.toLowerCase()?.includes("registered")) {
-          sbUser = await getSupabaseUserByEmail(env, email)
-        }
-        if (!sbUser) {
-          return new Response(JSON.stringify({ error: "Failed to sync user with Supabase" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json", ...corsHeaders }
-          })
-        }
-      } else {
-        sbUser = created?.user ?? created
-      }
-    }
-
-    // 4. Generate Supabase JWT
-    const now = Math.floor(Date.now() / 1000)
-    const payload = {
-      aud: "authenticated",
-      role: "authenticated",
-      sub: sbUser.id,
-      email: sbUser.email,
-      app_metadata: { provider: "email", providers: ["email"] },
-      user_metadata: sbUser.user_metadata,
-      session_id: crypto.randomUUID(), // Mock session ID
-      iat: now,
-      exp: now + 3600, // 1 hour
-    }
-
-    // Must have SUPABASE_JWT_SECRET
-    const secret = env.SUPABASE_JWT_SECRET || env.APP_JWT_SECRET
-    if (!secret) {
-      return new Response(JSON.stringify({ error: "Missing JWT Secret configuration" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders }
-      })
-    }
-
-    const supabaseToken = await signHS256({
-      header: { alg: "HS256", typ: "JWT" },
-      payload,
-      secret,
-    })
-
-    // Prepare response
-    const responseBody = {
-      access_token: supabaseToken,
-      refresh_token: supabaseToken, // We just return the same token, client can refresh via auth state change if needed, but standard is to handle custom refresh logic.
-      token_type: "bearer",
-      expires_in: 3600,
-      user: {
-        id: sbUser.id,
-        email: sbUser.email,
-        user_metadata: sbUser.user_metadata,
-        aud: "authenticated",
-        role: "authenticated",
-      }
-    }
+    // 3. Exchange the verified central identity for a real, refreshable
+    // Supabase Auth session. This server-side mapping sends no confirmation email.
+    const responseBody = await issueSupabaseSession(env, { email, name, odooSub: uid })
 
     const responseHeaders = new Headers({
       "Content-Type": "application/json",
