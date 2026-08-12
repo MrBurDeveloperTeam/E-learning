@@ -190,7 +190,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
     // Match Inventory's production login flow: authenticate the central Odoo
     // account through routes already handled by snabbb-worker, then launch the
     // E-learning app through Odoo's signed app-link redirect.
-    const response = await fetch('/api/web/session/authenticate', {
+    const response = await fetch('https://app.snabbb.com/api/web/session/authenticate', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -221,7 +221,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       )
     }
 
-    const appLinkResponse = await fetch('/api/v1/sso/app_link', {
+    const appLinkResponse = await fetch('https://e-learning.snabbb.com/api/v1/sso/app_link', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
