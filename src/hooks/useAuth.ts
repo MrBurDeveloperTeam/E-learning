@@ -41,9 +41,12 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
-async function fetchSsoExchange() {
+async function fetchSsoExchange(token?: string | null) {
   try {
-    const response = await fetch(getApiUrl('/api/sso/exchange'), {
+    const exchangePath = token
+      ? `/api/sso/exchange?token=${encodeURIComponent(token)}`
+      : '/api/sso/exchange'
+    const response = await fetch(getApiUrl(exchangePath), {
       method: 'GET',
       credentials: 'include',
     })
@@ -118,7 +121,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         } else {
           // Attempt seamless SSO if no Supabase session exists
           try {
-            const ssoRes = await fetchSsoExchange()
+            const searchParams = new URLSearchParams(window.location.search)
+            const appLinkToken = searchParams.get('token')
+            const ssoRes = await fetchSsoExchange(appLinkToken)
             if (!ssoRes) {
               clearStore()
               return
@@ -135,6 +140,10 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
                 if (setSessionError) {
                   console.warn('[useAuth] failed to set SSO session:', setSessionError)
                   clearStore()
+                } else if (appLinkToken) {
+                  // Remove the one-time JWT from browser history/address bar
+                  // after it has been exchanged successfully.
+                  window.history.replaceState({}, '', '/')
                 }
               } else {
                 clearStore()
@@ -187,32 +196,68 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    // Odoo is the source of truth for Snabbb credentials. The worker verifies
-    // the central account, maps it to Supabase without another verification
-    // email, and returns the app-specific Supabase session.
-    const response = await fetch(getApiUrl('/api/login'), {
+    // Match Inventory's production login flow: authenticate the central Odoo
+    // account through routes already handled by snabbb-worker, then launch the
+    // E-learning app through Odoo's signed app-link redirect.
+    const response = await fetch('https://app.snabbb.com/api/web/session/authenticate', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: 'aht-systemadmin-mrbur-main-20994444',
+          login: email.trim(),
+          password,
+        },
+        id: 1,
+      }),
     })
 
     const data = await response.json().catch(() => null)
-    if (!response.ok) {
+    // snabbb-worker wraps Odoo's original response as
+    // { ok, sessionInfo, data: { result } }; direct/local Odoo calls return
+    // { result }. Accept both shapes so a successful login is not mistaken
+    // for invalid credentials.
+    const odooUser = data?.data?.result ?? data?.result ?? data?.sessionInfo
+    if (!response.ok || data?.error || !odooUser?.uid) {
       throw new Error(
-        data?.error || data?.details || 'Login failed',
+        data?.error?.message ||
+        data?.error ||
+        data?.data?.error?.message ||
+        'Invalid login credentials',
       )
     }
 
-    if (!data?.access_token || !data?.refresh_token) {
-      throw new Error('The login service returned an invalid session.')
+    const appLinkResponse = await fetch('https://e-learning.snabbb.com/api/v1/sso/app_link', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          app_code: 'e-learning',
+          email: odooUser.username || odooUser.email || email.trim().toLowerCase(),
+          name: odooUser.name || odooUser.partner_display_name || email.split('@')[0],
+          company_id: 2,
+          portal: true,
+        },
+        id: 1,
+      }),
+    })
+
+    const appLinkData = await appLinkResponse.json().catch(() => null)
+    const redirectUrl = appLinkData?.result?.url
+    if (!appLinkResponse.ok || appLinkData?.error || !redirectUrl) {
+      throw new Error(
+        appLinkData?.error?.message || appLinkData?.error || 'Unable to open E-learning session.',
+      )
     }
 
-    const { error } = await supabase.auth.setSession({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-    })
-    if (error) throw error
+    window.location.assign(redirectUrl)
+    return { redirecting: true as const }
   }
 
   async function signInWithGoogle() {

@@ -36,8 +36,8 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      await signInWithEmail(email, password)
-      navigate({ to: redirectTo })
+      const result = await signInWithEmail(email, password)
+      if (!result?.redirecting) navigate({ to: redirectTo })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed'
       if (msg === 'Invalid login credentials') {
