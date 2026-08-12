@@ -41,9 +41,12 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
-async function fetchSsoExchange() {
+async function fetchSsoExchange(token?: string | null) {
   try {
-    const response = await fetch(getApiUrl('/api/sso/exchange'), {
+    const exchangePath = token
+      ? `/api/sso/exchange?token=${encodeURIComponent(token)}`
+      : '/api/sso/exchange'
+    const response = await fetch(getApiUrl(exchangePath), {
       method: 'GET',
       credentials: 'include',
     })
@@ -118,7 +121,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         } else {
           // Attempt seamless SSO if no Supabase session exists
           try {
-            const ssoRes = await fetchSsoExchange()
+            const searchParams = new URLSearchParams(window.location.search)
+            const appLinkToken = searchParams.get('token')
+            const ssoRes = await fetchSsoExchange(appLinkToken)
             if (!ssoRes) {
               clearStore()
               return
@@ -135,6 +140,10 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
                 if (setSessionError) {
                   console.warn('[useAuth] failed to set SSO session:', setSessionError)
                   clearStore()
+                } else if (appLinkToken) {
+                  // Remove the one-time JWT from browser history/address bar
+                  // after it has been exchanged successfully.
+                  window.history.replaceState({}, '', '/')
                 }
               } else {
                 clearStore()

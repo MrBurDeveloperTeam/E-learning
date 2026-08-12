@@ -119,6 +119,12 @@ export function buildClearCookie(name: string = "mrbur_sso", options: CookieOpti
 }
 
 export function getTokenFromRequest(req: Request): string | null {
+  // Odoo app links land on /sso/login?token=<jwt>. The client forwards that
+  // token to this exchange endpoint, so accept it explicitly in addition to
+  // the shared cookie and Authorization header used by ambient SSO.
+  const queryToken = new URL(req.url).searchParams.get("token");
+  if (queryToken) return queryToken;
+
   const cookie = req.headers.get("Cookie") || "";
   const parts = cookie.split(";").map((v) => v.trim());
   for (const part of parts) {
