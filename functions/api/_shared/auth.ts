@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 export function base64UrlEncodeBytes(bytes: Uint8Array): string {
   let binary = "";
   const len = bytes.length;
@@ -179,18 +181,14 @@ export async function issueSupabaseSession(
   if (!email) throw new Error("Missing email for Supabase session");
 
   const adminKey = env.SUPABASE_SERVICE_ROLE_KEY;
-  const clientKey = env.SUPABASE_ANON_KEY || adminKey;
-  if (!env.SUPABASE_URL || !adminKey || !clientKey) {
+  if (!env.SUPABASE_URL || !adminKey) {
     throw new Error("Missing Supabase server configuration");
   }
 
-  const internalPassword = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+  const admin = createClient(env.SUPABASE_URL, adminKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
   let user = await getSupabaseUserByEmail(env, email);
-  const adminHeaders = {
-    apikey: adminKey,
-    Authorization: `Bearer ${adminKey}`,
-    "Content-Type": "application/json",
-  };
   const userMetadata = {
     ...(user?.user_metadata || {}),
     sso: "odoo",
@@ -199,42 +197,45 @@ export async function issueSupabaseSession(
   };
 
   if (user?.id) {
-    const updateRes = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${user.id}`, {
-      method: "PUT",
-      headers: adminHeaders,
-      body: JSON.stringify({ password: internalPassword, email_confirm: true, user_metadata: userMetadata }),
+    const { data, error } = await admin.auth.admin.updateUserById(user.id, {
+      email_confirm: true,
+      user_metadata: userMetadata,
     });
-    const updated = await updateRes.json().catch(() => null) as any;
-    if (!updateRes.ok) {
-      throw new Error(updated?.msg || updated?.message || "Failed to update Supabase user");
-    }
-    user = updated?.user ?? updated;
+    if (error) throw new Error(error.message || "Failed to update Supabase user");
+    user = data.user;
   } else {
-    const createRes = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users`, {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({
-        email,
-        password: internalPassword,
-        email_confirm: true,
-        user_metadata: userMetadata,
-      }),
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: userMetadata,
     });
-    const created = await createRes.json().catch(() => null) as any;
-    if (!createRes.ok) {
-      throw new Error(created?.msg || created?.message || "Failed to create Supabase user");
-    }
-    user = created?.user ?? created;
+    if (error) throw new Error(error.message || "Failed to create Supabase user");
+    user = data.user;
   }
 
-  const tokenRes = await fetch(`${env.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { apikey: clientKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password: internalPassword }),
+  if (!user?.id) throw new Error("Supabase user mapping returned no user");
+
+  // generateLink returns the token material to this trusted server; it does
+  // not dispatch an email. Redeeming that one-time token creates a standard
+  // Supabase session with a real refresh token and leaves passwords untouched.
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
   });
-  const session = await tokenRes.json().catch(() => null) as any;
-  if (!tokenRes.ok || !session?.access_token || !session?.refresh_token) {
-    throw new Error(session?.error_description || session?.msg || "Failed to create Supabase session");
+  if (linkError) throw new Error(linkError.message || "Failed to generate Supabase login token");
+
+  const tokenHash = linkData.properties?.hashed_token;
+  if (!tokenHash) throw new Error("Supabase login token was not returned");
+
+  const { data: verified, error: verifyError } = await admin.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: tokenHash,
+  });
+  if (verifyError) throw new Error(verifyError.message || "Failed to verify Supabase login token");
+
+  const session = verified.session;
+  if (!session?.access_token || !session.refresh_token) {
+    throw new Error("Supabase did not return a refreshable session");
   }
 
   return session;
