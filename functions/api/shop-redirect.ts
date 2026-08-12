@@ -44,18 +44,24 @@ export const onRequestPost = async (context: any) => {
 
   // Parse body
   let body: { return_url?: string } = {}
+  let rawText = ''
   try {
-    body = await request.json()
-  } catch {
-    return new Response(JSON.stringify({ error: 'invalid body' }), {
+    rawText = await request.text()
+    console.log('[shop-redirect] raw body text:', rawText)
+    body = JSON.parse(rawText)
+  } catch (e) {
+    console.error('[shop-redirect] body parse error:', e, 'raw:', rawText)
+    return new Response(JSON.stringify({ error: 'invalid body', raw: rawText }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
+  console.log('[shop-redirect] parsed body keys:', Object.keys(body), 'return_url:', body.return_url)
+
   const returnUrl = body.return_url
   if (!returnUrl) {
-    return new Response(JSON.stringify({ error: 'missing return_url' }), {
+    return new Response(JSON.stringify({ error: 'missing return_url', received_keys: Object.keys(body) }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
