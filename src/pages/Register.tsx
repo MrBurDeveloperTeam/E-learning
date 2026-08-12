@@ -49,7 +49,7 @@ export default function Register() {
 
     setLoading(true)
     try {
-      const signUpResult = await signUp(email, password, {
+      await signUp(email, password, {
         full_name: name.trim(),
         role: 'member',
         account_type: accountType,
@@ -61,12 +61,7 @@ export default function Register() {
         country,
         agreed_to_terms: agreedToTerms,
       })
-      if (signUpResult.session) {
-        toast.success('Your account has been created.')
-        navigate({ to: '/explore', replace: true })
-      } else {
-        setSuccessMessage('Registration successful! Check your email to verify your account.')
-      }
+      setSuccessMessage('Registration successful! Check your email for the Snabbb account verification message.')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Registration failed.')
     } finally {

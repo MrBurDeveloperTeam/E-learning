@@ -187,21 +187,32 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    // E-learning uses Supabase authentication directly
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // Odoo is the source of truth for Snabbb credentials. The worker verifies
+    // the central account, maps it to Supabase without another verification
+    // email, and returns the app-specific Supabase session.
+    const response = await fetch(getApiUrl('/api/login'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     })
 
-    if (error) throw error
-
-    if (data.session) {
-      const { error: setErr } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      })
-      if (setErr) throw setErr
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(
+        data?.error || data?.details || 'Login failed',
+      )
     }
+
+    if (!data?.access_token || !data?.refresh_token) {
+      throw new Error('The login service returned an invalid session.')
+    }
+
+    const { error } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+    if (error) throw error
   }
 
   async function signInWithGoogle() {
@@ -230,7 +241,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   ) {
     const name = metadata?.full_name || email.split('@')[0]
 
-    // Step 1: Create user in Odoo via worker
+    // Registration belongs exclusively to the central Snabbb/Odoo account.
+    // Supabase is mapped later by /api/login or the ambient SSO exchange, so
+    // it must not send its own confirmation email here.
     const odooRes = await fetch(getApiUrl('/api/e-learning/sign-up'), {
       method: 'POST',
       credentials: 'include',
@@ -249,31 +262,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       throw new Error(errorMsg)
     }
 
-    // Step 2: Same as Inventory — create the Supabase Auth user directly
-    // and save all form fields in Auth user_metadata.
-    const inventorySignUp = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          full_name: name,
-          account_type: metadata?.account_type || 'individual',
-          phone: metadata?.phone || null,
-          position: metadata?.position || null,
-          company_name: metadata?.company_name || null,
-          referral_code: metadata?.referral_code || null,
-          dob: metadata?.dob || null,
-          country: metadata?.country || null,
-          agreed_to_terms: Boolean(metadata?.agreed_to_terms),
-        },
-      },
-    })
+    const odooResult = odooData?.data?.result ?? odooData?.result
+    if (odooResult?.ok === false) {
+      throw new Error(odooResult?.message || odooResult?.error || 'Failed to create account')
+    }
 
-    if (inventorySignUp.error) throw inventorySignUp.error
-    return inventorySignUp.data
-
-    // Step 3: Sign in directly — user is confirmed so this works immediately
+    return { pendingVerification: true, result: odooResult }
   }
 
   async function signOutUser() {

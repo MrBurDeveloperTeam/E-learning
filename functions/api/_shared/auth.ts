@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 export function base64UrlEncodeBytes(bytes: Uint8Array): string {
   let binary = "";
   const len = bytes.length;
@@ -85,7 +87,7 @@ export function getCookieOptions(req: Request, env: any, maxAge: number = 60 * 6
   const domain = configuredDomain && !isLocalHostname(configuredDomain.replace(/^\./, "")) ? configuredDomain : null
 
   return {
-    domain: local ? null : (domain || ".mrbur.shop"),
+    domain: local ? null : (domain || ".snabbb.com"),
     maxAge,
     path: "/",
     httpOnly: true,
@@ -169,6 +171,74 @@ export async function getSupabaseUserByEmail(env: any, email: string): Promise<a
   }
 
   return null;
+}
+
+export async function issueSupabaseSession(
+  env: any,
+  params: { email: string; name?: string; odooSub?: string | number | null },
+): Promise<any> {
+  const email = String(params.email || "").trim().toLowerCase();
+  if (!email) throw new Error("Missing email for Supabase session");
+
+  const adminKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!env.SUPABASE_URL || !adminKey) {
+    throw new Error("Missing Supabase server configuration");
+  }
+
+  const admin = createClient(env.SUPABASE_URL, adminKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  let user = await getSupabaseUserByEmail(env, email);
+  const userMetadata = {
+    ...(user?.user_metadata || {}),
+    sso: "odoo",
+    name: params.name || user?.user_metadata?.name || email.split("@")[0],
+    odoo_sub: params.odooSub ?? user?.user_metadata?.odoo_sub ?? null,
+  };
+
+  if (user?.id) {
+    const { data, error } = await admin.auth.admin.updateUserById(user.id, {
+      email_confirm: true,
+      user_metadata: userMetadata,
+    });
+    if (error) throw new Error(error.message || "Failed to update Supabase user");
+    user = data.user;
+  } else {
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: userMetadata,
+    });
+    if (error) throw new Error(error.message || "Failed to create Supabase user");
+    user = data.user;
+  }
+
+  if (!user?.id) throw new Error("Supabase user mapping returned no user");
+
+  // generateLink returns the token material to this trusted server; it does
+  // not dispatch an email. Redeeming that one-time token creates a standard
+  // Supabase session with a real refresh token and leaves passwords untouched.
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  });
+  if (linkError) throw new Error(linkError.message || "Failed to generate Supabase login token");
+
+  const tokenHash = linkData.properties?.hashed_token;
+  if (!tokenHash) throw new Error("Supabase login token was not returned");
+
+  const { data: verified, error: verifyError } = await admin.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: tokenHash,
+  });
+  if (verifyError) throw new Error(verifyError.message || "Failed to verify Supabase login token");
+
+  const session = verified.session;
+  if (!session?.access_token || !session.refresh_token) {
+    throw new Error("Supabase did not return a refreshable session");
+  }
+
+  return session;
 }
 
 export async function createOdooUser(env: any, params: any) {
