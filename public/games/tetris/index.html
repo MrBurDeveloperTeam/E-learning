@@ -10,8 +10,8 @@
 </head>
 
 <body tabindex="0">
-  <div class="wrap">
-    <div class="board">
+  <div id="tetris-viewport" class="wrap">
+    <div id="tetris-stage" class="board">
       <!-- Left Side Panel -->
       <div class="side">
         <div class="preview-box" style="margin-bottom: 24px;">
@@ -58,10 +58,6 @@
               style="color: #f0f000">i</span><span style="color: #00f0f0">s</span>
           </div>
         </div>
-        <!-- Floating Pause Button -->
-        <button id="btn-pause" data-testid="btn-pause" class="floating-pause-btn" style="display:none"><i
-            class="fas fa-pause"></i></button>
-
         <canvas id="tetris" width="280" height="560" data-testid="game-canvas"></canvas>
 
         <!-- Overlay for messages -->
@@ -194,7 +190,67 @@
       </div>
     </div>
 
+    <button id="btn-pause" data-testid="btn-pause" class="floating-pause-btn" type="button"
+      aria-label="Pause Tetris" title="Pause" style="display:none"><i class="fas fa-pause"></i></button>
+
+    <button id="mobile-guide-button" type="button" aria-label="Open Tetris instructions"
+      aria-controls="mobile-guide-modal" aria-expanded="false">
+      <i class="fas fa-book-open" aria-hidden="true"></i><span>GUIDE</span>
+    </button>
+
+    <button id="mobile-hold-button" type="button" aria-label="Hold or swap the current Tetris piece"
+      title="Hold piece"><span>HOLD</span><small>C</small></button>
+
+    <div id="mobile-guide-modal" class="mobile-guide-modal" role="dialog" aria-modal="true"
+      aria-labelledby="mobile-guide-title" hidden>
+      <button class="mobile-guide-backdrop" type="button" aria-label="Close instructions" data-mobile-guide-close></button>
+      <section class="mobile-guide-card">
+        <header class="mobile-guide-header">
+          <h2 id="mobile-guide-title">How to Play</h2>
+          <button id="mobile-guide-close" class="mobile-guide-close" type="button"
+            aria-label="Close instructions" data-mobile-guide-close>×</button>
+        </header>
+        <div class="guide-columns">
+          <section class="guide-column">
+            <h3>Touch Controls</h3>
+            <div class="guide-row"><span>Swipe Left / Right</span><strong>Move</strong></div>
+            <div class="guide-row"><span>Single Tap</span><strong>Hard Drop</strong></div>
+            <div class="guide-row"><span>Double Tap</span><strong>Rotate</strong></div>
+            <div class="guide-row"><span>Press &amp; Hold</span><strong>Soft Drop</strong></div>
+            <div class="guide-row"><span>HOLD Button</span><strong>Store / Swap</strong></div>
+          </section>
+          <section class="guide-column">
+            <h3>Keyboard Controls</h3>
+            <div class="guide-row"><span>← / →</span><strong>Move</strong></div>
+            <div class="guide-row"><span>↓</span><strong>Soft Drop</strong></div>
+            <div class="guide-row"><span>↑</span><strong>Rotate</strong></div>
+            <div class="guide-row"><span>Space</span><strong>Hard Drop</strong></div>
+            <div class="guide-row"><span>C</span><strong>Hold / Swap</strong></div>
+            <div class="guide-row"><span>P</span><strong>Pause</strong></div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </div>
+
+    <script>
+      (function () {
+        function resizeTetrisStage() {
+          var viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+          var viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+          var stageScale = Math.max(0.2, Math.min((viewportWidth - 80) / 870, (viewportHeight - 20) / 590, 1));
+          document.documentElement.style.setProperty('--tetris-stage-scale', stageScale);
+        }
+        resizeTetrisStage();
+        window.addEventListener('resize', resizeTetrisStage);
+        window.addEventListener('orientationchange', resizeTetrisStage);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeTetrisStage);
+        document.addEventListener('touchmove', function (event) { event.preventDefault(); }, { passive: false });
+        document.addEventListener('wheel', function (event) { event.preventDefault(); }, { passive: false });
+      }());
+    </script>
     <script src="game.js"></script>
+    <script src="mobile-controls.js"></script>
 </body>
 
 </html>

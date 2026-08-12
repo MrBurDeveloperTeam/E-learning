@@ -84,6 +84,32 @@
 	color: #f99c00;
 }
 
+#home-start-notification {
+	position: absolute;
+	top: 455px;
+	left: 50%;
+	z-index: 20;
+	display: flex;
+	width: max-content;
+	max-width: calc(100% - 40px);
+	transform: translateX(-50%);
+	align-items: center;
+	text-align: center;
+	pointer-events: none;
+}
+#home-start-notification span {
+	font-size: 17px;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+	text-transform: uppercase;
+	color: #f6d64a;
+	animation: pac-cat-start-pulse 1.2s ease-in-out infinite;
+}
+@keyframes pac-cat-start-pulse {
+	0%, 100% { opacity: 0.55; }
+	50% { opacity: 1; }
+}
+
 #trailer { 
 	position: absolute;
 	margin: auto;

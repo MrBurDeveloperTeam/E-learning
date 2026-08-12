@@ -17,6 +17,29 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { setCurrentRoom } = useGameState();
 
     const handleNavigateToGame = (gameId: string) => {
+        if (gameId === 'paccat' || gameId === 'tetris') {
+            const enterLandscapeMode = async () => {
+                try {
+                    if (!document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen?.();
+                    }
+                } catch {
+                    // Fullscreen is best-effort on iOS and embedded browsers.
+                }
+
+                try {
+                    const orientation = screen.orientation as ScreenOrientation & {
+                        lock?: (orientation: 'landscape') => Promise<void>;
+                    };
+                    await orientation.lock?.('landscape');
+                } catch {
+                    // GamePage displays the portrait notification when locking fails.
+                }
+            };
+
+            void enterLandscapeMode();
+        }
+
         setActiveGameId(gameId);
         setView('GAME');
     };
@@ -30,14 +53,16 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
         <div className="relative w-full h-full overflow-hidden pet-interface">
             {/* Close Overlay Button (Global) */}
-            <button
-                onClick={onClose}
-                className="absolute left-6 top-6 z-50 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95"
-                title="Back"
-                aria-label="Back"
-            >
-                <TiArrowBack className="h-12 w-12" strokeWidth={0} />
-            </button>
+            {view === 'ROOM' && (
+                <button
+                    onClick={onClose}
+                    className="absolute left-[calc(env(safe-area-inset-left)_+_0.75rem)] top-[calc(env(safe-area-inset-top)_+_0.75rem)] z-[80] flex h-8 w-8 items-center justify-center rounded-lg border border-white/60 bg-white/75 p-0 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 sm:h-10 sm:w-10 sm:rounded-xl lg:left-[calc(env(safe-area-inset-left)_+_1.5rem)] lg:top-[calc(env(safe-area-inset-top)_+_1.5rem)] lg:h-14 lg:w-14 lg:rounded-2xl"
+                    title="Back"
+                    aria-label="Back"
+                >
+                    <TiArrowBack className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10" strokeWidth={0} />
+                </button>
+            )}
 
             {view === 'ROOM' ? (
                 <PetRoom onNavigateToGame={handleNavigateToGame} />
@@ -45,6 +70,7 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <GamePage
                     gameId={activeGameId || ''}
                     onClose={handleCloseGame}
+                    onExitApp={onClose}
                 />
             )}
             <PetAdoptionModal />

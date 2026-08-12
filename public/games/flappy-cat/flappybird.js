@@ -1,4 +1,3 @@
-
 //board
 let board;
 let boardWidth = 360;
@@ -41,6 +40,16 @@ const BASE_HEIGHT = 640;
 const MIN_WIDTH = 320;
 const MIN_HEIGHT = 568;
 
+const IS_APPLE_DEVICE =
+    /Macintosh|Mac OS X|iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    /MacIntel|MacPPC|Mac68K|iPhone|iPad|iPod/.test(navigator.platform);
+const TARGET_FRAME_TIME = 1000 / 60;
+const MAX_FRAME_DELTA = 1.25;
+const MAX_FALL_SPEED = 7;
+let lastFrameTime = 0;
+let resizeTimer = null;
+let lastViewportIsLandscape = window.innerWidth > window.innerHeight;
+
 let gameOver = false;
 let score = 0;
 let started = false;
@@ -70,6 +79,12 @@ window.onload = function () {
     sfxHit = new Audio("./sfx_hit.wav");
     sfxPoint = new Audio("./sfx_point.wav");
     sfxWing = new Audio("./sfx_wing.wav");
+    if (IS_APPLE_DEVICE) {
+        [sfxDie, sfxHit, sfxPoint, sfxWing].forEach((audio) => {
+            audio.preload = "auto";
+            audio.load();
+        });
+    }
     setBoardSize(true);
 
     if (startBtn) {
@@ -98,14 +113,21 @@ window.onload = function () {
 
     requestAnimationFrame(update);
     document.addEventListener("keydown", moveBird);
-    // Allow mouse/touch clicks anywhere on the page to flap (mobile-friendly)
-    document.addEventListener("pointerdown", handlePointerFlap);
-    window.addEventListener("resize", () => setBoardSize(true));
+    board.addEventListener("pointerdown", handlePointerFlap, { passive: false });
+    if (IS_APPLE_DEVICE) {
+        window.addEventListener("resize", handleResize);
+        window.addEventListener("orientationchange", handleResize);
+    } else {
+        window.addEventListener("resize", () => setBoardSize(true));
+    }
 }
 
-function update() {
+function update(timestamp) {
     requestAnimationFrame(update);
-    context.clearRect(0, 0, board.width, board.height);
+    const elapsed = lastFrameTime ? timestamp - lastFrameTime : TARGET_FRAME_TIME;
+    lastFrameTime = timestamp;
+    const delta = Math.min(elapsed / TARGET_FRAME_TIME, MAX_FRAME_DELTA);
+    context.clearRect(0, 0, boardWidth, boardHeight);
 
     if (!started) {
         context.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
@@ -119,23 +141,22 @@ function update() {
     }
 
     //bird
-    velocityY += gravity;
-    // bird.y += velocityY;
-    bird.y = Math.max(bird.y + velocityY, 0); //apply gravity to current bird.y, limit the bird.y to top of the canvas
+    velocityY = Math.min(velocityY + gravity * delta, MAX_FALL_SPEED * scale);
+    bird.y = Math.max(bird.y + velocityY * delta, 0);
     context.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
 
-    if (bird.y > board.height) {
+    if (bird.y > boardHeight) {
         endGame();
     }
 
     //pipes
     for (let i = 0; i < pipeArray.length; i++) {
         let pipe = pipeArray[i];
-        pipe.x += velocityX;
+        pipe.x += velocityX * delta;
         context.drawImage(pipe.img, pipe.x, pipe.y, pipe.width, pipe.height);
 
-        if (!pipe.passed && bird.x > pipe.x + pipe.width) {
-            score += 0.5; //0.5 because there are 2 pipes! so 0.5*2 = 1, 1 for each set of pipes
+        if (pipe.countsForScore && !pipe.passed && bird.x > pipe.x + pipe.width) {
+            score += 1;
             pipe.passed = true;
             playSfx(sfxPoint);
 
@@ -151,6 +172,7 @@ function update() {
         if (detectCollision(bird, pipe)) {
             playSfx(sfxHit);
             endGame();
+            break;
         }
     }
 
@@ -171,7 +193,7 @@ function placePipes() {
     // 0 -> -128 (pipeHeight/4)
     // 1 -> -128 - 256 (pipeHeight/4 - pipeHeight/2) = -3/4 pipeHeight
     let randomPipeY = pipeY - pipeHeight / 4 - Math.random() * (pipeHeight / 2);
-    let openingSpace = board.height / 5;
+    let openingSpace = Math.max(120, Math.min(155, 148 * scale));
 
     let spawnX = boardWidth; // start at the right edge
 
@@ -181,7 +203,8 @@ function placePipes() {
         y: randomPipeY,
         width: pipeWidth,
         height: pipeHeight,
-        passed: false
+        passed: false,
+        countsForScore: true
     }
     pipeArray.push(topPipe);
 
@@ -191,13 +214,15 @@ function placePipes() {
         y: randomPipeY + pipeHeight + openingSpace,
         width: pipeWidth,
         height: pipeHeight,
-        passed: false
+        passed: false,
+        countsForScore: false
     }
     pipeArray.push(bottomPipe);
 }
 
 function moveBird(e) {
     if (e.code == "Space" || e.code == "ArrowUp" || e.code == "KeyX") {
+        e.preventDefault();
         flap();
     }
 }
@@ -209,18 +234,15 @@ function detectCollision(a, b) {
         a.y + a.height > b.y;    //a's bottom left corner passes b's top left corner
 }
 
-function handlePointerFlap() {
+function handlePointerFlap(event) {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.preventDefault();
     // Ignore clicks when game over and modal is showing unless they hit Play
     if (gameOver && !gameOverModal.classList.contains("hidden")) return;
     flap();
 }
 
 function flap() {
-    //jump
-    velocityY = jumpStrength;
-    playSfx(sfxWing);
-
-    //reset game
     if (gameOver) {
         return;
     }
@@ -229,6 +251,9 @@ function flap() {
     if (!started) {
         startGame();
     }
+
+    velocityY = jumpStrength;
+    if (!IS_APPLE_DEVICE) playSfx(sfxWing);
 }
 
 function resetGame() {
@@ -240,6 +265,7 @@ function resetGame() {
     }
     velocityY = 0;
     pipeArray = [];
+    lastFrameTime = performance.now();
     score = 0;
     gameOver = false;
     started = false;
@@ -251,22 +277,40 @@ function resetGame() {
     if (gameOverModal) gameOverModal.classList.add("hidden");
 }
 
+function handleResize() {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const nextIsLandscape = window.innerWidth > window.innerHeight;
+
+        if (started && !gameOver && nextIsLandscape === lastViewportIsLandscape) {
+            lastFrameTime = performance.now();
+            return;
+        }
+
+        lastViewportIsLandscape = nextIsLandscape;
+        setBoardSize(!started || gameOver);
+        lastFrameTime = performance.now();
+    }, 200);
+}
+
 function setBoardSize(reset = false) {
     // FIX: Always fill the entire browser window
     boardWidth = window.innerWidth;
     boardHeight = window.innerHeight;
+    lastViewportIsLandscape = boardWidth > boardHeight;
 
     // Calculate scale based on the dimension that 'fits' best
     // This ensures the bird/pipes don't get too huge on wide screens 
     // or too small on tall screens.
     scale = Math.min(boardWidth / BASE_WIDTH, boardHeight / BASE_HEIGHT);
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = IS_APPLE_DEVICE ? 1 : (window.devicePixelRatio || 1);
     board.style.width = `${boardWidth}px`;
     board.style.height = `${boardHeight}px`;
     board.width = Math.round(boardWidth * dpr);
     board.height = Math.round(boardHeight * dpr);
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (IS_APPLE_DEVICE) context.imageSmoothingEnabled = false;
 
     // Update game element sizes based on the new scale
     birdWidth = 34 * scale * BIRD_SCALE;
@@ -303,6 +347,7 @@ function startGame() {
     bird.y = boardHeight / 2;
     velocityY = 0;
     pipeArray = [];
+    lastFrameTime = performance.now();
 
     if (overlay) overlay.classList.add("hidden");
     if (gameOverModal) gameOverModal.classList.add("hidden");
@@ -369,8 +414,11 @@ function playSfx(audioEl) {
     if (!audioEl) return;
     try {
         audioEl.currentTime = 0;
-        audioEl.play();
-    } catch (e) {
+        const playPromise = audioEl.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => undefined);
+        }
+    } catch {
         // ignore playback errors (e.g., user gesture not granted)
     }
 }
