@@ -187,32 +187,59 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
-    // Odoo is the source of truth for Snabbb credentials. The worker verifies
-    // the central account, maps it to Supabase without another verification
-    // email, and returns the app-specific Supabase session.
-    const response = await fetch(getApiUrl('/api/login'), {
+    // Match Inventory's production login flow: authenticate the central Odoo
+    // account through routes already handled by snabbb-worker, then launch the
+    // E-learning app through Odoo's signed app-link redirect.
+    const response = await fetch('/api/web/session/authenticate', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          db: 'aht-systemadmin-mrbur-main-20994444',
+          login: email.trim(),
+          password,
+        },
+        id: 1,
+      }),
     })
 
     const data = await response.json().catch(() => null)
-    if (!response.ok) {
+    const odooUser = data?.result
+    if (!response.ok || data?.error || !odooUser?.uid) {
+      throw new Error(data?.error?.message || data?.error || 'Invalid login credentials')
+    }
+
+    const appLinkResponse = await fetch('/api/v1/sso/app_link', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          app_code: 'elearning',
+          email: odooUser.username || email.trim().toLowerCase(),
+          name: odooUser.name || odooUser.partner_display_name || email.split('@')[0],
+          company_id: 2,
+          portal: true,
+        },
+        id: 1,
+      }),
+    })
+
+    const appLinkData = await appLinkResponse.json().catch(() => null)
+    const redirectUrl = appLinkData?.result?.url
+    if (!appLinkResponse.ok || appLinkData?.error || !redirectUrl) {
       throw new Error(
-        data?.error || data?.details || 'Login failed',
+        appLinkData?.error?.message || appLinkData?.error || 'Unable to open E-learning session.',
       )
     }
 
-    if (!data?.access_token || !data?.refresh_token) {
-      throw new Error('The login service returned an invalid session.')
-    }
-
-    const { error } = await supabase.auth.setSession({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-    })
-    if (error) throw error
+    window.location.assign(redirectUrl)
+    return { redirecting: true as const }
   }
 
   async function signInWithGoogle() {
