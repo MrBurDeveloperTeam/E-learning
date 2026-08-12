@@ -66,68 +66,107 @@ export const onRequestPost = async (context: any) => {
   const supaToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   const supaSecret = env.SUPABASE_JWT_SECRET || ''
 
-  if (supaToken && supaSecret) {
-    const { ok, payload } = await verifyHS256({ token: supaToken, secret: supaSecret })
-    const email: string | undefined = ok ? payload?.email : undefined
-    // Use full_name from Supabase user_metadata if present, fall back to email prefix
-    const name: string =
-      payload?.user_metadata?.full_name ||
-      payload?.user_metadata?.name ||
-      email?.split('@')[0] ||
-      'User'
+  if (!supaToken) {
+    console.error('[shop-redirect] POST: no Bearer token in Authorization header')
+    return new Response(JSON.stringify({ redirect_url: returnUrl, debug: 'no_bearer_token' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  if (!supaSecret) {
+    console.error('[shop-redirect] POST: SUPABASE_JWT_SECRET env var not set')
+    return new Response(JSON.stringify({ redirect_url: returnUrl, debug: 'no_jwt_secret' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
-    if (email) {
-      const apiKey = env.ODOO_SSO_API_KEY || env.SSO_API_KEY || ''
-      try {
-        // /api/v1/sso/app_link uses auth="none" + X-SSO-API-KEY — no Odoo
-        // session needed.  It provisions the user if missing and returns a
-        // signed JWT + company_code that odoo-exchange can redeem.
-        const appLinkRes = await fetch(`${ODOO_BASE}/api/v1/sso/app_link`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-SSO-API-KEY': apiKey,
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'call',
-            params: { app_code: 'shop', email, name },
-          }),
+  const { ok: jwtOk, payload, error: jwtError } = await verifyHS256({ token: supaToken, secret: supaSecret })
+  if (!jwtOk) {
+    console.error('[shop-redirect] POST: JWT verify failed:', jwtError)
+    return new Response(JSON.stringify({ redirect_url: returnUrl, debug: `jwt_${jwtError}` }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const email: string | undefined = payload?.email
+  if (!email) {
+    console.error('[shop-redirect] POST: no email in JWT payload')
+    return new Response(JSON.stringify({ redirect_url: returnUrl, debug: 'no_email' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const name: string =
+    payload?.user_metadata?.full_name ||
+    payload?.user_metadata?.name ||
+    email.split('@')[0] ||
+    'User'
+
+  const apiKey = env.ODOO_SSO_API_KEY || env.SSO_API_KEY || ''
+  if (!apiKey) {
+    console.error('[shop-redirect] POST: ODOO_SSO_API_KEY env var not set')
+    return new Response(JSON.stringify({ redirect_url: returnUrl, debug: 'no_api_key' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  try {
+    // /api/v1/sso/app_link uses auth="none" + X-SSO-API-KEY — no Odoo
+    // session needed.  It provisions the user if missing and returns a
+    // signed JWT + company_code that odoo-exchange can redeem.
+    const appLinkRes = await fetch(`${ODOO_BASE}/api/v1/sso/app_link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SSO-API-KEY': apiKey,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: { app_code: 'shop', email, name },
+      }),
+    })
+
+    console.log('[shop-redirect] app_link status:', appLinkRes.status)
+    const appLinkData = await appLinkRes.json().catch(() => null)
+    console.log('[shop-redirect] app_link result:', JSON.stringify(appLinkData?.result))
+
+    const result = appLinkData?.result
+
+    if (result?.ok && result?.url) {
+      // Extract token + company_code from the URL Odoo built
+      // (same extraction pattern used by AppCard.tsx in snabbb-apps-gallery)
+      const ssoUrl = new URL(result.url)
+      const token = ssoUrl.searchParams.get('token')
+      const companyCode = ssoUrl.searchParams.get('company_code') || 'INT'
+
+      if (token) {
+        // Parse the product page path from the return_url so odoo-exchange
+        // can forward it as `next` to /sso/token after logging the user in.
+        const parsed = new URL(returnUrl)
+        const next = parsed.pathname + parsed.search
+
+        const exchangeUrl = new URL('https://app.snabbb.com/api/sso/odoo-exchange')
+        exchangeUrl.searchParams.set('token', token)
+        exchangeUrl.searchParams.set('company_code', companyCode)
+        exchangeUrl.searchParams.set('next', next)
+
+        console.log('[shop-redirect] success, exchange URL:', exchangeUrl.toString())
+        return new Response(JSON.stringify({ redirect_url: exchangeUrl.toString() }), {
+          headers: { 'Content-Type': 'application/json' },
         })
-        const appLinkData = await appLinkRes.json().catch(() => null)
-        const result = appLinkData?.result
-
-        if (result?.ok && result?.url) {
-          // Extract token + company_code from the URL Odoo built
-          // (same extraction pattern used by AppCard.tsx in snabbb-apps-gallery)
-          const ssoUrl = new URL(result.url)
-          const token = ssoUrl.searchParams.get('token')
-          const companyCode = ssoUrl.searchParams.get('company_code') || 'INT'
-
-          if (token) {
-            // Parse the product page path from the return_url so odoo-exchange
-            // can forward it as `next` to /sso/callback after logging the user in.
-            const parsed = new URL(returnUrl)
-            const next = parsed.pathname + parsed.search
-
-            const exchangeUrl = new URL('https://app.snabbb.com/api/sso/odoo-exchange')
-            exchangeUrl.searchParams.set('token', token)
-            exchangeUrl.searchParams.set('company_code', companyCode)
-            exchangeUrl.searchParams.set('next', next)
-
-            return new Response(JSON.stringify({ redirect_url: exchangeUrl.toString() }), {
-              headers: { 'Content-Type': 'application/json' },
-            })
-          }
-        }
-      } catch (_) {
-        // fall through to direct redirect
+      } else {
+        console.error('[shop-redirect] app_link URL missing token param:', result.url)
       }
+    } else {
+      console.error('[shop-redirect] app_link returned not-ok:', JSON.stringify(result))
     }
+  } catch (err) {
+    console.error('[shop-redirect] app_link fetch threw:', err)
   }
 
   // Fallback: send the user directly to the shop (unauthenticated)
-  return new Response(JSON.stringify({ redirect_url: returnUrl }), {
+  console.warn('[shop-redirect] falling back to direct URL:', returnUrl)
+  return new Response(JSON.stringify({ redirect_url: returnUrl, debug: 'app_link_failed' }), {
     headers: { 'Content-Type': 'application/json' },
   })
 }
