@@ -95,7 +95,7 @@ export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedPro
     } catch {
       // Network error or no session — fall through to direct navigation
     }
-
+    console.log('target url', targetUrl)
     // Fallback: navigate to the shop directly (unauthenticated)
     if (newTab) newTab.location.href = targetUrl
     else window.open(targetUrl, '_blank')
