@@ -1,5 +1,6 @@
 import { Package, ShoppingBag } from 'lucide-react'
 import { logElearningActivity } from '@/lib/logActivityToOdoo'
+import { supabase } from '@/lib/supabase'
 import type { VideoProduct } from '@/types'
 
 function formatPrice(price: number, currency: string) {
@@ -11,50 +12,24 @@ function formatPrice(price: number, currency: string) {
 }
 
 /**
- * Appends attribution params to a Snabbb product URL, then routes the click
- * through our own /api/sso/shop-redirect bridge.
- *
- * shop-redirect reads the user's existing Odoo session_id cookie (set on
- * .snabbb.com by the Snabbb platform at login) and passes it — signed with
- * APP_JWT_SECRET — to mrbur.shop/api/sso/elearning, which sets the same
- * session_id as a cookie on the .mrbur.shop domain.  Because both the
- * e-learning app and the shop share the same Odoo backend, the single
- * session_id is valid for both domains: the user lands on the shop already
- * logged in without a second authentication step.
- *
- * If there is no Odoo session (e.g. the user authenticated via Google OAuth
- * only), shop-redirect falls back to app.snabbb.com/api/sso/ambient-redirect,
- * which degrades gracefully to a plain redirect for unauthenticated visitors.
- *
- * Attribution params (utm_source, ref_video, ref_creator) are attached to the
- * real destination URL before wrapping so purchase-webhook.ts can read them
- * back once the order is paid.  Double-wrapping is avoided by unwrapping any
- * existing return_url first.
+ * Builds the attributed product URL with UTM params — without SSO wrapping.
+ * SSO is handled separately via a POST to /api/shop-redirect (see handleClick)
+ * so the session token never appears in the URL or browser history.
  */
-function buildAttributedUrl(productUrl: string, videoId: string, creatorId: string) {
+function buildTargetUrl(productUrl: string, videoId: string, creatorId: string): string {
   try {
     const url = new URL(productUrl)
-
+    // Unwrap any existing return_url nesting from a previous wrapping
     const existingReturnUrl = url.searchParams.get('return_url')
     const target = existingReturnUrl ? new URL(existingReturnUrl) : url
-
     target.searchParams.set('utm_source', 'elearning')
     target.searchParams.set('utm_medium', 'video')
     target.searchParams.set('ref_video', videoId)
     target.searchParams.set('ref_creator', creatorId)
-
-    // Route through our shop-redirect endpoint (same origin) so it can
-    // read the HttpOnly session_id cookie and forward it securely to the shop.
-    const wrapped = new URL('/api/sso/shop-redirect', window.location.origin)
-    wrapped.searchParams.set('return_url', target.toString())
-    return wrapped.toString()
+    return target.toString()
   } catch {
-    // productUrl wasn't a valid absolute URL — best-effort fallback with no
-    // SSO wrapping, same as before.
-    const separator = productUrl.includes('?') ? '&' : '?'
-    return `${productUrl}${separator}utm_source=elearning&utm_medium=video&ref_video=${encodeURIComponent(
-      videoId
-    )}&ref_creator=${encodeURIComponent(creatorId)}`
+    const sep = productUrl.includes('?') ? '&' : '?'
+    return `${productUrl}${sep}utm_source=elearning&utm_medium=video&ref_video=${encodeURIComponent(videoId)}&ref_creator=${encodeURIComponent(creatorId)}`
   }
 }
 
@@ -65,18 +40,74 @@ interface FeaturedProductCardProps {
 }
 
 export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedProductCardProps) {
-  const href = buildAttributedUrl(product.product_url, videoId, creatorId)
+  /**
+   * Click handler — performs cross-domain SSO before navigating to mrbur.shop.
+   *
+   * Why POST instead of a plain href redirect:
+   *   E-learning users authenticate via Supabase, so there is no Odoo
+   *   session_id cookie for the Cloudflare Worker to read.  Instead we POST
+   *   the user's Supabase access token (from localStorage, never a cookie) to
+   *   our own Pages Function which verifies it server-side, looks up the
+   *   matching Odoo user, and returns a redirect URL that logs the user in.
+   *
+   * Why window.open('about:blank') before the async work:
+   *   Browsers block window.open() calls that happen *after* an await because
+   *   they're no longer considered to be inside a user gesture.  Opening a
+   *   blank tab synchronously and navigating it later avoids popup blockers.
+   */
+  async function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault()
 
-  function handleClick() {
     logElearningActivity(
       'featured_product_clicked',
       `Clicked "${product.product_name}" from video ${videoId}`
     )
+
+    const targetUrl = buildTargetUrl(product.product_url, videoId, creatorId)
+
+    // Open a blank tab NOW — this is synchronous inside the click handler so
+    // the browser allows it.  We'll navigate it once we have the SSO URL.
+    const newTab = window.open('about:blank', '_blank')
+
+    try {
+      const { data } = await supabase.auth.getSession()
+      const accessToken = data.session?.access_token
+
+      if (accessToken) {
+        const res = await fetch('/api/shop-redirect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ return_url: targetUrl }),
+        })
+
+        if (res.ok) {
+          const json = await res.json()
+          if (json?.redirect_url) {
+            if (newTab) newTab.location.href = json.redirect_url
+            else window.open(json.redirect_url, '_blank')
+            return
+          }
+        }
+      }
+    } catch {
+      // Network error or no session — fall through to direct navigation
+    }
+
+    // Fallback: navigate to the shop directly (unauthenticated)
+    if (newTab) newTab.location.href = targetUrl
+    else window.open(targetUrl, '_blank')
   }
+
+  // Keep a fallback href for middle-clicks, right-click → "Open in new tab",
+  // and accessibility tools that don't trigger onClick.
+  const fallbackHref = buildTargetUrl(product.product_url, videoId, creatorId)
 
   return (
     <a
-      href={href}
+      href={fallbackHref}
       target="_blank"
       rel="noopener noreferrer"
       onClick={handleClick}

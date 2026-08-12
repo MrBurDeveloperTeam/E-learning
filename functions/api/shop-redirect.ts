@@ -1,28 +1,27 @@
 /**
- * GET /api/shop-redirect?return_url=<product-url>
+ * /api/shop-redirect
  *
- * Bridge that passes the user's current Odoo session to mrbur.shop so they
- * land on the shop already authenticated after clicking a featured product.
+ * Two handlers:
  *
- * How it works:
- *  1. The user's browser sends the `session_id` cookie (set on .snabbb.com by
- *     the Snabbb platform when they logged in) as part of the request to this
- *     function, which runs on the same e-learning.snabbb.com origin.
- *  2. We package that session_id into a short-lived (2 min) HS256-signed JWT
- *     so mrbur.shop can verify it came from us without us exposing the raw
- *     value in the URL.
- *  3. We redirect to mrbur.shop/api/sso/elearning which validates the JWT,
- *     sets its own session_id cookie on .mrbur.shop, and continues to the
- *     product page — so the Odoo session is shared across both domains.
+ * GET  ?return_url=<url>
+ *   Legacy path — looks for an Odoo session_id cookie (present when the user
+ *   has an active Snabbb session that already established an Odoo session).
+ *   Falls back to ambient-redirect when no session is found.
  *
- * Fallback: if there is no session_id cookie (user not logged in, or logged
- * in via Google OAuth only) we fall back to the original ambient-redirect on
- * app.snabbb.com which handles the Snabbb-native SSO path.
+ * POST  body: { return_url: string }  +  Authorization: Bearer <supabase_jwt>
+ *   Primary path used by FeaturedProductCard.  Verifies the Supabase JWT,
+ *   extracts the user's email, and calls our Odoo addon's
+ *   /snabbb/sso/token_for_email endpoint to obtain a single-use SSO token.
+ *   Returns { redirect_url } pointing to mrbur.shop/snabbb/sso/callback which
+ *   will log the user in and forward them to the product page.
+ *
+ *   This endpoint is at /api/shop-redirect (NOT /api/sso/shop-redirect) so
+ *   Cloudflare Access does not intercept it.
  */
 
-import { signHS256 } from './_shared/auth'
+import { signHS256, verifyHS256 } from './_shared/auth'
 
-const MRBUR_SHOP_SSO_URL = 'https://mrbur.shop/api/sso/elearning'
+const ODOO_BASE = 'https://mrbur.odoo.com'
 const AMBIENT_REDIRECT_FALLBACK = 'https://app.snabbb.com/api/sso/ambient-redirect'
 
 function getCookieValue(req: Request, name: string): string | null {
@@ -34,6 +33,82 @@ function getCookieValue(req: Request, name: string): string | null {
   }
   return null
 }
+
+// ─── POST: Supabase-JWT → Odoo SSO token → redirect URL ──────────────────────
+
+export const onRequestPost = async (context: any) => {
+  const { request, env } = context
+
+  // Parse body
+  let body: { return_url?: string } = {}
+  try {
+    body = await request.json()
+  } catch {
+    return new Response(JSON.stringify({ error: 'invalid body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const returnUrl = body.return_url
+  if (!returnUrl) {
+    return new Response(JSON.stringify({ error: 'missing return_url' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Verify the Supabase JWT sent by the frontend
+  const authHeader = request.headers.get('Authorization') || ''
+  const supaToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const supaSecret = env.SUPABASE_JWT_SECRET || ''
+
+  if (supaToken && supaSecret) {
+    const { ok, payload } = await verifyHS256({ token: supaToken, secret: supaSecret })
+    const email: string | undefined = ok ? payload?.email : undefined
+
+    if (email) {
+      // Ask our Odoo addon to create a single-use login token for this email
+      const apiKey = env.ODOO_SSO_API_KEY || env.SSO_API_KEY || ''
+      try {
+        const tokenRes = await fetch(`${ODOO_BASE}/snabbb/sso/token_for_email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-SSO-API-KEY': apiKey,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: { email },
+          }),
+        })
+        const tokenData = await tokenRes.json().catch(() => null)
+        const token: string | undefined = tokenData?.result?.token
+
+        if (token) {
+          const parsed = new URL(returnUrl)
+          const callbackUrl = new URL(`${parsed.origin}/snabbb/sso/callback`)
+          callbackUrl.searchParams.set('token', token)
+          callbackUrl.searchParams.set('next', parsed.pathname + parsed.search)
+
+          return new Response(JSON.stringify({ redirect_url: callbackUrl.toString() }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+      } catch (_) {
+        // fall through to direct redirect
+      }
+    }
+  }
+
+  // Fallback: send the user directly to the shop (unauthenticated)
+  return new Response(JSON.stringify({ redirect_url: returnUrl }), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+// ─── GET: legacy session_id cookie path ───────────────────────────────────────
 
 export const onRequestGet = async (context: any) => {
   const { request, env } = context
@@ -49,21 +124,17 @@ export const onRequestGet = async (context: any) => {
   }
 
   const sessionId = getCookieValue(request, 'session_id')
-  // Mirror the fallback pattern used in sso.ts: prefer a dedicated
-  // APP_JWT_SECRET if one is configured, otherwise use SUPABASE_JWT_SECRET.
   const appSecret = env.APP_JWT_SECRET || env.SUPABASE_JWT_SECRET
 
   if (sessionId && appSecret) {
-    // Sign the existing Odoo session_id into a short-lived token so
-    // mrbur.shop can verify it and set it as a cookie on its own domain.
     const now = Math.floor(Date.now() / 1000)
     const token = await signHS256({
       header: { alg: 'HS256', typ: 'JWT' },
-      payload: { session_id: sessionId, exp: now + 120 }, // 2-minute window
+      payload: { session_id: sessionId, exp: now + 120 },
       secret: appSecret,
     })
 
-    const dest = new URL(MRBUR_SHOP_SSO_URL)
+    const dest = new URL(`${ODOO_BASE}/snabbb/sso/elearning`)
     dest.searchParams.set('token', token)
     dest.searchParams.set('next', returnUrl)
 
@@ -73,8 +144,6 @@ export const onRequestGet = async (context: any) => {
     })
   }
 
-  // No Odoo session available — fall back to ambient-redirect which handles
-  // the Snabbb-native SSO path (or degrades gracefully to an unauth redirect).
   const fallback = new URL(AMBIENT_REDIRECT_FALLBACK)
   fallback.searchParams.set('return_url', returnUrl)
   return new Response(null, {
@@ -89,7 +158,7 @@ export const onRequestOptions = async (context: any) => {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     },
   })
 }
