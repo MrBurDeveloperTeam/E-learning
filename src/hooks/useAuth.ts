@@ -238,7 +238,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         jsonrpc: '2.0',
         method: 'call',
         params: {
-          app_code: 'elearning',
+          app_code: 'e-learning',
           email: odooUser.username || odooUser.email || email.trim().toLowerCase(),
           name: odooUser.name || odooUser.partner_display_name || email.split('@')[0],
           company_id: 2,
