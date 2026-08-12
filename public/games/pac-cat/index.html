@@ -62,6 +62,24 @@
 			//$.mobile.loading().hide();
 			loadAllSound();
 
+			document.addEventListener('touchmove', function (event) { event.preventDefault(); }, { passive: false });
+			document.addEventListener('wheel', function (event) { event.preventDefault(); }, { passive: false });
+			function resizeGameStage() {
+				var viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+				var viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+				var stageScale = Math.max(0.3, Math.min((viewportWidth - 32) / 930, (viewportHeight - 20) / 710, 1));
+				document.documentElement.style.setProperty('--pac-cat-stage-scale', stageScale);
+				var stageLeft = (viewportWidth - (930 * stageScale)) / 2;
+				var controlLeft = (viewportWidth - 24 - (174 * stageScale) - stageLeft) / stageScale;
+				var controlTop = (viewportHeight - 24 - (174 * stageScale) - 10) / stageScale;
+				document.documentElement.style.setProperty('--pac-cat-control-left', controlLeft + 'px');
+				document.documentElement.style.setProperty('--pac-cat-control-top', controlTop + 'px');
+			}
+			resizeGameStage();
+			window.addEventListener('resize', resizeGameStage);
+			window.addEventListener('orientationchange', resizeGameStage);
+			if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeGameStage);
+
 			HELP_TIMER = setInterval('blinkHelp()', HELP_DELAY);
 
 			initHome();
@@ -220,7 +238,7 @@
 	</div>
 
 	<div id="home">
-		<h1>PAC-CAT</h1>
+		<h1>PAC-CAT <span class="cat-emoji" aria-hidden="true">🐱</span></h1>
 		<canvas id="canvas-home-title-pacman"></canvas>
 		<div id="presentation">
 			<div id="presentation-titles">character &nbsp;/&nbsp; nickname</div>
@@ -237,13 +255,14 @@
 			<div id="presentation-character-clyde">- pokey</div>
 			<div id="presentation-name-clyde">"clyde"</div>
 		</div>
+		<div id="home-start-notification" role="status"><span>Click or tap anywhere to start</span></div>
 		<canvas id="trailer"></canvas>
 		<div class="help-button">- help -</div>
 		<a class="sound" href="javascript:void(0);" data-sound="on"><img src="img/sound-on.png" alt="" border="0"></a>
 	</div>
 
 	<div id="panel">
-		<h1>PAC-CAT</h1>
+		<h1>PAC-CAT <span class="cat-emoji" aria-hidden="true">🐱</span></h1>
 		<canvas id="canvas-panel-title-pacman"></canvas>
 		<div id="score">
 			<h2>1UP</h2><span>00</span>

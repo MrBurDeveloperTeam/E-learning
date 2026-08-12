@@ -72,6 +72,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
   const [draggedItem, setDraggedItem] = useState<FoodItem | null>(null);
   const [draggedTool, setDraggedTool] = useState<ToolType | null>(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [bedroomSceneScale, setBedroomSceneScale] = useState(0.9);
   const [isHoveringPet, setIsHoveringPet] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [isSoapedUp, setIsSoapedUp] = useState(false);
@@ -96,6 +97,26 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
   const activeSoapType = useRef<'soap' | null>(null);
   const soapConsumedOnRinse = useRef(false);
   const activeSoapMultiplier = useRef(1);
+
+  useEffect(() => {
+    const updateBedroomSceneScale = () => {
+      const viewportWidth = window.visualViewport?.width || window.innerWidth;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const widthScale = (viewportWidth - 72) / 454;
+      const heightScale = (viewportHeight - 230) / 350;
+
+      setBedroomSceneScale(clamp(Math.min(widthScale, heightScale), 0.48, 0.9));
+    };
+
+    updateBedroomSceneScale();
+    window.addEventListener('resize', updateBedroomSceneScale);
+    window.visualViewport?.addEventListener('resize', updateBedroomSceneScale);
+
+    return () => {
+      window.removeEventListener('resize', updateBedroomSceneScale);
+      window.visualViewport?.removeEventListener('resize', updateBedroomSceneScale);
+    };
+  }, []);
 
   useEffect(() => {
     outsidePetPosRef.current = outsidePetPos;
@@ -535,7 +556,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
 
       {/* Bedroom Lamp Switch */}
       {currentRoom === RoomType.BEDROOM && (
-        <div className="absolute top-0 left-1/3 z-10 flex flex-col items-center">
+        <div className="absolute right-1/3 top-0 z-10 flex flex-col items-center">
           {/* Lamp Cord - Changed h-32 to h-48 */}
           <div className="w-1 h-48 bg-slate-800/80" />
           {/* Lamp Bulb */}
@@ -553,8 +574,10 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
       )}
 
       {/* Top Right UI */}
-      <LevelIndicator stats={stats} />
-      <CoinIndicator amount={stats.coins || 0} />
+      <div className="absolute right-[calc(env(safe-area-inset-right)_+_0.75rem)] top-[calc(env(safe-area-inset-top)_+_0.75rem)] z-40 flex h-8 items-center gap-1.5 sm:h-10 sm:gap-2 lg:right-[calc(env(safe-area-inset-right)_+_1.5rem)] lg:top-[calc(env(safe-area-inset-top)_+_1.5rem)] lg:h-14 lg:gap-3">
+        <CoinIndicator amount={stats.coins || 0} />
+        <LevelIndicator stats={stats} />
+      </div>
 
       {/* Stats HUD (Top Center) */}
       <StatsBar stats={stats} />
@@ -624,38 +647,44 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
             />
           </div>
         ) : currentRoom === RoomType.BEDROOM ? (
-          <div className="relative flex h-[430px] w-[min(92vw,560px)] items-center justify-center">
-            {activeBed && (
-              <img
-                src={activeBed.src}
-                alt=""
-                draggable={false}
-                className="pointer-events-none absolute -bottom-32 left-1/2 z-0 w-[min(85vw,550px)] -translate-x-1/2 select-none drop-shadow-2xl"
-              />
-            )}
-            <div className="relative z-10">
-              <Pet
-                ref={petRef}
-                stats={stats}
-                isSleeping={isSleeping}
-                isEating={isEating}
-                isPlaying={isPlaying}
-                isHoveredWithFood={isHoveringPet && !!draggedItem}
-                bubbles={bubbles}
-                lookAt={pointerState.isDown ? { x: pointerState.x, y: pointerState.y } : null}
-                sleepVisualOffsetY={72}
-                sleepLabelClassName="top-24 right-14"
-                spriteSheetUrl={activePet.spriteSheetUrl}
-                mouthPosition={activePet.mouthPosition}
-                idleFrames={activePet.idleFrames}
-                idleDuration={activePet.idleDuration}
-                sleepInFrames={activePet.sleepInFrames}
-                sleepHoldFrame={activePet.sleepHoldFrame}
-                clickRow={activePet.clickRow}
-                clickFrames={activePet.clickFrames}
-                clickDuration={activePet.clickDuration}
-                onClick={handlePetClick}
-              />
+          <div className="relative flex h-[min(430px,60vh)] w-full translate-y-[clamp(3rem,8vh,6rem)] items-center justify-center">
+            <div
+              className="relative h-[350px] w-[454px] shrink-0"
+              style={{ transform: `scale(${bedroomSceneScale})`, transformOrigin: 'center center' }}
+            >
+              {activeBed && (
+                <img
+                  src={activeBed.src}
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none object-contain"
+                />
+              )}
+              <div className="absolute bottom-[165px] left-1/2 z-10 -translate-x-1/2">
+                <Pet
+                  ref={petRef}
+                  stats={stats}
+                  isSleeping={isSleeping}
+                  isEating={isEating}
+                  isPlaying={isPlaying}
+                  isHoveredWithFood={isHoveringPet && !!draggedItem}
+                  bubbles={bubbles}
+                  lookAt={pointerState.isDown ? { x: pointerState.x, y: pointerState.y } : null}
+                  displayScale={0.95}
+                  sleepVisualOffsetY={52}
+                  sleepLabelClassName="top-20 right-10"
+                  spriteSheetUrl={activePet.spriteSheetUrl}
+                  mouthPosition={activePet.mouthPosition}
+                  idleFrames={activePet.idleFrames}
+                  idleDuration={activePet.idleDuration}
+                  sleepInFrames={activePet.sleepInFrames}
+                  sleepHoldFrame={activePet.sleepHoldFrame}
+                  clickRow={activePet.clickRow}
+                  clickFrames={activePet.clickFrames}
+                  clickDuration={activePet.clickDuration}
+                  onClick={handlePetClick}
+                />
+              </div>
             </div>
           </div>
         ) : (
@@ -685,29 +714,26 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
         {currentRoom === RoomType.BATHROOM && (
           <div className="absolute bottom-10 right-10 opacity-50 text-6xl animate-float">🦆</div>
         )}
-        {currentRoom === RoomType.BATHROOM && isPoopVisible && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onClick={handlePoopClick}
-            className="absolute left-1/2 top-1/2 z-40 translate-x-[140px] translate-y-[110px] rounded-2xl p-2 transition-transform duration-200 hover:scale-110 active:scale-95"
-            aria-label="Collect poop for 5 coins"
-            title="+5 coins"
-          >
-            <img
-              src="/images/poop.png"
-              alt=""
-              draggable={false}
-              className="h-[80px] w-[80px] object-contain drop-shadow-xl"
-            />
-          </button>
-        )}
-        {currentRoom === RoomType.BATHROOM && showPoopReward && (
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 translate-x-[150px] translate-y-[78px]">
-            <div className="animate-poop-reward rounded-full bg-amber-400 px-3 py-1.5 text-[14px] font-black tracking-wider text-white">
-              +5 coins
-            </div>
+        {currentRoom === RoomType.BATHROOM && (isPoopVisible || showPoopReward) && (
+          <div className="pointer-events-none absolute bottom-[clamp(9.5rem,22vh,13rem)] right-[max(env(safe-area-inset-right),clamp(0.75rem,4vw,3rem))] z-40 flex h-[clamp(3.5rem,12vw,5rem)] w-[clamp(3.5rem,12vw,5rem)] items-center justify-center">
+            {isPoopVisible && (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={handlePoopClick}
+                className="pointer-events-auto flex h-full w-full items-center justify-center rounded-2xl p-1 transition-transform duration-200 hover:scale-110 active:scale-95"
+                aria-label="Collect poop for 5 coins"
+                title="+5 coins"
+              >
+                <img src="/images/poop.png" alt="" draggable={false} className="h-full w-full object-contain" />
+              </button>
+            )}
+            {showPoopReward && (
+              <div className="animate-poop-reward pointer-events-none absolute bottom-[calc(100%_+_0.25rem)] right-0 max-w-[calc(100vw_-_1.5rem)] whitespace-nowrap rounded-full bg-amber-400 px-2.5 py-1 text-[clamp(0.65rem,2.6vw,0.875rem)] font-black tracking-wider text-white">
+                +5 coins
+              </div>
+            )}
           </div>
         )}
         {currentRoom === RoomType.GAMES && (

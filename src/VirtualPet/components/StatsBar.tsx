@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PetStats } from '../types';
 
@@ -58,8 +57,8 @@ const ProgressBar = ({ value, color, icon, label }: { value: number; color: stri
 
 const StatsBar: React.FC<StatsBarProps> = ({ stats }) => {
   return (
-    <div className="absolute top-6 left-1/2 -translate-x-1/2 w-72 px-5 py-3 bg-white/30 backdrop-blur-md rounded-3xl border border-white/40 shadow-xl z-10 transition-all duration-300">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+    <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_3.25rem)] z-30 w-[calc(100%_-_1.5rem)] max-w-lg -translate-x-1/2 rounded-2xl border border-white/40 bg-white/30 px-3 py-2 shadow-xl backdrop-blur-md transition-all duration-300 sm:top-[calc(env(safe-area-inset-top)_+_0.75rem)] sm:w-80 sm:max-w-80 sm:px-4 sm:py-2.5 lg:top-[calc(env(safe-area-inset-top)_+_1.5rem)] lg:rounded-3xl lg:px-5 lg:py-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:gap-x-5 sm:gap-y-2 lg:gap-x-6 lg:gap-y-3">
         <ProgressBar value={stats.hunger} color="bg-orange-400" icon={<IconHunger />} label="Hunger" />
         <ProgressBar value={stats.energy} color="bg-blue-400" icon={<IconEnergy />} label="Energy" />
         <ProgressBar value={stats.happiness} color="bg-pink-400" icon={<IconHappy />} label="Happy" />
