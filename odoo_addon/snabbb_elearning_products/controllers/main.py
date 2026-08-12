@@ -5,19 +5,56 @@ feature:
 
   GET  /api/v1/products/search   <- functions/api/products/search.ts
   POST /api/wallet/credit        <- functions/api/products/purchase-webhook.ts
+  GET  /api/sso/elearning        <- functions/api/sso/shop-redirect.ts
 
-Both endpoints authenticate with a shared key sent as X-SSO-API-KEY, checked
-against the `snabbb_elearning.sso_api_key` system parameter (Settings >
-General Settings > Snabbb E-Learning). This mirrors the X-SSO-API-KEY
-pattern already used elsewhere for Odoo<->E-Learning calls
-(see _shared/auth.ts createOdooUser in the E-Learning repo).
+The first two authenticate with a shared key (X-SSO-API-KEY) against
+`snabbb_elearning.sso_api_key`.  The SSO endpoint uses a separate HS256 JWT
+signed with `snabbb_elearning.app_jwt_secret` (set to the same value as the
+Cloudflare Worker's APP_JWT_SECRET env var).
 """
+import base64
+import hashlib
+import hmac as _hmac
+import json
 import logging
+import time
 
 from odoo import http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
+
+
+def _verify_hs256_jwt(token: str, secret: str):
+    """Verify an HS256-signed JWT and return the payload dict, or None on failure."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        header_b64, payload_b64, sig_b64 = parts
+        signing_input = f"{header_b64}.{payload_b64}"
+
+        raw_sig = _hmac.new(
+            secret.encode("utf-8"),
+            signing_input.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()
+        expected = base64.urlsafe_b64encode(raw_sig).rstrip(b"=").decode("utf-8")
+
+        if not _hmac.compare_digest(expected, sig_b64):
+            return None
+
+        # Decode payload
+        pad = 4 - len(payload_b64) % 4
+        payload_bytes = base64.urlsafe_b64decode(payload_b64 + "=" * pad)
+        payload = json.loads(payload_bytes)
+
+        if payload.get("exp") and time.time() > payload["exp"]:
+            return None
+
+        return payload
+    except Exception:
+        return None
 
 
 def _check_api_key():
@@ -36,6 +73,54 @@ def _check_api_key():
 
 
 class SnabbbElearningProductsController(http.Controller):
+
+    @http.route("/api/sso/elearning", type="http", auth="public", methods=["GET"], csrf=False, website=True)
+    def elearning_sso(self, token=None, next="/", **kwargs):
+        """
+        Receives a short-lived HS256-signed JWT from the E-Learning app
+        (functions/api/sso/shop-redirect.ts), verifies it, and sets the
+        session_id cookie on this domain so the user is auto-logged in when
+        they land on the shop after clicking a featured product.
+
+        Setup: in Odoo, set the system parameter
+        `snabbb_elearning.app_jwt_secret` to the same value as the Cloudflare
+        Worker's SUPABASE_JWT_SECRET (or APP_JWT_SECRET if you add one later).
+        Technial Settings → System Parameters → New.
+        """
+        secret = (
+            request.env["ir.config_parameter"].sudo().get_param("snabbb_elearning.app_jwt_secret")
+            or request.env["ir.config_parameter"].sudo().get_param("snabbb_elearning.sso_api_key")
+            or ""
+        )
+
+        redirect_target = next or "/"
+
+        if not secret or not token:
+            _logger.warning("Snabbb E-Learning SSO: missing secret or token — redirecting without login")
+            return request.redirect(redirect_target)
+
+        payload = _verify_hs256_jwt(token, secret)
+        if not payload:
+            _logger.warning("Snabbb E-Learning SSO: invalid or expired token — redirecting without login")
+            return request.redirect(redirect_target)
+
+        session_id = payload.get("session_id")
+        if not session_id:
+            _logger.warning("Snabbb E-Learning SSO: token has no session_id")
+            return request.redirect(redirect_target)
+
+        # Set the session_id cookie for this domain so Odoo recognises the
+        # user on subsequent requests.  The same Odoo session that was
+        # established on .snabbb.com is now also usable on mrbur.shop.
+        response = request.redirect(redirect_target)
+        response.set_cookie(
+            "session_id",
+            session_id,
+            max_age=3600,
+            httponly=True,
+            samesite="Lax",
+        )
+        return response
 
     @http.route("/api/v1/products/search", type="http", auth="public", methods=["GET"], csrf=False)
     def search_partner_products(self, **kwargs):

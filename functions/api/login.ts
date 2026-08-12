@@ -161,14 +161,9 @@ export const onRequestPost = async (context: any) => {
       ...corsHeaders
     })
 
-    // Also set the mrbur_sso cookie for seamless login to other apps.
-    // We also set session_id with the same value so that when the user
-    // navigates directly to mrbur.shop (e.g. via a featured-product link),
-    // Odoo recognises the session and auto-logs them in without needing to
-    // go through app.snabbb.com's ambient-redirect.
+    // Also set the mrbur_sso cookie for seamless login to other apps
     if (sessionCookie) {
       responseHeaders.append("Set-Cookie", buildSetCookie("mrbur_sso", sessionCookie, cookieOptions))
-      responseHeaders.append("Set-Cookie", buildSetCookie("session_id", sessionCookie, cookieOptions))
     }
 
     return new Response(JSON.stringify(responseBody), {

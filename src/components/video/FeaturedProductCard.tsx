@@ -10,26 +10,26 @@ function formatPrice(price: number, currency: string) {
   }
 }
 
-const SNABBB_SSO_AMBIENT_REDIRECT_URL = 'https://app.snabbb.com/api/sso/ambient-redirect'
-
 /**
- * Appends attribution params to a Snabbb product URL, then explicitly routes
- * the click through app.snabbb.com's SSO ambient-redirect bridge so a
- * doctor who's logged in on E-Learning lands on the shop already
- * authenticated instead of as a guest.
+ * Appends attribution params to a Snabbb product URL, then routes the click
+ * through our own /api/sso/shop-redirect bridge.
  *
- * We do the wrapping here ourselves rather than relying on Odoo's
- * product_url already being wrapped, because whether that's true depends on
- * which Odoo build is currently live - Odoo.sh only picks up the wrapping
- * once the branch has actually rebuilt with the latest commit, which isn't
- * always in sync with when this frontend deploys. Explicitly wrapping here
- * means this works regardless of Odoo's deploy state: if product_url is
- * already wrapped we unwrap it first (to avoid double-wrapping), attach
- * attribution to the real destination underneath, then (re-)wrap it
- * ourselves. ambient-redirect itself already falls back to a plain redirect
- * to return_url if there's no active Snabbb session, so this is safe for
- * logged-out visitors too. See purchase-webhook.ts for how ref_video/
- * ref_creator get read back on the paid-order side.
+ * shop-redirect reads the user's existing Odoo session_id cookie (set on
+ * .snabbb.com by the Snabbb platform at login) and passes it — signed with
+ * APP_JWT_SECRET — to mrbur.shop/api/sso/elearning, which sets the same
+ * session_id as a cookie on the .mrbur.shop domain.  Because both the
+ * e-learning app and the shop share the same Odoo backend, the single
+ * session_id is valid for both domains: the user lands on the shop already
+ * logged in without a second authentication step.
+ *
+ * If there is no Odoo session (e.g. the user authenticated via Google OAuth
+ * only), shop-redirect falls back to app.snabbb.com/api/sso/ambient-redirect,
+ * which degrades gracefully to a plain redirect for unauthenticated visitors.
+ *
+ * Attribution params (utm_source, ref_video, ref_creator) are attached to the
+ * real destination URL before wrapping so purchase-webhook.ts can read them
+ * back once the order is paid.  Double-wrapping is avoided by unwrapping any
+ * existing return_url first.
  */
 function buildAttributedUrl(productUrl: string, videoId: string, creatorId: string) {
   try {
@@ -43,11 +43,13 @@ function buildAttributedUrl(productUrl: string, videoId: string, creatorId: stri
     target.searchParams.set('ref_video', videoId)
     target.searchParams.set('ref_creator', creatorId)
 
-    const wrapped = new URL(SNABBB_SSO_AMBIENT_REDIRECT_URL)
+    // Route through our shop-redirect endpoint (same origin) so it can
+    // read the HttpOnly session_id cookie and forward it securely to the shop.
+    const wrapped = new URL('/api/sso/shop-redirect', window.location.origin)
     wrapped.searchParams.set('return_url', target.toString())
     return wrapped.toString()
   } catch {
-    // productUrl wasn't a valid absolute URL - best-effort fallback with no
+    // productUrl wasn't a valid absolute URL — best-effort fallback with no
     // SSO wrapping, same as before.
     const separator = productUrl.includes('?') ? '&' : '?'
     return `${productUrl}${separator}utm_source=elearning&utm_medium=video&ref_video=${encodeURIComponent(
