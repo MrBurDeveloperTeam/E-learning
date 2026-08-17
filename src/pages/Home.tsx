@@ -26,26 +26,36 @@ export function Home() {
   const profile = useAuthStore((state) => state.profile)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
   const navigate = useNavigate()
-  // Phase-2B first slice: Followed Creator Posted only. Pure, synchronous,
-  // reevaluates whenever the shared notifications/following React Query
-  // caches change (mark-read, realtime insert, unfollow) — no new
-  // Supabase query, no session dedupe. See
+  // Phase-2B: Followed Creator Posted, Latest Video Performance, Most
+  // Viewed Video. Pure, synchronous, reevaluates whenever the shared
+  // notifications/following React Query caches change (mark-read,
+  // realtime insert, unfollow) or the own-video-analytics query resolves
+  // — no session dedupe on the analytics candidates. See
   // src/aiExperience/hooks/useElearningPersonalizedInsight.ts.
   const elearningInsight = useElearningPersonalizedInsight()
   const markNotificationRead = useMarkRead()
 
   function handleElearningInsightAction() {
     if (!elearningInsight) return
-    const { notificationId, videoId } = elearningInsight.facts
-    // Fire-and-forget mark-read + immediate navigate, mirroring the exact
-    // existing behavior in NotificationBell.tsx/Notifications.tsx (neither
-    // awaits the mutation before navigating). On failure, useMarkRead's
-    // own onError toast fires and — since this mutation has no optimistic
-    // update — the notifications cache is left unchanged, so `is_read`
-    // was never flipped client-side and this candidate naturally remains
-    // eligible on the next evaluation, rather than being silently and
-    // permanently dismissed.
-    markNotificationRead.mutate(notificationId)
+
+    if (elearningInsight.triggerId === 'elearning_followed_creator_posted') {
+      const { notificationId, videoId } = elearningInsight.facts
+      // Fire-and-forget mark-read + immediate navigate, mirroring the
+      // exact existing behavior in NotificationBell.tsx/Notifications.tsx
+      // (neither awaits the mutation before navigating). On failure,
+      // useMarkRead's own onError toast fires and — since this mutation
+      // has no optimistic update — the notifications cache is left
+      // unchanged, so `is_read` was never flipped client-side and this
+      // candidate naturally remains eligible on the next evaluation,
+      // rather than being silently and permanently dismissed.
+      markNotificationRead.mutate(notificationId)
+      void navigate({ to: '/watch/$videoId', params: { videoId } })
+      return
+    }
+
+    // Latest Video Performance / Most Viewed Video: navigation only, no
+    // mutation — these candidates have no read/dedupe state to update.
+    const { videoId } = elearningInsight.facts
     void navigate({ to: '/watch/$videoId', params: { videoId } })
   }
   const { data: dentalCategories = [] } = useQuery({

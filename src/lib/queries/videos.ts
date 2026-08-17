@@ -233,6 +233,93 @@ export async function fetchMyVideos(userId: string): Promise<VideoWithCreator[]>
   return (data ?? []) as VideoWithCreator[]
 }
 
+/** Minimal row shape for the Personalized Insight video-analytics
+ *  candidates — deliberately not `Video`/`VideoWithCreator` (which also
+ *  carry title/description/thumbnail/creator profile/etc.). Only what
+ *  Latest Video Performance / Most Viewed Video actually need. */
+export interface OwnVideoAnalyticsRow {
+  id: string
+  view_count: number | null
+  created_at: string
+}
+
+export interface OwnVideoAnalyticsSnapshot {
+  latest: OwnVideoAnalyticsRow | null
+  mostViewed: OwnVideoAnalyticsRow | null
+}
+
+/**
+ * Two narrow, minimally-selected queries — never the user's full video
+ * history, never `fetchMyVideos` (which selects `*` plus a full creator
+ * profile join and includes non-published/private rows, broader than this
+ * feature needs). Ownership is enforced at the query source
+ * (`creator_id = userId`), not filtered client-side afterward. Eligible
+ * scope mirrors the same "public creator-facing video" rule already used
+ * by `fetchVideos`/`fetchRelatedVideos`/`searchVideos` above
+ * (`status = 'published'`, `visibility = 'public'`) — draft/processing/
+ * unlisted/removed and non-public videos never participate.
+ *
+ * Each query's own multi-column `.order(...)` fully determines a single
+ * deterministic winning row (or none) at the database level — no
+ * additional client-side tie-break logic is needed:
+ *   - latest: `created_at DESC, id ASC` — deliberately NOT filtered by
+ *     view count. "Latest" must always mean the actual most-recent
+ *     eligible video regardless of whether it has 0/null/positive views —
+ *     filtering this query by views could make an OLDER, higher-viewed
+ *     video masquerade as "latest", which would be false. A 0/null-view
+ *     latest video is handled downstream by
+ *     latestVideoPerformanceProvider.ts simply declining to produce a
+ *     candidate for it (see ../../aiExperience/providers).
+ *   - most-viewed: `view_count > 0` is a SOURCE-LEVEL filter (`.gt(...)`)
+ *     on THIS query only, on top of `view_count DESC, created_at DESC,
+ *     id ASC` ordering. Without it, a row with `view_count = null` sorts
+ *     ambiguously relative to positive-view rows under Postgres' default
+ *     NULLS LAST-on-DESC behavior for a nullable numeric column, which
+ *     could in principle let a null-view row win over a real positive-view
+ *     video depending on ordering. Filtering `view_count > 0` at the
+ *     database removes that ambiguity entirely — the row this query
+ *     returns is guaranteed to already have a positive view count, so it
+ *     can never lose out to (or be masked by) a null row.
+ *
+ * `.maybeSingle()` (not `.single()`) so a creator with zero eligible
+ * videos (or, for most-viewed, zero eligible videos with any positive
+ * views) returns `null` for that slot rather than throwing.
+ */
+export async function fetchOwnVideoAnalyticsSnapshot(
+  userId: string
+): Promise<OwnVideoAnalyticsSnapshot> {
+  const baseQuery = () =>
+    supabase
+      .from('videos')
+      .select('id, view_count, created_at')
+      .eq('creator_id', userId)
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+
+  const [latestResult, mostViewedResult] = await Promise.all([
+    baseQuery()
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    baseQuery()
+      .gt('view_count', 0)
+      .order('view_count', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (latestResult.error) throw latestResult.error
+  if (mostViewedResult.error) throw mostViewedResult.error
+
+  return {
+    latest: (latestResult.data as OwnVideoAnalyticsRow | null) ?? null,
+    mostViewed: (mostViewedResult.data as OwnVideoAnalyticsRow | null) ?? null,
+  }
+}
+
 export async function fetchSavedVideos(userId: string): Promise<VideoSaveWithVideo[]> {
   const { data, error } = await supabase
     .from('video_saves')

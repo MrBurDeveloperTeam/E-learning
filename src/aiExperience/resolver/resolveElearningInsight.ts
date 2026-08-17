@@ -1,32 +1,84 @@
-// Minimal deterministic local resolver for this first E-Learning Phase-2B
-// slice — mirrors the same small-module structure already browser-
-// validated in the To-Do/Inventory/Appointments repos (resolveTodoInsight.ts
-// / resolveInventoryInsight.ts / resolveAppointmentInsight.ts), even though
-// this first slice only has one candidate. Kept as a real function (not
-// inlined into the hook) so a later slice (Video Performance, Most Viewed)
-// can extend it additively without restructuring call sites, exactly as
-// happened in the other repos.
+// Deterministic local resolver for E-Learning Phase-2B — mirrors the same
+// small-module structure already browser-validated in the
+// To-Do/Inventory/Appointments repos (resolveTodoInsight.ts /
+// resolveInventoryInsight.ts / resolveAppointmentInsight.ts).
 //
 // This is intentionally NOT the Gallery global resolver (resolveDialogue.ts)
 // and does not import it — Gallery's global cross-app priority is untouched
 // and unrelated to this local, E-Learning-only ranking.
+//
+// Explicit, hardcoded precedence — never array order, never Promise
+// timing:
+//   1. elearning_followed_creator_posted   (current unread social activity)
+//   2. elearning_latest_video_performance  (own latest eligible video, if
+//                                             it has qualifying views)
+//   3. elearning_most_viewed_video         (own all-time most-viewed
+//                                             eligible video — a fallback
+//                                             for when the latest video has
+//                                             no views yet)
+//   4. null
+// Each candidate's own provider independently decides its own eligibility
+// — this function only picks the first non-null result. There is no
+// unconditional final fallback: if all three return `null`, the resolver
+// returns `null` and no personalized claim is shown.
+//
+// Slice 1's trigger/behavior is completely unchanged by this extension —
+// `evaluateFollowedCreatorPosted` is still called with the exact same
+// arguments it always was, and is still checked FIRST, unconditionally.
+//
+// READINESS GATING LIVES HERE, NOT IN THE HOOK: `ownVideoAnalytics` is
+// `undefined` when the own-video-analytics query is still loading or has
+// errored (see ../hooks/useElearningPersonalizedInsight.ts) — distinct
+// from `null`/a real snapshot with empty slots, which mean "ready, and
+// this creator simply has no qualifying video". A lower-priority,
+// still-unknown analytics state must NEVER suppress an already-resolved,
+// higher-priority Followed Creator Posted candidate — so the `undefined`
+// check happens AFTER the Followed Creator Posted check returns, never
+// before it. Only once Followed Creator Posted is confirmed absent does an
+// unknown analytics state cause this function to return `null` (rather
+// than fabricating "no videos"/"0 views").
 
 import {
   evaluateFollowedCreatorPosted,
-  type FollowedCreatorPostedFacts,
+  type FollowedCreatorPostedCandidate,
 } from '../providers/followedCreatorPostedProvider';
+import {
+  evaluateLatestVideoPerformance,
+  type LatestVideoPerformanceCandidate,
+} from '../providers/latestVideoPerformanceProvider';
+import {
+  evaluateMostViewedVideo,
+  type MostViewedVideoCandidate,
+} from '../providers/mostViewedVideoProvider';
 import type { ProjectedNotification } from '../utils/notificationProjection';
-import type { InsightCandidate } from '../contracts/insightCandidate';
+import type { OwnVideoAnalyticsSnapshot } from '../../lib/queries/videos';
 
-// Return type is deliberately the single concrete facts type (not widened
-// to `InsightCandidate<unknown>`) since this slice has exactly one
-// candidate — this lets Home.tsx read `facts.videoId`/`facts.notificationId`
-// for its action handler without an unsafe cast. Once a second trigger
-// (e.g. Video Performance) is added, this becomes a real discriminated
-// union at that point — not invented speculatively now.
+// A real discriminated union now that a second/third trigger exists — each
+// member has its own literal-narrowed `triggerId` (see each provider's
+// `*Candidate` interface), so Home.tsx can narrow on
+// `candidate.triggerId === '...'` to get the right `candidate.facts` shape
+// without an unsafe cast.
+export type ElearningInsightCandidate =
+  | FollowedCreatorPostedCandidate
+  | LatestVideoPerformanceCandidate
+  | MostViewedVideoCandidate;
+
 export function resolveElearningInsight(
   notifications: ProjectedNotification[],
-  followingIds: Set<string>
-): InsightCandidate<FollowedCreatorPostedFacts> | null {
-  return evaluateFollowedCreatorPosted(notifications, followingIds) ?? null;
+  followingIds: Set<string>,
+  /** `undefined` = analytics not yet known (loading/error) — see the file
+   *  header. `null`/a snapshot = analytics is ready. */
+  ownVideoAnalytics: OwnVideoAnalyticsSnapshot | null | undefined
+): ElearningInsightCandidate | null {
+  const followedCreatorPosted = evaluateFollowedCreatorPosted(notifications, followingIds);
+  if (followedCreatorPosted) return followedCreatorPosted;
+
+  if (ownVideoAnalytics === undefined) return null;
+
+  const latestVideoPerformance = evaluateLatestVideoPerformance(
+    ownVideoAnalytics?.latest ?? null
+  );
+  if (latestVideoPerformance) return latestVideoPerformance;
+
+  return evaluateMostViewedVideo(ownVideoAnalytics?.mostViewed ?? null);
 }

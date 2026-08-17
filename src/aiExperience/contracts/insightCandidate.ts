@@ -21,19 +21,26 @@
 // incorrectly imply this local candidate participates in it. This repo
 // owns its own local-only severity scale, deliberately social/informational
 // rather than clinical/operational: `MEDIUM` for a real, actionable social
-// nudge (a followed creator posted); `INFO` reserved for lower-tier future
-// triggers. No `CRITICAL`/`HIGH` tier is defined — nothing in this app's
-// social-feed domain is an emergency the way Appointments' "starts in under
-// 2 hours" is.
+// nudge (a followed creator posted); `INFO` for the Slice-2 own-video
+// analytics candidates (Latest Video Performance, Most Viewed Video) —
+// positive, non-urgent creator stats, not alerts. No `CRITICAL`/`HIGH` tier
+// is defined — nothing in this app's social-feed domain is an emergency the
+// way Appointments' "starts in under 2 hours" is. The resolver's explicit
+// precedence order (not these values) is what's authoritative — see
+// resolveElearningInsight.ts.
 
 /** This repo only ever produces `elearning` candidates. */
 export type InsightApp = 'elearning';
 
 /** Canonical trigger identity. Extend only when a new provider is actually
  *  implemented — never speculatively. `elearning_followed_creator_posted`
- *  is this slice's only trigger; Video Performance / Most Viewed are
- *  explicitly NOT added here yet (see this slice's Next-Slice Notes). */
-export type InsightTriggerId = 'elearning_followed_creator_posted';
+ *  is Slice 1's trigger; `elearning_latest_video_performance` and
+ *  `elearning_most_viewed_video` are Slice 2's two own-video analytics
+ *  triggers, added additively without touching Slice 1's trigger id. */
+export type InsightTriggerId =
+  | 'elearning_followed_creator_posted'
+  | 'elearning_latest_video_performance'
+  | 'elearning_most_viewed_video';
 
 /** Local-only severity scale — NOT Gallery's global DialoguePriority. */
 export type InsightPriority = 'MEDIUM' | 'INFO';

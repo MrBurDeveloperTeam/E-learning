@@ -41,6 +41,18 @@ export interface FollowedCreatorPostedFacts {
   createdAt: string;
 }
 
+/** `InsightCandidate<TFacts>`'s `triggerId` field is typed as the FULL
+ *  `InsightTriggerId` union (identical on every candidate shape), so it
+ *  cannot discriminate a union of `InsightCandidate<...>` variants on its
+ *  own — TypeScript needs a literal-narrowed `triggerId` per candidate
+ *  shape to let Home.tsx's `if (candidate.triggerId === '...')` actually
+ *  narrow `candidate.facts` to the right type. This interface pins that
+ *  literal for the resolver's exported union (see
+ *  ../resolver/resolveElearningInsight.ts). */
+export interface FollowedCreatorPostedCandidate extends InsightCandidate<FollowedCreatorPostedFacts> {
+  triggerId: 'elearning_followed_creator_posted';
+}
+
 interface QualifyingSource {
   notification: ProjectedNotification;
   createdAtMs: number;
@@ -71,7 +83,7 @@ function buildMessage(actorDisplayName: string | undefined): string {
 export function evaluateFollowedCreatorPosted(
   notifications: ProjectedNotification[],
   followingIds: Set<string>
-): InsightCandidate<FollowedCreatorPostedFacts> | null {
+): FollowedCreatorPostedCandidate | null {
   const sources: QualifyingSource[] = [];
   for (const notification of notifications) {
     if (!isQualifying(notification, followingIds)) continue;
