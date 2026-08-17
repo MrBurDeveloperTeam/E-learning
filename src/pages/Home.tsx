@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
 import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
@@ -7,6 +8,7 @@ import { FollowButton } from '@/components/creator/FollowButton'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { useFollowing } from '@/hooks/useFollow'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
+import { useMarkRead } from '@/hooks/useNotifications'
 import { getCategories } from '@/lib/dentalVideosApi'
 import { fetchUnifiedVideoPage } from '@/lib/libraryFeed'
 import { fetchTopPublicCreators } from '@/lib/queries/profiles'
@@ -15,12 +17,37 @@ import { cn, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { useElearningPersonalizedInsight } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
+import { PersonalizedInsight } from '@/aiExperience/components/PersonalizedInsight'
 
 export function Home() {
   const [category, setCategory] = useState<string>('All')
   const [query, setQuery] = useState('')
   const profile = useAuthStore((state) => state.profile)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const navigate = useNavigate()
+  // Phase-2B first slice: Followed Creator Posted only. Pure, synchronous,
+  // reevaluates whenever the shared notifications/following React Query
+  // caches change (mark-read, realtime insert, unfollow) — no new
+  // Supabase query, no session dedupe. See
+  // src/aiExperience/hooks/useElearningPersonalizedInsight.ts.
+  const elearningInsight = useElearningPersonalizedInsight()
+  const markNotificationRead = useMarkRead()
+
+  function handleElearningInsightAction() {
+    if (!elearningInsight) return
+    const { notificationId, videoId } = elearningInsight.facts
+    // Fire-and-forget mark-read + immediate navigate, mirroring the exact
+    // existing behavior in NotificationBell.tsx/Notifications.tsx (neither
+    // awaits the mutation before navigating). On failure, useMarkRead's
+    // own onError toast fires and — since this mutation has no optimistic
+    // update — the notifications cache is left unchanged, so `is_read`
+    // was never flipped client-side and this candidate naturally remains
+    // eligible on the next evaluation, rather than being silently and
+    // permanently dismissed.
+    markNotificationRead.mutate(notificationId)
+    void navigate({ to: '/watch/$videoId', params: { videoId } })
+  }
   const { data: dentalCategories = [] } = useQuery({
     queryKey: ['dental-categories'],
     queryFn: getCategories,
@@ -95,6 +122,8 @@ export function Home() {
   return (
     <>
       <Navbar />
+
+      <PersonalizedInsight candidate={elearningInsight} onAction={handleElearningInsightAction} />
 
       <div className="sticky top-14 z-40 border-b border-border bg-background/95 py-3 backdrop-blur">
         <div className="mx-auto max-w-[1400px] px-4 md:px-6">
