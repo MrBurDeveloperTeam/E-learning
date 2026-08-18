@@ -2,14 +2,31 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MolarChat from './MolarChat';
-import { chatWithMolarAI } from '../services/geminiService';
+import { chatWithMolarAI, chatWithGroundedElearningFacts } from '../services/geminiService';
 import { supabase } from '../lib/supabase';
+import { isElearningMutationRequest } from '../aiExperience/dataChat/router/isElearningMutationRequest';
+import { classifyElearningDataIntent } from '../aiExperience/dataChat/router/classifyElearningDataIntent';
+import { resolveElearningDataQuery } from '../aiExperience/dataChat/resolver/resolveElearningDataQuery';
+import { useElearningDataChatSources } from '../aiExperience/dataChat/hooks/useElearningDataChatSources';
+import {
+  buildUnsupportedParameterMessage,
+  buildUnsupportedScopeMessage,
+  buildUnsupportedSensitiveScopeMessage,
+  buildUnavailableMessage,
+} from '../aiExperience/dataChat/utils/unsupportedParameterMessage';
+import { formatGroundedElearningFallback } from '../aiExperience/dataChat/utils/formatGroundedElearningFallback';
 
 /**
  * Self-contained floating Molar AI button + chat panel.
  * Drop this anywhere in the layout.
  */
 export default function MolarAIFloat({ userContext, disabled = false, onPetToggle }) {
+  // Phase-3 Data-Driven Chat: reads existing React Query cache only —
+  // never triggers a fetch of its own (see the hook's own file header).
+  // Available regardless of which page mounted MolarAIFloat, since this
+  // component lives inside the same global QueryClientProvider/Zustand
+  // store as every other data hook in the app.
+  const elearningDataChatSources = useElearningDataChatSources();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -44,6 +61,90 @@ export default function MolarAIFloat({ userContext, disabled = false, onPetToggl
     setIsChatLoading(true);
 
     try {
+      // ── Phase-3 Data-Driven Chat (read-only pilot) ──────────────────
+      // Runs BEFORE the existing predefined-response/legacy General Chat
+      // pipeline below, and is fully separate from it: a matched request
+      // here never calls the DB-backed predefined-keyword lookup or
+      // `chatWithMolarAI`, and its output is never scanned for the
+      // fenced ```json action block / never reaches
+      // `window.__MOLAR_ACTIONS__`. See src/aiExperience/dataChat/ for
+      // the deterministic router/provider/resolver pipeline this uses.
+
+      // 1. Explicit mutation-shaped requests are intercepted with a
+      // deterministic refusal — zero Gemini calls, zero mutation. This
+      // is defense-in-depth: `window.__MOLAR_ACTIONS__` is confirmed
+      // unwired/navigation-only in this repo today (see
+      // isElearningMutationRequest.ts's file header), but the read-only
+      // guarantee must not depend on that remaining true forever.
+      if (isElearningMutationRequest(msg)) {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: "This data chat can check your video and creator-update information, but it can't make changes." }] },
+        ]);
+        // `finally` below still runs setIsChatLoading(false) + the scroll.
+        return;
+      }
+
+      // 2. Deterministic LOCAL intent classification (no Gemini call).
+      const dataRoute = classifyElearningDataIntent(msg);
+
+      if (dataRoute.kind === 'unsupported_sensitive_scope') {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: buildUnsupportedSensitiveScopeMessage(dataRoute.reason) }] },
+        ]);
+        return;
+      }
+
+      if (dataRoute.kind === 'unsupported_parameter') {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: buildUnsupportedParameterMessage(dataRoute.reason) }] },
+        ]);
+        return;
+      }
+
+      if (dataRoute.kind === 'unsupported_scope') {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: buildUnsupportedScopeMessage(dataRoute.reason) }] },
+        ]);
+        return;
+      }
+
+      if (dataRoute.kind === 'matched') {
+        const result = resolveElearningDataQuery(dataRoute.intent, elearningDataChatSources);
+
+        let dataChatResponseText;
+        if (result.status === 'unavailable') {
+          // Unknown/unavailable source state is never reinterpreted as a
+          // zero-result answer, and a matched grounded intent owns this
+          // request even when its source is temporarily unavailable — it
+          // does not fall through to legacy chat. `notification_coverage_unknown`
+          // gets its own specific wording; see buildUnavailableMessage.
+          dataChatResponseText = buildUnavailableMessage(result.reasonCode);
+        } else {
+          try {
+            // 3. Grounded Gemini phrasing — receives ONLY the question,
+            // the approved intent, and the already-minimized facts.
+            // Plain text only; never scanned for action blocks.
+            dataChatResponseText = await chatWithGroundedElearningFacts(msg, result.intent, result.facts);
+          } catch (groundedErr) {
+            // Mandatory deterministic fallback — never falls through to
+            // legacy General Chat on a Gemini failure at this stage.
+            console.error('Grounded elearning response failed:', groundedErr);
+            dataChatResponseText = formatGroundedElearningFallback(result.intent, result.facts);
+          }
+        }
+
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: dataChatResponseText }] },
+        ]);
+        return;
+      }
+      // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ─
+
       let response = null;
 
       // 1. Check custom responses first
