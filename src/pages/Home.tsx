@@ -15,11 +15,14 @@ import { cn, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import usePageDurationTracker, { type PageViewLogMeta } from '@/hooks/usePageDurationTracker'
+import { logElearningActivity } from '@/lib/logActivityToOdoo'
 
 export function Home() {
   const [category, setCategory] = useState<string>('All')
   const [query, setQuery] = useState('')
   const profile = useAuthStore((state) => state.profile)
+  const user = useAuthStore((state) => state.user)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
   const { data: dentalCategories = [] } = useQuery({
     queryKey: ['dental-categories'],
@@ -27,6 +30,23 @@ export function Home() {
     staleTime: 5 * 60 * 1000,
   })
   const sharedCategories = ['All', ...buildCombinedCategoryList(dentalCategories)]
+
+  // Logs how long the user spends browsing each category tab on this page
+  // (App.tsx's own route-level tracker only sees "/explore" as a whole and
+  // can't see category switches, since `category` is local state here, not
+  // part of the URL). Fires its own page_view once the user switches tabs,
+  // hides the tab, or leaves the page — see hooks/usePageDurationTracker.ts.
+  usePageDurationTracker(
+    `/explore?category=${encodeURIComponent(category)}`,
+    category === 'All' ? 'Explore: All Videos' : `Explore: ${category}`,
+    Boolean(user?.email),
+    (description: string, pageMeta: PageViewLogMeta) => {
+      logElearningActivity('page_view', description, {
+        pagePath: pageMeta.pagePath,
+        pageDurationSeconds: pageMeta.pageDurationSeconds,
+      })
+    }
+  )
 
   const {
     data,
