@@ -2,9 +2,11 @@
 //
 // Forwards a single activity event (comment posted/deleted, creator
 // followed/unfollowed, video uploaded/updated/deleted, creator application
-// submitted) to Odoo. Mirrors the inventory/appointment/todo apps' activity
-// syncs — same X-Snabbb-Api-Key + email auth model, same idempotency-key
-// pattern via `external_ref`.
+// submitted, page_view duration) to Odoo. Mirrors the inventory/appointment/
+// todo apps' activity syncs — same X-Snabbb-Api-Key + email auth model, same
+// idempotency-key pattern via `external_ref`. page_path/page_duration_seconds
+// are optional and only sent for page_view events (see
+// usePageDurationTracker.ts).
 //
 // Called from src/lib/logActivityToOdoo.ts, fire-and-forget. Never called
 // directly by anything else.
@@ -50,6 +52,8 @@ export const onRequestPost = async (context: any) => {
     action,
     details,
     occurred_at: occurredAt,
+    page_path: pagePath = null,
+    page_duration_seconds: pageDurationSeconds = null,
   } = body || {}
 
   if (!externalRef || !actorEmail || !action || !details || !occurredAt) {
@@ -78,6 +82,8 @@ export const onRequestPost = async (context: any) => {
         action,
         details,
         occurred_at: occurredAt,
+        ...(pagePath !== null && { page_path: pagePath }),
+        ...(pageDurationSeconds !== null && { page_duration_seconds: pageDurationSeconds }),
       }),
     })
 

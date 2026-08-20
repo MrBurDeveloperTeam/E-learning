@@ -29,6 +29,8 @@ export interface ElearningActivityPayload {
   action: string // e.g. "video_uploaded", "comment_posted", "creator_followed", ...
   details: string
   occurredAt: string // ISO timestamp
+  pagePath?: string | null // e.g. "/watch/abc123" — set for "page_view" duration events
+  pageDurationSeconds?: number | null // seconds spent on pagePath before it was logged
 }
 
 export async function logActivityToOdoo(params: ElearningActivityPayload): Promise<boolean> {
@@ -47,6 +49,8 @@ export async function logActivityToOdoo(params: ElearningActivityPayload): Promi
     action: params.action,
     details: params.details,
     occurred_at: params.occurredAt,
+    ...(params.pagePath != null ? { page_path: params.pagePath } : {}),
+    ...(params.pageDurationSeconds != null ? { page_duration_seconds: params.pageDurationSeconds } : {}),
   }
 
   try {
@@ -77,7 +81,11 @@ export async function logActivityToOdoo(params: ElearningActivityPayload): Promi
  * Safe to call outside React components — Zustand stores support
  * `.getState()` synchronously anywhere, no hook required.
  */
-export function logElearningActivity(action: string, details: string): void {
+export function logElearningActivity(
+  action: string,
+  details: string,
+  meta: { pagePath?: string; pageDurationSeconds?: number } = {}
+): void {
   const { user, profile } = useAuthStore.getState()
   logActivityToOdoo({
     logId: crypto.randomUUID(),
@@ -87,5 +95,7 @@ export function logElearningActivity(action: string, details: string): void {
     action,
     details,
     occurredAt: new Date().toISOString(),
+    pagePath: meta.pagePath ?? null,
+    pageDurationSeconds: meta.pageDurationSeconds ?? null,
   })
 }
