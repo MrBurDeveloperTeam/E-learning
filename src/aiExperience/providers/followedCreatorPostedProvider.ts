@@ -80,10 +80,7 @@ function buildMessage(actorDisplayName: string | undefined): string {
     : 'A creator you follow just posted a new video.';
 }
 
-export function evaluateFollowedCreatorPosted(
-  notifications: ProjectedNotification[],
-  followingIds: Set<string>
-): FollowedCreatorPostedCandidate | null {
+function collectQualifyingSources(notifications: ProjectedNotification[], followingIds: Set<string>): QualifyingSource[] {
   const sources: QualifyingSource[] = [];
   for (const notification of notifications) {
     if (!isQualifying(notification, followingIds)) continue;
@@ -91,10 +88,11 @@ export function evaluateFollowedCreatorPosted(
     if (Number.isNaN(createdAtMs)) continue; // malformed timestamp — cannot order, exclude
     sources.push({ notification, createdAtMs });
   }
+  return sources;
+}
 
-  if (sources.length === 0) return null;
-
-  const winner = [...sources].sort(compareForSelection)[0]!.notification;
+function buildCandidateFromSource(source: QualifyingSource): FollowedCreatorPostedCandidate {
+  const winner = source.notification;
   // videoId presence already guaranteed by isQualifying above.
   const videoId = winner.videoId as string;
   const message = buildMessage(winner.actorDisplayName);
@@ -119,4 +117,37 @@ export function evaluateFollowedCreatorPosted(
     sourceRecordId: winner.id,
     evaluatedAt: new Date().toISOString(),
   };
+}
+
+export function evaluateFollowedCreatorPosted(
+  notifications: ProjectedNotification[],
+  followingIds: Set<string>
+): FollowedCreatorPostedCandidate | null {
+  const sources = collectQualifyingSources(notifications, followingIds);
+  if (sources.length === 0) return null;
+
+  const winner = [...sources].sort(compareForSelection)[0]!;
+  return buildCandidateFromSource(winner);
+}
+
+/**
+ * Additive: every independently eligible Followed Creator Posted
+ * notification, in the exact same business order compareForSelection
+ * already produces — `evaluateFollowedCreatorPostedCandidates(notifications,
+ * followingIds)[0]` is always identical to
+ * `evaluateFollowedCreatorPosted(notifications, followingIds)`. Used only
+ * by the dialogue-layer pool selector (see aiExperience/petDialogue/) so a
+ * Cat-dismissed notification can reveal the next still-eligible one
+ * instead of the whole family silently disappearing — the inline
+ * PersonalizedInsight banner keeps using evaluateFollowedCreatorPosted
+ * above, unaffected. `notification.isRead` (the DB column) is the only
+ * qualification signal this reuses — dialogue suppression here is purely
+ * additive local presentation state, never a substitute for or mutation of
+ * that column.
+ */
+export function evaluateFollowedCreatorPostedCandidates(
+  notifications: ProjectedNotification[],
+  followingIds: Set<string>
+): FollowedCreatorPostedCandidate[] {
+  return [...collectQualifyingSources(notifications, followingIds)].sort(compareForSelection).map(buildCandidateFromSource);
 }

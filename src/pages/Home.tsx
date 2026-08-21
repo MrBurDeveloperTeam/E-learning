@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
@@ -17,8 +17,10 @@ import { cn, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { useElearningPersonalizedInsight } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
+import { useElearningPersonalizedInsightState } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
 import { PersonalizedInsight } from '@/aiExperience/components/PersonalizedInsight'
+import { usePublishPersonalizedInsight, type PersonalizedInsightBridgeState } from '@/aiExperience/petDialogue/PersonalizedInsightBridge'
+import type { ElearningInsightCandidate } from '@/aiExperience/resolver/resolveElearningInsight'
 
 export function Home() {
   const [category, setCategory] = useState<string>('All')
@@ -31,15 +33,25 @@ export function Home() {
   // notifications/following React Query caches change (mark-read,
   // realtime insert, unfollow) or the own-video-analytics query resolves
   // — no session dedupe on the analytics candidates. See
-  // src/aiExperience/hooks/useElearningPersonalizedInsight.ts.
-  const elearningInsight = useElearningPersonalizedInsight()
+  // src/aiExperience/hooks/useElearningPersonalizedInsight.ts. Uses the
+  // readiness-carrying variant (not_ready vs ready+candidate) so the
+  // proactive Cat reminder bridge below can tell "still loading" apart
+  // from "resolved, no candidate" — the inline banner just unwraps it.
+  const elearningInsightState = useElearningPersonalizedInsightState()
+  const elearningInsight = elearningInsightState.status === 'ready' ? elearningInsightState.candidate : null
   const markNotificationRead = useMarkRead()
 
-  function handleElearningInsightAction() {
-    if (!elearningInsight) return
+  // Takes the candidate to act on explicitly — never closes over
+  // `elearningInsight` — so this stays correct even when the caller is Cat
+  // showing a different (dismissal-revealed) candidate than the inline
+  // banner's current winner. This is what guarantees the CTA always marks
+  // the RIGHT notification read and navigates to the RIGHT video — see
+  // PersonalizedInsightBridge.tsx's onAction doc for why this matters.
+  const handleElearningInsightAction = useCallback((candidate: ElearningInsightCandidate | null) => {
+    if (!candidate) return
 
-    if (elearningInsight.triggerId === 'elearning_followed_creator_posted') {
-      const { notificationId, videoId } = elearningInsight.facts
+    if (candidate.triggerId === 'elearning_followed_creator_posted') {
+      const { notificationId, videoId } = candidate.facts
       // Fire-and-forget mark-read + immediate navigate, mirroring the
       // exact existing behavior in NotificationBell.tsx/Notifications.tsx
       // (neither awaits the mutation before navigating). On failure,
@@ -55,9 +67,27 @@ export function Home() {
 
     // Latest Video Performance / Most Viewed Video: navigation only, no
     // mutation — these candidates have no read/dedupe state to update.
-    const { videoId } = elearningInsight.facts
+    const { videoId } = candidate.facts
     void navigate({ to: '/watch/$videoId', params: { videoId } })
-  }
+  }, [markNotificationRead, navigate])
+
+  // Publishes readiness (not_ready | ready+candidate/candidates) + this
+  // exact action handler to CatMascot (mounted outside Home, in App.tsx)
+  // via a read-only context — no new query, no duplicated resolver/action
+  // logic. Publishing `not_ready` explicitly (rather than nothing) is what
+  // lets CatMascot tell "Home is still loading, wait" apart from "Home
+  // isn't mounted at all, don't wait" — see
+  // src/aiExperience/petDialogue/PersonalizedInsightBridge.tsx.
+  const bridgeState: PersonalizedInsightBridgeState =
+    elearningInsightState.status === 'ready'
+      ? {
+          status: 'ready',
+          candidate: elearningInsightState.candidate,
+          candidates: elearningInsightState.candidates,
+          onAction: handleElearningInsightAction,
+        }
+      : { status: 'not_ready' }
+  usePublishPersonalizedInsight(bridgeState)
   const { data: dentalCategories = [] } = useQuery({
     queryKey: ['dental-categories'],
     queryFn: getCategories,
@@ -133,7 +163,7 @@ export function Home() {
     <>
       <Navbar />
 
-      <PersonalizedInsight candidate={elearningInsight} onAction={handleElearningInsightAction} />
+      <PersonalizedInsight candidate={elearningInsight} onAction={() => handleElearningInsightAction(elearningInsight)} />
 
       <div className="sticky top-14 z-40 border-b border-border bg-background/95 py-3 backdrop-blur">
         <div className="mx-auto max-w-[1400px] px-4 md:px-6">

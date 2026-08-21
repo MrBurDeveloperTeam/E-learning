@@ -75,9 +75,29 @@ import { useFollowing } from '@/hooks/useFollow';
 import { fetchNotifications } from '@/lib/queries/notifications';
 import { fetchOwnVideoAnalyticsSnapshot } from '@/lib/queries/videos';
 import { resolveElearningInsight, type ElearningInsightCandidate } from '../resolver/resolveElearningInsight';
+import { buildElearningDialoguePool } from '../petDialogue/buildElearningDialoguePool';
 import { projectNotificationsForFollowedCreatorPosted } from '../utils/notificationProjection';
 
-export function useElearningPersonalizedInsight(): ElearningInsightCandidate | null {
+/** Explicit readiness, reusing the exact same query-state signals this hook
+ *  already computes internally — added so callers (specifically the
+ *  proactive Cat reminder bridge) can distinguish "still resolving" from
+ *  "resolved, deterministically no candidate", which a plain `null` return
+ *  cannot. The plain `ElearningInsightCandidate | null` shape below is
+ *  unchanged and still what the existing inline PersonalizedInsight banner
+ *  consumes — see useElearningPersonalizedInsightState below for the
+ *  richer variant. `candidates` (starvation fix, additive) is the ordered
+ *  Cat-only dialogue pool — see buildElearningDialoguePool.ts — and is
+ *  never read by the inline banner. */
+export type ElearningInsightState =
+  | { status: 'not_ready' }
+  | { status: 'ready'; candidate: ElearningInsightCandidate | null; candidates: ElearningInsightCandidate[] };
+
+/** Richer sibling of useElearningPersonalizedInsight below: same queries
+ *  (React Query dedupes by key — calling both in the same render subscribes
+ *  to the same cache entries, never issues a second network request),
+ *  same resolver call, same readiness rules — just exposes the not_ready
+ *  vs ready distinction instead of collapsing both into `null`. */
+export function useElearningPersonalizedInsightState(): ElearningInsightState {
   const profile = useAuthStore((state) => state.profile);
   const userId = profile?.user_id;
 
@@ -95,14 +115,10 @@ export function useElearningPersonalizedInsight(): ElearningInsightCandidate | n
     enabled: !!userId,
   });
 
-  return useMemo(() => {
-    // Auth/social sources unknown: the highest-priority candidate
-    // (Followed Creator Posted) itself cannot be evaluated yet — never
-    // surface a lower-priority analytics claim through an unknown higher
-    // tier.
-    if (!userId) return null;
-    if (notificationsQuery.isLoading || notificationsQuery.isError) return null;
-    if (followingQuery.isLoading || followingQuery.isError) return null;
+  return useMemo((): ElearningInsightState => {
+    if (!userId) return { status: 'not_ready' };
+    if (notificationsQuery.isLoading || notificationsQuery.isError) return { status: 'not_ready' };
+    if (followingQuery.isLoading || followingQuery.isError) return { status: 'not_ready' };
 
     try {
       const projected = projectNotificationsForFollowedCreatorPosted(notificationsQuery.data);
@@ -111,24 +127,20 @@ export function useElearningPersonalizedInsight(): ElearningInsightCandidate | n
           .map((row) => row.following_id)
           .filter((value): value is string => !!value)
       );
-      // Analytics readiness is intentionally NOT checked here — see the
-      // file header. `undefined` is passed through when unknown; the
-      // resolver decides whether that matters (only if Followed Creator
-      // Posted is absent).
       const ownVideoAnalytics =
         ownVideoAnalyticsQuery.isLoading || ownVideoAnalyticsQuery.isError
           ? undefined
           : ownVideoAnalyticsQuery.data;
-      return resolveElearningInsight(projected, followingIds, ownVideoAnalytics);
+      return {
+        status: 'ready',
+        candidate: resolveElearningInsight(projected, followingIds, ownVideoAnalytics),
+        candidates: buildElearningDialoguePool(projected, followingIds, ownVideoAnalytics),
+      };
     } catch (err) {
-      // A provider failure must never produce a fabricated personalized
-      // claim or a raw error surfaced to the user. Evaluation here is pure
-      // (no network call) — this is only a last-resort guard against a
-      // malformed notification/video row; the safe behavior is simply "no
-      // insight this render". Never logs the notification/profile/video
-      // objects.
+      // Pure-computation failure (no network call) against a malformed
+      // row — deterministic "no insight this render", not a loading state.
       console.warn('[aiExperience] elearning personalized insight evaluation failed:', err);
-      return null;
+      return { status: 'ready', candidate: null, candidates: [] };
     }
   }, [
     userId,
@@ -142,4 +154,16 @@ export function useElearningPersonalizedInsight(): ElearningInsightCandidate | n
     ownVideoAnalyticsQuery.isError,
     ownVideoAnalyticsQuery.data,
   ]);
+}
+
+/** Thin derived wrapper, kept for any caller that only needs the plain
+ *  candidate (never the readiness distinction) — delegates to
+ *  useElearningPersonalizedInsightState() above so the underlying queries
+ *  are declared exactly once, not duplicated across two hooks. Behavior is
+ *  unchanged from before this hardening: `not_ready` and `ready+null` both
+ *  surface as plain `null` here, exactly as the old inline implementation
+ *  did. */
+export function useElearningPersonalizedInsight(): ElearningInsightCandidate | null {
+  const state = useElearningPersonalizedInsightState();
+  return state.status === 'ready' ? state.candidate : null;
 }

@@ -10,6 +10,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import CatMascot from './components/CatMascot.jsx'
 import MolarAIFloat from './components/MolarAIFloat.jsx'
 import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer'
+import { PersonalizedInsightBridgeProvider } from './aiExperience/petDialogue/PersonalizedInsightBridge'
 
 function InnerApp() {
   // Initialize auth state (sets up onAuthStateChange listener)
@@ -48,7 +49,7 @@ function InnerApp() {
   }, [])
 
   return (
-    <>
+    <PersonalizedInsightBridgeProvider>
       <RouterProvider router={router} />
       {!isAuthRoute && (
         <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
@@ -70,7 +71,7 @@ function InnerApp() {
         isOpen={isVirtualPetOpen}
         onClose={() => setIsVirtualPetOpen(false)}
       />
-    </>
+    </PersonalizedInsightBridgeProvider>
   )
 }
 
