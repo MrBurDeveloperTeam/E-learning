@@ -9,7 +9,7 @@ import { supabase } from './lib/supabase'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import CatMascot from './components/CatMascot.jsx'
 import MolarAIFloat from './components/MolarAIFloat.jsx'
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer'
+import ElearningVirtualPet from './petExperience/ElearningVirtualPet'
 import { PersonalizedInsightBridgeProvider } from './aiExperience/petDialogue/PersonalizedInsightBridge'
 
 function InnerApp() {
@@ -67,7 +67,7 @@ function InnerApp() {
           />
         </div>
       )}
-      <VirtualPetContainer
+      <ElearningVirtualPet
         isOpen={isVirtualPetOpen}
         onClose={() => setIsVirtualPetOpen(false)}
       />
