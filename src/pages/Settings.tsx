@@ -52,7 +52,6 @@ interface ProfileFormValues {
 
 const SPECIALTY_OPTIONS = [
   'General Dentistry',
-  'Restorative',
   'Implantology',
   'Orthodontics',
   'Endodontics',
@@ -60,6 +59,9 @@ const SPECIALTY_OPTIONS = [
   'Oral Surgery',
   'Pediatric Dentistry',
   'Prosthodontics',
+  'Dental Burs',
+  'Handpieces',
+  'Clinic Management',
 ]
 
 const TAB_META: Record<SettingsTab, { title: string; description: string }> = {

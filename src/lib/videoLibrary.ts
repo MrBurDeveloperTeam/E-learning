@@ -3,7 +3,6 @@ import type { DentalCategory } from '@/types/dentalVideo'
 
 const CATEGORY_NORMALIZATION_MAP: Record<string, string> = {
   Periodontics: 'Periodontology',
-  Restorative: 'Others',
 }
 
 const DENTAL_CATEGORY_FILTER_MAP: Record<string, string> = {

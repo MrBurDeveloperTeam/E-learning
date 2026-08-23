@@ -196,6 +196,17 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }, [initialize])
 
   async function signInWithEmail(email: string, password: string) {
+    // ── Dev-mode bypass: sign in directly via Supabase on localhost ──
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    if (isLocal) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (error) throw error
+      return // no redirect — stay on localhost
+    }
+
     // Match Inventory's production login flow: authenticate the central Odoo
     // account through routes already handled by snabbb-worker, then launch the
     // E-learning app through Odoo's signed app-link redirect.

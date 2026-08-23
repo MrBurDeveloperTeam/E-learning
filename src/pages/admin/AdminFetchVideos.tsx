@@ -23,13 +23,15 @@ function ResultSummary({
   fetched,
   inserted,
   skipped,
+  alreadyInDb,
 }: {
   fetched: number
   inserted: number
   skipped: number
+  alreadyInDb: number
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-4">
       <AdminStatCard
         label="Fetched"
         value={(fetched ?? 0).toLocaleString()}
@@ -44,10 +46,16 @@ function ResultSummary({
         hint="New rows added to dental_videos"
       />
       <AdminStatCard
+        label="Already in DB"
+        value={(alreadyInDb ?? 0).toLocaleString()}
+        icon={Sparkles}
+        hint="Videos already present — skipped without API calls"
+      />
+      <AdminStatCard
         label="Skipped"
         value={(skipped ?? 0).toLocaleString()}
-        icon={Sparkles}
-        hint="Duplicates or entries already present"
+        icon={XCircle}
+        hint="Other skipped entries"
       />
     </div>
   )
@@ -60,6 +68,7 @@ export function AdminFetchVideos() {
     fetched: number
     inserted: number
     skipped: number
+    alreadyInDb: number
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
@@ -134,6 +143,7 @@ export function AdminFetchVideos() {
         fetched: data.fetched ?? 0,
         inserted: data.inserted ?? 0,
         skipped: data.skipped ?? 0,
+        alreadyInDb: data.alreadyInDb ?? 0,
       })
 
       const timestamp = Date.now().toString()
@@ -327,6 +337,7 @@ export function AdminFetchVideos() {
             fetched={result.fetched}
             inserted={result.inserted}
             skipped={result.skipped}
+            alreadyInDb={result.alreadyInDb}
           />
         </AdminSectionCard>
       )}
