@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut } from 'lucide-react'
+import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut, LifeBuoy } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 
@@ -36,6 +36,7 @@ export function Navbar() {
   )
   const [creditLoading, setCreditLoading] = useState(false)
   const [creditError, setCreditError] = useState<string | null>(null)
+  const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
   const badgeLabel = profile?.position || profile?.company_name
@@ -116,6 +117,33 @@ export function Navbar() {
       setCreditError('Unable to load balance')
     } finally {
       setCreditLoading(false)
+    }
+  }
+
+  async function openSupportTickets() {
+    if (isOpeningSupportTickets) return
+
+    setMenuOpen(false)
+    setMobileMenuOpen(false)
+    setIsOpeningSupportTickets(true)
+
+    try {
+      const response = await fetch('/api/ticketing/sso', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || 'Unable to open the support portal.')
+      }
+
+      window.location.assign(data.url)
+    } catch (error) {
+      console.error('Ticketing SSO failed:', error)
+      toast.error('Unable to open Support Tickets. Please try again.')
+      setIsOpeningSupportTickets(false)
     }
   }
 
@@ -366,6 +394,22 @@ export function Navbar() {
                                       ? `${creditBalance.toLocaleString()} credits`
                                       : 'Balance unavailable'}
                               </p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isOpeningSupportTickets}
+                            onClick={() => void openSupportTickets()}
+                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                          >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+                              <LifeBuoy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold leading-tight text-foreground">Support Tickets</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Create and track your support tickets</p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </button>
