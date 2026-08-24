@@ -61,8 +61,6 @@ function sanitiseSearchQuery(raw: string): string {
     .join(" & ");
 }
 
-const OTHERS_CATEGORY = "Others";
-
 function isOthersCategory(category: string | null): boolean {
   return category?.trim().toLowerCase() === "others";
 }
@@ -71,27 +69,13 @@ function applyCategoryFilter(query: any, category: string | null) {
   if (!category) return query;
 
   if (isOthersCategory(category)) {
-    return query.or(
-      "category.is.null,category.eq.Restorative,category.eq.Others"
-    );
+    return query.or("category.is.null,category.eq.Others");
   }
 
   return query.eq("category", category);
 }
 
 function normalizeVideoCategory(video: any) {
-  const category =
-    typeof video?.category === "string"
-      ? video.category.trim()
-      : "";
-
-  if (!category || category === "Restorative") {
-    return {
-      ...video,
-      category: OTHERS_CATEGORY,
-    };
-  }
-
   return video;
 }
 
@@ -207,7 +191,7 @@ export async function onRequestGet(context: {
             `title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`
           )
           .or(
-            "category.is.null,category.eq.Restorative,category.eq.Others"
+            "category.is.null,category.eq.Others"
           )
           .order(sortColumn, { ascending })
           .range(from, to);

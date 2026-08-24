@@ -1,17 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
+import { getCorsHeaders, isAllowedOrigin } from "./_shared/auth";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-export async function onRequestOptions() {
-  return new Response("ok", { headers: corsHeaders });
+export async function onRequestOptions(context: any) {
+  return new Response(null, {
+    status: 204,
+    headers: getCorsHeaders(context.request),
+  });
 }
 
 export async function onRequestPost(context: any) {
+  const corsHeaders = getCorsHeaders(context.request);
+
   try {
     const authHeader = context.request.headers.get("Authorization");
     if (!authHeader) {
@@ -57,6 +56,12 @@ export async function onRequestPost(context: any) {
       );
     }
 
+    // Determine safe Mux upload CORS origin
+    const requestOrigin = context.request.headers.get("Origin");
+    const muxCorsOrigin = isAllowedOrigin(requestOrigin)
+      ? (requestOrigin as string)
+      : "https://e-learning.snabbb.com";
+
     // Create Mux direct upload URL
     const response = await fetch("https://api.mux.com/video/v1/uploads", {
       method: "POST",
@@ -65,7 +70,7 @@ export async function onRequestPost(context: any) {
         Authorization: "Basic " + btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`),
       },
       body: JSON.stringify({
-        cors_origin: "*",
+        cors_origin: muxCorsOrigin,
         new_asset_settings: {
           playback_policy: ["public"],
           video_quality: "basic",
@@ -87,7 +92,7 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const muxData = await response.json() as any;
+    const muxData = (await response.json()) as any;
 
     return new Response(
       JSON.stringify({
@@ -100,9 +105,10 @@ export async function onRequestPost(context: any) {
     );
   } catch (err: any) {
     console.error("get-mux-upload-url error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: err?.message || "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 }
+

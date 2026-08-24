@@ -119,7 +119,9 @@ export async function onRequest(context: any) {
     const validCategories = [
       'Orthodontics', 'Oral Surgery', 'Endodontics', 'Periodontics',
       'Pediatric Dentistry', 'Prosthodontics', 'Oral Hygiene',
-      'Radiology', 'General Dentistry', 'Implantology', 'Others'
+      'Radiology', 'General Dentistry', 'Implantology',
+      'Dental Burs', 'Handpieces', 'Clinic Management',
+      'Others'
     ];
     const fallbackCategory = 'General Dentistry';
 
@@ -147,20 +149,26 @@ Category definitions:
 - Endodontics: root canals, pulp treatment, periapical procedures, pulpotomy, pulpectomy
 - Periodontics: gum disease, scaling, bone grafts, gingival treatment, periodontitis, deep cleaning
 - Pediatric Dentistry: children's dental care, primary teeth, child patients, pediatric
-- Prosthodontics: crowns, bridges, dentures, veneers, tooth replacement restorations, zirconium/zirconia restorations, impression techniques for prosthetics, porcelain fused to metal (PFM), fixed partial dentures
+- Prosthodontics: crowns, bridges, dentures, veneers, tooth replacement restorations, zirconium/zirconia restorations, impression techniques for prosthetics, porcelain fused to metal (PFM), fixed partial dentures, AND direct/indirect restorations such as composite restorations, amalgam restorations, fillings, inlays, onlays, bonding procedures, adhesive workflow, cavity preparation, and restoration finishing/polishing
 - Implantology: dental implants, osseointegration, implant placement surgery, abutments, sinus lift, All-on-4, All-on-6, immediate loading, flapless surgery
+- Dental Burs: content primarily about dental burs themselves — bur types, bur selection, diamond/carbide burs, crown cutting burs, occlusal reduction burs, surgical burs, endodontic burs, finishing/polishing burs, bur kits, bur technique or comparison videos
+- Handpieces: content primarily about handpiece equipment — high-speed/low-speed handpieces, contra-angle, straight handpieces, handpiece setup, handpiece maintenance and sterilization
+- Clinic Management: non-clinical business/operational content — dental inventory management, appointment scheduling workflow, staff workflow, clinic productivity, practice operations
 - Oral Hygiene: brushing, flossing, preventive care, patient education on home care
 - Radiology: X-rays, CBCT, imaging interpretation, radiographic diagnosis
-- Others: fillings, composite restorations, amalgam restorations, direct restorations, indirect restorations, inlays, onlays, tooth-colored fillings, cavity preparation, bonding procedures, restorative dentistry techniques, or dental content that does not fit the other categories
+- Others: dental content that does not clearly fit any category above. Use rarely.
 - General Dentistry: routine checkups, dental exams, teeth cleaning (non-periodontal), fluoride treatments, dental anxiety, tooth sensitivity, tooth decay prevention. Use ONLY when no specialist category above fits.
 
 Critical decision rules:
 1. KEYWORD MATCH IS THE STRONGEST SIGNAL: If the title, description, or tags contain a category name (e.g. "prosthodontics", "endodontics", "orthodontics", "implantology"), you MUST classify into that category with confidence >= 0.9.
 2. Hashtags are keywords too — #prosthodontics means Prosthodontics.
-3. Key distinction: Implantology = placing the implant fixture into bone. Prosthodontics = making/fitting the crown, bridge, denture, or other restoration.
-4. Zirconium bridges, impression techniques for crowns/bridges, and prosthetic restorations = Prosthodontics.
+3. Key distinction: Implantology = placing the implant fixture into bone. Prosthodontics = making/fitting ANY restoration — crowns, bridges, dentures, fillings, inlays, onlays, bonding, or other direct/indirect restorative work, whether on a natural tooth or an implant.
+4. Zirconium bridges, impression techniques for crowns/bridges, composite fillings, amalgam fillings, and other restorative work = Prosthodontics.
 5. General Dentistry is the last resort — only use it when NO other category fits.
 6. Set confidence below 0.6 ONLY if you are genuinely uncertain.
+7. Dental Burs vs. procedure category: If the video's PRIMARY focus is the bur/instrument itself (selection, comparison, technique demo, product review) rather than the broader clinical procedure, classify as Dental Burs — even if a procedure keyword like "IPR" or "crown prep" also appears. If the bur is just a tool mentioned in passing during a procedure-focused video, classify by the procedure instead.
+8. Handpieces vs. procedure category: Classify as Handpieces only when the video's PRIMARY focus is the handpiece equipment itself (types, setup, maintenance, sterilization) — not when a handpiece is simply used as a tool during a clinical procedure video.
+9. Clinic Management applies only to non-clinical business/operational content, never to clinical procedures.
 
 You MUST return strictly valid JSON only. No markdown. No explanation. No code fences.
 Format: { "category": "...", "confidence": 0.0-1.0, "tags": ["...", "..."] }`;
@@ -172,11 +180,14 @@ Format: { "category": "...", "confidence": 0.0-1.0, "tags": ["...", "..."] }`;
       'Endodontics': ['endodontic', 'endodontics', 'root canal', 'pulpotomy', 'pulpectomy', 'periapical'],
       'Periodontics': ['periodontic', 'periodontics', 'periodontitis', 'gum disease', 'scaling and root', 'bone graft', 'gingival'],
       'Pediatric Dentistry': ['pediatric', 'paediatric', 'children dental', 'child patient', 'primary teeth', 'baby teeth'],
-      'Prosthodontics': ['prosthodontic', 'prosthodontics', 'crown', 'bridge', 'denture', 'veneer', 'zirconium', 'zirconia', 'impression technique', 'fixed partial', 'pfm', 'porcelain fused'],
+      'Prosthodontics': ['prosthodontic', 'prosthodontics', 'crown', 'bridge', 'denture', 'veneer', 'zirconium', 'zirconia', 'impression technique', 'fixed partial', 'pfm', 'porcelain fused', 'composite restoration', 'composite filling', 'amalgam restoration', 'direct restoration', 'indirect restoration', 'inlay', 'onlay', 'bonding procedure', 'cavity preparation'],
       'Implantology': ['implantology', 'dental implant', 'implant placement', 'osseointegration', 'sinus lift', 'all-on-4', 'all-on-6', 'flapless'],
       'Oral Hygiene': ['oral hygiene', 'brushing', 'flossing', 'preventive care', 'plaque removal'],
       'Radiology': ['radiology', 'x-ray', 'xray', 'cbct', 'radiograph', 'imaging'],
-      'Others': ['restorative', 'filling', 'composite restoration', 'amalgam restoration', 'inlay', 'onlay', 'bonding', 'direct restoration', 'indirect restoration', 'cavity preparation'],
+      'Dental Burs': ['dental bur', 'dental burs', 'diamond bur', 'carbide bur', 'bur kit', 'crown cutting bur', 'occlusal reduction bur', 'surgical bur', 'endodontic bur', 'finishing bur', 'polishing bur'],
+      'Handpieces': ['handpiece', 'high-speed handpiece', 'low-speed handpiece', 'contra angle', 'straight handpiece', 'handpiece maintenance', 'handpiece sterilization'],
+      'Clinic Management': ['clinic management', 'practice management', 'dental inventory', 'appointment workflow', 'clinic productivity', 'practice operations'],
+      'Others': [],
     };
 
     function detectCategoryHint(title: string, description: string, tags: string[]): string | null {
