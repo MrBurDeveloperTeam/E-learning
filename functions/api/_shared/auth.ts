@@ -118,6 +118,40 @@ export function buildClearCookie(name: string = "mrbur_sso", options: CookieOpti
   })
 }
 
+export function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    // Allow local development
+    if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return true;
+    // Allow *.snabbb.com and snabbb.com
+    if (host === "snabbb.com" || host.endsWith(".snabbb.com")) return true;
+    // Allow *.pages.dev (Cloudflare Pages preview & production domains)
+    if (host.endsWith(".pages.dev")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function getCorsHeaders(
+  req: Request,
+  allowedMethods = "POST, OPTIONS",
+  allowedHeaders = "authorization, x-client-info, apikey, content-type"
+): Record<string, string> {
+  const origin = req.headers.get("Origin");
+  const allowOrigin = isAllowedOrigin(origin) ? (origin as string) : "https://e-learning.snabbb.com";
+
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Methods": allowedMethods,
+    "Access-Control-Allow-Headers": allowedHeaders,
+    "Vary": "Origin",
+  };
+}
+
 export function getTokenFromRequest(req: Request): string | null {
   // Odoo app links land on /sso/login?token=<jwt>. The client forwards that
   // token to this exchange endpoint, so accept it explicitly in addition to

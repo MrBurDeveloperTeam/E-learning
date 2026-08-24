@@ -1,11 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { getCorsHeaders } from "./_shared/auth";
 
 type Env = {
   MUX_TOKEN_ID?: string;
@@ -21,7 +15,7 @@ type OwnedVideo = {
   mux_upload_id: string | null;
 };
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: unknown, status = 200, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -119,22 +113,27 @@ async function cleanupMuxVideo(video: OwnedVideo, env: Env) {
   }
 }
 
-export async function onRequestOptions() {
-  return new Response("ok", { headers: corsHeaders });
+export async function onRequestOptions(context: { request: Request }) {
+  return new Response(null, {
+    status: 204,
+    headers: getCorsHeaders(context.request),
+  });
 }
 
 export async function onRequestPost(context: { env: Env; request: Request }) {
+  const corsHeaders = getCorsHeaders(context.request);
+
   try {
     const authHeader = context.request.headers.get("Authorization");
     if (!authHeader) {
-      return jsonResponse({ error: "Missing Authorization header" }, 401);
+      return jsonResponse({ error: "Missing Authorization header" }, 401, corsHeaders);
     }
 
     const body = (await context.request.json()) as { videoId?: string };
     const videoId = body.videoId?.trim();
 
     if (!videoId) {
-      return jsonResponse({ error: "Missing videoId" }, 400);
+      return jsonResponse({ error: "Missing videoId" }, 400, corsHeaders);
     }
 
     const authClient = createClient(
@@ -149,7 +148,7 @@ export async function onRequestPost(context: { env: Env; request: Request }) {
     } = await authClient.auth.getUser();
 
     if (userError || !user) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
+      return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
     }
 
     const adminClient = createClient(
@@ -166,13 +165,14 @@ export async function onRequestPost(context: { env: Env; request: Request }) {
 
     if (videoError) {
       console.error("delete-video lookup error:", videoError);
-      return jsonResponse({ error: "Failed to look up the video." }, 500);
+      return jsonResponse({ error: "Failed to look up the video." }, 500, corsHeaders);
     }
 
     if (!video) {
       return jsonResponse(
         { error: "Video not found or you do not have permission to delete it." },
-        404
+        404,
+        corsHeaders
       );
     }
 
@@ -186,15 +186,17 @@ export async function onRequestPost(context: { env: Env; request: Request }) {
 
     if (deleteError) {
       console.error("delete-video delete error:", deleteError);
-      return jsonResponse({ error: "Failed to delete the video record." }, 500);
+      return jsonResponse({ error: "Failed to delete the video record." }, 500, corsHeaders);
     }
 
-    return jsonResponse({ success: true });
+    return jsonResponse({ success: true }, 200, corsHeaders);
   } catch (err: any) {
     console.error("delete-video error:", err);
     return jsonResponse(
       { error: err instanceof Error ? err.message : "Internal error" },
-      500
+      500,
+      corsHeaders
     );
   }
 }
+
