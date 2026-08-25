@@ -135,11 +135,11 @@ export function Navbar() {
       })
       const data = await response.json().catch(() => null)
 
-      if (!response.ok || !data?.url) {
+      if (!response.ok || !data?.redirectUrl) {
         throw new Error(data?.error || 'Unable to open the support portal.')
       }
 
-      window.location.assign(data.url)
+      window.location.assign(data.redirectUrl)
     } catch (error) {
       console.error('Ticketing SSO failed:', error)
       toast.error('Unable to open Support Tickets. Please try again.')
