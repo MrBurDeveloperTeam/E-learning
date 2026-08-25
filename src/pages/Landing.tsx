@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
+import { getSnabbbSignupUrl } from '@/lib/authLinks'
 import { Logo } from '../components/brand/Logo'
 import { ThemeToggle } from '../components/layout/ThemeToggle'
 
@@ -10,6 +11,7 @@ export function Landing() {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as Record<string, string>
   const redirectTo = search?.redirect ?? '/explore'
+  const signupUrl = getSnabbbSignupUrl()
 
   useEffect(() => {
     if (user) {
@@ -32,11 +34,9 @@ export function Landing() {
             <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Log In
             </Link>
-            <Link to="/register">
-              <button className="bg-foreground text-background px-5 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-lg active:scale-95">
-                Sign Up
-              </button>
-            </Link>
+            <a href={signupUrl} className="bg-foreground text-background px-5 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-lg active:scale-95">
+              Sign Up
+            </a>
           </div>
         </div>
       </nav>
@@ -65,11 +65,9 @@ export function Landing() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/register">
-                <button className="w-full sm:w-auto bg-primary text-primary-foreground px-8 py-4 rounded-full text-base font-semibold hover:opacity-90 transition-all shadow-xl shadow-primary/20 active:scale-95">
-                  Get Started Free
-                </button>
-              </Link>
+              <a href={signupUrl} className="w-full sm:w-auto bg-primary text-primary-foreground px-8 py-4 rounded-full text-base font-semibold hover:opacity-90 transition-all shadow-xl shadow-primary/20 active:scale-95">
+                Get Started Free
+              </a>
               <Link to="/explore">
                 <button className="w-full sm:w-auto bg-card border border-border text-foreground px-8 py-4 rounded-full text-base font-semibold hover:bg-muted transition-all active:scale-95">
                   Browse Videos
@@ -165,14 +163,12 @@ export function Landing() {
                   </div>
                 ))}
               </div>
-              <Link to="/register">
-                <button className="text-primary font-bold flex items-center gap-2 group">
-                  Explore all categories
-                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </button>
-              </Link>
+              <a href={signupUrl} className="text-primary font-bold inline-flex items-center gap-2 group">
+                Explore all categories
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </a>
             </div>
             <div className="flex-1 grid grid-cols-2 gap-6 w-full">
                 <div className="space-y-6">
@@ -205,11 +201,9 @@ export function Landing() {
               <p className="text-muted-foreground text-lg mb-10 max-w-lg mx-auto">
                 Join our community of over 5,000 clinicians and world-class dental educators.
               </p>
-              <Link to="/register">
-                <button className="bg-primary text-primary-foreground px-10 py-5 rounded-full text-lg font-bold hover:opacity-90 transition-all shadow-2xl shadow-primary/20 active:scale-95">
-                  Join DentalLearn Today
-                </button>
-              </Link>
+              <a href={signupUrl} className="inline-block bg-primary text-primary-foreground px-10 py-5 rounded-full text-lg font-bold hover:opacity-90 transition-all shadow-2xl shadow-primary/20 active:scale-95">
+                Join DentalLearn Today
+              </a>
             </div>
           </div>
         </section>
