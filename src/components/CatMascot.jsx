@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { normalizePetId } from '../VirtualPet/petOptions';
 import { usePersonalizedInsightBridge } from '../aiExperience/petDialogue/PersonalizedInsightBridge';
+import { CAT_SPRITE_SHEET_URLS } from '../aiExperience/molarExperienceAssets';
 import { useSharedCatDialogueRuntime, SharedCatMascot } from '@mrburdeveloperteam/molar-experience/cat';
 
 const PET_SLEEPING_KEY = 'pet_is_sleeping';
@@ -537,6 +538,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       dialogue={dialogue}
       meowMessage={meowMsg}
       onCatClick={handleCatClick}
+      spriteSheetUrls={CAT_SPRITE_SHEET_URLS}
     />
   );
 }

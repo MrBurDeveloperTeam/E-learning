@@ -68,8 +68,19 @@ export const elearningPetRepository: PetRepository = {
       .maybeSingle();
 
     if (error) {
+      // A query error is NOT the same state as "no row exists yet" — the
+      // caller (Shared's hydration effect) treats a `null` return as
+      // "genuinely new user" and resets to starter stats/no-adopted-pet,
+      // including wiping the local cache. Collapsing a transient
+      // network/RLS/timeout failure into that same `null` was silently
+      // resetting real accounts back to a fresh pet on any hiccup.
+      // Throwing instead lets it hit Shared's own load `catch` block,
+      // which — unlike the `!petData` branch — is a pure no-op logger:
+      // it does not touch `hasAdoptedPet`/stats/localStorage, so whatever
+      // state was already hydrated from the local cache earlier in the
+      // same effect is left standing instead of being overwritten.
       console.error('[elearningPetRepository] Failed to load inventory_pet:', error);
-      return null;
+      throw error;
     }
     if (!data) return null;
 
@@ -124,8 +135,15 @@ export const elearningPetRepository: PetRepository = {
       .eq('user_id', userId);
 
     if (error) {
+      // Same ERROR != EMPTY reasoning as loadSnapshot above: this is only
+      // ever awaited (pet.js) inside the same outer hydration try/catch
+      // that already safely absorbs a rejected loadSnapshot — a rejection
+      // here skips `setInventory(newInv)` entirely rather than replacing
+      // the already-hydrated (local-cache-derived) inventory with an
+      // empty one, so a transient failure can no longer be mistaken for
+      // "this account genuinely owns no items."
       console.error('[elearningPetRepository] Failed to load pet_inventory:', error);
-      return [];
+      throw error;
     }
 
     return (data as PetInventoryRow[]).map((row) => ({ itemId: row.item_id, quantity: row.quantity }));

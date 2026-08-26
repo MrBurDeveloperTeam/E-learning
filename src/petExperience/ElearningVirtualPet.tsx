@@ -32,6 +32,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SharedVirtualPet } from '@mrburdeveloperteam/molar-experience/pet';
 import { supabase } from '../lib/supabase';
 import { elearningPetRepository } from './elearningPetRepository';
+import { PET_ASSET_URLS } from '../aiExperience/molarExperienceAssets';
 
 interface GeoInfo {
   ip: string;
@@ -149,18 +150,49 @@ export default function ElearningVirtualPet({ isOpen, onClose }: ElearningVirtua
   const hasLoggedRef = useRef(false);
   const [detectedCurrency, setDetectedCurrency] = useState(DEFAULT_CURRENCY_CODE);
   const [userId, setUserId] = useState<string | null>(null);
+  // Distinguishes "identity still unknown" (initial getSession() hasn't
+  // resolved yet) from "confirmed no authenticated user" — both start out
+  // looking like `userId === null`, but only the latter is a legitimate
+  // reason to treat this as a logged-out visitor. Mounting SharedVirtualPet
+  // while identity is merely unknown was the root cause of the account
+  // hydration race: its own internal hydration effect runs exactly once on
+  // mount and skips the backend load entirely when `userId` is falsy at
+  // that moment, silently falling back to starter/local state even for an
+  // authenticated user whose session just hadn't resolved yet.
+  const [authResolved, setAuthResolved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!cancelled) setUserId(session?.user?.id || null);
+        if (!cancelled) {
+          setUserId(session?.user?.id || null);
+          setAuthResolved(true);
+        }
       } catch (err) {
         console.error('Error fetching session in ElearningVirtualPet:', err);
+        // Resolution genuinely failed rather than merely being in-flight —
+        // still surface this as "no session" so the Pet doesn't stay stuck
+        // pretending identity is unknown forever.
+        if (!cancelled) {
+          setUserId(null);
+          setAuthResolved(true);
+        }
       }
     })();
-    return () => { cancelled = true; };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      setUserId(session?.user?.id || null);
+      setAuthResolved(true);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -177,13 +209,28 @@ export default function ElearningVirtualPet({ isOpen, onClose }: ElearningVirtua
     }
   }, [isOpen]);
 
+  // Identity must be confirmed — not merely "not yet known" — before the
+  // Shared runtime is allowed to mount at all. `authResolved === false`
+  // means UNKNOWN, never "logged out"; the previous code passed
+  // `userId={null}` at that stage too, but never delayed mounting
+  // SharedVirtualPet on it, letting its one-shot hydration effect run
+  // against a not-yet-real `null` and permanently skip the backend load
+  // for that mount's lifetime. `key={userId}` below additionally forces a
+  // fresh mount (and therefore a fresh hydration run) whenever the
+  // authenticated account itself actually changes, so switching accounts
+  // in the same tab can never retain the previous account's in-memory
+  // state.
+  if (!authResolved || !userId) return null;
+
   return (
     <SharedVirtualPet
+      key={userId}
       isOpen={isOpen}
       onClose={onClose}
       repository={elearningPetRepository}
       userId={userId}
       currencyCode={detectedCurrency}
+      assetUrls={PET_ASSET_URLS}
     />
   );
 }

@@ -3,6 +3,7 @@ import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
 import { supabase } from '../lib/supabase';
 import { useElearningDataChatSources } from '../aiExperience/dataChat/hooks/useElearningDataChatSources';
 import { createElearningMolarAdapter } from '../aiExperience/elearningMolarAdapter';
+import { MOLAR_LOGO_URL } from '../aiExperience/molarExperienceAssets';
 
 const DEFAULT_EMPTY_STATE = {
   title: 'E-learning Simulator',
@@ -86,6 +87,7 @@ export default function MolarAIFloat({ userContext, disabled = false, onPetToggl
       disabled={disabled}
       onPetToggle={onPetToggle}
       emptyState={emptyState}
+      logoUrl={MOLAR_LOGO_URL}
     />
   );
 }

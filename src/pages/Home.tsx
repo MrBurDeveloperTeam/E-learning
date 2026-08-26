@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
@@ -69,7 +69,14 @@ export function Home() {
     // mutation — these candidates have no read/dedupe state to update.
     const { videoId } = candidate.facts
     void navigate({ to: '/watch/$videoId', params: { videoId } })
-  }, [markNotificationRead, navigate])
+    // `markNotificationRead.mutate` (not the whole mutation object) is the
+    // dependency: `useMarkRead()` returns a fresh `useMutation(...)` result
+    // object every render (unmemoized — see src/hooks/useNotifications.ts),
+    // but React Query guarantees `.mutate`'s own identity is stable across
+    // renders of the same mutation hook instance. Depending on the whole
+    // object would recreate this callback (and therefore `bridgeState`
+    // below) every render for no semantic reason.
+  }, [markNotificationRead.mutate, navigate])
 
   // Publishes readiness (not_ready | ready+candidate/candidates) + this
   // exact action handler to CatMascot (mounted outside Home, in App.tsx)
@@ -78,15 +85,28 @@ export function Home() {
   // lets CatMascot tell "Home is still loading, wait" apart from "Home
   // isn't mounted at all, don't wait" — see
   // src/aiExperience/petDialogue/PersonalizedInsightBridge.tsx.
-  const bridgeState: PersonalizedInsightBridgeState =
-    elearningInsightState.status === 'ready'
-      ? {
-          status: 'ready',
-          candidate: elearningInsightState.candidate,
-          candidates: elearningInsightState.candidates,
-          onAction: handleElearningInsightAction,
-        }
-      : { status: 'not_ready' }
+  // Memoized so this object keeps the same reference across renders where
+  // none of its real semantic inputs changed — `elearningInsightState` is
+  // already a stable useMemo result
+  // (useElearningPersonalizedInsight.ts, keyed off the underlying query
+  // states) and `handleElearningInsightAction` is now a stable useCallback
+  // result (above), so the only remaining source of a fresh reference on
+  // every render was this object literal itself. See
+  // PersonalizedInsightBridge.tsx's own Provider memoization — both were
+  // required together to stop `usePublishPersonalizedInsight`'s effect
+  // ([ctx, state] deps) from re-firing on every render.
+  const bridgeState: PersonalizedInsightBridgeState = useMemo(
+    () =>
+      elearningInsightState.status === 'ready'
+        ? {
+            status: 'ready',
+            candidate: elearningInsightState.candidate,
+            candidates: elearningInsightState.candidates,
+            onAction: handleElearningInsightAction,
+          }
+        : { status: 'not_ready' },
+    [elearningInsightState, handleElearningInsightAction],
+  )
   usePublishPersonalizedInsight(bridgeState)
   const { data: dentalCategories = [] } = useQuery({
     queryKey: ['dental-categories'],

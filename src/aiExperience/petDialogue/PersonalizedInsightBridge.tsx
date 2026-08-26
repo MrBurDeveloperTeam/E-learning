@@ -24,7 +24,7 @@
 // task's own instruction not to add a global fetch just to make the
 // reminder available everywhere).
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ElearningInsightCandidate } from '../resolver/resolveElearningInsight';
 
 /** Mirrors useElearningPersonalizedInsight's own readiness signals
@@ -65,8 +65,20 @@ const PersonalizedInsightBridgeContext = createContext<PersonalizedInsightBridge
 
 export function PersonalizedInsightBridgeProvider({ children }: { children: ReactNode }) {
   const [entry, setEntry] = useState<PersonalizedInsightBridgeState | null>(null);
+  // Memoized so the Provider's context value keeps the same reference
+  // across renders where `entry` hasn't actually changed (`setEntry` is
+  // React's own stable setter identity, so `[entry]` is the complete and
+  // correct dependency list) — otherwise every render would hand
+  // consumers a fresh `{ entry, publish }` object regardless of whether
+  // `entry` itself changed, defeating referential-equality bailouts for
+  // any consumer (including `usePublishPersonalizedInsight`'s own effect,
+  // which depends on this exact context value).
+  const contextValue = useMemo(
+    () => ({ entry, publish: setEntry }),
+    [entry],
+  );
   return (
-    <PersonalizedInsightBridgeContext.Provider value={{ entry, publish: setEntry }}>
+    <PersonalizedInsightBridgeContext.Provider value={contextValue}>
       {children}
     </PersonalizedInsightBridgeContext.Provider>
   );
