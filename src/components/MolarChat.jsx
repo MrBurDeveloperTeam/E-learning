@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { X, Send, Zap, ShieldCheck, AlertCircle, BarChart3, RefreshCcw } from 'lucide-react';
+import { X, Send, Zap, ShieldCheck, AlertCircle, BarChart3, RefreshCcw, Mail } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -188,7 +188,7 @@ export default function MolarChat({ isOpen, onClose, chatHistory, isChatLoading,
             <div className="fixed inset-0 bg-slate-900/10 backdrop-blur-[2px] z-[9998] md:hidden" onClick={onClose} />
 
             {/* Main Capsule Container */}
-            <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-[90vw] md:w-[400px] h-[70vh] md:h-[600px] max-h-[85vh] flex flex-col font-sans z-[9999] overflow-hidden rounded-[1.5rem] shadow-2xl shadow-slate-400/60 border border-white/40 bg-white/80 backdrop-blur-2xl ring-1 ring-slate-900/5">
+            <div className="molar-chat-panel fixed bottom-4 right-4 md:bottom-6 md:right-6 w-[90vw] md:w-[400px] h-[70vh] md:h-[600px] max-h-[85vh] flex flex-col font-sans z-[9999] overflow-hidden rounded-[1.5rem] shadow-2xl shadow-slate-400/60 border border-white/40 bg-white/80 backdrop-blur-2xl ring-1 ring-slate-900/5">
 
                 {/* Background Ambience */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -305,9 +305,32 @@ export default function MolarChat({ isOpen, onClose, chatHistory, isChatLoading,
                     </div>
                 </div>
 
+                {/* Persistent support shortcut */}
+                <div className="elearning-support-region px-3 pt-1 relative z-20">
+                    <a
+                        href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=support%40snabbb.com&amp;su=Customer%20Inquiry"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Email support at support@snabbb.com"
+                        className="elearning-support-link group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none active:scale-[0.99]"
+                    >
+                        <span className="elearning-support-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105">
+                            <Mail className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                            <span className="elearning-support-title block text-sm font-semibold">
+                                Email Support
+                            </span>
+                            <span className="elearning-support-meta block truncate text-xs">
+                                Contact support@snabbb.com
+                            </span>
+                        </span>
+                    </a>
+                </div>
+
                 {/* Footer Input Area - Neumorphic Design */}
                 <div className="p-3 relative z-20">
-                    <form onSubmit={onSendMessage} className="relative w-full max-w-xl mx-auto">
+                    <form noValidate onSubmit={onSendMessage} className="relative w-full max-w-xl mx-auto">
                         <div
                             className="
                             relative flex items-center gap-0 p-1.5 rounded-full transition-all duration-300 ease-out

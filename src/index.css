@@ -321,3 +321,46 @@
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
+
+/* SNAI support shortcut */
+.elearning-support-region {
+  background: transparent;
+  border-top: 0;
+}
+
+.elearning-support-link {
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
+}
+
+.elearning-support-link:hover {
+  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: 0 8px 20px hsl(var(--foreground) / 0.1);
+}
+
+.elearning-support-link:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.elearning-support-icon {
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.elearning-support-title {
+  color: hsl(var(--card-foreground));
+}
+
+.elearning-support-meta {
+  color: hsl(var(--muted-foreground));
+}
+
+.elearning-support-link:hover .elearning-support-title {
+  color: hsl(var(--foreground));
+}
