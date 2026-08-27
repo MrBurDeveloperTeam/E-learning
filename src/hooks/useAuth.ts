@@ -49,11 +49,16 @@ function getAppLinkRedirectUrl(redirectUrl: string) {
     hostnameParts.length > 3 && hostnameParts.slice(-2).join('.') === 'pages.dev'
   if (!isCloudflarePreview) return redirectUrl
 
-  // Odoo's app-link registry points at the production E-learning origin.
-  // During a Pages preview, keep the signed handoff path/query (including the
-  // one-time token) but exchange it on the preview deployment being tested.
+  // Odoo's app-link registry points at the production E-learning origin and
+  // its /sso/login route. A Pages preview does not have that server route, so
+  // send the one-time token to the SPA root where auth initialization exchanges it.
   const url = new URL(redirectUrl)
-  return `${window.location.origin}${url.pathname}${url.search}${url.hash}`
+  const token = url.searchParams.get('token')
+  if (!token) return redirectUrl
+
+  const previewUrl = new URL('/', window.location.origin)
+  previewUrl.searchParams.set('token', token)
+  return previewUrl.toString()
 }
 
 async function fetchSsoExchange(token?: string | null) {
