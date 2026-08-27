@@ -41,12 +41,15 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
+function isCloudflarePreviewHostname(hostname: string) {
+  const hostnameParts = hostname.toLowerCase().split('.')
+  return hostnameParts.length > 3 && hostnameParts.slice(-2).join('.') === 'pages.dev'
+}
+
 function getAppLinkRedirectUrl(redirectUrl: string) {
-  const hostnameParts = window.location.hostname.toLowerCase().split('.')
   // Preview URLs have an extra deployment/branch label:
   // <preview>.<project>.pages.dev. The production alias is <project>.pages.dev.
-  const isCloudflarePreview =
-    hostnameParts.length > 3 && hostnameParts.slice(-2).join('.') === 'pages.dev'
+  const isCloudflarePreview = isCloudflarePreviewHostname(window.location.hostname)
   if (!isCloudflarePreview) return redirectUrl
 
   // Odoo's app-link registry points at the production E-learning origin and
@@ -66,7 +69,12 @@ async function fetchSsoExchange(token?: string | null) {
     const exchangePath = token
       ? `/api/sso/exchange?token=${encodeURIComponent(token)}`
       : '/api/sso/exchange'
-    const response = await fetch(getApiUrl(exchangePath), {
+    // A preview must exchange the token on its own Pages Function. Using the
+    // production VITE_API_BASE_URL here would create the session elsewhere.
+    const exchangeUrl = isCloudflarePreviewHostname(window.location.hostname)
+      ? exchangePath
+      : getApiUrl(exchangePath)
+    const response = await fetch(exchangeUrl, {
       method: 'GET',
       credentials: 'include',
     })
