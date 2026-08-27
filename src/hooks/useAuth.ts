@@ -41,40 +41,12 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
-function isCloudflarePreviewHostname(hostname: string) {
-  const hostnameParts = hostname.toLowerCase().split('.')
-  return hostnameParts.length > 3 && hostnameParts.slice(-2).join('.') === 'pages.dev'
-}
-
-function getAppLinkRedirectUrl(redirectUrl: string) {
-  // Preview URLs have an extra deployment/branch label:
-  // <preview>.<project>.pages.dev. The production alias is <project>.pages.dev.
-  const isCloudflarePreview = isCloudflarePreviewHostname(window.location.hostname)
-  if (!isCloudflarePreview) return redirectUrl
-
-  // Odoo's app-link registry points at the production E-learning origin and
-  // its /sso/login route. A Pages preview does not have that server route, so
-  // send the one-time token to the SPA root where auth initialization exchanges it.
-  const url = new URL(redirectUrl)
-  const token = url.searchParams.get('token')
-  if (!token) return redirectUrl
-
-  const previewUrl = new URL('/', window.location.origin)
-  previewUrl.searchParams.set('token', token)
-  return previewUrl.toString()
-}
-
 async function fetchSsoExchange(token?: string | null) {
   try {
     const exchangePath = token
       ? `/api/sso/exchange?token=${encodeURIComponent(token)}`
       : '/api/sso/exchange'
-    // A preview must exchange the token on its own Pages Function. Using the
-    // production VITE_API_BASE_URL here would create the session elsewhere.
-    const exchangeUrl = isCloudflarePreviewHostname(window.location.hostname)
-      ? exchangePath
-      : getApiUrl(exchangePath)
-    const response = await fetch(exchangeUrl, {
+    const response = await fetch(getApiUrl(exchangePath), {
       method: 'GET',
       credentials: 'include',
     })
@@ -295,7 +267,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       )
     }
 
-    window.location.assign(getAppLinkRedirectUrl(redirectUrl))
+    window.location.assign(redirectUrl)
     return { redirecting: true as const }
   }
 
