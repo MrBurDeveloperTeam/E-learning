@@ -41,6 +41,21 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
+function getAppLinkRedirectUrl(redirectUrl: string) {
+  const hostnameParts = window.location.hostname.toLowerCase().split('.')
+  // Preview URLs have an extra deployment/branch label:
+  // <preview>.<project>.pages.dev. The production alias is <project>.pages.dev.
+  const isCloudflarePreview =
+    hostnameParts.length > 3 && hostnameParts.slice(-2).join('.') === 'pages.dev'
+  if (!isCloudflarePreview) return redirectUrl
+
+  // Odoo's app-link registry points at the production E-learning origin.
+  // During a Pages preview, keep the signed handoff path/query (including the
+  // one-time token) but exchange it on the preview deployment being tested.
+  const url = new URL(redirectUrl)
+  return `${window.location.origin}${url.pathname}${url.search}${url.hash}`
+}
+
 async function fetchSsoExchange(token?: string | null) {
   try {
     const exchangePath = token
@@ -267,7 +282,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       )
     }
 
-    window.location.assign(redirectUrl)
+    window.location.assign(getAppLinkRedirectUrl(redirectUrl))
     return { redirecting: true as const }
   }
 
