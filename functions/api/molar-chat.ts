@@ -4,12 +4,20 @@
 // which now only forwards requests here via an authenticated fetch to
 // /api/molar-chat and never touches a Gemini credential itself.
 //
-// Requires a real, cryptographically-verified Supabase session for every
-// request — this is NOT an anonymous public provider endpoint. Rejects with
-// 401 if the caller's bearer token is missing or fails signature
-// verification. Reuses this repo's own existing verified-JWT helper
-// (functions/api/_shared/auth.ts, already proven in functions/api/sso.ts)
-// rather than inventing a new auth mechanism.
+// Requires a real Supabase-authenticated session for every request — this
+// is NOT an anonymous public provider endpoint. Rejects with 401 if the
+// caller's bearer token is missing or Supabase Auth itself rejects it.
+// Verification is delegated to Supabase's own Auth server via
+// `supabase.auth.getUser(token)` — the same pattern already used by
+// functions/api/categorize-dental-videos.ts and
+// functions/api/fetch-dental-videos.ts (though those construct their
+// client with the service-role key for their own admin-only DB reads;
+// this endpoint deliberately uses only SUPABASE_ANON_KEY, since
+// `auth.getUser(token)` needs no elevated privilege and this endpoint
+// performs no database access at all). This avoids introducing the
+// separate, more sensitive SUPABASE_JWT_SECRET (used by
+// functions/api/sso.ts for a different, cross-app SSO token type) into
+// this endpoint's configuration surface.
 //
 // Two request modes, mirroring the two pre-existing client functions
 // exactly (prompts/model unchanged, only relocated):
@@ -25,7 +33,12 @@
 // (a separate, unrelated feature with its own model and env binding) — no
 // shared helper extraction, no behavior change there.
 
-import { getTokenFromRequest, verifyHS256 } from './_shared/auth'
+import { createClient } from '@supabase/supabase-js'
+
+function getBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get('Authorization')
+  return authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+}
 
 const modelId = 'gemini-3-flash-preview'
 
@@ -130,21 +143,31 @@ export const onRequestOptions = async (context: any) => {
 export const onRequestPost = async (context: any) => {
   const { request, env } = context
 
-  // --- Require a real, signature-verified Supabase session. Never treat
-  // the mere presence of an Authorization header as proof of a real user. ---
-  const token = getTokenFromRequest(request)
+  // --- Require a real Supabase-authenticated session. Never treat the
+  // mere presence of an Authorization header as proof of a real user, and
+  // never trust a client-supplied user id — the only identity this
+  // endpoint accepts is whatever Supabase's own Auth server returns for
+  // the supplied access token. ---
+  const token = getBearerToken(request)
   if (!token) {
     return json(request, { ok: false, error: 'Unauthorized' }, 401)
   }
 
-  const jwtSecret = env.SUPABASE_JWT_SECRET
-  if (!jwtSecret) {
-    console.error('[molar-chat] Missing SUPABASE_JWT_SECRET runtime configuration.')
+  const supabaseUrl = env.SUPABASE_URL
+  const supabaseAnonKey = env.SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Server misconfiguration, not a user auth failure — must not be
+    // reported as 401.
+    console.error('[molar-chat] Missing SUPABASE_URL/SUPABASE_ANON_KEY runtime configuration.')
     return json(request, { ok: false, error: 'Server is not configured.' }, 500)
   }
 
-  const verified = await verifyHS256({ token, secret: jwtSecret })
-  if (!verified.ok || !verified.payload?.sub) {
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) {
     return json(request, { ok: false, error: 'Unauthorized' }, 401)
   }
 
