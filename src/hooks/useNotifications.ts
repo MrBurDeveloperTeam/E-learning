@@ -17,7 +17,13 @@ export function useNotifications() {
   useEffect(() => {
     if (!profile?.user_id) return
 
-    const channel = supabase
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', profile.user_id] })
+      queryClient.invalidateQueries({ queryKey: ['notifications-full', profile.user_id] })
+      queryClient.invalidateQueries({ queryKey: ['unread-count', profile.user_id] })
+    }
+
+    const platformChannel = supabase
       .channel(`notifications:${profile.user_id}`)
       .on(
         'postgres_changes',
@@ -27,22 +33,21 @@ export function useNotifications() {
           table: 'notifications',
           filter: `recipient_id=eq.${profile.user_id}`,
         },
-        () => {
-          queryClient.invalidateQueries({
-            queryKey: ['notifications', profile.user_id],
-          })
-          queryClient.invalidateQueries({
-            queryKey: ['notifications-full', profile.user_id],
-          })
-          queryClient.invalidateQueries({
-            queryKey: ['unread-count', profile.user_id],
-          })
-        }
+        invalidate
       )
       .subscribe()
 
+    const communityChannel = supabase
+      .channel(`community-notifications:${profile.user_id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'community_notifications',
+        filter: `recipient_id=eq.${profile.user_id}`,
+      }, invalidate)
+      .subscribe()
+
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(platformChannel)
+      supabase.removeChannel(communityChannel)
     }
   }, [profile?.user_id, queryClient])
 

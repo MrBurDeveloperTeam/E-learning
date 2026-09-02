@@ -177,6 +177,26 @@
   #root {
     @apply bg-background text-foreground;
   }
+  html {
+    scrollbar-gutter: stable;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.45) hsl(var(--background));
+    scrollbar-width: thin;
+  }
+  html::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  html::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  html::-webkit-scrollbar-thumb {
+    border: 3px solid hsl(var(--background));
+    border-radius: 999px;
+    background: hsl(var(--muted-foreground) / 0.45);
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.7);
+  }
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100vh;

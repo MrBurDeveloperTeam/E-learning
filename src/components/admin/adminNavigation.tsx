@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   ShieldEllipsis,
+  MessagesSquare,
   Users,
   Youtube,
   SlidersHorizontal,
@@ -35,6 +36,11 @@ export function getAdminSidebarItems(
       path: '/admin/content',
       badge: dentalReview,
       icon: <ShieldEllipsis className="h-4 w-4" />,
+    },
+    {
+      label: 'Community review',
+      path: '/admin/community',
+      icon: <MessagesSquare className="h-4 w-4" />,
     },
     {
       label: 'Fetch videos',

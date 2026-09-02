@@ -9,6 +9,7 @@ export interface Profile {
   account_type:
     | 'individual'
     | 'company'
+    | 'company_member'
     | 'admin'
     | null
   plan: string | null
@@ -242,6 +243,30 @@ export type NotificationType =
   | 'new_reply'
   | 'new_like'
   | 'new_follower'
+  | 'community_comment_reply'
+  | 'community_comment_like'
+  | 'community_mention'
+  | 'community_report_resolved'
+  | 'community_post_reviewed'
+  | 'community_content_hidden'
+  | 'community_join_request'
+  | 'community_join_decided'
+  | 'community_friend_request'
+  | 'community_friend_decided'
+  | 'community_appeal_decided'
+  | 'community_announcement'
+  | 'community_direct_message'
+  | 'community_group_message'
+  | 'community_post_like'
+  | 'community_comment'
+  | 'community_reply'
+  | 'community_friend_accepted'
+  | 'community_join_decision'
+  | 'community_message'
+  | 'community_post_review'
+  | 'community_report_result'
+  | 'community_verification_result'
+  | 'community_appeal_result'
 
 export interface Notification {
   id: string
@@ -250,6 +275,13 @@ export interface Notification {
   type: NotificationType
   video_id: string | null
   comment_id: string | null
+  community_post_id?: string | null
+  community_comment_id?: string | null
+  community_id?: string | null
+  title?: string | null
+  message?: string | null
+  action_url?: string | null
+  metadata?: Record<string,unknown>
   is_read: boolean
   created_at: string
 }
@@ -260,6 +292,7 @@ export interface NotificationWithActor extends Notification {
     'user_id' | 'name' | 'full_name' | 'username' | 'avatar_url'
   > | null
   videos?: Pick<Video, 'id' | 'title' | 'thumbnail_url'> | null
+  source?: 'platform' | 'community'
 }
 
 // Video interactions

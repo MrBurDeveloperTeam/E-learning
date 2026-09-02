@@ -1,6 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient() {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim();
+  if (!apiKey) return null;
+  aiClient ??= new GoogleGenAI({ apiKey });
+  return aiClient;
+}
 const modelId = 'gemini-3-flash-preview';
 
 type ChatPart = { text: string };
@@ -12,6 +19,11 @@ export async function chatWithMolarAI(
   userContext = ''
 ) {
   try {
+    const ai = getAiClient();
+    if (!ai) {
+      return 'SNAI is disabled in this local environment because no Gemini API key is configured.';
+    }
+
     const hasContext = userContext.trim().length > 30;
     const systemInstruction = `
 You are SNAI (Snabbb Assistant Intelligent), the AI assistant for Snabbb E-learning.

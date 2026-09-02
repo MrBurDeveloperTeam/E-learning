@@ -43,6 +43,7 @@ const PAGE_LABELS: Array<[string, string]> = [
   ['/settings', 'Settings'],
   ['/billing', 'Billing'],
   ['/notifications', 'Notifications'],
+  ['/community', 'Community'],
   ['/', 'Landing'],
 ]
 

@@ -1,0 +1,18 @@
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Scale, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { CommunityBackendUnavailableError } from '@/features/community/api/communityContract'
+
+type Appeal={id:string;appellant_id:string;post_id:string|null;comment_id:string|null;community_id:string|null;moderation_action_id:string|null;target_label:string|null;reason:string;status:string;created_at:string}
+
+export function CommunityAppealsAdmin(){
+  const client=useQueryClient(),[decision,setDecision]=useState<{appeal:Appeal;value:'approved'|'rejected'}|null>(null),[note,setNote]=useState('')
+  const query=useQuery<Appeal[]>({queryKey:['admin-community-appeals'],queryFn:async()=>{throw new CommunityBackendUnavailableError('Community appeals')}})
+  const review=useMutation({mutationFn:async()=>{throw new CommunityBackendUnavailableError('Community appeal review')},onSuccess:()=>{client.invalidateQueries({queryKey:['admin-community-appeals']});client.invalidateQueries({queryKey:['admin-community-posts']});client.invalidateQueries({queryKey:['admin-community-comments']});setDecision(null);setNote('');toast.success('Appeal decision saved.')}})
+  if(query.isLoading||!query.data?.length)return null
+  return <section className="mt-5 rounded-2xl border border-border bg-card"><div className="flex items-center gap-3 border-b p-5"><Scale className="size-5 text-primary"/><div><h2 className="font-semibold">Pending appeals</h2><p className="text-xs text-muted-foreground">Oldest requests appear first · {query.data.length} waiting</p></div></div><div className="divide-y">{query.data.map(appeal=><article key={appeal.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{appeal.post_id?'Post':'Comment'} appeal · {new Date(appeal.created_at).toLocaleDateString()}</p><p className="mt-2 text-sm leading-6">{appeal.reason}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={()=>setDecision({appeal,value:'rejected'})}><X/>Reject</Button><Button size="sm" onClick={()=>setDecision({appeal,value:'approved'})}><Check/>Approve</Button></div></article>)}</div><Dialog open={Boolean(decision)} onOpenChange={open=>{if(!open&&!review.isPending){setDecision(null);setNote('')}}}><DialogContent><DialogHeader><DialogTitle>{decision?.value==='approved'?'Approve appeal':'Reject appeal'}?</DialogTitle><DialogDescription>{decision?.value==='approved'?'The content returns to the appropriate review or visible state.':'The original moderation decision remains in place.'} This decision is recorded in the audit trail.</DialogDescription></DialogHeader><Textarea value={note} maxLength={1000} className="min-h-28 resize-none" placeholder="Decision note for the member…" onChange={event=>setNote(event.target.value)}/><DialogFooter><DialogClose render={<Button variant="outline" disabled={review.isPending}/>}>Cancel</DialogClose><Button variant={decision?.value==='rejected'?'destructive':'default'} disabled={review.isPending||note.trim().length<5} onClick={()=>void review.mutateAsync().catch(error=>toast.error(error instanceof Error?error.message:'Appeal could not be reviewed.'))}>{review.isPending?'Saving…':decision?.value==='approved'?'Approve appeal':'Reject appeal'}</Button></DialogFooter></DialogContent></Dialog></section>
+}
