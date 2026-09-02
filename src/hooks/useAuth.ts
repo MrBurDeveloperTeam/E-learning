@@ -197,7 +197,8 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
 
   async function signInWithEmail(email: string, password: string) {
     // ── Dev-mode bypass: sign in directly via Supabase on localhost ──
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const hostname = window.location.hostname.toLowerCase()
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
     if (isLocal) {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -205,6 +206,38 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       })
       if (error) throw error
       return // no redirect — stay on localhost
+    }
+
+    // Cloudflare Pages preview deployments must remain on their own preview
+    // origin after login. Authenticate through the same deployment's Pages
+    // Function, then install the returned Supabase session in this browser.
+    // Production keeps using the central signed app-link flow below.
+    const isCloudflarePreview =
+      hostname.endsWith('.pages.dev') && hostname.split('.').length > 3
+    if (isCloudflarePreview) {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.access_token || !data?.refresh_token) {
+        throw new Error(
+          data?.error?.message ||
+          data?.error ||
+          data?.details ||
+          'Unable to open E-learning preview session.',
+        )
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      })
+      if (error) throw error
+      return // no cross-origin redirect — stay on this preview deployment
     }
 
     // Match Inventory's production login flow: authenticate the central Odoo
