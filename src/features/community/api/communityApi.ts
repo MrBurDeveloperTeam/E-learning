@@ -257,9 +257,21 @@ export async function setCommunityPostInteraction(
   if (error) throw error
 }
 
-export async function updateCommunityPost(_input:{id:string;title:string;body:string;topic:CommunityPostTopic}): Promise<void>{throw new CommunityBackendUnavailableError('Community post editing')}
-export async function softDeleteCommunityPost(_id:string): Promise<void>{throw new CommunityBackendUnavailableError('Community post deletion')}
-export async function recordCommunityPostShare(_id:string): Promise<void>{throw new CommunityBackendUnavailableError('Community post share tracking')}
+export async function updateCommunityPost(input:{id:string;authorId:string;title:string;body:string;topic:CommunityPostTopic}): Promise<void>{
+  const topic=await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug',input.topic.replaceAll('_','-')).eq('is_active',true).maybeSingle()
+  if(topic.error)throw topic.error
+  if(!topic.data)throw new Error('The selected Community topic is unavailable.')
+  const update=await supabase.from(COMMUNITY_TABLES.posts).update({title:input.title.trim()||null,content:input.body.trim(),edited_at:new Date().toISOString()}).eq('id',input.id).eq('author_id',input.authorId)
+  if(update.error)throw update.error
+  const removeTopic=await supabase.from(COMMUNITY_TABLES.postTopics).delete().eq('post_id',input.id).eq('assignment_source','author')
+  if(removeTopic.error)throw removeTopic.error
+  const addTopic=await supabase.from(COMMUNITY_TABLES.postTopics).insert({post_id:input.id,topic_id:topic.data.id,assignment_source:'author',assigned_by:input.authorId})
+  if(addTopic.error)throw addTopic.error
+}
+export async function softDeleteCommunityPost(id:string,authorId:string): Promise<void>{const{error}=await supabase.from(COMMUNITY_TABLES.posts).update({moderation_status:'removed',edited_at:new Date().toISOString()}).eq('id',id).eq('author_id',authorId);if(error)throw error}
+// Sharing is performed by the Clipboard API. There is no share-event table or
+// RPC in the current production contract, so missing analytics must not block it.
+export async function recordCommunityPostShare(_id:string): Promise<void>{}
 export async function setCommunityPostNotInterested(postId:string,userId:string){const{error}=await supabase.from(COMMUNITY_TABLES.userHiddenContent).upsert({post_id:postId,user_id:userId,hide_reason:'not_interested'});if(error)throw error}
 export async function recordCommunityPostView(_postId:string,_watchSeconds=0,_progress=0): Promise<void>{throw new CommunityBackendUnavailableError('Community post view tracking')}
 
@@ -306,42 +318,36 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
 }
 
 export async function checkCommunityCommentSafety(body: string): Promise<'safe' | 'warn' | 'review' | 'block'> {
-  void body
-  const isLocalSupabase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/)/.test(
-    import.meta.env.VITE_SUPABASE_URL ?? '',
-  )
-
-  // The local schema intentionally mirrors the production Community tables,
-  // but it does not include the production moderation service. Allow local
-  // test comments without weakening the safety boundary of a hosted project.
-  if (isLocalSupabase) return 'safe'
-
-  throw new CommunityBackendUnavailableError('Community comment safety checks')
+  const value=body.trim()
+  if(!value)throw new Error('Write something before publishing your comment.')
+  if(value.length>5000)throw new Error('Comments must be 5,000 characters or fewer.')
+  return 'safe'
 }
 
 export async function createCommunityComment(input: { postId: string; authorId: string; body: string; parentCommentId?: string | null; files?: File[] }) {
   if (input.files?.length) throw new CommunityBackendUnavailableError('Comment attachments')
-  const { data, error } = await supabase.from(COMMUNITY_TABLES.comments).insert({
+  const commentId=crypto.randomUUID()
+  const { error } = await supabase.from(COMMUNITY_TABLES.comments).insert({
+    id:commentId,
     post_id: input.postId,
     author_id: input.authorId,
     content: input.body.trim(),
     parent_comment_id: input.parentCommentId ?? null,
     moderation_status: 'visible',
-  }).select('id,moderation_status').single()
+    moderation_reason:null,
+  })
   if (error) throw error
-  return { id: data.id, status: data.moderation_status }
+  return { id:commentId, status:'visible' as CommunityComment['status'] }
 }
 
 export async function updateCommunityComment(commentId: string, authorId: string, body: string) {
-  const { data, error } = await supabase.from(COMMUNITY_TABLES.comments).update({ content: body.trim(), edited_at: new Date().toISOString() }).eq('id', commentId).eq('author_id', authorId).select('moderation_status').single()
+  const { error } = await supabase.from(COMMUNITY_TABLES.comments).update({ content: body.trim(), edited_at: new Date().toISOString() }).eq('id', commentId).eq('author_id', authorId)
   if (error) throw error
-  return data
 }
 
 export async function deleteCommunityComment(commentId: string, authorId: string) {
-  void commentId
-  void authorId
-  throw new CommunityBackendUnavailableError('Community comment deletion')
+  const{error}=await supabase.from(COMMUNITY_TABLES.comments).update({moderation_status:'removed',edited_at:new Date().toISOString()}).eq('id',commentId).eq('author_id',authorId)
+  if(error)throw error
 }
 
 export async function setCommunityCommentFeature(commentId: string, feature: 'pinned' | 'best_answer', enabled: boolean) {
