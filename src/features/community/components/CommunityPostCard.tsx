@@ -62,6 +62,7 @@ export function CommunityPostCard({
     [editBody, setEditBody] = useState(post.body ?? "");
   const [repostOpen, setRepostOpen] = useState(false),
     [repostComment, setRepostComment] = useState("");
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
   const interaction = useCommunityPostInteraction(userId);
   const actions = useCommunityPostActions(userId);
   const authorName =
@@ -301,9 +302,12 @@ export function CommunityPostCard({
           <Button
             variant="ghost"
             size="sm"
-            aria-expanded="true"
+            aria-expanded={commentsExpanded}
             aria-controls={`comments-${post.id}`}
-            onClick={() => document.getElementById(`comments-${post.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })}
+            onClick={() => {
+              setCommentsExpanded((current) => !current);
+              if (!commentsExpanded) window.setTimeout(() => document.getElementById(`comments-${post.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 0);
+            }}
           >
             <MessageCircle /> {post.comment_count}
           </Button>
@@ -389,6 +393,7 @@ export function CommunityPostCard({
                 postId={post.id}
                 userId={userId}
                 postAuthorId={post.author_id}
+                expanded={commentsExpanded}
               />
             </Suspense>
         </div>

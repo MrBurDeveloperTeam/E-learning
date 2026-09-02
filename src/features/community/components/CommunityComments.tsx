@@ -71,14 +71,16 @@ export function CommunityComments({
   postId,
   userId,
   postAuthorId,
+  expanded = false,
 }: {
   postId: string;
   userId?: string;
   postAuthorId?: string;
+  expanded?: boolean;
 }) {
   const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
-  const query = useCommunityComments(postId, userId, true, 0, search);
+  const query = useCommunityComments(postId, userId, true, expanded ? -1 : 0, expanded ? search : "");
   const createMutation = useCreateCommunityComment(postId, userId),
     updateMutation = useUpdateCommunityComment(postId, userId),
     deleteMutation = useDeleteCommunityComment(postId, userId);
@@ -101,7 +103,7 @@ export function CommunityComments({
     mentions = useCommunityMentionUsers(mentionQuery);
 
   const comments = useMemo(() => {
-    const rows = [...(query.data ?? [])];
+    const rows = [...(query.data ?? [])].filter((comment) => expanded || comment.status === "visible");
     const score = (item: CommunityComment) =>
       (item.is_pinned ? 100000 : 0) +
       (item.is_best_answer ? 50000 : 0) +
@@ -130,7 +132,7 @@ export function CommunityComments({
       ),
       children,
     };
-  }, [query.data, sort]);
+  }, [expanded, query.data, sort]);
 
   const chooseFiles = (selected: FileList | null) => {
     const next = [...(selected ?? [])].slice(0, 3);
@@ -502,7 +504,7 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {userId ? (
+      {expanded && (userId ? (
         <form
           noValidate
           className="space-y-2"
@@ -598,8 +600,8 @@ export function CommunityComments({
         <p className="text-sm text-muted-foreground">
           Sign in to join the discussion.
         </p>
-      )}
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+      ))}
+      {expanded && <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <form
           noValidate
           className="relative flex-1"
@@ -629,14 +631,14 @@ export function CommunityComments({
             <SelectItem value="oldest">Oldest</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div>}
       {query.isLoading && (
         <div className="flex min-h-32 items-center justify-center">
           <LoadingSpinner />
         </div>
       )}
       {query.isError && <RetryCard onRetry={() => void query.refetch()} />}{" "}
-      {!query.isLoading && !query.isError && comments.roots.length === 0 && (
+      {expanded && !query.isLoading && !query.isError && comments.roots.length === 0 && (
         <EmptyState
           title="No comments found"
           description={

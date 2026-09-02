@@ -317,7 +317,7 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
   comments=comments
     .map(comment=>({...comment,viewer_is_followed_or_friend:priorityAuthors.has(comment.author_id)}))
     .sort((left,right)=>Number(right.viewer_is_followed_or_friend)-Number(left.viewer_is_followed_or_friend)||Date.parse(right.created_at)-Date.parse(left.created_at))
-    .slice(page*COMMENT_PAGE_SIZE,(page+1)*COMMENT_PAGE_SIZE)
+  if(page>=0)comments=comments.slice(page*COMMENT_PAGE_SIZE,(page+1)*COMMENT_PAGE_SIZE)
 
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))]
   const profiles = new Map<string, CommunityComment['profiles']>()

@@ -198,7 +198,7 @@ const communityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/community',
   validateSearch: (search: Record<string, unknown>) => ({
-    tab: search.tab === 'following' || search.tab === 'friends' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'settings' ? search.tab : undefined,
+    tab: search.tab === 'following' || search.tab === 'friends' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'me' || search.tab === 'settings' ? search.tab : undefined,
     q: typeof search.q === 'string' && search.q ? search.q.slice(0, 120) : undefined,
     topic: typeof search.topic === 'string' && search.topic !== 'all' ? search.topic : undefined,
     sort: search.sort === 'newest' || search.sort === 'popular' ? search.sort : undefined,
