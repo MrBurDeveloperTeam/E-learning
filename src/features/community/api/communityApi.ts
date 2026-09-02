@@ -216,28 +216,31 @@ export type CommunityUploadProgress = {
 
 export async function createCommunityPost(input: { authorId: string; communityId?: string; title: string; body: string; topic?: CommunityPostTopic; files?: File[]; draft?: boolean; signal?: AbortSignal; onProgress?: (progress: CommunityUploadProgress) => void }) {
   if (input.draft) throw new CommunityBackendUnavailableError('Community post drafts')
-  const { data, error } = await supabase.from(COMMUNITY_TABLES.posts).insert({
+  const postId = crypto.randomUUID()
+  const { error } = await supabase.from(COMMUNITY_TABLES.posts).insert({
+    id: postId,
     author_id: input.authorId,
     community_id: input.communityId ?? null,
+    audience: input.communityId ? 'community' : 'public',
     post_kind: input.files?.some(file=>file.type.startsWith('video/'))?'video':input.files?.length?'image':'text',
     title: input.title.trim() || null,
     content: input.body.trim(),
     moderation_status: 'visible',
-  }).select('id, moderation_status').single()
+  })
   if (error) throw error
   const uploaded:string[]=[]
   const files=input.files??[]
   const ensureActive=()=>{if(input.signal?.aborted)throw new DOMException('Upload cancelled.','AbortError')}
-  try{for(const [position,original] of files.entries()){ensureActive();input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'preparing'});const file=await prepareCommunityMedia(original);ensureActive();const path=`${input.authorId}/${data.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'uploading'});const upload=await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).upload(path,file,{contentType:file.type});if(upload.error)throw upload.error;uploaded.push(path);ensureActive();input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'saving'});const row=await supabase.from(COMMUNITY_TABLES.postMedia).insert({post_id:data.id,media_type:file.type.startsWith('video/')?'video':'image',storage_bucket:COMMUNITY_BUCKETS.postMedia,storage_path:path,mime_type:file.type,file_size_bytes:file.size,sort_order:position});if(row.error)throw row.error;input.onProgress?.({completed:position+1,total:files.length,currentFile:original.name,stage:'saving'})}ensureActive()}catch(cause){if(uploaded.length)await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).remove(uploaded);await supabase.from(COMMUNITY_TABLES.posts).delete().eq('id',data.id);throw cause}
+  try{for(const [position,original] of files.entries()){ensureActive();input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'preparing'});const file=await prepareCommunityMedia(original);ensureActive();const path=`${input.authorId}/${postId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'uploading'});const upload=await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).upload(path,file,{contentType:file.type});if(upload.error)throw upload.error;uploaded.push(path);ensureActive();input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'saving'});const row=await supabase.from(COMMUNITY_TABLES.postMedia).insert({post_id:postId,media_type:file.type.startsWith('video/')?'video':'image',storage_bucket:COMMUNITY_BUCKETS.postMedia,storage_path:path,mime_type:file.type,file_size_bytes:file.size,sort_order:position});if(row.error)throw row.error;input.onProgress?.({completed:position+1,total:files.length,currentFile:original.name,stage:'saving'})}ensureActive()}catch(cause){if(uploaded.length)await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).remove(uploaded);await supabase.from(COMMUNITY_TABLES.posts).delete().eq('id',postId);throw cause}
   if (input.topic) {
     const topic = await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug', input.topic.replaceAll('_', '-')).maybeSingle()
     if (topic.error) throw topic.error
     if (topic.data) {
-      const link = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: data.id, topic_id: topic.data.id, assigned_by: input.authorId })
+      const link = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: postId, topic_id: topic.data.id, assigned_by: input.authorId })
       if (link.error) throw link.error
     }
   }
-  return { id: data.id, status: data.moderation_status === 'visible' ? 'published' : 'draft' }
+  return { id: postId, status: 'published' as const }
 }
 
 export async function setCommunityPostInteraction(
