@@ -53,11 +53,12 @@ export function CommunityPage() {
   const followMutation=useFollowCommunityPerson(user?.id??'')
   const posts = postsQuery.data?.pages.flat() ?? []
   const isAdmin = isAdminProfile(profile)
+  useEffect(()=>{if(activeTab!=='chat')return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[activeTab])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn('bg-background',activeTab==='chat'?'h-screen overflow-hidden':'min-h-screen')}>
       <Navbar />
-      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 md:px-6">
+      <div className={cn('mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 md:px-6',activeTab==='chat'&&'h-[calc(100vh-4.375rem)] overflow-hidden')}>
         <aside className="hidden border-r border-border/70 py-7 pr-5 md:sticky md:top-14 md:block md:h-[calc(100vh-3.5rem)] md:self-start md:overflow-y-auto">
           <div className="mb-6 px-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Community</p>
@@ -96,7 +97,7 @@ export function CommunityPage() {
           </nav>
         </aside>
 
-        <main className="min-w-0 px-4 py-6 sm:px-6 md:px-0 md:py-8">
+        <main className={cn('min-w-0 px-4 py-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden')}>
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -138,7 +139,7 @@ export function CommunityPage() {
 
           {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'me' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
 
-          {activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} /></Suspense> : activeTab === 'me' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityMe userId={user.id} profile={profile} /></Suspense> : <div className="mt-7 space-y-4" aria-live="polite">
+          {activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <div className="min-h-0 flex-1"><Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} /></Suspense></div> : activeTab === 'me' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityMe userId={user.id} profile={profile} /></Suspense> : <div className="mt-7 space-y-4" aria-live="polite">
             {postsQuery.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
             {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (

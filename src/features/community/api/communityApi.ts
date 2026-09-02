@@ -603,8 +603,44 @@ export async function fetchDirectMessages(conversationId: string) {
   return (data ?? []).map((row) => mapDirectMessage(row as DbCommunityMessage))
 }
 
-export async function sendDirectMessage(_conversationId: string, _body: string, _clientNonce: string): Promise<DirectMessage> {
-  throw new CommunityBackendUnavailableError('Community direct-message sending')
+export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string): Promise<DirectMessage> {
+  const content=body.trim()
+  if(!content)throw new Error('Write a message before sending.')
+
+  const {data:{user},error:userError}=await supabase.auth.getUser()
+  if(userError)throw userError
+  if(!user)throw new Error('Sign in before sending a message.')
+
+  const messageRow={
+    id:clientNonce,
+    conversation_id:conversationId,
+    sender_id:user.id,
+    content,
+    message_status:'sent' as const,
+  }
+  const inserted=await supabase
+    .from(COMMUNITY_TABLES.messages)
+    .insert(messageRow)
+    .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at')
+    .single()
+
+  if(!inserted.error)return mapDirectMessage(inserted.data as DbCommunityMessage)
+
+  // Retrying uses the same UUID. If the first request was committed but its
+  // response was lost, return that message instead of creating a duplicate.
+  if(inserted.error.code==='23505'){
+    const existing=await supabase
+      .from(COMMUNITY_TABLES.messages)
+      .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at')
+      .eq('id',clientNonce)
+      .eq('conversation_id',conversationId)
+      .eq('sender_id',user.id)
+      .single()
+    if(existing.error)throw existing.error
+    return mapDirectMessage(existing.data as DbCommunityMessage)
+  }
+
+  throw inserted.error
 }
 
 export async function openDirectConversation(_userId:string): Promise<string>{throw new CommunityBackendUnavailableError('Community direct conversations')}
@@ -672,8 +708,9 @@ export async function fetchFollowingPeople(userId: string) {
 
 export async function searchCommunityPeople(userId:string,search:string){
   const term=search.trim().replaceAll('%','').replaceAll('_','').replaceAll(',',' ')
-  if(term.length<2)return [] as Array<CommunityPerson&{username:string|null;viewer_is_following:boolean}>
-  const{data,error}=await supabase.from('public_profiles').select('user_id,full_name,name,username,avatar_url,is_verified').neq('user_id',userId).or(`full_name.ilike.%${term}%,name.ilike.%${term}%,username.ilike.%${term}%`).limit(20)
+  let request=supabase.from('public_profiles').select('user_id,full_name,name,username,avatar_url,is_verified').neq('user_id',userId).limit(20)
+  if(term)request=request.or(`full_name.ilike.%${term}%,name.ilike.%${term}%,username.ilike.%${term}%`)
+  const{data,error}=await request
   if(error)throw error
   const profiles=await addCommunityVerification(data??[])
   if(profiles.length===0)return []

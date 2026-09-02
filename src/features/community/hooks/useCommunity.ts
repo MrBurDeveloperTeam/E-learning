@@ -204,9 +204,13 @@ export function useCommunityMessageActions(conversationId?:string){const client=
 export function useSendDirectMessage(userId: string, conversationId?: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({body,clientNonce}:{body:string;clientNonce:string}) => sendDirectMessage(conversationId!, body, clientNonce),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-direct-messages', conversationId] })
+    mutationFn: ({body,clientNonce,conversationId:targetConversationId}:{body:string;clientNonce:string;conversationId?:string}) => {
+      const resolvedConversationId=targetConversationId??conversationId
+      if(!resolvedConversationId)throw new Error('Choose a member before sending a message.')
+      return sendDirectMessage(resolvedConversationId, body, clientNonce)
+    },
+    onSuccess: (message) => {
+      queryClient.invalidateQueries({ queryKey: ['community-direct-messages', message.conversation_id] })
       queryClient.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
     },
   })
@@ -224,7 +228,7 @@ export function useCommunitySettings(userId: string, section: CommunitySettingsS
 }
 
 export function useFriends(userId:string){return useQuery({queryKey:['community-friends',userId],queryFn:()=>fetchFriends(userId)})}
-export function useCommunityPeopleSearch(userId:string,search:string){return useQuery({queryKey:['community-people-search',userId,search.trim()],queryFn:()=>searchCommunityPeople(userId,search),enabled:search.trim().length>=2})}
+export function useCommunityPeopleSearch(userId:string,search:string){return useQuery({queryKey:['community-people-search',userId,search.trim()],queryFn:()=>searchCommunityPeople(userId,search),enabled:Boolean(userId)})}
 export function useFollowCommunityPerson(userId:string){const client=useQueryClient();return useMutation({mutationFn:(followingId:string)=>followCommunityPerson(userId,followingId),onSuccess:()=>{client.invalidateQueries({queryKey:['community-settings',userId,'following']});client.invalidateQueries({queryKey:['community-people-search',userId]});client.invalidateQueries({queryKey:['community-posts']})}})}
 export function useFriendRequests(userId:string){return useQuery({queryKey:['community-friend-requests',userId],queryFn:()=>fetchFriendRequests(userId)})}
 export function useFriendRequestAction(userId:string){const client=useQueryClient();return useMutation({mutationFn:({id,action}:{id:string;action:'accept'|'reject'|'cancel'})=>action==='cancel'?cancelFriendRequest(id):respondFriendRequest(id,action==='accept'?'accepted':'rejected'),onSuccess:()=>{client.invalidateQueries({queryKey:['community-friend-requests',userId]});client.invalidateQueries({queryKey:['community-settings',userId,'friends']})}})}
