@@ -41,6 +41,10 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
+function isCloudflarePagesPreview() {
+  return window.location.hostname.endsWith('.pages.dev')
+}
+
 async function fetchSsoExchange(token?: string | null) {
   try {
     const exchangePath = token
@@ -205,6 +209,43 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       })
       if (error) throw error
       return // no redirect — stay on localhost
+    }
+
+    // Cloudflare preview deployments must authenticate through their own
+    // same-origin Function. The production SSO app-link endpoint always
+    // returns the canonical e-learning.snabbb.com URL, which would otherwise
+    // move an administrator away from the preview immediately after login.
+    if (isCloudflarePagesPreview()) {
+      const previewLoginResponse = await fetch('/api/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      })
+
+      const previewSession = await previewLoginResponse.json().catch(() => null)
+      if (
+        !previewLoginResponse.ok ||
+        !previewSession?.access_token ||
+        !previewSession?.refresh_token
+      ) {
+        throw new Error(
+          previewSession?.error ||
+          previewSession?.details ||
+          'Unable to start a preview session.',
+        )
+      }
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: previewSession.access_token,
+        refresh_token: previewSession.refresh_token,
+      })
+      if (sessionError) throw sessionError
+
+      return // Login.tsx performs an in-app redirect on the current preview origin.
     }
 
     // Match Inventory's production login flow: authenticate the central Odoo
