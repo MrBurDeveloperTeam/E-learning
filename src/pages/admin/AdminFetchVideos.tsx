@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   BrainCircuit,
   CheckCircle,
+  ExternalLink,
   Filter,
   Loader2,
   SearchCheck,
@@ -31,6 +32,16 @@ import { VIDEO_CATEGORIES, type VideoCategory } from '@/types'
 
 type ImportSize = 10 | 25 | 50
 
+type ImportedVideo = {
+  id: string
+  video_id: string
+  title: string
+  thumbnail_url: string
+  channel_name: string
+  published_at: string
+  category: VideoCategory
+}
+
 type FetchResult = {
   category: VideoCategory
   requested: number
@@ -39,12 +50,14 @@ type FetchResult = {
   inserted: number
   alreadyInDb: number
   filteredOut: number
+  videos: ImportedVideo[]
   warnings?: string[]
 }
 
 type RequestError = {
   message: string
   details: string[]
+  code?: string
 }
 
 function ResultSummary({ result }: { result: FetchResult }) {
@@ -82,6 +95,65 @@ function ResultSummary({ result }: { result: FetchResult }) {
         hint="Short, live, unavailable, or unrelated"
       />
     </div>
+  )
+}
+
+function ImportedVideoList({ videos }: { videos: ImportedVideo[] }) {
+  if (videos.length === 0) {
+    return (
+      <div className="mt-5 rounded-[20px] border border-border/80 bg-background/55 p-5 text-sm text-muted-foreground">
+        No new videos were added in this import. The matching results may already be in the library.
+      </div>
+    )
+  }
+
+  return (
+    <section className="mt-6 border-t border-border/70 pt-6" aria-labelledby="imported-videos-heading">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 id="imported-videos-heading" className="text-base font-semibold text-foreground">
+            Videos added in this import
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">Review the exact records that were saved to your library.</p>
+        </div>
+        <AdminStatusBadge label={`${videos.length} added`} tone="success" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {videos.map((video) => (
+          <article key={video.id} className="overflow-hidden rounded-[20px] border border-border/80 bg-background/70">
+            <div className="aspect-video overflow-hidden bg-muted">
+              <img
+                src={video.thumbnail_url}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+              />
+            </div>
+            <div className="flex min-h-48 flex-col p-4">
+              <AdminStatusBadge label={video.category} tone="info" />
+              <h4 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-foreground" title={video.title}>
+                {video.title}
+              </h4>
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <p className="truncate" title={video.channel_name}>{video.channel_name}</p>
+                <p>Published {new Date(video.published_at).toLocaleDateString()}</p>
+              </div>
+              <a
+                href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.video_id)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-auto inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Youtube className="h-4 w-4 text-red-600 dark:text-red-400" />
+                Open on YouTube
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -158,6 +230,7 @@ export function AdminFetchVideos() {
         setError({
           message: data?.error || 'The video import request failed.',
           details: Array.isArray(data?.details) ? data.details : [],
+          code: typeof data?.code === 'string' ? data.code : undefined,
         })
         return
       }
@@ -170,6 +243,7 @@ export function AdminFetchVideos() {
         inserted: data.inserted ?? 0,
         alreadyInDb: data.alreadyInDb ?? 0,
         filteredOut: data.filteredOut ?? 0,
+        videos: Array.isArray(data.videos) ? data.videos : [],
         warnings: Array.isArray(data.warnings) ? data.warnings : [],
       })
 
@@ -247,7 +321,7 @@ export function AdminFetchVideos() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <AdminSectionCard
           title="Automatic YouTube import"
-          description="Choose one specialty. The importer searches four focused terms, checks playback quality, and files accepted videos directly into that category."
+          description="Choose one specialty. The importer runs English-first searches plus Thai, Chinese, Korean, Japanese, and Malay searches, then files accepted videos directly into that category."
         >
           <form noValidate onSubmit={handleFetchVideos} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
@@ -383,7 +457,11 @@ export function AdminFetchVideos() {
           <div role="alert" className="flex items-start gap-3">
             <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">YouTube import failed</p>
+              <p className="text-sm font-semibold text-foreground">
+                {error.code === 'YOUTUBE_QUOTA_EXCEEDED'
+                  ? 'Daily YouTube quota reached'
+                  : 'YouTube import failed'}
+              </p>
               <p className="mt-1 break-words text-sm text-muted-foreground">{error.message}</p>
               {error.details.length > 0 && (
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
@@ -415,6 +493,7 @@ export function AdminFetchVideos() {
               </div>
             )}
           </div>
+          <ImportedVideoList videos={result.videos} />
         </AdminSectionCard>
       )}
 

@@ -20,6 +20,31 @@ const CATEGORY_SEARCH_TERMS = {
 type DentalCategory = keyof typeof CATEGORY_SEARCH_TERMS;
 type ImportSize = 10 | 25 | 50;
 
+const LOCALIZED_CATEGORY_SEARCH_TERMS: Record<DentalCategory, {
+  th: string;
+  "zh-Hans": string;
+  ko: string;
+  ja: string;
+  ms: string;
+}> = {
+  "General Dentistry": { th: "ทันตกรรมทั่วไป การสอน", "zh-Hans": "普通牙科 临床 教学", ko: "일반 치과 임상 강의", ja: "一般歯科 臨床 講座", ms: "pergigian am tutorial klinikal" },
+  Implantology: { th: "รากฟันเทียม ทันตกรรม การสอน", "zh-Hans": "种植牙 临床 教学", ko: "치과 임플란트 수술 강의", ja: "歯科インプラント 手術 講座", ms: "implan pergigian tutorial" },
+  Orthodontics: { th: "ทันตกรรมจัดฟัน การสอน", "zh-Hans": "口腔正畸 临床 教学", ko: "치과 교정 임상 강의", ja: "歯科矯正 臨床 講座", ms: "ortodontik tutorial klinikal" },
+  Endodontics: { th: "รักษารากฟัน การสอน", "zh-Hans": "根管治疗 临床 教学", ko: "근관 치료 임상 강의", ja: "根管治療 臨床 講座", ms: "rawatan akar gigi tutorial" },
+  Periodontology: { th: "ปริทันต์ การรักษา การสอน", "zh-Hans": "牙周治疗 临床 教学", ko: "치주 치료 임상 강의", ja: "歯周治療 臨床 講座", ms: "periodontik rawatan tutorial" },
+  "Oral Surgery": { th: "ศัลยกรรมช่องปาก การสอน", "zh-Hans": "口腔外科 手术 教学", ko: "구강 외과 수술 강의", ja: "口腔外科 手術 講座", ms: "pembedahan mulut tutorial" },
+  "Pediatric Dentistry": { th: "ทันตกรรมเด็ก การสอน", "zh-Hans": "儿童牙科 临床 教学", ko: "소아 치과 임상 강의", ja: "小児歯科 臨床 講座", ms: "pergigian kanak-kanak tutorial" },
+  Prosthodontics: { th: "ทันตกรรมประดิษฐ์ การสอน", "zh-Hans": "口腔修复 临床 教学", ko: "보철 치과 임상 강의", ja: "補綴歯科 臨床 講座", ms: "prostodontik tutorial klinikal" },
+  "Oral Hygiene": { th: "สุขอนามัยช่องปาก การสอน", "zh-Hans": "口腔卫生 洁牙 教学", ko: "구강 위생 치과 강의", ja: "口腔衛生 歯科 講座", ms: "kebersihan mulut tutorial pergigian" },
+  "Dental Burs": { th: "หัวกรอฟัน การใช้งาน", "zh-Hans": "牙科车针 使用 教学", ko: "치과 버 사용법", ja: "歯科用バー 使い方", ms: "bur pergigian cara penggunaan" },
+  Handpieces: { th: "ด้ามกรอฟัน การดูแล", "zh-Hans": "牙科手机 使用 维护", ko: "치과 핸드피스 사용 관리", ja: "歯科ハンドピース 使用 メンテナンス", ms: "handpiece pergigian penggunaan penyelenggaraan" },
+  "Clinic Management": { th: "การบริหารคลินิกทันตกรรม", "zh-Hans": "牙科诊所 管理 教学", ko: "치과 병원 경영 강의", ja: "歯科医院 経営 講座", ms: "pengurusan klinik pergigian" },
+  Radiology: { th: "รังสีวิทยาทางทันตกรรม การสอน", "zh-Hans": "牙科影像 放射 教学", ko: "치과 방사선 영상 강의", ja: "歯科放射線 画像 講座", ms: "radiologi pergigian tutorial" },
+  Others: { th: "ทันตแพทยศาสตร์ การสอน", "zh-Hans": "牙科 临床 教学", ko: "치과 임상 교육", ja: "歯科 臨床 教育", ms: "pendidikan klinikal pergigian" },
+};
+
+const LOCALIZED_LANGUAGES = ["th", "zh-Hans", "ko", "ja", "ms"] as const;
+
 const ALLOWED_IMPORT_SIZES = new Set<ImportSize>([10, 25, 50]);
 const SEARCH_RESULTS_PER_PAGE = 50;
 const MAX_PAGES_PER_TERM = 2;
@@ -28,6 +53,8 @@ const DENTAL_RELEVANCE_TERMS = [
   "dental", "dentist", "dentistry", "tooth", "teeth", "oral", "orthodont",
   "endodont", "periodont", "prosthodont", "implant", "root canal", "gingiv",
   "occlusion", "dentur", "radiograph", "cbct",
+  "ทันต", "ฟัน", "ช่องปาก", "牙", "口腔", "齿", "치과", "치아", "구강",
+  "歯科", "歯", "口腔", "pergigian", "gigi", "mulut",
 ];
 
 type YouTubeFailure = {
@@ -71,6 +98,19 @@ function isDentalVideo(video: any): boolean {
 function describeYouTubeFailure(failure: YouTubeFailure): string {
   const context = failure.keyword ? ` for “${failure.keyword}”` : "";
   return `${failure.reason}${context}: ${failure.message}`;
+}
+
+function isYouTubeQuotaFailure(failure: YouTubeFailure): boolean {
+  const reason = failure.reason.toLowerCase();
+  return reason.includes("quota") || reason === "dailylimitexceeded";
+}
+
+function youtubeQuotaResponse() {
+  return jsonResponse({
+    error: "Today's YouTube search quota has been reached. Please try again after Google resets the daily quota. You will not be charged.",
+    code: "YOUTUBE_QUOTA_EXCEEDED",
+    details: [],
+  }, 429);
 }
 
 export async function onRequest(context: any) {
@@ -121,9 +161,18 @@ export async function onRequest(context: any) {
     const failures: YouTubeFailure[] = [];
     let successfulSearches = 0;
 
-    for (const keyword of CATEGORY_SEARCH_TERMS[category]) {
+    const searchQueries = [
+      ...CATEGORY_SEARCH_TERMS[category].map((keyword) => ({ keyword, language: "en", pages: MAX_PAGES_PER_TERM })),
+      ...LOCALIZED_LANGUAGES.map((language) => ({
+        keyword: LOCALIZED_CATEGORY_SEARCH_TERMS[category][language],
+        language,
+        pages: 1,
+      })),
+    ];
+
+    for (const { keyword, language, pages } of searchQueries) {
       let pageToken: string | undefined;
-      for (let page = 0; page < MAX_PAGES_PER_TERM; page++) {
+      for (let page = 0; page < pages; page++) {
         const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
         const params: Record<string, string> = {
           part: "snippet",
@@ -131,7 +180,7 @@ export async function onRequest(context: any) {
           q: keyword,
           type: "video",
           order: "relevance",
-          relevanceLanguage: "en",
+          relevanceLanguage: language,
           safeSearch: "moderate",
           videoEmbeddable: "true",
           videoSyndicated: "true",
@@ -146,6 +195,7 @@ export async function onRequest(context: any) {
           const failure = parseYouTubeFailure(searchPayload, searchResponse.status, "search", keyword);
           failures.push(failure);
           console.error("YouTube search failed:", failure);
+          if (isYouTubeQuotaFailure(failure)) return youtubeQuotaResponse();
           break;
         }
 
@@ -197,6 +247,7 @@ export async function onRequest(context: any) {
         const failure = parseYouTubeFailure(detailsPayload, detailsResponse.status, "details");
         failures.push(failure);
         console.error("YouTube video details failed:", failure);
+        if (isYouTubeQuotaFailure(failure)) return youtubeQuotaResponse();
         continue;
       }
       videoDetails.push(...(detailsPayload.items || []));
@@ -233,19 +284,28 @@ export async function onRequest(context: any) {
       };
     });
 
-    let insertedCount = 0;
+    let insertedVideos: Array<{
+      id: string;
+      video_id: string;
+      title: string;
+      thumbnail_url: string;
+      channel_name: string;
+      published_at: string;
+      category: DentalCategory;
+    }> = [];
     if (rowsToInsert.length > 0) {
       const { data, error: insertError } = await supabase
         .from("dental_videos")
         .upsert(rowsToInsert, { onConflict: "video_id", ignoreDuplicates: true })
-        .select("video_id");
+        .select("id,video_id,title,thumbnail_url,channel_name,published_at,category");
       if (insertError) {
         console.error("fetch-dental-videos upsert error:", insertError);
         return jsonResponse({ error: "The videos were found, but Supabase could not save them.", code: "DATABASE_INSERT_FAILED" }, 500);
       }
-      insertedCount = data?.length || 0;
+      insertedVideos = (data || []) as typeof insertedVideos;
     }
 
+    const insertedCount = insertedVideos.length;
     const filteredOut = videoDetails.length - eligibleVideos.length;
     return jsonResponse({
       category,
@@ -256,6 +316,7 @@ export async function onRequest(context: any) {
       alreadyInDb: existingIds.size,
       filteredOut,
       skipped: filteredOut + Math.max(0, selectedVideos.length - insertedCount),
+      videos: insertedVideos,
       warnings: failures.map(describeYouTubeFailure),
     });
   } catch (error: any) {
