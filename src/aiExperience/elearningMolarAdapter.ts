@@ -35,8 +35,17 @@ import {
 } from './dataChat/utils/unsupportedParameterMessage';
 import { formatGroundedElearningFallback } from './dataChat/utils/formatGroundedElearningFallback';
 import { resolveElearningFollowUp } from './dataChat/router/resolveElearningFollowUp';
+import { matchElearningCapability } from './dataChat/semantic/matchElearningCapability';
 import type { ElearningDataChatSources } from './dataChat/hooks/useElearningDataChatSources';
 import type { GroundedConversationContext } from './dataChat/context/groundedConversationContext';
+import type { ElearningDataIntent } from './dataChat/contracts/groundedDataResult';
+
+const CLARIFICATION_LABEL: Record<ElearningDataIntent, string> = {
+  elearning_latest_video_performance: 'your latest video',
+  elearning_most_viewed_video: 'your most viewed video',
+  elearning_followed_creator_updates: 'new updates from creators you follow',
+  elearning_general_video_list: 'a list of all your videos',
+};
 
 interface CreateElearningMolarAdapterDeps {
   /** App.tsx's existing `aiContext` string (module/route/session/user/email
@@ -60,6 +69,35 @@ export function createElearningMolarAdapter(deps: CreateElearningMolarAdapterDep
   // per authenticated user; see
   // dataChat/context/groundedConversationContext.ts's header).
   let groundedContext: GroundedConversationContext | null = null;
+
+  // Shared by the fast-path classifier match AND the semantic capability
+  // matcher below.
+  async function executeGroundedIntent(intent: ElearningDataIntent, msg: string): Promise<AIResponse> {
+    const result = resolveElearningDataQuery(intent, deps.dataChatSources);
+
+    let dataChatResponseText: string;
+    if (result.status === 'unavailable') {
+      dataChatResponseText = buildUnavailableMessage(result.reasonCode);
+    } else {
+      try {
+        dataChatResponseText = await chatWithGroundedElearningFacts(msg, result.intent, result.facts);
+      } catch (groundedErr) {
+        console.error('Grounded elearning response failed:', groundedErr);
+        dataChatResponseText = formatGroundedElearningFallback(result.intent, result.facts);
+      }
+    }
+
+    groundedContext = {
+      appId: 'elearning',
+      lastIntent: intent,
+      presentedOrder: 'display',
+      lastUserQuestion: msg,
+      generation: (groundedContext?.generation ?? 0) + 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    return { text: dataChatResponseText };
+  }
 
   return {
     reset() {
@@ -95,38 +133,7 @@ export function createElearningMolarAdapter(deps: CreateElearningMolarAdapterDep
       }
 
       if (dataRoute.kind === 'matched') {
-        const result = resolveElearningDataQuery(dataRoute.intent, deps.dataChatSources);
-
-        let dataChatResponseText: string;
-        if (result.status === 'unavailable') {
-          // Unknown/unavailable source state is never reinterpreted as a
-          // zero-result answer — a matched grounded intent owns this
-          // request even when its source is temporarily unavailable; it
-          // does not fall through to legacy chat.
-          dataChatResponseText = buildUnavailableMessage(result.reasonCode);
-        } else {
-          try {
-            // 3. Grounded Gemini phrasing — receives ONLY the question, the
-            // approved intent, and the already-minimized facts.
-            dataChatResponseText = await chatWithGroundedElearningFacts(msg, result.intent, result.facts);
-          } catch (groundedErr) {
-            // Mandatory deterministic fallback — never falls through to
-            // legacy General Chat on a Gemini failure at this stage.
-            console.error('Grounded elearning response failed:', groundedErr);
-            dataChatResponseText = formatGroundedElearningFallback(result.intent, result.facts);
-          }
-        }
-
-        groundedContext = {
-          appId: 'elearning',
-          lastIntent: dataRoute.intent,
-          presentedOrder: 'display',
-          lastUserQuestion: msg,
-          generation: (groundedContext?.generation ?? 0) + 1,
-          createdAt: new Date().toISOString(),
-        };
-
-        return { text: dataChatResponseText };
+        return executeGroundedIntent(dataRoute.intent, msg);
       }
 
       // ── Tier C: Grounded conversational follow-up ────────────────────
@@ -134,6 +141,16 @@ export function createElearningMolarAdapter(deps: CreateElearningMolarAdapterDep
       if (followUp && groundedContext) {
         groundedContext = { ...groundedContext, presentedOrder: followUp.presentedOrder, lastUserQuestion: msg, generation: groundedContext.generation + 1 };
         return { text: followUp.text };
+      }
+
+      // ── Tier D: Semantic capability router ────────────────────────────
+      const semanticRoute = matchElearningCapability(msg);
+      if (semanticRoute.type === 'grounded_capability') {
+        return executeGroundedIntent(semanticRoute.capability, msg);
+      }
+      if (semanticRoute.type === 'clarification') {
+        const [a, b] = semanticRoute.candidates;
+        return { text: `Do you mean ${CLARIFICATION_LABEL[a]} or ${CLARIFICATION_LABEL[b]}?` };
       }
       // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ──
 
