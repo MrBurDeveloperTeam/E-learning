@@ -258,11 +258,13 @@ export async function setCommunityPostInteraction(
 }
 
 export async function updateCommunityPost(input:{id:string;authorId:string;title:string;body:string;topic:CommunityPostTopic}): Promise<void>{
-  const topic=await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug',input.topic.replaceAll('_','-')).eq('is_active',true).maybeSingle()
-  if(topic.error)throw topic.error
-  if(!topic.data)throw new Error('The selected Community topic is unavailable.')
   const update=await supabase.from(COMMUNITY_TABLES.posts).update({title:input.title.trim()||null,content:input.body.trim(),edited_at:new Date().toISOString()}).eq('id',input.id).eq('author_id',input.authorId)
   if(update.error)throw update.error
+  const topic=await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug',input.topic.replaceAll('_','-')).eq('is_active',true).maybeSingle()
+  if(topic.error)throw topic.error
+  // Older posts can have no matching topic row. Their text must still remain
+  // editable; only synchronize the topic link when the selected topic exists.
+  if(!topic.data)return
   const removeTopic=await supabase.from(COMMUNITY_TABLES.postTopics).delete().eq('post_id',input.id).eq('assignment_source','author')
   if(removeTopic.error)throw removeTopic.error
   const addTopic=await supabase.from(COMMUNITY_TABLES.postTopics).insert({post_id:input.id,topic_id:topic.data.id,assignment_source:'author',assigned_by:input.authorId})
@@ -283,7 +285,7 @@ export async function fetchCommunityPost(postId:string,userId?:string){
   return post
 }
 
-export const COMMENT_PAGE_SIZE = 20
+export const COMMENT_PAGE_SIZE = 6
 
 export async function fetchCommunityComments(postId: string, userId?: string, page = 0, search = '') {
   let request = supabase
@@ -291,13 +293,31 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
     .select('id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,created_at,updated_at')
     .eq('post_id', postId)
     .neq('moderation_status', 'removed')
-    .order('created_at', { ascending: true })
-    .range(page * COMMENT_PAGE_SIZE, (page + 1) * COMMENT_PAGE_SIZE - 1)
+    .order('created_at', { ascending: false })
+    .limit(200)
   if (search.trim()) request = request.ilike('content', `%${search.trim().replaceAll('%', '\\%').replaceAll('_', '\\_')}%`)
   const { data, error } = await request
   if (error) throw error
 
-  const comments = (data ?? []).map((row) => mapCommunityComment(row as DbCommunityComment))
+  let comments = (data ?? []).map((row) => mapCommunityComment(row as DbCommunityComment))
+
+  let priorityAuthors=new Set<string>()
+  if(userId){
+    const[following,friendships]=await Promise.all([
+      supabase.from(COMMUNITY_TABLES.follows).select('following_id').eq('follower_id',userId),
+      supabase.from(COMMUNITY_TABLES.friendships).select('requester_id,addressee_id').eq('friendship_status','accepted').or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
+    ])
+    if(following.error)throw following.error
+    if(friendships.error)throw friendships.error
+    priorityAuthors=new Set([
+      ...(following.data??[]).map(row=>row.following_id),
+      ...(friendships.data??[]).map(row=>row.requester_id===userId?row.addressee_id:row.requester_id),
+    ])
+  }
+  comments=comments
+    .map(comment=>({...comment,viewer_is_followed_or_friend:priorityAuthors.has(comment.author_id)}))
+    .sort((left,right)=>Number(right.viewer_is_followed_or_friend)-Number(left.viewer_is_followed_or_friend)||Date.parse(right.created_at)-Date.parse(left.created_at))
+    .slice(page*COMMENT_PAGE_SIZE,(page+1)*COMMENT_PAGE_SIZE)
 
   const authorIds = [...new Set(comments.map((comment) => comment.author_id).filter(Boolean))]
   const profiles = new Map<string, CommunityComment['profiles']>()

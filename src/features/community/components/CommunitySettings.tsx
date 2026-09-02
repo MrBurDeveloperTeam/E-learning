@@ -23,14 +23,9 @@ import { CommunityRestrictionAppeals } from '@/features/community/components/Com
 
 type SettingsView = CommunitySettingsSection | 'verification' | 'reports' | 'blocked' | 'privacy' | 'requests' | 'notifications' | 'topics' | 'appeals' | 'restrictions'
 const sections: Array<{ id: SettingsView; label: string; icon: typeof FileText }> = [
-  { id: 'posts', label: 'My posts', icon: FileText },
-  { id: 'likes', label: 'Likes', icon: Heart },
-  { id: 'reposts', label: 'Reposts', icon: Repeat2 },
-  { id: 'bookmarks', label: 'Saved', icon: Bookmark },
   { id: 'history', label: 'Watch history', icon: History },
+  { id: 'bookmarks', label: 'Saved', icon: Bookmark },
   { id: 'deleted', label: 'Deleted posts', icon: Trash2 },
-  { id: 'following', label: 'Following', icon: UserRoundCheck },
-  { id: 'friends', label: 'Friends', icon: UsersRound },
   { id: 'requests', label: 'Friend requests', icon: UserRoundCheck },
   { id: 'topics', label: 'Topics', icon: Tags },
   { id: 'notifications', label: 'Notifications', icon: BellRing },
@@ -39,7 +34,7 @@ const sections: Array<{ id: SettingsView; label: string; icon: typeof FileText }
   { id: 'restrictions', label: 'Restrictions', icon: Flag },
   { id: 'blocked', label: 'Blocked users', icon: UserX },
   { id: 'privacy', label: 'Privacy', icon: Settings2 },
-  { id: 'verification', label: 'Verification', icon: GraduationCap },
+  { id: 'verification', label: 'Verifications', icon: GraduationCap },
 ]
 
 const postStatusHelp:Record<CommunityManagedPost['status'],string>={
@@ -52,7 +47,7 @@ const postStatusHelp:Record<CommunityManagedPost['status'],string>={
 }
 
 export function CommunitySettings({ userId }: { userId: string }) {
-  const [section, setSection] = useState<SettingsView>('posts')
+  const [section, setSection] = useState<SettingsView>('history')
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; label: string } | null>(null)
   const dataSection: CommunitySettingsSection = section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'requests' || section === 'notifications' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
   const query = useCommunitySettings(userId, dataSection)

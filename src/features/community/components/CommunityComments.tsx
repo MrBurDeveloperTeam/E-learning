@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import {
   Award,
   Check,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   GraduationCap,
   Heart,
@@ -36,7 +34,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RetryCard } from "@/components/shared/RetryCard";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { COMMENT_PAGE_SIZE } from "@/features/community/api/communityApi";
 import {
   useCheckCommunityCommentSafety,
   useCommunityCommentFeature,
@@ -79,10 +76,9 @@ export function CommunityComments({
   userId?: string;
   postAuthorId?: string;
 }) {
-  const [page, setPage] = useState(0),
-    [search, setSearch] = useState(""),
+  const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
-  const query = useCommunityComments(postId, userId, true, page, search);
+  const query = useCommunityComments(postId, userId, true, 0, search);
   const createMutation = useCreateCommunityComment(postId, userId),
     updateMutation = useUpdateCommunityComment(postId, userId),
     deleteMutation = useDeleteCommunityComment(postId, userId);
@@ -112,11 +108,13 @@ export function CommunityComments({
       item.like_count * 4 +
       (item.profiles?.is_verified ? 2 : 0) -
       ((Date.now() - Date.parse(item.created_at)) / 86_400_000) * 0.05;
+    const relationshipPriority = (a: CommunityComment, b: CommunityComment) =>
+      Number(Boolean(b.viewer_is_followed_or_friend)) - Number(Boolean(a.viewer_is_followed_or_friend));
     if (sort === "newest")
-      rows.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+      rows.sort((a, b) => relationshipPriority(a,b) || Date.parse(b.created_at) - Date.parse(a.created_at));
     else if (sort === "oldest")
-      rows.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
-    else rows.sort((a, b) => score(b) - score(a));
+      rows.sort((a, b) => relationshipPriority(a,b) || Date.parse(a.created_at) - Date.parse(b.created_at));
+    else rows.sort((a, b) => relationshipPriority(a,b) || score(b) - score(a));
     const children = new Map<string, CommunityComment[]>();
     for (const row of rows)
       if (row.parent_comment_id)
@@ -607,7 +605,6 @@ export function CommunityComments({
           className="relative flex-1"
           onSubmit={(e) => {
             e.preventDefault();
-            setPage(0);
             setSearch(searchInput);
           }}
         >
@@ -652,29 +649,6 @@ export function CommunityComments({
       <div className="mt-4 space-y-3">
         {comments.roots.map((comment) => renderComment(comment))}
       </div>
-      {!query.isLoading && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setPage((value) => value - 1)}
-          >
-            <ChevronLeft />
-            Previous
-          </Button>
-          <span className="text-xs text-muted-foreground">Page {page + 1}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={(query.data?.length ?? 0) < COMMENT_PAGE_SIZE}
-            onClick={() => setPage((value) => value + 1)}
-          >
-            Next
-            <ChevronRight />
-          </Button>
-        </div>
-      )}
       <Dialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => {

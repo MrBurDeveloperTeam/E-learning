@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Compass, Home, MessageCircleMore, PlaySquare, Search, Settings, ShieldCheck, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { CircleUserRound, Compass, Home, MessageCircleMore, PlaySquare, Search, ShieldCheck, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const CreateCommunityPostDialog = lazy(() => import('@/features/community/components/CreateCommunityPostDialog').then(module => ({ default: module.CreateCommunityPostDialog })))
 const CommunityDirectory = lazy(() => import('@/features/community/components/CommunityDirectory').then(module => ({ default: module.CommunityDirectory })))
-const CommunitySettings = lazy(() => import('@/features/community/components/CommunitySettings').then(module => ({ default: module.CommunitySettings })))
+const CommunityMe = lazy(() => import('@/features/community/components/CommunityMe').then(module => ({ default: module.CommunityMe })))
 
 function CommunityPanelFallback() {
   return <div className="mt-7 flex min-h-64 items-center justify-center" role="status" aria-label="Loading Community section"><LoadingSpinner size="lg" /></div>
@@ -28,7 +28,7 @@ const navigation = [
   { id: 'friends', label: 'Friends', icon: UsersRound, available: true },
   { id: 'communities', label: 'Communities', icon: MessageCircleMore, available: true },
   { id: 'video', label: 'Video', icon: PlaySquare, available: true },
-  { id: 'settings', label: 'Settings', icon: Settings, available: true },
+  { id: 'me', label: 'Profile', icon: CircleUserRound, available: true },
 ]
 
 export function CommunityPage() {
@@ -36,8 +36,8 @@ export function CommunityPage() {
   const search = useSearch({ strict: false }) as { tab?: string;q?:string;topic?:string;sort?:'relevant'|'newest'|'popular' }
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
-  const activeTab = search.tab === 'following' || search.tab === 'friends' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'settings' ? search.tab : 'home'
-  const feedMode = activeTab === 'communities' || activeTab === 'settings' ? 'home' : activeTab
+  const activeTab = search.tab === 'following' || search.tab === 'friends' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'me' || search.tab === 'settings' ? (search.tab === 'settings' ? 'me' : search.tab) : 'home'
+  const feedMode = activeTab === 'communities' || activeTab === 'me' ? 'home' : activeTab
   const [postSearch,setPostSearch]=useState(search.q??'')
   const topic=search.topic??'all',sort=search.sort??'relevant'
   useEffect(()=>{setPostSearch(search.q??'')},[search.q])
@@ -93,10 +93,10 @@ export function CommunityPage() {
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                {activeTab === 'following' ? 'Following feed' : activeTab === 'friends' ? 'Friends feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'settings' ? 'Community settings' : 'Home feed'}
+                {activeTab === 'following' ? 'Following feed' : activeTab === 'friends' ? 'Friends feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'me' ? 'My profile' : 'Home feed'}
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
-                {activeTab === 'following' ? 'From people you follow' : activeTab === 'friends' ? 'What your friends found useful' : activeTab === 'communities' ? 'Find your clinical circle' : activeTab === 'video' ? 'Video, tuned to your interests' : activeTab === 'settings' ? 'Manage your Community activity' : 'What dentistry is discussing'}
+                {activeTab === 'following' ? 'From people you follow' : activeTab === 'friends' ? 'What your friends found useful' : activeTab === 'communities' ? 'Find your clinical circle' : activeTab === 'video' ? 'Video, tuned to your interests' : activeTab === 'me' ? 'Your Community profile' : 'What dentistry is discussing'}
               </h2>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
                 {activeTab === 'following'
@@ -107,19 +107,19 @@ export function CommunityPage() {
                       ? 'Browse public communities, revisit joined spaces, and access private conversations.'
                       : activeTab === 'video'
                         ? 'Topics you engage with appear more often, while other clinical areas stay in the mix.'
-                        : activeTab === 'settings'
-                          ? 'Review your posts and manage likes, reposts, follows, and friends in one place.'
+                        : activeTab === 'me'
+                          ? 'View your profile, connections, posts, and personal Community settings.'
                   : 'Clinical conversations, ranked by community engagement.'}
               </p>
             </div>
-            {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'settings' && <div className="hidden sm:block"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
+            {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'me' && <div className="hidden sm:block"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
           </div>
 
-          {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'settings' && <div className="mt-5 sm:hidden"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
+          {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'me' && <div className="mt-5 sm:hidden"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
 
-          {activeTab !== 'communities' && activeTab !== 'settings' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
+          {activeTab !== 'communities' && activeTab !== 'me' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
 
-          {activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'settings' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunitySettings userId={user.id} /></Suspense> : <div className="mt-7 space-y-4" aria-live="polite">
+          {activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'me' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityMe userId={user.id} profile={profile} /></Suspense> : <div className="mt-7 space-y-4" aria-live="polite">
             {postsQuery.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
             {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (
@@ -138,7 +138,7 @@ export function CommunityPage() {
             {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user?.id} autoplayVideos={activeTab==='video'&&preferences.data?.autoplay_videos} />)}
           </div>}
 
-          {activeTab !== 'communities' && activeTab !== 'settings' && postsQuery.hasNextPage && (
+          {activeTab !== 'communities' && activeTab !== 'me' && postsQuery.hasNextPage && (
             <div className="mt-6 flex justify-center">
               <Button variant="outline" disabled={postsQuery.isFetchingNextPage} onClick={() => void postsQuery.fetchNextPage()}>
                 {postsQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}

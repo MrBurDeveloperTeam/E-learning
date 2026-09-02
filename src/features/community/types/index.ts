@@ -58,6 +58,7 @@ export interface CommunityComment {
   is_pinned: boolean
   is_best_answer: boolean
   deleted_at: string | null
+  viewer_is_followed_or_friend?: boolean
   viewer_has_liked: boolean
   profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'username' | 'avatar_url' | 'is_verified'> | null
   media: Array<{ id: string; file_name: string; mime_type: string; public_url: string }>

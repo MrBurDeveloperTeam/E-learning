@@ -57,7 +57,6 @@ export function CommunityPostCard({
   userId?: string;
   autoplayVideos?: boolean;
 }) {
-  const [commentsOpen, setCommentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false),
     [editTitle, setEditTitle] = useState(post.title ?? ""),
     [editBody, setEditBody] = useState(post.body ?? "");
@@ -287,11 +286,13 @@ export function CommunityPostCard({
                 size="icon-sm"
                 aria-label="Delete post"
                 disabled={actions.isPending}
-                onClick={() =>
+                onClick={() => {
+                  if (!window.confirm("Delete this post? It will no longer be visible in the Community feed.")) return;
                   void actions
                     .mutateAsync({ action: "delete", postId: post.id })
-                    .then(() => toast.success("Post moved to deleted items."))
-                }
+                    .then(() => toast.success("Post deleted."))
+                    .catch((error) => toast.error(error instanceof Error ? error.message : "Could not delete post."));
+                }}
               >
                 <Trash2 />
               </Button>
@@ -300,9 +301,9 @@ export function CommunityPostCard({
           <Button
             variant="ghost"
             size="sm"
-            aria-expanded={commentsOpen}
+            aria-expanded="true"
             aria-controls={`comments-${post.id}`}
-            onClick={() => setCommentsOpen((open) => !open)}
+            onClick={() => document.getElementById(`comments-${post.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })}
           >
             <MessageCircle /> {post.comment_count}
           </Button>
@@ -372,8 +373,7 @@ export function CommunityPostCard({
             )}
           </div>
         )}
-        {commentsOpen && (
-          <div id={`comments-${post.id}`}>
+        <div id={`comments-${post.id}`}>
             <Suspense
               fallback={
                 <div
@@ -391,8 +391,7 @@ export function CommunityPostCard({
                 postAuthorId={post.author_id}
               />
             </Suspense>
-          </div>
-        )}
+        </div>
       </div>
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>

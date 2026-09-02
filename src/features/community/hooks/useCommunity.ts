@@ -87,6 +87,7 @@ export function useCreateCommunityComment(postId: string, userId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['community-comments', postId] })
+      queryClient.invalidateQueries({ queryKey: ['community-posts'] })
       queryClient.invalidateQueries({ queryKey: ['admin-community-comments'] })
     },
   })
