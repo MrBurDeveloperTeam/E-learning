@@ -8,6 +8,7 @@ export interface DentalVideo {
   channel_name: string;
   published_at: string; // ISO timestamp string
   category: string | null;
+  language: string | null;
   confidence_score: number | null;
   tags: string[] | null;
   needs_review: boolean;
@@ -32,6 +33,7 @@ export interface DentalCategory {
 /** Query parameters for fetching paginated dental videos. */
 export interface DentalVideosParams {
   category?: string;
+  language?: string;
   q?: string;
   page?: number;
   limit?: number;

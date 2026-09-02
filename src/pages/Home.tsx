@@ -17,9 +17,29 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import usePageDurationTracker, { type PageViewLogMeta } from '@/hooks/usePageDurationTracker'
 import { logElearningActivity } from '@/lib/logActivityToOdoo'
+import { Languages } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+const VIDEO_LANGUAGES = [
+  { value: 'All', label: 'All languages' },
+  { value: 'en', label: 'English' },
+  { value: 'zh', label: 'Chinese' },
+  { value: 'th', label: 'Thai' },
+  { value: 'ko', label: 'Korean' },
+  { value: 'ja', label: 'Japanese' },
+  { value: 'ms', label: 'Malay' },
+  { value: 'ar', label: 'Arabic' },
+] as const
 
 export function Home() {
   const [category, setCategory] = useState<string>('All')
+  const [language, setLanguage] = useState<string>('All')
   const [query, setQuery] = useState('')
   const profile = useAuthStore((state) => state.profile)
   const user = useAuthStore((state) => state.user)
@@ -58,10 +78,11 @@ export function Home() {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['unified-videos', category, query],
+    queryKey: ['unified-videos', category, language, query],
     queryFn: ({ pageParam = 0 }) =>
       fetchUnifiedVideoPage({
         category: category === 'All' ? undefined : category,
+        language: language === 'All' ? undefined : language,
         q: query || undefined,
         page: pageParam,
       }),
@@ -176,7 +197,7 @@ export function Home() {
       )}
 
       <div className="mx-auto max-w-[1400px] px-4 py-4 md:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_200px] sm:items-center lg:grid-cols-[minmax(0,1fr)_200px_minmax(280px,448px)]">
           <div>
             <h1 className="text-lg font-medium text-foreground">All videos</h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -185,11 +206,37 @@ export function Home() {
                 : `Browsing all videos in ${category}.`}
             </p>
           </div>
-          <SearchBar
-            value={query}
-            onChange={setQuery}
-            onClear={() => setQuery('')}
-          />
+          <div className="relative">
+            <Languages
+              className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Select
+              value={language}
+              onValueChange={(value) => setLanguage(value ?? 'All')}
+            >
+              <SelectTrigger
+                className="h-12 w-full cursor-pointer rounded-xl bg-card pl-9 pr-3"
+                aria-label="Filter videos by language"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start" className="rounded-xl">
+                {VIDEO_LANGUAGES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-1">
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              onClear={() => setQuery('')}
+            />
+          </div>
         </div>
       </div>
 
@@ -211,7 +258,9 @@ export function Home() {
               emptyTitle="No videos found"
               emptyDescription={
                 query
-                  ? `No videos matched "${query}". Try another search term.`
+                  ? `No ${language === 'All' ? '' : `${VIDEO_LANGUAGES.find((item) => item.value === language)?.label ?? language} `}videos matched "${query}". Try another search term.`
+                  : language !== 'All'
+                    ? `No ${VIDEO_LANGUAGES.find((item) => item.value === language)?.label ?? language} videos are available for this selection.`
                   : category === 'All'
                     ? 'No videos are available yet.'
                     : `No videos are available in ${category} yet.`

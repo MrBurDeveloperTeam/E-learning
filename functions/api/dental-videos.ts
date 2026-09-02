@@ -156,6 +156,11 @@ export async function onRequestGet(context: {
     // -----------------------------------------------------------------------
     const category = url.searchParams.get("category");
     const q = url.searchParams.get("q");
+    const languageParam = url.searchParams.get("language");
+    const language = languageParam?.trim().toLowerCase() || null;
+    if (language && !/^[a-z]{2,3}$/.test(language)) {
+      return jsonResponse({ error: "Invalid language filter" }, 400);
+    }
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
     const limit = Math.min(
       50,
@@ -176,6 +181,41 @@ export async function onRequestGet(context: {
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
+
+    // Language filtering uses the standard query builder so it works together
+    // with search without requiring a separate language-aware search RPC.
+    if (q && language) {
+      const escapedQuery = q.trim().replace(/[%_,]/g, "");
+      if (!escapedQuery) {
+        return jsonResponse({ data: [], total: 0, page, limit, totalPages: 0 });
+      }
+      let languageSearchQuery = supabase
+        .from("dental_videos")
+        .select("*", { count: "exact" })
+        .eq("needs_review", false)
+        .eq("language", language)
+        .or(`title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`);
+
+      languageSearchQuery = applyCategoryFilter(languageSearchQuery, category);
+      languageSearchQuery = languageSearchQuery
+        .order(sortColumn, { ascending })
+        .range(from, to);
+
+      const { data, error, count } = await languageSearchQuery;
+      if (error) {
+        console.error("dental-videos language search error:", error);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      const total = count ?? 0;
+      return jsonResponse({
+        data: (data || []).map(normalizeVideoCategory),
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    }
 
     // If full-text search is requested, use an RPC call for the tsquery.
     // Otherwise use the standard query builder.
@@ -306,6 +346,10 @@ export async function onRequestGet(context: {
 
     if (category) {
       query = applyCategoryFilter(query, category);
+    }
+
+    if (language) {
+      query = query.eq("language", language);
     }
 
     query = query.order(sortColumn, { ascending }).range(from, to);

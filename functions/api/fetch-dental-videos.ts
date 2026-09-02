@@ -95,6 +95,48 @@ function isDentalVideo(video: any): boolean {
   return DENTAL_RELEVANCE_TERMS.some((term) => metadata.includes(term));
 }
 
+function normalizeLanguageCode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase().replace(/_/g, "-");
+  if (!normalized || normalized === "und" || normalized === "zxx") return null;
+
+  const baseLanguage = normalized.split("-")[0];
+  if (!/^[a-z]{2,3}$/.test(baseLanguage)) return null;
+
+  // YouTube may still return the legacy Hebrew code.
+  return baseLanguage === "iw" ? "he" : baseLanguage;
+}
+
+function detectLanguageFromMetadata(title: string, description: string): string {
+  const metadata = `${title} ${description}`;
+  const lowerMetadata = metadata.toLowerCase();
+
+  if (/[ก-๙]/u.test(metadata)) return "th";
+  if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/u.test(metadata)) return "ko";
+  if (/[ぁ-ゖァ-ヺ]/u.test(metadata)) return "ja";
+  if (/[؀-ۿ]/u.test(metadata)) return "ar";
+  if (/[ऀ-ॿ]/u.test(metadata)) return "hi";
+  if (/[А-Яа-яЁё]/u.test(metadata)) return "ru";
+  if (/[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệịỉĩọỏốồổỗộớờởỡợụủũứừửữựỳỵỷỹ]/u.test(lowerMetadata)) return "vi";
+  if (/[一-龯]/u.test(metadata)) return "zh";
+  if (/\b(pergigian|gigi|mulut|rawatan|klinikal|kesihatan|kanak-kanak|pembedahan|pengurusan|kebersihan)\b/u.test(lowerMetadata)) return "ms";
+  if (/\b(kedokteran|dokter gigi|kesehatan gigi|perawatan gigi|pencabutan|rongga mulut)\b/u.test(lowerMetadata)) return "id";
+  if (/\b(tratamento dentário|tratamento dentario|cirurgia dentária|cirurgia dentaria|saúde bucal|saude bucal)\b/u.test(lowerMetadata)) return "pt";
+  if (/\b(odontología|dental en español|tratamiento dental|cirugía dental|cirugia dental|dientes)\b/u.test(lowerMetadata)) return "es";
+  if (/\b(dentisterie|médecin-dentiste|chirurgie dentaire|soins dentaires|hygiène bucco-dentaire)\b/u.test(lowerMetadata)) return "fr";
+  if (/\b(zahnmedizin|zahnarzt|zahnbehandlung|wurzelbehandlung|mundhygiene|zahnimplantat)\b/u.test(lowerMetadata)) return "de";
+  if (/\b(diş|dişçilik|diş hekimi|ağız sağlığı|kanal tedavisi|implant tedavisi)\b/u.test(lowerMetadata)) return "tr";
+
+  return "en";
+}
+
+function detectVideoLanguage(video: any): string {
+  const snippet = video?.snippet || {};
+  return normalizeLanguageCode(snippet.defaultAudioLanguage)
+    || normalizeLanguageCode(snippet.defaultLanguage)
+    || detectLanguageFromMetadata(snippet.title || "", snippet.description || "");
+}
+
 function describeYouTubeFailure(failure: YouTubeFailure): string {
   const context = failure.keyword ? ` for “${failure.keyword}”` : "";
   return `${failure.reason}${context}: ${failure.message}`;
@@ -278,6 +320,7 @@ export async function onRequest(context: any) {
         channel_name: video.snippet.channelTitle,
         published_at: video.snippet.publishedAt,
         category,
+        language: detectVideoLanguage(video),
         confidence_score: 1,
         tags: [category, "YouTube", "Auto imported"],
         needs_review: false,
@@ -292,12 +335,13 @@ export async function onRequest(context: any) {
       channel_name: string;
       published_at: string;
       category: DentalCategory;
+      language: string;
     }> = [];
     if (rowsToInsert.length > 0) {
       const { data, error: insertError } = await supabase
         .from("dental_videos")
         .upsert(rowsToInsert, { onConflict: "video_id", ignoreDuplicates: true })
-        .select("id,video_id,title,thumbnail_url,channel_name,published_at,category");
+        .select("id,video_id,title,thumbnail_url,channel_name,published_at,category,language");
       if (insertError) {
         console.error("fetch-dental-videos upsert error:", insertError);
         return jsonResponse({ error: "The videos were found, but Supabase could not save them.", code: "DATABASE_INSERT_FAILED" }, 500);
