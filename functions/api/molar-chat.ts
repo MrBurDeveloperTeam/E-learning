@@ -19,8 +19,7 @@
 // functions/api/sso.ts for a different, cross-app SSO token type) into
 // this endpoint's configuration surface.
 //
-// Two request modes, mirroring the two pre-existing client functions
-// exactly (prompts/model unchanged, only relocated):
+// Three request modes:
 //   - "general": free-form General Chat (chatWithMolarAI's prior body).
 //   - "grounded": grounded Data-Chat phrasing over host-selected,
 //     already-minimized facts (chatWithGroundedElearningFacts's prior
@@ -28,6 +27,11 @@
 //     which video/creator update matters, and never computes view counts
 //     — it only performs language generation over facts the client
 //     already resolved deterministically before calling here.
+//   - "capability_route" (SNABBB-CROSS-APP-MOLAR-AI-INTELLIGENCE-ENHANCEMENT):
+//     semantic capability SELECTION only — this mode NEVER sees a video
+//     row. Returns STRUCTURED JSON only, validated server-side against
+//     the caller-supplied capability id allowlist. The client
+//     re-validates independently before executing anything.
 //
 // Deliberately independent from functions/api/categorize-dental-videos.ts
 // (a separate, unrelated feature with its own model and env binding) — no
@@ -116,13 +120,18 @@ Rules — follow ALL of these exactly:
 `
 }
 
-async function callGemini(env: any, apiKey: string, contents: unknown): Promise<string | null> {
+async function callGemini(
+  env: any,
+  apiKey: string,
+  contents: unknown,
+  generationConfig: Record<string, unknown> = { responseMimeType: 'text/plain' }
+): Promise<string | null> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents, generationConfig: { responseMimeType: 'text/plain' } }),
+      body: JSON.stringify({ contents, generationConfig }),
     }
   )
 
@@ -134,6 +143,62 @@ async function callGemini(env: any, apiKey: string, contents: unknown): Promise<
   const data: any = await res.json().catch(() => null)
   const text = data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '').join('') || ''
   return text || null
+}
+
+interface CapabilityDescriptor {
+  id: string
+  description: string
+}
+
+function isValidCapabilityList(value: unknown): value is CapabilityDescriptor[] {
+  if (!Array.isArray(value) || value.length === 0) return false
+  return value.every(
+    (c) =>
+      c &&
+      typeof c === 'object' &&
+      typeof (c as { id?: unknown }).id === 'string' &&
+      typeof (c as { description?: unknown }).description === 'string'
+  )
+}
+
+function buildCapabilityRouteSystemInstruction(
+  capabilities: CapabilityDescriptor[],
+  recentContext: string[],
+  previousCapability: string | null
+): string {
+  const capabilityList = capabilities.map((c) => `- "${c.id}": ${c.description}`).join('\n')
+  const contextBlock =
+    recentContext.length > 0 ? `\nRecent conversation (most recent last):\n${recentContext.map((c) => `- ${c}`).join('\n')}\n` : ''
+  const prevBlock = previousCapability ? `\nThe previous grounded capability in this conversation was "${previousCapability}".` : ''
+
+  return `
+You are a CAPABILITY ROUTER for an E-learning assistant. You do NOT have access to any video/creator data — you only decide which safe, pre-approved capability (if any) best answers the user's CURRENT message.
+
+Available capabilities:
+${capabilityList}
+${contextBlock}${prevBlock}
+
+Respond with JSON ONLY, matching this exact shape:
+{"route": "grounded" | "general_chat" | "clarification", "capability": <one of the capability ids above, or null>, "confidence": "high" | "low", "clarification": <a short natural clarifying question, or null>}
+
+Rules:
+- "route":"grounded" requires "capability" to be EXACTLY one of the ids listed above (copy it verbatim) and "confidence":"high".
+- Use "route":"clarification" (with "capability":null) ONLY when the message could reasonably mean two clearly different capabilities and you cannot tell which — write ONE short natural clarifying question.
+- Use "route":"general_chat" (with "capability":null) for anything that is not a request for one of the capabilities above — including general dental-education conversation, or a question about who watched/viewed a specific video (never select a capability for that).
+- Never invent a capability id that is not in the list above.
+- Output JSON only — no prose, no markdown code fence.
+`
+}
+
+const CAPABILITY_ROUTE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    route: { type: 'STRING', enum: ['grounded', 'general_chat', 'clarification'] },
+    capability: { type: 'STRING', nullable: true },
+    confidence: { type: 'STRING', enum: ['high', 'low'] },
+    clarification: { type: 'STRING', nullable: true },
+  },
+  required: ['route', 'confidence'],
 }
 
 export const onRequestOptions = async (context: any) => {
@@ -186,7 +251,7 @@ export const onRequestPost = async (context: any) => {
 
   const { mode } = (body ?? {}) as { mode?: unknown }
 
-  if (mode !== 'general' && mode !== 'grounded') {
+  if (mode !== 'general' && mode !== 'grounded' && mode !== 'capability_route') {
     return json(request, { ok: false, error: 'Invalid or missing mode.' }, 400)
   }
 
@@ -225,6 +290,81 @@ export const onRequestPost = async (context: any) => {
       return json(request, { ok: true, text })
     } catch (error) {
       console.error('[molar-chat] General chat provider error:', error)
+      return json(request, { ok: false, error: 'AI service request failed.' }, 502)
+    }
+  }
+
+  if (mode === 'capability_route') {
+    const { message, capabilities, recentContext, previousCapability } = body as {
+      message?: unknown
+      capabilities?: unknown
+      recentContext?: unknown
+      previousCapability?: unknown
+    }
+
+    if (typeof message !== 'string' || !message.trim()) {
+      return json(request, { ok: false, error: 'Message is required.' }, 400)
+    }
+    if (!isValidCapabilityList(capabilities)) {
+      return json(request, { ok: false, error: 'Invalid capabilities list.' }, 400)
+    }
+    const boundedContext =
+      Array.isArray(recentContext) && recentContext.every((c) => typeof c === 'string')
+        ? (recentContext as string[]).slice(-6)
+        : []
+    const prevCap = typeof previousCapability === 'string' ? previousCapability : null
+
+    try {
+      const systemInstruction = buildCapabilityRouteSystemInstruction(capabilities, boundedContext, prevCap)
+
+      const contents = [
+        { role: 'user', parts: [{ text: systemInstruction }] },
+        { role: 'model', parts: [{ text: '{"route":"general_chat","capability":null,"confidence":"high","clarification":null}' }] },
+        { role: 'user', parts: [{ text: message }] },
+      ]
+
+      const raw = await callGemini(env, apiKey, contents, {
+        responseMimeType: 'application/json',
+        responseSchema: CAPABILITY_ROUTE_SCHEMA,
+      })
+      if (!raw || !raw.trim()) {
+        return json(request, { ok: false, error: 'Empty response from AI service.' }, 502)
+      }
+
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(raw)
+      } catch {
+        return json(request, { ok: false, error: 'Router returned invalid JSON.' }, 502)
+      }
+
+      const route = (parsed as { route?: unknown })?.route
+      const capability = (parsed as { capability?: unknown })?.capability
+      const confidence = (parsed as { confidence?: unknown })?.confidence
+      const clarification = (parsed as { clarification?: unknown })?.clarification
+
+      if (route !== 'grounded' && route !== 'general_chat' && route !== 'clarification') {
+        return json(request, { ok: false, error: 'Router returned an unsupported route.' }, 502)
+      }
+      if (confidence !== 'high' && confidence !== 'low') {
+        return json(request, { ok: false, error: 'Router returned an invalid confidence.' }, 502)
+      }
+      const allowedIds = new Set(capabilities.map((c) => c.id))
+      if (route === 'grounded') {
+        if (typeof capability !== 'string' || !allowedIds.has(capability)) {
+          return json(request, { ok: false, error: 'Router returned an unknown capability.' }, 502)
+        }
+      }
+
+      return json(request, {
+        ok: true,
+        route,
+        capability: route === 'grounded' ? capability : null,
+        confidence,
+        clarification: route === 'clarification' && typeof clarification === 'string' ? clarification : null,
+      })
+    } catch (error) {
+      console.error('[molar-chat] Capability route provider error:', error)
       return json(request, { ok: false, error: 'AI service request failed.' }, 502)
     }
   }

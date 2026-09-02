@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 type ChatPart = { text: string };
 type ChatMessage = { role: 'user' | 'model'; parts: ChatPart[] };
 
-async function invokeMolarChat(payload: Record<string, unknown>): Promise<string> {
+async function invokeMolarChatRaw(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token;
   if (!accessToken) {
@@ -30,13 +30,18 @@ async function invokeMolarChat(payload: Record<string, unknown>): Promise<string
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json().catch(() => null) as { ok?: boolean; text?: string; error?: string } | null;
+  const data = await res.json().catch(() => null) as Record<string, unknown> | null;
 
   if (!res.ok || !data?.ok) {
-    throw new Error(data?.error || `AI service request failed (${res.status})`);
+    throw new Error((data?.error as string | undefined) || `AI service request failed (${res.status})`);
   }
 
-  return data.text ?? '';
+  return data;
+}
+
+async function invokeMolarChat(payload: Record<string, unknown>): Promise<string> {
+  const data = await invokeMolarChatRaw(payload);
+  return (data.text as string | undefined) ?? '';
 }
 
 export async function chatWithMolarAI(
@@ -84,4 +89,52 @@ export async function chatWithGroundedElearningFacts(
   facts: unknown
 ): Promise<string> {
   return invokeMolarChat({ mode: 'grounded', question, intent, facts });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SEMANTIC CAPABILITY ROUTING — selection only, never data.
+//
+// Calls the Pages Function's "capability_route" mode: the message, a
+// small set of {id, description} capability descriptors, a few recent
+// model-safe conversation turns, and the previously-selected capability
+// id (if any). Never sees a video/creator-update row.
+//
+// THROWS on any failure exactly like chatWithGroundedElearningFacts —
+// the caller (see dataChat/semantic/matchElearningCapabilityLLM.ts)
+// must fall back to the local keyword capability matcher on any throw.
+export interface CapabilityRouteResult {
+  route: 'grounded' | 'general_chat' | 'clarification';
+  capability: string | null;
+  confidence: 'high' | 'low';
+  clarification: string | null;
+}
+
+interface CapabilityDescriptor {
+  id: string;
+  description: string;
+}
+
+export async function routeElearningCapability(
+  message: string,
+  capabilities: CapabilityDescriptor[],
+  recentContext: string[],
+  previousCapability: string | null
+): Promise<CapabilityRouteResult> {
+  const data = await invokeMolarChatRaw({
+    mode: 'capability_route',
+    message,
+    capabilities,
+    recentContext,
+    previousCapability,
+  });
+
+  const { route, capability, confidence, clarification } = data as unknown as CapabilityRouteResult;
+  if (route !== 'grounded' && route !== 'general_chat' && route !== 'clarification') {
+    throw new Error('Capability routing returned an unsupported route');
+  }
+  if (confidence !== 'high' && confidence !== 'low') {
+    throw new Error('Capability routing returned an invalid confidence');
+  }
+
+  return { route, capability: route === 'grounded' ? capability : null, confidence, clarification: clarification ?? null };
 }

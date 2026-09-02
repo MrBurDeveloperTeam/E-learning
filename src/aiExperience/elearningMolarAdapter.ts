@@ -36,6 +36,7 @@ import {
 import { formatGroundedElearningFallback } from './dataChat/utils/formatGroundedElearningFallback';
 import { resolveElearningFollowUp } from './dataChat/router/resolveElearningFollowUp';
 import { matchElearningCapability } from './dataChat/semantic/matchElearningCapability';
+import { matchElearningCapabilityLLM } from './dataChat/semantic/matchElearningCapabilityLLM';
 import type { ElearningDataChatSources } from './dataChat/hooks/useElearningDataChatSources';
 import type { GroundedConversationContext } from './dataChat/context/groundedConversationContext';
 import type { ElearningDataIntent } from './dataChat/contracts/groundedDataResult';
@@ -143,14 +144,29 @@ export function createElearningMolarAdapter(deps: CreateElearningMolarAdapterDep
         return { text: followUp.text };
       }
 
-      // ── Tier D: Semantic capability router ────────────────────────────
-      const semanticRoute = matchElearningCapability(msg);
-      if (semanticRoute.type === 'grounded_capability') {
-        return executeGroundedIntent(semanticRoute.capability, msg);
+      // ── Tier D: Server-side LLM semantic capability router ────────────
+      const recentUserContext = request.history
+        .filter((m) => m.role === 'user')
+        .slice(-3)
+        .map((m) => m.text);
+      const llmRoute = await matchElearningCapabilityLLM(msg, recentUserContext, groundedContext?.lastIntent ?? null);
+
+      if (llmRoute.type === 'grounded_capability') {
+        return executeGroundedIntent(llmRoute.capability, msg);
       }
-      if (semanticRoute.type === 'clarification') {
-        const [a, b] = semanticRoute.candidates;
-        return { text: `Do you mean ${CLARIFICATION_LABEL[a]} or ${CLARIFICATION_LABEL[b]}?` };
+      if (llmRoute.type === 'clarification') {
+        return { text: llmRoute.text };
+      }
+      if (llmRoute.type !== 'general_chat') {
+        // ── Tier E: Local keyword capability router (fallback) ──────────
+        const semanticRoute = matchElearningCapability(msg);
+        if (semanticRoute.type === 'grounded_capability') {
+          return executeGroundedIntent(semanticRoute.capability, msg);
+        }
+        if (semanticRoute.type === 'clarification') {
+          const [a, b] = semanticRoute.candidates;
+          return { text: `Do you mean ${CLARIFICATION_LABEL[a]} or ${CLARIFICATION_LABEL[b]}?` };
+        }
       }
       // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ──
 
