@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Bookmark, Compass, Home, MessageCircleMore, PlaySquare, Search, Settings, ShieldCheck, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { Compass, Home, MessageCircleMore, PlaySquare, Search, Settings, ShieldCheck, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
@@ -50,7 +50,7 @@ export function CommunityPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,720px)] xl:grid-cols-[220px_minmax(0,720px)_280px] md:gap-6 md:px-6">
+      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 md:px-6">
         <aside className="hidden border-r border-border/70 py-7 pr-5 md:sticky md:top-14 md:block md:h-[calc(100vh-3.5rem)] md:self-start md:overflow-y-auto">
           <div className="mb-6 px-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Community</p>
@@ -147,16 +147,6 @@ export function CommunityPage() {
           )}
         </main>
 
-        <aside className="hidden py-8 xl:block">
-          <div className="sticky top-20 rounded-2xl border border-border bg-card p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Community standard</p>
-            <h2 className="mt-2 text-base font-semibold">Protect patient trust</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Remove patient-identifying details before posting clinical material. Posts are published immediately and may be reviewed if reported.</p>
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2.5 text-xs text-secondary-foreground">
-              <Bookmark className="size-4 text-primary" /> Saved posts stay private to you.
-            </div>
-          </div>
-        </aside>
       </div>
     </div>
   )
