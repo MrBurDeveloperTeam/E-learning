@@ -4,6 +4,7 @@ import {
   createRootRoute,
   Outlet,
 } from '@tanstack/react-router'
+import { lazy, Suspense } from 'react'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Home } from '@/pages/Home'
 import { Landing } from '@/pages/Landing'
@@ -30,6 +31,19 @@ import { PlatformSettings } from '@/pages/admin/PlatformSettings'
 import { DentalVideos } from '@/pages/DentalVideos'
 import { DentalVideoDetail } from '@/pages/DentalVideoDetail'
 import { NotFound } from '@/pages/NotFound'
+
+const CommunityPage = lazy(() => import('@/features/community/pages/CommunityPage').then(module => ({ default: module.CommunityPage })))
+const CommunityAdminPage = lazy(() => import('@/features/community/pages/CommunityAdminPage').then(module => ({ default: module.CommunityAdminPage })))
+const CommunityPostDetailPage = lazy(() => import('@/features/community/pages/CommunityPostDetailPage').then(module => ({ default: module.CommunityPostDetailPage })))
+const CommunitySpacePage = lazy(() => import('@/features/community/pages/CommunitySpacePage').then(module => ({ default: module.CommunitySpacePage })))
+
+function CommunityRouteFallback() {
+  return <div className="flex min-h-screen items-center justify-center bg-background"><div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" role="status" aria-label="Loading Community" /></div>
+}
+
+function LazyCommunityRoute({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<CommunityRouteFallback />}>{children}</Suspense>
+}
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -180,6 +194,25 @@ const notificationsRoute = createRoute({
   ),
 })
 
+const communityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/community',
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: search.tab === 'following' || search.tab === 'friends' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'settings' ? search.tab : undefined,
+    q: typeof search.q === 'string' && search.q ? search.q.slice(0, 120) : undefined,
+    topic: typeof search.topic === 'string' && search.topic !== 'all' ? search.topic : undefined,
+    sort: search.sort === 'newest' || search.sort === 'popular' ? search.sort : undefined,
+  }),
+  component: () => (
+    <ProtectedRoute>
+      <LazyCommunityRoute><CommunityPage /></LazyCommunityRoute>
+    </ProtectedRoute>
+  ),
+})
+
+const communityPostRoute = createRoute({getParentRoute:()=>rootRoute,path:'/community/post/$postId',component:()=><ProtectedRoute><LazyCommunityRoute><CommunityPostDetailPage/></LazyCommunityRoute></ProtectedRoute>})
+const communitySpaceRoute = createRoute({getParentRoute:()=>rootRoute,path:'/community/$communitySlug',component:()=><ProtectedRoute><LazyCommunityRoute><CommunitySpacePage/></LazyCommunityRoute></ProtectedRoute>})
+
 // ─── Admin routes ─────────────────────────────────────
 
 const adminRoute = createRoute({
@@ -208,6 +241,16 @@ const adminContentRoute = createRoute({
   component: () => (
     <ProtectedRoute requireAdmin>
       <ContentReview />
+    </ProtectedRoute>
+  ),
+})
+
+const adminCommunityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/community',
+  component: () => (
+    <ProtectedRoute requireAdmin>
+      <LazyCommunityRoute><CommunityAdminPage /></LazyCommunityRoute>
     </ProtectedRoute>
   ),
 })
@@ -270,9 +313,13 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
   billingRoute,
   notificationsRoute,
+  communityRoute,
+  communityPostRoute,
+  communitySpaceRoute,
   adminRoute,
   adminApplicationsRoute,
   adminContentRoute,
+  adminCommunityRoute,
   adminUsersRoute,
   adminFetchVideosRoute,
   adminSettingsRoute,

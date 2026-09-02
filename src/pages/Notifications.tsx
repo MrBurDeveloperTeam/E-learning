@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStore } from '@/store/authStore'
-import { supabase } from '@/lib/supabase'
+import { fetchNotifications } from '@/lib/queries/notifications'
 import { cn, getDisplayName, getInitials, timeAgo } from '@/lib/utils'
 import {
   useMarkAllRead,
@@ -29,6 +29,35 @@ function getActionText(type: NotificationWithActor['type']) {
       return 'replied to your comment'
     case 'new_video':
       return 'uploaded a new video'
+    case 'community_comment_reply':
+      return 'replied to your Community comment'
+    case 'community_comment_like':
+      return 'liked your Community comment'
+    case 'community_mention':
+      return 'mentioned you in Community'
+    case 'community_report_resolved':
+    case 'community_report_result':
+      return 'reviewed your Community report'
+    case 'community_post_like':
+      return 'liked your Community post'
+    case 'community_comment':
+      return 'commented on your Community post'
+    case 'community_reply':
+      return 'replied to your Community comment'
+    case 'community_friend_accepted':
+      return 'accepted your friend request'
+    case 'community_join_request':
+      return 'requested to join your Community'
+    case 'community_join_decision':
+      return 'reviewed your Community join request'
+    case 'community_message':
+      return 'sent you a Community message'
+    case 'community_post_review':
+      return 'reviewed your Community post'
+    case 'community_verification_result':
+      return 'reviewed your professional verification application'
+    case 'community_appeal_result':
+      return 'reviewed your Community appeal'
     default:
       return 'sent you a notification'
   }
@@ -58,24 +87,7 @@ export function Notifications() {
   const { data: unreadCount = 0 } = useUnreadCount()
   const notificationsQuery = useQuery({
     queryKey: ['notifications-full', profile?.user_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select(`
-          *,
-          profiles!notifications_actor_id_fkey (
-            user_id, name, full_name, username, avatar_url
-          ),
-          videos (
-            id, title, thumbnail_url
-          )
-        `)
-        .eq('recipient_id', profile!.user_id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      return (data ?? []) as NotificationWithActor[]
-    },
+    queryFn: () => fetchNotifications(profile!.user_id, 200),
     enabled: !!profile?.user_id,
   })
 
@@ -88,7 +100,7 @@ export function Notifications() {
 
   function handleClick(notification: NotificationWithActor) {
     if (!notification.is_read) {
-      markRead.mutate(notification.id)
+      markRead.mutate(notification)
     }
 
     if (notification.type === 'new_follower') {
@@ -107,6 +119,8 @@ export function Notifications() {
         params: { videoId: notification.video_id },
       })
     }
+    if (notification.community_post_id) { void navigate({ to: '/community/post/$postId', params: { postId: notification.community_post_id } });return }
+    if(notification.type==='community_appeal_decided'||notification.type==='community_report_resolved')void navigate({to:'/community',search:{tab:'settings',q:undefined,topic:undefined,sort:undefined}})
   }
 
   return (
@@ -172,7 +186,7 @@ export function Notifications() {
 
               return (
                 <div
-                  key={notification.id}
+                  key={`${notification.source ?? 'platform'}:${notification.id}`}
                   onClick={() => handleClick(notification)}
                   className={cn(
                     'card p-4 flex items-start gap-4 cursor-pointer',
@@ -206,6 +220,11 @@ export function Notifications() {
                       <span className="font-medium">{actorName}</span>{' '}
                       {getActionText(notification.type)}
                     </p>
+                    {notification.message && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {notification.message}
+                      </p>
+                    )}
                     {notification.videos?.title && (
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {notification.videos.title}

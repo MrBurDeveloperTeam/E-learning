@@ -15,6 +15,7 @@ import { useProfileImage } from '@/hooks/useProfileImage';
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
+  { label: 'Community', path: '/community' },
   { label: 'Following', path: '/feed' },
   { label: 'Saved videos', path: '/saved' },
   { label: 'Categories', path: '/category' },

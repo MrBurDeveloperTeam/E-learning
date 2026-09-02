@@ -21,6 +21,14 @@ function getNotificationMessage(notification: NotificationWithActor) {
       return `${actorName} commented on your video`
     case 'new_reply':
       return `${actorName} replied to your comment`
+    case 'community_comment_reply':
+      return `${actorName} replied to your Community comment`
+    case 'community_comment_like':
+      return `${actorName} liked your Community comment`
+    case 'community_mention':
+      return `${actorName} mentioned you in Community`
+    case 'community_report_resolved':
+      return 'Your Community report was reviewed'
     case 'new_video':
       return `${actorName} uploaded a new video`
     default:
@@ -68,7 +76,7 @@ export function NotificationBell() {
   }, [])
 
   function handleNotificationClick(notification: NotificationWithActor) {
-    markRead.mutate(notification.id)
+    markRead.mutate(notification)
 
     if (notification.type === 'new_follower') {
       void navigate({
@@ -77,6 +85,10 @@ export function NotificationBell() {
           userId: notification.profiles?.user_id ?? notification.actor_id,
         },
       })
+    } else if (notification.community_post_id) {
+      void navigate({ to: '/community/post/$postId', params: { postId: notification.community_post_id } })
+    } else if (notification.type === 'community_appeal_decided' || notification.type === 'community_report_resolved') {
+      void navigate({ to: '/community', search: { tab: 'settings', q: undefined, topic: undefined, sort: undefined } })
     } else if (notification.video_id) {
       void navigate({
         to: '/watch/$videoId',
@@ -170,7 +182,7 @@ export function NotificationBell() {
 
                 return (
                   <div
-                    key={notification.id}
+                  key={`${notification.source ?? 'platform'}:${notification.id}`}
                     onClick={() => handleNotificationClick(notification)}
                     className={cn(
                       'flex items-start gap-3 px-4 py-3 cursor-pointer',

@@ -1,5 +1,6 @@
 node_modules
 .env
+.env.local
 .dev.vars
 dist
 .wrangler
@@ -7,3 +8,12 @@ dist
 /cloudflare
 __pycache__
 *.pyc
+
+# Local build and Supabase CLI state
+tsconfig.tsbuildinfo
+supabase/.temp/
+supabase/.branches/
+
+# Local-only database backups and fake data
+local-db-backups/
+supabase/seed.sql
