@@ -24,6 +24,7 @@
 import { buildLatestVideoPerformanceDataFacts } from '../providers/latestVideoPerformanceDataProvider';
 import { buildMostViewedVideoDataFacts } from '../providers/mostViewedVideoDataProvider';
 import { buildFollowedCreatorUpdatesDataFacts } from '../providers/followedCreatorUpdatesDataProvider';
+import { buildGeneralVideoListDataFacts } from '../providers/generalVideoListDataProvider';
 import type { ElearningDataChatSources } from '../hooks/useElearningDataChatSources';
 import type { ElearningDataIntent, GroundedDataResult } from '../contracts/groundedDataResult';
 
@@ -32,6 +33,19 @@ export function resolveElearningDataQuery(
   sources: ElearningDataChatSources
 ): GroundedDataResult<unknown> {
   const evaluatedAt = new Date().toISOString();
+
+  if (intent === 'elearning_general_video_list') {
+    if (sources.myVideosStatus !== 'ready') {
+      return { status: 'unavailable', intent, reasonCode: sources.myVideosStatus, evaluatedAt };
+    }
+    try {
+      const { facts, sourceRecordIds } = buildGeneralVideoListDataFacts(sources.myVideos);
+      return { status: 'ok', intent, facts, evaluatedAt, sourceRecordIds };
+    } catch (err) {
+      console.warn('[dataChat] elearning general-video-list evaluation failed:', err);
+      return { status: 'unavailable', intent, reasonCode: 'evaluation_error', evaluatedAt };
+    }
+  }
 
   if (intent === 'elearning_followed_creator_updates') {
     if (sources.socialStatus !== 'ready') {

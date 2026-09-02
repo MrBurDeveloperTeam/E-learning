@@ -16,7 +16,8 @@
 export type ElearningDataIntent =
   | 'elearning_latest_video_performance'
   | 'elearning_most_viewed_video'
-  | 'elearning_followed_creator_updates';
+  | 'elearning_followed_creator_updates'
+  | 'elearning_general_video_list';
 
 export type GroundedDataResult<TFacts> =
   | {

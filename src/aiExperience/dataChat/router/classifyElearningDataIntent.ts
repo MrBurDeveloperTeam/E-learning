@@ -14,11 +14,13 @@
 //      `video_views` at all.
 //   2. unsupported_parameter — view-count thresholds, "top N", date
 //      ranges.
-//   3. unsupported_scope — Creator Summary (deferred this slice), a
-//      general "list all my videos" request, and unsupported analytics
-//      metrics (watch time, engagement rate, etc.) that aren't part of
-//      Slice 1.
-//   4. matched — one of the three v1 intents.
+//   3. unsupported_scope — Creator Summary (deferred this slice) and
+//      unsupported analytics metrics (watch time, engagement rate, etc.)
+//      that aren't part of Slice 1.
+//   4. matched — one of the four v1 intents (including the general
+//      "list all my videos" request, backed by the same `['my-videos',
+//      userId]` cache entry Studio.tsx already loads — see
+//      ../providers/generalVideoListDataProvider.ts).
 //   5. no_match — falls through to existing predefined/legacy chat.
 
 import type { ElearningDataIntent } from '../contracts/groundedDataResult';
@@ -28,7 +30,7 @@ export type ElearningDataRouteResult =
   | { kind: 'unsupported_parameter'; reason: 'view_threshold' | 'top_n' | 'date_range' }
   | {
       kind: 'unsupported_scope';
-      reason: 'creator_summary_deferred' | 'general_video_list' | 'unsupported_metric';
+      reason: 'creator_summary_deferred' | 'unsupported_metric';
     }
   | { kind: 'unsupported_sensitive_scope'; reason: 'viewer_identity' }
   | { kind: 'no_match' };
@@ -77,13 +79,6 @@ const CREATOR_SUMMARY_PHRASES = [
   'summary of my content',
   'summarize my videos',
 ];
-const GENERAL_VIDEO_LIST_PHRASES = [
-  'show all my videos',
-  'list my videos',
-  'which videos have i uploaded',
-  'show my videos',
-  'all my videos',
-];
 const UNSUPPORTED_METRIC_PHRASES = [
   'watch time',
   'engagement rate',
@@ -107,6 +102,17 @@ const FOLLOWED_UPDATES_PHRASES = [
   'new videos from creators',
   'creators i follow',
   'new from people i follow',
+];
+const GENERAL_VIDEO_LIST_PHRASES = [
+  'show all my videos',
+  'list my videos',
+  'which videos have i uploaded',
+  'show my videos',
+  'all my videos',
+  'my uploaded videos',
+  'videos have i uploaded',
+  'what videos do i have',
+  'my video list',
 ];
 
 export function classifyElearningDataIntent(message: string): ElearningDataRouteResult {
@@ -139,9 +145,8 @@ export function classifyElearningDataIntent(message: string): ElearningDataRoute
   if (mentionsAny(msg, FOLLOWED_UPDATES_PHRASES)) {
     return { kind: 'matched', intent: 'elearning_followed_creator_updates' };
   }
-
   if (mentionsAny(msg, GENERAL_VIDEO_LIST_PHRASES)) {
-    return { kind: 'unsupported_scope', reason: 'general_video_list' };
+    return { kind: 'matched', intent: 'elearning_general_video_list' };
   }
 
   return { kind: 'no_match' };

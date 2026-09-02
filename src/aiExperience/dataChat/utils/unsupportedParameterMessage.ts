@@ -9,13 +9,10 @@ export function buildUnsupportedParameterMessage(reason: 'view_threshold' | 'top
 }
 
 export function buildUnsupportedScopeMessage(
-  reason: 'creator_summary_deferred' | 'general_video_list' | 'unsupported_metric'
+  reason: 'creator_summary_deferred' | 'unsupported_metric'
 ): string {
   if (reason === 'creator_summary_deferred') {
     return "I can currently check your latest-video and most-viewed performance, but not a complete creator summary yet.";
-  }
-  if (reason === 'general_video_list') {
-    return "I can't list all of your videos in data chat yet. I can check your latest video's performance or your most viewed video.";
   }
   return "That metric isn't available in data chat yet.";
 }

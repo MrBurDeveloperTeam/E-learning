@@ -41,10 +41,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
-import { fetchOwnVideoAnalyticsSnapshot, type OwnVideoAnalyticsSnapshot } from '@/lib/queries/videos';
+import { fetchOwnVideoAnalyticsSnapshot, fetchMyVideos, type OwnVideoAnalyticsSnapshot } from '@/lib/queries/videos';
 import { fetchNotifications } from '@/lib/queries/notifications';
 import { fetchFollowing } from '@/lib/queries/follows';
-import type { NotificationWithActor } from '@/types';
+import type { NotificationWithActor, VideoWithCreator } from '@/types';
 import type { NotificationCoverage, SourceStatus } from '../contracts/groundedDataResult';
 
 /** Must match `fetchNotifications`'s own `.limit(30)`
@@ -98,6 +98,15 @@ export interface ElearningDataChatSources {
   notificationCoverage: NotificationCoverage;
   notifications: NotificationWithActor[] | undefined;
   following: Array<{ following_id: string }> | undefined;
+  /** `['my-videos', userId]` — the SAME query Studio.tsx's `useMyVideos()`
+   *  already mounts (creator studio page), read passively here exactly
+   *  like the other three sources above: `enabled: false`, so this hook
+   *  never triggers its own fetch, only observes the shared cache entry
+   *  if some other already-mounted consumer populated it. Ownership is
+   *  enforced at the query source (`creator_id = userId`, see
+   *  `fetchMyVideos`), independent of `analyticsStatus`/`socialStatus`. */
+  myVideosStatus: SourceStatus;
+  myVideos: VideoWithCreator[] | undefined;
 }
 
 export function useElearningDataChatSources(): ElearningDataChatSources {
@@ -121,6 +130,12 @@ export function useElearningDataChatSources(): ElearningDataChatSources {
     enabled: false,
   });
 
+  const myVideosQuery = useQuery({
+    queryKey: ['my-videos', userId],
+    queryFn: () => fetchMyVideos(userId!),
+    enabled: false,
+  });
+
   if (!userId) {
     return {
       analyticsStatus: 'not_loaded',
@@ -129,6 +144,8 @@ export function useElearningDataChatSources(): ElearningDataChatSources {
       notificationCoverage: 'potentially_truncated',
       notifications: undefined,
       following: undefined,
+      myVideosStatus: 'not_loaded',
+      myVideos: undefined,
     };
   }
 
@@ -139,5 +156,7 @@ export function useElearningDataChatSources(): ElearningDataChatSources {
     notificationCoverage: deriveNotificationCoverage(notificationsQuery.data),
     notifications: notificationsQuery.data,
     following: followingQuery.data,
+    myVideosStatus: deriveSourceStatus(myVideosQuery),
+    myVideos: myVideosQuery.data,
   };
 }

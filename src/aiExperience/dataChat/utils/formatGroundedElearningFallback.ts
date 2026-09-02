@@ -8,6 +8,7 @@ import type { ElearningDataIntent } from '../contracts/groundedDataResult';
 import type { LatestVideoPerformanceDataFacts } from '../providers/latestVideoPerformanceDataProvider';
 import type { MostViewedVideoDataFacts } from '../providers/mostViewedVideoDataProvider';
 import type { FollowedCreatorUpdatesDataFacts } from '../providers/followedCreatorUpdatesDataProvider';
+import type { GeneralVideoListDataFacts } from '../providers/generalVideoListDataProvider';
 
 function pluralizeView(n: number): string {
   return n === 1 ? '1 view' : `${n} views`;
@@ -30,6 +31,17 @@ function formatFollowedUpdates(facts: FollowedCreatorUpdatesDataFacts): string {
   return `${facts.count === 1 ? 'There is 1 new update' : `There are ${facts.count} new updates`} from creators you follow.${truncation}\n${lines.join('\n')}`;
 }
 
+function formatGeneralVideoList(facts: GeneralVideoListDataFacts): string {
+  if (facts.count === 0) return "You haven't uploaded any videos yet.";
+  const breakdownParts = (['published', 'processing', 'unlisted', 'removed'] as const)
+    .filter((k) => facts.byStatus[k] > 0)
+    .map((k) => `${facts.byStatus[k]} ${k}`);
+  const breakdown = breakdownParts.length > 0 ? ` (${breakdownParts.join(', ')})` : '';
+  const truncation = facts.count > facts.shownCount ? ` Showing ${facts.shownCount} of ${facts.count}.` : '';
+  const lines = facts.videos.map((v) => `${v.title} — ${v.status}, ${pluralizeView(v.viewCount)}`);
+  return `You have ${facts.count} ${facts.count === 1 ? 'video' : 'videos'}${breakdown}.${truncation}\n${lines.join('\n')}`;
+}
+
 export function formatGroundedElearningFallback(intent: ElearningDataIntent, facts: unknown): string {
   switch (intent) {
     case 'elearning_latest_video_performance':
@@ -38,6 +50,8 @@ export function formatGroundedElearningFallback(intent: ElearningDataIntent, fac
       return formatMostViewed(facts as MostViewedVideoDataFacts);
     case 'elearning_followed_creator_updates':
       return formatFollowedUpdates(facts as FollowedCreatorUpdatesDataFacts);
+    case 'elearning_general_video_list':
+      return formatGeneralVideoList(facts as GeneralVideoListDataFacts);
     default:
       return "I couldn't format your answer right now.";
   }
