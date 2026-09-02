@@ -18,7 +18,6 @@ import { useAuthStore } from '@/store/authStore'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useElearningPersonalizedInsightState } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
-import { PersonalizedInsight } from '@/aiExperience/components/PersonalizedInsight'
 import { usePublishPersonalizedInsight, type PersonalizedInsightBridgeState } from '@/aiExperience/petDialogue/PersonalizedInsightBridge'
 import type { ElearningInsightCandidate } from '@/aiExperience/resolver/resolveElearningInsight'
 
@@ -34,11 +33,10 @@ export function Home() {
   // realtime insert, unfollow) or the own-video-analytics query resolves
   // — no session dedupe on the analytics candidates. See
   // src/aiExperience/hooks/useElearningPersonalizedInsight.ts. Uses the
-  // readiness-carrying variant (not_ready vs ready+candidate) so the
+  // readiness-carrying variant (not_ready vs ready+candidates) so the
   // proactive Cat reminder bridge below can tell "still loading" apart
-  // from "resolved, no candidate" — the inline banner just unwraps it.
+  // from "resolved, no candidates".
   const elearningInsightState = useElearningPersonalizedInsightState()
-  const elearningInsight = elearningInsightState.status === 'ready' ? elearningInsightState.candidate : null
   const markNotificationRead = useMarkRead()
 
   // Takes the candidate to act on explicitly — never closes over
@@ -100,7 +98,6 @@ export function Home() {
       elearningInsightState.status === 'ready'
         ? {
             status: 'ready',
-            candidate: elearningInsightState.candidate,
             candidates: elearningInsightState.candidates,
             onAction: handleElearningInsightAction,
           }
@@ -182,8 +179,6 @@ export function Home() {
   return (
     <>
       <Navbar />
-
-      <PersonalizedInsight candidate={elearningInsight} onAction={() => handleElearningInsightAction(elearningInsight)} />
 
       <div className="sticky top-14 z-40 border-b border-border bg-background/95 py-3 backdrop-blur">
         <div className="mx-auto max-w-[1400px] px-4 md:px-6">

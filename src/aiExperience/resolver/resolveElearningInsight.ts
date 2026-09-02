@@ -38,20 +38,9 @@
 // unknown analytics state cause this function to return `null` (rather
 // than fabricating "no videos"/"0 views").
 
-import {
-  evaluateFollowedCreatorPosted,
-  type FollowedCreatorPostedCandidate,
-} from '../providers/followedCreatorPostedProvider';
-import {
-  evaluateLatestVideoPerformance,
-  type LatestVideoPerformanceCandidate,
-} from '../providers/latestVideoPerformanceProvider';
-import {
-  evaluateMostViewedVideo,
-  type MostViewedVideoCandidate,
-} from '../providers/mostViewedVideoProvider';
-import type { ProjectedNotification } from '../utils/notificationProjection';
-import type { OwnVideoAnalyticsSnapshot } from '../../lib/queries/videos';
+import type { FollowedCreatorPostedCandidate } from '../providers/followedCreatorPostedProvider';
+import type { LatestVideoPerformanceCandidate } from '../providers/latestVideoPerformanceProvider';
+import type { MostViewedVideoCandidate } from '../providers/mostViewedVideoProvider';
 
 // A real discriminated union now that a second/third trigger exists — each
 // member has its own literal-narrowed `triggerId` (see each provider's
@@ -62,23 +51,3 @@ export type ElearningInsightCandidate =
   | FollowedCreatorPostedCandidate
   | LatestVideoPerformanceCandidate
   | MostViewedVideoCandidate;
-
-export function resolveElearningInsight(
-  notifications: ProjectedNotification[],
-  followingIds: Set<string>,
-  /** `undefined` = analytics not yet known (loading/error) — see the file
-   *  header. `null`/a snapshot = analytics is ready. */
-  ownVideoAnalytics: OwnVideoAnalyticsSnapshot | null | undefined
-): ElearningInsightCandidate | null {
-  const followedCreatorPosted = evaluateFollowedCreatorPosted(notifications, followingIds);
-  if (followedCreatorPosted) return followedCreatorPosted;
-
-  if (ownVideoAnalytics === undefined) return null;
-
-  const latestVideoPerformance = evaluateLatestVideoPerformance(
-    ownVideoAnalytics?.latest ?? null
-  );
-  if (latestVideoPerformance) return latestVideoPerformance;
-
-  return evaluateMostViewedVideo(ownVideoAnalytics?.mostViewed ?? null);
-}

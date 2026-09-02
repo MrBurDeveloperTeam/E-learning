@@ -55,11 +55,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     if (bridgeEntry.status === 'not_ready') {
       return { state: { status: 'not_ready' }, onAction: () => {} };
     }
-    // Falls back to the legacy single `bridgeEntry.candidate` when
-    // `candidates` isn't present, for defensive compatibility only.
-    const candidates = Array.isArray(bridgeEntry.candidates)
-      ? bridgeEntry.candidates
-      : (bridgeEntry.candidate ? [bridgeEntry.candidate] : []);
+    const candidates = Array.isArray(bridgeEntry.candidates) ? bridgeEntry.candidates : [];
     return {
       state: { status: 'ready', candidates },
       onAction: (candidate) => bridgeEntry.onAction(candidate),

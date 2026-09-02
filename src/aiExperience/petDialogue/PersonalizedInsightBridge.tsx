@@ -34,25 +34,17 @@ export type PersonalizedInsightBridgeState =
   | { status: 'not_ready' }
   | {
       status: 'ready';
-      candidate: ElearningInsightCandidate | null;
-      /** Additive (starvation fix): ordered dialogue pool across Followed
-       *  Creator Posted > Latest Video Performance > Most Viewed Video —
-       *  see buildElearningDialoguePool.ts. `candidates[0] ?? null` is
-       *  always identical to `candidate` above when no suppression
-       *  applies. Cat scans this via selectFirstEligibleDialogueCandidate
-       *  instead of only ever seeing the single inline winner; the inline
-       *  banner keeps reading `candidate` only, unaffected. */
+      /** Ordered dialogue pool across Followed Creator Posted > Latest
+       *  Video Performance > Most Viewed Video — see
+       *  buildElearningDialoguePool.ts. Cat scans this via
+       *  selectFirstEligibleDialogueCandidate. */
       candidates: ElearningInsightCandidate[];
       /** Home's own existing action logic (mark-read + navigate to
        *  /watch/$videoId) — reused verbatim, never reimplemented here.
-       *  Takes the candidate to act on explicitly (rather than closing
-       *  over whichever candidate resolveElearningInsight most recently
-       *  picked) so a caller — Cat included — always executes the action
-       *  (and, critically, marks the correct notification read) belonging
-       *  to the exact candidate it is currently showing, even when that
-       *  differs from the inline banner's own current winner (e.g. Cat is
-       *  showing a dismissal-revealed second unread notification while the
-       *  inline banner still shows the first). */
+       *  Takes the candidate to act on explicitly so Cat always executes
+       *  the action (and, critically, marks the correct notification
+       *  read) belonging to the exact candidate it is currently showing
+       *  (e.g. a dismissal-revealed second unread notification). */
       onAction: (candidate: ElearningInsightCandidate) => void;
     };
 

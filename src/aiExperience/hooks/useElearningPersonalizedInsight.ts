@@ -74,7 +74,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useFollowing } from '@/hooks/useFollow';
 import { fetchNotifications } from '@/lib/queries/notifications';
 import { fetchOwnVideoAnalyticsSnapshot } from '@/lib/queries/videos';
-import { resolveElearningInsight, type ElearningInsightCandidate } from '../resolver/resolveElearningInsight';
+import type { ElearningInsightCandidate } from '../resolver/resolveElearningInsight';
 import { buildElearningDialoguePool } from '../petDialogue/buildElearningDialoguePool';
 import { projectNotificationsForFollowedCreatorPosted } from '../utils/notificationProjection';
 
@@ -82,21 +82,12 @@ import { projectNotificationsForFollowedCreatorPosted } from '../utils/notificat
  *  already computes internally — added so callers (specifically the
  *  proactive Cat reminder bridge) can distinguish "still resolving" from
  *  "resolved, deterministically no candidate", which a plain `null` return
- *  cannot. The plain `ElearningInsightCandidate | null` shape below is
- *  unchanged and still what the existing inline PersonalizedInsight banner
- *  consumes — see useElearningPersonalizedInsightState below for the
- *  richer variant. `candidates` (starvation fix, additive) is the ordered
- *  Cat-only dialogue pool — see buildElearningDialoguePool.ts — and is
- *  never read by the inline banner. */
+ *  cannot. `candidates` is the ordered Cat-only dialogue pool — see
+ *  buildElearningDialoguePool.ts. */
 export type ElearningInsightState =
   | { status: 'not_ready' }
-  | { status: 'ready'; candidate: ElearningInsightCandidate | null; candidates: ElearningInsightCandidate[] };
+  | { status: 'ready'; candidates: ElearningInsightCandidate[] };
 
-/** Richer sibling of useElearningPersonalizedInsight below: same queries
- *  (React Query dedupes by key — calling both in the same render subscribes
- *  to the same cache entries, never issues a second network request),
- *  same resolver call, same readiness rules — just exposes the not_ready
- *  vs ready distinction instead of collapsing both into `null`. */
 export function useElearningPersonalizedInsightState(): ElearningInsightState {
   const profile = useAuthStore((state) => state.profile);
   const userId = profile?.user_id;
@@ -133,14 +124,13 @@ export function useElearningPersonalizedInsightState(): ElearningInsightState {
           : ownVideoAnalyticsQuery.data;
       return {
         status: 'ready',
-        candidate: resolveElearningInsight(projected, followingIds, ownVideoAnalytics),
         candidates: buildElearningDialoguePool(projected, followingIds, ownVideoAnalytics),
       };
     } catch (err) {
       // Pure-computation failure (no network call) against a malformed
       // row — deterministic "no insight this render", not a loading state.
       console.warn('[aiExperience] elearning personalized insight evaluation failed:', err);
-      return { status: 'ready', candidate: null, candidates: [] };
+      return { status: 'ready', candidates: [] };
     }
   }, [
     userId,
@@ -154,16 +144,4 @@ export function useElearningPersonalizedInsightState(): ElearningInsightState {
     ownVideoAnalyticsQuery.isError,
     ownVideoAnalyticsQuery.data,
   ]);
-}
-
-/** Thin derived wrapper, kept for any caller that only needs the plain
- *  candidate (never the readiness distinction) — delegates to
- *  useElearningPersonalizedInsightState() above so the underlying queries
- *  are declared exactly once, not duplicated across two hooks. Behavior is
- *  unchanged from before this hardening: `not_ready` and `ready+null` both
- *  surface as plain `null` here, exactly as the old inline implementation
- *  did. */
-export function useElearningPersonalizedInsight(): ElearningInsightCandidate | null {
-  const state = useElearningPersonalizedInsightState();
-  return state.status === 'ready' ? state.candidate : null;
 }
