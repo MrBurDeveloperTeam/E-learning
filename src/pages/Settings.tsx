@@ -32,6 +32,7 @@ import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { PasswordField } from '../components/ui/PasswordField'
 import { useTheme } from '../components/shared/ThemeProvider'
+import { useProfileImage } from '../hooks/useProfileImage'
 import type { CreatorApplication } from '../types'
 
 type SettingsTab =
@@ -154,6 +155,7 @@ function getPasswordStrength(password: string) {
 export function Settings() {
   const user = useAuthStore((s) => s.user)
   const profile = useAuthStore((s) => s.profile)
+  const { profileImageUrl } = useProfileImage(Boolean(user))
   const queryClient = useQueryClient()
   const { signOut } = useAuth()
   const updateProfile = useUpdateProfile()
@@ -232,9 +234,9 @@ export function Settings() {
       institution: profile?.institution ?? '',
       bio: profile?.bio ?? '',
     })
-    setAvatarPreviewUrl(profile?.avatar_url ?? null)
+    setAvatarPreviewUrl(profile?.avatar_url || profileImageUrl || null)
     setBackgroundPreviewUrl(profile?.background_url ?? null)
-  }, [profile, reset])
+  }, [profile, profileImageUrl, reset])
 
 
 

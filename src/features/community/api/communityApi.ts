@@ -258,7 +258,7 @@ export async function setCommunityPostInteraction(
 }
 
 export async function updateCommunityPost(input:{id:string;authorId:string;title:string;body:string;topic:CommunityPostTopic}): Promise<void>{
-  const update=await supabase.from(COMMUNITY_TABLES.posts).update({title:input.title.trim()||null,content:input.body.trim(),edited_at:new Date().toISOString()}).eq('id',input.id).eq('author_id',input.authorId)
+  const update=await supabase.from(COMMUNITY_TABLES.posts).update({title:input.title.trim()||null,content:input.body.trim(),updated_at:new Date().toISOString()}).eq('id',input.id).eq('author_id',input.authorId)
   if(update.error)throw update.error
   const topic=await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug',input.topic.replaceAll('_','-')).eq('is_active',true).maybeSingle()
   if(topic.error)throw topic.error
@@ -270,7 +270,7 @@ export async function updateCommunityPost(input:{id:string;authorId:string;title
   const addTopic=await supabase.from(COMMUNITY_TABLES.postTopics).insert({post_id:input.id,topic_id:topic.data.id,assignment_source:'author',assigned_by:input.authorId})
   if(addTopic.error)throw addTopic.error
 }
-export async function softDeleteCommunityPost(id:string,authorId:string): Promise<void>{const{error}=await supabase.from(COMMUNITY_TABLES.posts).update({moderation_status:'removed',edited_at:new Date().toISOString()}).eq('id',id).eq('author_id',authorId);if(error)throw error}
+export async function softDeleteCommunityPost(id:string,authorId:string): Promise<void>{const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).update({moderation_status:'removed',updated_at:new Date().toISOString()}).eq('id',id).eq('author_id',authorId).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('This post could not be deleted because it is no longer available or you do not have permission.')}
 // Sharing is performed by the Clipboard API. There is no share-event table or
 // RPC in the current production contract, so missing analytics must not block it.
 export async function recordCommunityPostShare(_id:string): Promise<void>{}
@@ -670,6 +670,25 @@ export async function fetchFollowingPeople(userId: string) {
   })
 }
 
+export async function searchCommunityPeople(userId:string,search:string){
+  const term=search.trim().replaceAll('%','').replaceAll('_','').replaceAll(',',' ')
+  if(term.length<2)return [] as Array<CommunityPerson&{username:string|null;viewer_is_following:boolean}>
+  const{data,error}=await supabase.from('public_profiles').select('user_id,full_name,name,username,avatar_url,is_verified').neq('user_id',userId).or(`full_name.ilike.%${term}%,name.ilike.%${term}%,username.ilike.%${term}%`).limit(20)
+  if(error)throw error
+  const profiles=await addCommunityVerification(data??[])
+  if(profiles.length===0)return []
+  const follows=await supabase.from(COMMUNITY_TABLES.follows).select('following_id').eq('follower_id',userId).in('following_id',profiles.map(profile=>profile.user_id))
+  if(follows.error)throw follows.error
+  const followed=new Set((follows.data??[]).map(row=>row.following_id))
+  return profiles.map(profile=>({...profile,viewer_is_following:followed.has(profile.user_id)}))
+}
+
+export async function followCommunityPerson(userId:string,followingId:string){
+  if(userId===followingId)throw new Error('You cannot follow your own profile.')
+  const{error}=await supabase.from(COMMUNITY_TABLES.follows).upsert({follower_id:userId,following_id:followingId},{onConflict:'follower_id,following_id',ignoreDuplicates:true})
+  if(error)throw error
+}
+
 export async function fetchFriends(userId: string) {
   const { data, error } = await supabase
     .from(COMMUNITY_TABLES.friendships)
@@ -709,5 +728,6 @@ export async function removeCommunitySettingRelation(section: Exclude<CommunityS
 }
 
 export async function restoreOwnCommunityPost(_id:string): Promise<void>{throw new CommunityBackendUnavailableError('Community post restoration')}
-export async function fetchCommunityPreferences(userId:string){const{data,error}=await supabase.from(COMMUNITY_TABLES.userSettings).select('allow_friend_requests,message_permission,show_likes_to_friends,show_reposts_to_friends,autoplay_videos').eq('user_id',userId).maybeSingle();if(error)throw error;return data?{allow_friend_requests:data.allow_friend_requests,allow_direct_messages:data.message_permission!=='nobody',show_friend_activity:data.show_likes_to_friends||data.show_reposts_to_friends,autoplay_videos:data.autoplay_videos}:{allow_friend_requests:true,allow_direct_messages:true,show_friend_activity:true,autoplay_videos:true}}
-export async function saveCommunityPreferences(userId:string,values:{allow_friend_requests:boolean;allow_direct_messages:boolean;show_friend_activity:boolean;autoplay_videos:boolean}){const{error}=await supabase.from(COMMUNITY_TABLES.userSettings).upsert({user_id:userId,allow_friend_requests:values.allow_friend_requests,message_permission:values.allow_direct_messages?'friends':'nobody',show_likes_to_friends:values.show_friend_activity,show_reposts_to_friends:values.show_friend_activity,autoplay_videos:values.autoplay_videos});if(error)throw error}
+export type CommunityMessagePermission='everyone'|'following'|'friends'|'nobody'
+export async function fetchCommunityPreferences(userId:string){const{data,error}=await supabase.from(COMMUNITY_TABLES.userSettings).select('allow_friend_requests,message_permission,show_likes_to_friends,show_reposts_to_friends,autoplay_videos').eq('user_id',userId).maybeSingle();if(error)throw error;const permission=data?.message_permission;return data?{allow_friend_requests:data.allow_friend_requests,message_permission:(permission==='following'||permission==='friends'||permission==='nobody'?'following'===permission?'following':permission:'everyone') as CommunityMessagePermission,show_friend_activity:data.show_likes_to_friends||data.show_reposts_to_friends,autoplay_videos:data.autoplay_videos}:{allow_friend_requests:true,message_permission:'everyone' as CommunityMessagePermission,show_friend_activity:true,autoplay_videos:true}}
+export async function saveCommunityPreferences(userId:string,values:{allow_friend_requests:boolean;message_permission:CommunityMessagePermission;show_friend_activity:boolean;autoplay_videos:boolean}){const{error}=await supabase.from(COMMUNITY_TABLES.userSettings).upsert({user_id:userId,allow_friend_requests:values.allow_friend_requests,message_permission:values.message_permission,show_likes_to_friends:values.show_friend_activity,show_reposts_to_friends:values.show_friend_activity,autoplay_videos:values.autoplay_videos});if(error)throw error}

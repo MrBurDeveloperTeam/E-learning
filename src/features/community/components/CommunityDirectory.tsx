@@ -23,7 +23,6 @@ import {
 } from "@/features/community/hooks/useCommunity";
 import type { CommunitySummary } from "@/features/community/types";
 import { cn } from "@/lib/utils";
-import { DirectMessages } from "@/features/community/components/DirectMessages";
 import { CommunityReportDialog } from "@/features/community/components/CommunityReportDialog";
 import {
   Dialog,
@@ -47,7 +46,7 @@ import {
 import { CommunityConfirmAction } from "@/features/community/components/CommunityConfirmAction";
 import { CommunityAppealDialog } from "@/features/community/components/CommunityAppealDialog";
 
-type DirectoryTab = "public" | "joined" | "messages";
+type DirectoryTab = "public" | "joined";
 
 function CommunityTile({
   community,
@@ -365,7 +364,6 @@ export function CommunityDirectory({ userId }: { userId: string }) {
           [
             ["public", "Public"],
             ["joined", "Joined"],
-            ["messages", "Messages"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -385,8 +383,7 @@ export function CommunityDirectory({ userId }: { userId: string }) {
           </button>
         ))}
       </div>
-      {tab !== "messages" && (
-        <div className="relative mt-3">
+      <div className="relative mt-3">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={directorySearch}
@@ -405,12 +402,9 @@ export function CommunityDirectory({ userId }: { userId: string }) {
               <X />
             </Button>
           )}
-        </div>
-      )}
+      </div>
 
-      {tab === "messages" ? (
-        <DirectMessages userId={userId} />
-      ) : directory.isLoading ? (
+      {directory.isLoading ? (
         <div className="flex min-h-64 items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Loader2, MessageCircleMore, Pencil, Send, Trash2 } from 'lucide-react'
+import { Loader2, MessageCircleMore, Pencil, Search, Send, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { useCommunityMessageActions, useDirectConversations, useDirectMessages, useFriends, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
+import { useCommunityMessageActions, useCommunityPeopleSearch, useDirectConversations, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
 import { cn } from '@/lib/utils'
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,11 +18,12 @@ export function DirectMessages({ userId }: { userId: string }) {
   const [selectedId, setSelectedId] = useState<string>()
   const [body, setBody] = useState('')
   const [friendId,setFriendId]=useState('')
+  const [peopleSearch,setPeopleSearch]=useState('')
   const [editingMessage,setEditingMessage]=useState<DirectMessage|null>(null),[editBody,setEditBody]=useState('')
   const [sendError,setSendError]=useState('')
   const [failedNonce,setFailedNonce]=useState<string|null>(null)
   const [online,setOnline]=useState(()=>navigator.onLine)
-  const friends=useFriends(userId)
+  const people=useCommunityPeopleSearch(userId,peopleSearch)
   const openConversation=useOpenDirectConversation(userId)
 
   useEffect(() => {
@@ -54,13 +56,13 @@ export function DirectMessages({ userId }: { userId: string }) {
 
   if (conversations.isLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
   if (!conversations.data?.length) {
-    return <div className="mt-4 rounded-2xl border border-border bg-card p-5"><EmptyState icon={<MessageCircleMore />} title="No conversations yet" description="Start a direct conversation with an accepted friend." /><div className="mx-auto flex max-w-md gap-2"><Select value={friendId} onValueChange={value=>setFriendId(value??'')}><SelectTrigger className="min-w-0 flex-1"><SelectValue placeholder="Choose a friend…" /></SelectTrigger><SelectContent>{friends.data?.map(friend=><SelectItem key={friend.user_id} value={friend.user_id}>{friend.full_name||friend.name||'Friend'}</SelectItem>)}</SelectContent></Select><Button disabled={!friendId||openConversation.isPending} onClick={()=>void startConversation()}>Start chat</Button></div></div>
+    return <div className="mt-4 rounded-2xl border border-border bg-card p-5"><EmptyState icon={<MessageCircleMore />} title="No conversations yet" description="Search for any Community member to start a private conversation." /><div className="mx-auto max-w-md space-y-2"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Search members…" className="pl-9"/></div><div className="flex gap-2"><Select value={friendId} onValueChange={value=>setFriendId(value??'')}><SelectTrigger className="min-w-0 flex-1"><SelectValue placeholder="Choose a member…" /></SelectTrigger><SelectContent>{people.data?.map(person=><SelectItem key={person.user_id} value={person.user_id}>{person.full_name||person.name||person.username||'Community member'}</SelectItem>)}</SelectContent></Select><Button disabled={!friendId||openConversation.isPending} onClick={()=>void startConversation()}>Start chat</Button></div></div></div>
   }
 
   return (
     <div className="mt-4 grid min-h-[520px] overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
       <aside className="border-b border-border md:border-b-0 md:border-r">
-        <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="flex gap-1 px-2 pb-2"><Select value={friendId} onValueChange={value=>setFriendId(value??'')}><SelectTrigger className="min-w-0 flex-1 text-xs" aria-label="Choose a friend"><SelectValue placeholder="New chat…" /></SelectTrigger><SelectContent>{friends.data?.map(friend=><SelectItem key={friend.user_id} value={friend.user_id}>{friend.full_name||friend.name||'Friend'}</SelectItem>)}</SelectContent></Select><Button size="sm" disabled={!friendId||openConversation.isPending} onClick={()=>void startConversation()}>Start</Button></div>
+        <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/><div className="flex gap-1"><Select value={friendId} onValueChange={value=>setFriendId(value??'')}><SelectTrigger className="min-w-0 flex-1 text-xs" aria-label="Choose a member"><SelectValue placeholder="New chat…" /></SelectTrigger><SelectContent>{people.data?.map(person=><SelectItem key={person.user_id} value={person.user_id}>{person.full_name||person.name||person.username||'Community member'}</SelectItem>)}</SelectContent></Select><Button size="sm" disabled={!friendId||openConversation.isPending} onClick={()=>void startConversation()}>Start</Button></div></div>
         <div className="flex gap-2 overflow-x-auto p-2 md:block md:space-y-1 md:overflow-visible">
           {conversations.data.map((conversation) => {
             const name = conversation.other_user.full_name || conversation.other_user.name || 'Friend'
