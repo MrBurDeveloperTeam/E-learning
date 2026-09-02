@@ -34,7 +34,9 @@ import {
   buildUnavailableMessage,
 } from './dataChat/utils/unsupportedParameterMessage';
 import { formatGroundedElearningFallback } from './dataChat/utils/formatGroundedElearningFallback';
+import { resolveElearningFollowUp } from './dataChat/router/resolveElearningFollowUp';
 import type { ElearningDataChatSources } from './dataChat/hooks/useElearningDataChatSources';
+import type { GroundedConversationContext } from './dataChat/context/groundedConversationContext';
 
 interface CreateElearningMolarAdapterDeps {
   /** App.tsx's existing `aiContext` string (module/route/session/user/email
@@ -54,7 +56,15 @@ function toGeminiHistory(history: AIMessage[]) {
 }
 
 export function createElearningMolarAdapter(deps: CreateElearningMolarAdapterDeps): AIAdapter {
+  // Grounded conversation context — lives only inside this closure (one
+  // per authenticated user; see
+  // dataChat/context/groundedConversationContext.ts's header).
+  let groundedContext: GroundedConversationContext | null = null;
+
   return {
+    reset() {
+      groundedContext = null;
+    },
     async sendMessage(request: AIRequest): Promise<AIResponse> {
       const msg = request.text.trim();
 
@@ -107,7 +117,23 @@ export function createElearningMolarAdapter(deps: CreateElearningMolarAdapterDep
           }
         }
 
+        groundedContext = {
+          appId: 'elearning',
+          lastIntent: dataRoute.intent,
+          presentedOrder: 'display',
+          lastUserQuestion: msg,
+          generation: (groundedContext?.generation ?? 0) + 1,
+          createdAt: new Date().toISOString(),
+        };
+
         return { text: dataChatResponseText };
+      }
+
+      // ── Tier C: Grounded conversational follow-up ────────────────────
+      const followUp = resolveElearningFollowUp(msg, groundedContext, deps.dataChatSources);
+      if (followUp && groundedContext) {
+        groundedContext = { ...groundedContext, presentedOrder: followUp.presentedOrder, lastUserQuestion: msg, generation: groundedContext.generation + 1 };
+        return { text: followUp.text };
       }
       // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ──
 
