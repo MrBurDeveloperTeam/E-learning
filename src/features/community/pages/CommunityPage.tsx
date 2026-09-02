@@ -51,7 +51,7 @@ export function CommunityPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,720px)] xl:grid-cols-[220px_minmax(0,720px)_280px] md:gap-6 md:px-6">
-        <aside className="hidden border-r border-border/70 py-7 pr-5 md:block">
+        <aside className="hidden border-r border-border/70 py-7 pr-5 md:sticky md:top-14 md:block md:h-[calc(100vh-3.5rem)] md:self-start md:overflow-y-auto">
           <div className="mb-6 px-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Community</p>
             <h1 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Clinical exchange</h1>
@@ -100,16 +100,16 @@ export function CommunityPage() {
               </h2>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
                 {activeTab === 'following'
-                  ? 'Reviewed posts from the professionals and peers you follow.'
+                  ? 'Posts from the professionals and peers you follow.'
                   : activeTab === 'friends'
-                    ? 'Reviewed posts your accepted friends liked or reposted.'
+                    ? 'Posts your accepted friends liked or reposted.'
                     : activeTab === 'communities'
                       ? 'Browse public communities, revisit joined spaces, and access private conversations.'
                       : activeTab === 'video'
                         ? 'Topics you engage with appear more often, while other clinical areas stay in the mix.'
                         : activeTab === 'settings'
                           ? 'Review your posts and manage likes, reposts, follows, and friends in one place.'
-                  : 'Reviewed clinical conversations, ranked by community engagement.'}
+                  : 'Clinical conversations, ranked by community engagement.'}
               </p>
             </div>
             {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'settings' && <div className="hidden sm:block"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
@@ -125,14 +125,14 @@ export function CommunityPage() {
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (
               <EmptyState
                 icon={activeTab === 'following' ? <UserRoundCheck /> : activeTab === 'friends' ? <UsersRound /> : activeTab === 'video' ? <PlaySquare /> : <Compass />}
-                title={activeTab === 'following' ? 'No posts from followed users yet' : activeTab === 'friends' ? 'No friend activity yet' : activeTab === 'video' ? 'No reviewed videos yet' : 'No reviewed posts yet'}
+                title={activeTab === 'following' ? 'No posts from followed users yet' : activeTab === 'friends' ? 'No friend activity yet' : activeTab === 'video' ? 'No community videos yet' : 'No posts yet'}
                 description={activeTab === 'following'
-                  ? 'Follow more people or return later when they publish a reviewed post.'
+                  ? 'Follow more people or return later when they publish a post.'
                   : activeTab === 'friends'
                     ? 'Accepted friends’ likes and reposts will appear here.'
                     : activeTab === 'video'
-                      ? 'Reviewed Community videos will appear here.'
-                  : 'Create the first post. It will appear here after admin review.'}
+                      ? 'Community videos will appear here.'
+                  : 'Create the first post to start the conversation.'}
               />
             )}
             {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user?.id} autoplayVideos={activeTab==='video'&&preferences.data?.autoplay_videos} />)}
@@ -151,7 +151,7 @@ export function CommunityPage() {
           <div className="sticky top-20 rounded-2xl border border-border bg-card p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Community standard</p>
             <h2 className="mt-2 text-base font-semibold">Protect patient trust</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Remove patient-identifying details before posting clinical material. Every new post is reviewed before publication.</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Remove patient-identifying details before posting clinical material. Posts are published immediately and may be reviewed if reported.</p>
             <div className="mt-4 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2.5 text-xs text-secondary-foreground">
               <Bookmark className="size-4 text-primary" /> Saved posts stay private to you.
             </div>

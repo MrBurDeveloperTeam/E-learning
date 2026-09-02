@@ -67,13 +67,6 @@ export function CommunityPostCard({
   const actions = useCommunityPostActions(userId);
   const authorName =
     post.profiles?.full_name || post.profiles?.name || "Community member";
-  const heat = Math.min(
-    100,
-    14 +
-      post.like_count * 12 +
-      post.comment_count * 18 +
-      post.repost_count * 22,
-  );
 
   async function toggle(
     table:
@@ -136,16 +129,7 @@ export function CommunityPostCard({
 
   return (
     <article className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-      <div
-        className="absolute inset-y-0 left-0 w-1 bg-muted"
-        aria-hidden="true"
-      >
-        <div
-          className="absolute bottom-0 w-full bg-primary transition-[height]"
-          style={{ height: `${heat}%` }}
-        />
-      </div>
-      <div className="p-5 pl-6 sm:p-6 sm:pl-7">
+      <div className="p-5 sm:p-6">
         {post.friend_activity && post.friend_activity.length > 0 && (
           <p className="mb-4 text-xs font-medium text-primary">
             {post.friend_activity_names?.join(", ") || "A friend"}{" "}
@@ -440,7 +424,7 @@ export function CommunityPostCard({
                 })
                 .then(() => {
                   setEditOpen(false);
-                  toast.success("Post updated and returned to review.");
+                  toast.success("Post updated.");
                 })
                 .catch((error) =>
                   toast.error(
@@ -451,7 +435,7 @@ export function CommunityPostCard({
                 )
             }
           >
-            Save and submit for review
+            Save changes
           </Button>
         </DialogContent>
       </Dialog>

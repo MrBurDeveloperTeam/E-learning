@@ -63,7 +63,7 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName }
       const taggedBody = normalizedTags.length ? `${body.trim()}\n\n${normalizedTags.join(' ')}` : body
       await createPost.mutateAsync({authorId:userId,communityId,title,body:taggedBody,topic,files,draft:submitter?.value==='draft',signal:controller.signal,onProgress:setProgress})
       localStorage.removeItem(draftKey);setTitle('');setBody('');setTags('');setFiles([]);setTopic('general_dentistry');setProgress(null);setOpen(false)
-      toast.success(submitter?.value==='draft'?'Draft saved.':'Post sent for admin review.')
+      toast.success(submitter?.value==='draft'?'Draft saved.':'Published successfully. Your post is now visible.')
     } catch (cause) {
       setError(cause instanceof DOMException&&cause.name==='AbortError'?'Upload cancelled. Your text and selected files are still here so you can retry.':cause instanceof Error?cause.message:'The post could not be submitted. Your files were kept for retry.')
       setProgress(null)
@@ -75,7 +75,7 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName }
   return <Dialog open={open} onOpenChange={next=>{if(!createPost.isPending)setOpen(next)}}>
     <DialogTrigger render={<Button size="lg" />}><FileText />Create post</DialogTrigger>
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><form noValidate onSubmit={submit}>
-      <DialogHeader><DialogTitle>Create a community post</DialogTitle><DialogDescription>{communityName ? `Share with ${communityName}. ` : ''}Your post will be visible after an admin reviews it.</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>Create a community post</DialogTitle><DialogDescription>{communityName ? `Share with ${communityName}. ` : ''}Your post will be published immediately and may be reviewed if it is reported.</DialogDescription></DialogHeader>
       <div className="mt-5 space-y-4">
         {(title||body||tags)&&<p className="text-xs text-muted-foreground" role="status">Text changes save locally on this device. Selected files must be reselected after closing the browser.</p>}
         <div className="space-y-2"><Label>Topic</Label><Select value={topic} onValueChange={value=>setTopic(value as CommunityPostTopic)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select></div>
@@ -86,7 +86,7 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName }
         {progress&&<div className="rounded-xl bg-muted p-3" role="status" aria-live="polite"><div className="flex justify-between gap-3 text-xs font-medium"><span className="truncate capitalize">{progress.stage} {progress.currentFile}</span><span className="shrink-0 tabular-nums">{progress.completed}/{progress.total} files</span></div><progress className="mt-2 h-2 w-full accent-primary" value={progress.completed} max={progress.total} aria-label="File upload progress">{progressPercent}%</progress><p className="mt-1 text-xs text-muted-foreground">Cancel waits for the current file request, then removes partial uploads.</p></div>}
         <div className="space-y-2"><Label htmlFor="community-post-body">Post</Label><Textarea id="community-post-body" value={body} maxLength={20000} aria-invalid={Boolean(error)} aria-describedby={error?'community-post-error':'community-post-help'} className="min-h-36 resize-none" onChange={event=>setBody(event.target.value)} placeholder="Share a case insight, question, or useful resource…"/><div className="flex justify-between gap-3 text-xs text-muted-foreground"><span id={error?'community-post-error':'community-post-help'} className={error?'text-destructive':''} role={error?'alert':undefined}>{error??'Do not include identifiable patient information.'}</span><span>{body.length}/20,000</span></div></div>
       </div>
-      <DialogFooter className="mt-5">{createPost.isPending?<Button type="button" variant="outline" onClick={()=>abortRef.current?.abort()}>Cancel upload</Button>:<DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>}<Button type="submit" name="intent" value="draft" variant="outline" disabled={createPost.isPending}>Save draft</Button><Button type="submit" name="intent" value="review" disabled={createPost.isPending} className="min-w-32">{createPost.isPending?<><Loader2 className="animate-spin"/>Uploading</>:'Submit for review'}</Button></DialogFooter>
+      <DialogFooter className="mt-5">{createPost.isPending?<Button type="button" variant="outline" onClick={()=>abortRef.current?.abort()}>Cancel upload</Button>:<DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>}<Button type="submit" name="intent" value="draft" variant="outline" disabled={createPost.isPending}>Save draft</Button><Button type="submit" name="intent" value="publish" disabled={createPost.isPending} className="min-w-32">{createPost.isPending?<><Loader2 className="animate-spin"/>Publishing</>:'Publish post'}</Button></DialogFooter>
     </form></DialogContent>
   </Dialog>
 }
