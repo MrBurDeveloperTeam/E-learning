@@ -16,6 +16,7 @@ import {
   Youtube,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Link } from '@tanstack/react-router'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import {
@@ -492,6 +493,35 @@ export function AdminFetchVideos() {
     URL.revokeObjectURL(downloadUrl)
   }
 
+  const handleDownloadMacClassifier = () => {
+    const scriptUrl = `${window.location.origin}/downloads/DentalVideoClassifierMac.sh?v=${Date.now()}`
+    const launcher = [
+      '#!/bin/bash',
+      'set -u',
+      'CLASSIFIER_SCRIPT="${TMPDIR:-/tmp}/DentalVideoClassifierMac.sh"',
+      'printf "Downloading the latest DentalLearn classifier for macOS...\\n"',
+      `if ! curl -fL --retry 3 --connect-timeout 20 '${scriptUrl}' -o "$CLASSIFIER_SCRIPT"; then`,
+      '  printf "Unable to download the classifier. Check your internet connection and try again.\\n"',
+      '  printf "Press Enter to close..."',
+      '  read -r _',
+      '  exit 1',
+      'fi',
+      'chmod 700 "$CLASSIFIER_SCRIPT"',
+      '"$CLASSIFIER_SCRIPT"',
+      'status=$?',
+      'rm -f "$CLASSIFIER_SCRIPT"',
+      'exit $status',
+    ].join('\n')
+    const downloadUrl = URL.createObjectURL(new Blob([launcher], { type: 'application/octet-stream' }))
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = 'DentalVideoClassifier.command'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(downloadUrl)
+  }
+
   return (
     <AdminLayout
       title="Video ingestion"
@@ -674,7 +704,15 @@ export function AdminFetchVideos() {
 
       <AdminSectionCard
         title="Video orientation classifier"
-        description="Use the Windows classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
+        description="Use the Windows or macOS classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
+        action={(
+          <Link
+            to="/admin/fetch-videos/manual-classification"
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Manually classify skipped videos
+          </Link>
+        )}
       >
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex items-start gap-4">
@@ -690,7 +728,7 @@ export function AdminFetchVideos() {
                   label={orientationPending === null ? 'Pending count available with access code' : `${orientationPending} awaiting orientation`}
                   tone={orientationPending && orientationPending > 0 ? 'warning' : 'default'}
                 />
-                <AdminStatusBadge label="Windows" tone="info" />
+                <AdminStatusBadge label="Windows + macOS" tone="info" />
                 <AdminStatusBadge
                   label={orientationMonitoringUntil ? 'Watching for results' : '2-hour access'}
                   tone={orientationMonitoringUntil ? 'success' : 'default'}
@@ -707,7 +745,15 @@ export function AdminFetchVideos() {
               className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Download className="h-4 w-4" />
-              Download classifier
+              Download for Windows
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadMacClassifier}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Download className="h-4 w-4" />
+              Download for macOS
             </button>
             <button
               type="button"
@@ -728,6 +774,7 @@ export function AdminFetchVideos() {
           <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
           <p className="text-sm leading-6 text-muted-foreground">
             The downloaded file contains no database administrator key. Keep the temporary code private; it expires automatically and only authorizes orientation classification.
+            On macOS, right-click the downloaded file and choose Open if macOS blocks the first launch.
           </p>
         </div>
       </AdminSectionCard>

@@ -27,6 +27,7 @@ const PAGE_LABELS: Array<[string, string]> = [
   ['/admin/applications', 'Admin Applications'],
   ['/admin/content', 'Admin Content Review'],
   ['/admin/users', 'Admin Users'],
+  ['/admin/fetch-videos/manual-classification', 'Admin Manual Video Classification'],
   ['/admin/fetch-videos', 'Admin Fetch Videos'],
   ['/admin/settings', 'Admin Platform Settings'],
   ['/admin', 'Admin Dashboard'],

@@ -27,6 +27,7 @@ import { AdminDashboard } from '@/pages/admin/AdminDashboard'
 import { ContentReview } from '@/pages/admin/ContentReview'
 import { UserManagement } from '@/pages/admin/UserManagement'
 import { AdminFetchVideos } from '@/pages/admin/AdminFetchVideos'
+import { ManualVideoClassification } from '@/pages/admin/ManualVideoClassification'
 import { PlatformSettings } from '@/pages/admin/PlatformSettings'
 import { DentalVideos } from '@/pages/DentalVideos'
 import { DentalVideoDetail } from '@/pages/DentalVideoDetail'
@@ -285,6 +286,16 @@ const adminSettingsRoute = createRoute({
   ),
 })
 
+const adminManualVideoClassificationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/fetch-videos/manual-classification',
+  component: () => (
+    <ProtectedRoute requireAdmin>
+      <ManualVideoClassification />
+    </ProtectedRoute>
+  ),
+})
+
 // ─── Not found ────────────────────────────────────────
 
 const notFoundRoute = createRoute({
@@ -322,6 +333,7 @@ const routeTree = rootRoute.addChildren([
   adminCommunityRoute,
   adminUsersRoute,
   adminFetchVideosRoute,
+  adminManualVideoClassificationRoute,
   adminSettingsRoute,
   dentalVideosRoute,
   dentalVideoDetailRoute,

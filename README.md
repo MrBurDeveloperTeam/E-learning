@@ -132,7 +132,9 @@ service-role key remains server-side.
 Admin workflow:
 
 1. Open **Admin → Fetch videos**.
-2. Select **Download classifier** and run the downloaded `.cmd` file on Windows.
+2. Select **Download for Windows** and run the downloaded `.cmd` file, or select
+   **Download for macOS** and open the downloaded `.command` file. On macOS,
+   right-click the file and choose **Open** if the first launch is blocked.
 3. Select **Copy temporary code** and paste the code into the classifier.
 4. Enter the maximum number to classify. Start with the default batch of 10.
 5. Keep the Admin page open, then keep the computer online until the completion
