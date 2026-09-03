@@ -3,6 +3,7 @@ import type {
   DentalVideosResponse,
   DentalCategory,
   DentalVideosParams,
+  AdjacentDentalVideos,
 } from "@/types/dentalVideo";
 import { ApiError } from "@/types/dentalVideo";
 
@@ -107,6 +108,13 @@ export async function getVideos(
  */
 export async function getVideoById(id: string): Promise<DentalVideo> {
   return apiFetch<DentalVideo>(`/dental-api/dental-videos?id=${encodeURIComponent(id)}`);
+}
+
+/** Fetch the neighbouring videos in the library's newest-first order. */
+export async function getAdjacentVideos(id: string): Promise<AdjacentDentalVideos> {
+  return apiFetch<AdjacentDentalVideos>(
+    `/dental-api/dental-videos?adjacentTo=${encodeURIComponent(id)}`
+  );
 }
 
 /**

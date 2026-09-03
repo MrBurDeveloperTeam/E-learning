@@ -1,21 +1,39 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { CategoryBadge } from '@/components/CategoryBadge'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getVideoById } from '@/lib/dentalVideosApi'
-import type { DentalVideo } from '@/types/dentalVideo'
+import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
+import type { AdjacentDentalVideos, DentalVideo } from '@/types/dentalVideo'
 
 function formatPublishedDate(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
+const emptyAdjacentVideos: AdjacentDentalVideos = {
+  previous: null,
+  next: null,
+}
+
+async function getVideoPage(id: string) {
+  const [video, adjacent] = await Promise.all([
+    getVideoById(id),
+    getAdjacentVideos(id).catch(() => emptyAdjacentVideos),
+  ])
+
+  return { video, adjacent }
+}
+
 export function DentalVideoDetail() {
   const { id } = useParams({ from: '/dental-videos/$id' })
+  const navigate = useNavigate()
 
   const [video, setVideo] = useState<DentalVideo | null>(null)
+  const [adjacent, setAdjacent] =
+    useState<AdjacentDentalVideos>(emptyAdjacentVideos)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,10 +41,14 @@ export function DentalVideoDetail() {
     let cancelled = false
     setIsLoading(true)
     setError(null)
+    setAdjacent(emptyAdjacentVideos)
 
-    getVideoById(id)
-      .then((data) => {
-        if (!cancelled) setVideo(data)
+    getVideoPage(id)
+      .then(({ video: videoData, adjacent: adjacentData }) => {
+        if (!cancelled) {
+          setVideo(videoData)
+          setAdjacent(adjacentData)
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -41,6 +63,35 @@ export function DentalVideoDetail() {
       cancelled = true
     }
   }, [id])
+
+  useEffect(() => {
+    const handleArrowNavigation = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+
+      const target = event.target as HTMLElement | null
+      if (
+        target?.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName || '')
+      ) {
+        return
+      }
+
+      const destination =
+        event.key === 'ArrowLeft'
+          ? adjacent.previous
+          : event.key === 'ArrowRight'
+            ? adjacent.next
+            : null
+
+      if (destination) {
+        event.preventDefault()
+        navigate({ to: '/dental-videos/$id', params: { id: destination.id } })
+      }
+    }
+
+    window.addEventListener('keydown', handleArrowNavigation)
+    return () => window.removeEventListener('keydown', handleArrowNavigation)
+  }, [adjacent, navigate])
 
   useEffect(() => {
     if (video) {
@@ -80,8 +131,11 @@ export function DentalVideoDetail() {
             onRetry={() => {
               setError(null)
               setIsLoading(true)
-              getVideoById(id)
-                .then(setVideo)
+              getVideoPage(id)
+                .then(({ video: videoData, adjacent: adjacentData }) => {
+                  setVideo(videoData)
+                  setAdjacent(adjacentData)
+                })
                 .catch((err) =>
                   setError(
                     err instanceof Error ? err.message : 'Failed to load video'
@@ -108,13 +162,46 @@ export function DentalVideoDetail() {
               style={{ paddingBottom: '56.25%' }}
             >
               <iframe
+                key={video.video_id}
                 className="absolute inset-0 h-full w-full"
-                src={`https://www.youtube.com/embed/${video.video_id}`}
+                src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&playsinline=1&rel=0`}
                 title={video.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
               />
+
+              {adjacent.previous ? (
+                <Link
+                  to="/dental-videos/$id"
+                  params={{ id: adjacent.previous.id }}
+                  aria-label={`Previous video: ${adjacent.previous.title}`}
+                  title={`Previous: ${adjacent.previous.title}`}
+                  className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/60 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:left-4"
+                >
+                  <ChevronLeft className="h-7 w-7" aria-hidden="true" />
+                </Link>
+              ) : null}
+
+              {adjacent.next ? (
+                <Link
+                  to="/dental-videos/$id"
+                  params={{ id: adjacent.next.id }}
+                  aria-label={`Next video: ${adjacent.next.title}`}
+                  title={`Next: ${adjacent.next.title}`}
+                  className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/60 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:right-4"
+                >
+                  <ChevronRight className="h-7 w-7" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <VolumeX className="h-4 w-4" aria-hidden="true" />
+                Autoplay starts muted. Use the player controls to turn sound on.
+              </span>
+              <span className="hidden sm:inline">Use ← and → to change videos</span>
             </div>
 
             <h1 className="text-xl font-medium leading-snug text-foreground md:text-2xl">

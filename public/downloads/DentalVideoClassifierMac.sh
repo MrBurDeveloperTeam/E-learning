@@ -43,8 +43,16 @@ json_video_rows() {
     ObjC.import("Foundation");
     var path = $.NSProcessInfo.processInfo.environment.objectForKey("JSON_FILE").js;
     var data = $.NSData.dataWithContentsOfFile(path);
-    var obj = $.NSJSONSerialization.JSONObjectWithDataOptionsError(data, 0, null).js;
-    (obj.videos || []).map(function (v) {
+    if (!data) throw new Error("Unable to read the server response.");
+    var text = $.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding).js;
+    var obj = JSON.parse(text);
+    if (!obj || !Array.isArray(obj.videos)) {
+      throw new Error("The response does not contain a videos list.");
+    }
+    obj.videos.map(function (v) {
+      if (!v || !v.id || !v.video_id) {
+        throw new Error("A video record is missing its identifier.");
+      }
       return String(v.id) + "\t" + String(v.video_id);
     }).join("\n");
   '
@@ -55,7 +63,9 @@ json_dimensions() {
     ObjC.import("Foundation");
     var path = $.NSProcessInfo.processInfo.environment.objectForKey("JSON_FILE").js;
     var data = $.NSData.dataWithContentsOfFile(path);
-    var obj = $.NSJSONSerialization.JSONObjectWithDataOptionsError(data, 0, null).js;
+    if (!data) throw new Error("Unable to read video metadata.");
+    var text = $.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding).js;
+    var obj = JSON.parse(text);
     var width = Number(obj.width || 0), height = Number(obj.height || 0);
     if (!(width > 0 && height > 0)) {
       (obj.formats || []).forEach(function (f) {
@@ -137,17 +147,32 @@ classify_session() {
     batch_limit=10
     [ "$remaining" -lt 10 ] && batch_limit="$remaining"
     response_file="$session_dir/videos.json"
+    response_headers="$session_dir/videos.headers"
     rows_file="$session_dir/videos.tsv"
     printf "\n${color_cyan}  [LOAD] Fetching the next batch... %s/%s checked${color_reset}\n" "$checked" "$maximum"
-    http_code="$(curl -sS --retry 2 --connect-timeout 20 --max-time 45 -o "$response_file" -w '%{http_code}' \
-      -H "Authorization: Bearer $token" "${endpoint}?limit=${batch_limit}&offset=${failed_offset}")" || http_code="000"
+    http_code="$(curl -sS --retry 2 --connect-timeout 20 --max-time 45 -D "$response_headers" -o "$response_file" -w '%{http_code}' \
+      -H "Accept: application/json" -H "Authorization: Bearer $token" "${endpoint}?limit=${batch_limit}&offset=${failed_offset}")" || http_code="000"
     if [ "$http_code" != "200" ]; then
       printf "${color_red}  [FAILED] Unable to load videos (HTTP %s). The code may have expired.${color_reset}\n" "$http_code"
       return 1
     fi
+    response_type="$(awk -F ': *' 'tolower($1) == "content-type" { value=$2 } END { sub(/\r$/, "", value); print tolower(value) }' "$response_headers")"
+    case "$response_type" in
+      application/json*) ;;
+      *)
+        [ -n "$response_type" ] || response_type="missing Content-Type"
+        printf "${color_red}  [FAILED] The server returned %s instead of video data.${color_reset}\n" "$response_type"
+        printf "${color_yellow}  Copy a fresh temporary code. If this continues, redeploy the website.${color_reset}\n"
+        return 1
+        ;;
+    esac
     JSON_FILE="$response_file" export JSON_FILE
-    json_video_rows > "$rows_file" 2>/dev/null || {
+    parse_error="$session_dir/videos-parse.err"
+    json_video_rows > "$rows_file" 2>"$parse_error" || {
       printf "${color_red}  [FAILED] The server returned unreadable video data.${color_reset}\n"
+      if [ -s "$parse_error" ]; then
+        printf "${color_yellow}  Details: %s${color_reset}\n" "$(tail -n 1 "$parse_error")"
+      fi
       return 1
     }
     [ -s "$rows_file" ] || break
