@@ -9,6 +9,7 @@ export interface DentalVideo {
   published_at: string; // ISO timestamp string
   category: string | null;
   language: string | null;
+  video_type: "short_video" | "video" | null;
   confidence_score: number | null;
   tags: string[] | null;
   needs_review: boolean;
@@ -34,6 +35,7 @@ export interface DentalCategory {
 export interface DentalVideosParams {
   category?: string;
   language?: string;
+  videoType?: "short_video" | "video";
   q?: string;
   page?: number;
   limit?: number;

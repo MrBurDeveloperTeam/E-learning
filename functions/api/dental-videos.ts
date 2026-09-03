@@ -61,21 +61,26 @@ function sanitiseSearchQuery(raw: string): string {
     .join(" & ");
 }
 
-function isOthersCategory(category: string | null): boolean {
-  return category?.trim().toLowerCase() === "others";
+function isGeneralCategory(category: string | null): boolean {
+  const normalized = category?.trim().toLowerCase();
+  return normalized === "general dentistry" || normalized === "others" || normalized === "other";
 }
 
 function applyCategoryFilter(query: any, category: string | null) {
   if (!category) return query;
 
-  if (isOthersCategory(category)) {
-    return query.or("category.is.null,category.eq.Others");
+  if (isGeneralCategory(category)) {
+    return query.or("category.is.null,category.eq.General Dentistry,category.eq.Others,category.eq.Restorative");
   }
 
   return query.eq("category", category);
 }
 
 function normalizeVideoCategory(video: any) {
+  const category = video?.category?.trim();
+  if (!category || ["others", "other", "restorative"].includes(category.toLowerCase())) {
+    return { ...video, category: "General Dentistry" };
+  }
   return video;
 }
 
@@ -161,6 +166,11 @@ export async function onRequestGet(context: {
     if (language && !/^[a-z]{2,3}$/.test(language)) {
       return jsonResponse({ error: "Invalid language filter" }, 400);
     }
+    const videoTypeParam = url.searchParams.get("videoType");
+    const videoType = videoTypeParam?.trim().toLowerCase() || null;
+    if (videoType && videoType !== "short_video" && videoType !== "video") {
+      return jsonResponse({ error: "Invalid video type filter" }, 400);
+    }
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
     const limit = Math.min(
       50,
@@ -197,6 +207,7 @@ export async function onRequestGet(context: {
         .or(`title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`);
 
       languageSearchQuery = applyCategoryFilter(languageSearchQuery, category);
+      if (videoType) languageSearchQuery = languageSearchQuery.eq("video_type", videoType);
       languageSearchQuery = languageSearchQuery
         .order(sortColumn, { ascending })
         .range(from, to);
@@ -220,7 +231,7 @@ export async function onRequestGet(context: {
     // If full-text search is requested, use an RPC call for the tsquery.
     // Otherwise use the standard query builder.
     if (q) {
-      if (isOthersCategory(category)) {
+      if (isGeneralCategory(category) || videoType) {
         const escapedQuery = q.trim().replace(/[%_,]/g, "");
 
         let othersQuery = supabase
@@ -229,12 +240,11 @@ export async function onRequestGet(context: {
           .eq("needs_review", false)
           .or(
             `title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`
-          )
-          .or(
-            "category.is.null,category.eq.Others"
-          )
-          .order(sortColumn, { ascending })
-          .range(from, to);
+          );
+
+        othersQuery = applyCategoryFilter(othersQuery, category);
+        if (videoType) othersQuery = othersQuery.eq("video_type", videoType);
+        othersQuery = othersQuery.order(sortColumn, { ascending }).range(from, to);
 
         const {
           data: othersData,
@@ -244,7 +254,7 @@ export async function onRequestGet(context: {
 
         if (othersError) {
           console.error(
-            "dental-videos Others search error:",
+            "dental-videos General Dentistry search error:",
             othersError
           );
 
@@ -350,6 +360,10 @@ export async function onRequestGet(context: {
 
     if (language) {
       query = query.eq("language", language);
+    }
+
+    if (videoType) {
+      query = query.eq("video_type", videoType);
     }
 
     query = query.order(sortColumn, { ascending }).range(from, to);

@@ -81,7 +81,6 @@ export type VideoVisibility = 'public' | 'followers_only'
 
 export type VideoCategory =
   | 'General Dentistry'
-  | 'Others'
   | 'Implantology'
   | 'Orthodontics'
   | 'Endodontics'
@@ -340,12 +339,10 @@ export const VIDEO_CATEGORIES: VideoCategory[] = [
   'Handpieces',
   'Clinic Management',
   'Radiology',
-  'Others',
 ]
 
 export const CATEGORY_SLUGS: Record<VideoCategory, string> = {
   'General Dentistry': 'general-dentistry',
-  Others: 'others',
   Implantology: 'implantology',
   Orthodontics: 'orthodontics',
   Endodontics: 'endodontics',

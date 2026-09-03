@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BrainCircuit,
   CheckCircle,
+  Clapperboard,
+  Copy,
+  Download,
   ExternalLink,
   Filter,
   Loader2,
+  ScanLine,
   SearchCheck,
+  ShieldCheck,
   Sparkles,
   XCircle,
   Youtube,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import {
@@ -29,6 +35,11 @@ import { isAdminProfile } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { VIDEO_CATEGORIES, type VideoCategory } from '@/types'
+import {
+  getVideoLanguageLabel,
+  IMPORT_VIDEO_LANGUAGE_OPTIONS,
+  type ImportVideoLanguage,
+} from '@/constants/videoLanguages'
 
 type ImportSize = 10 | 25 | 50
 
@@ -40,10 +51,12 @@ type ImportedVideo = {
   channel_name: string
   published_at: string
   category: VideoCategory
+  language: string
 }
 
 type FetchResult = {
   category: VideoCategory
+  language: ImportVideoLanguage
   requested: number
   fetched: number
   eligible: number
@@ -58,6 +71,62 @@ type RequestError = {
   message: string
   details: string[]
   code?: string
+}
+
+type OrientationType = 'short_video' | 'video'
+
+type OrientationReportVideo = {
+  id: string
+  video_id: string
+  title: string
+  thumbnail_url: string
+  video_type: OrientationType
+}
+
+function OrientationReport({ videos }: { videos: OrientationReportVideo[] }) {
+  const shortVideoCount = videos.filter((video) => video.video_type === 'short_video').length
+
+  return (
+    <AdminSectionCard
+      title="Latest orientation results"
+      description="Results detected while this Admin page remains open. This report is not stored as a separate database record."
+      action={<AdminStatusBadge label={`${videos.length} classified`} tone="success" />}
+    >
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        <AdminStatCard label="Short videos" value={shortVideoCount} icon={ScanLine} accent="success" />
+        <AdminStatCard label="Videos" value={videos.length - shortVideoCount} icon={Clapperboard} />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {videos.map((video) => (
+          <article key={video.id} className="flex gap-3 rounded-[20px] border border-border/80 bg-background/70 p-3">
+            <img
+              src={video.thumbnail_url}
+              alt=""
+              loading="lazy"
+              className="aspect-video h-20 flex-shrink-0 rounded-xl bg-muted object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <AdminStatusBadge
+                label={video.video_type === 'short_video' ? 'Short video' : 'Video'}
+                tone={video.video_type === 'short_video' ? 'success' : 'info'}
+              />
+              <h3 className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-foreground" title={video.title}>
+                {video.title}
+              </h3>
+              <a
+                href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.video_id)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                View on YouTube <ExternalLink className="h-3 w-3" aria-hidden="true" />
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </AdminSectionCard>
+  )
 }
 
 function ResultSummary({ result }: { result: FetchResult }) {
@@ -160,6 +229,7 @@ function ImportedVideoList({ videos }: { videos: ImportedVideo[] }) {
 export function AdminFetchVideos() {
   const profile = useAuthStore((state) => state.profile)
   const [category, setCategory] = useState<VideoCategory>('General Dentistry')
+  const [importLanguage, setImportLanguage] = useState<ImportVideoLanguage>('en')
   const [importSize, setImportSize] = useState<ImportSize>(25)
   const [isFetching, setIsFetching] = useState(false)
   const [result, setResult] = useState<FetchResult | null>(null)
@@ -175,6 +245,14 @@ export function AdminFetchVideos() {
   } | null>(null)
   const [categorizeError, setCategorizeError] = useState<string | null>(null)
   const [uncategorizedCount, setUncategorizedCount] = useState(0)
+  const [isCreatingClassifierCode, setIsCreatingClassifierCode] = useState(false)
+  const [orientationPending, setOrientationPending] = useState<number | null>(null)
+  const [orientationReport, setOrientationReport] = useState<OrientationReportVideo[] | null>(null)
+  const [isLoadingOrientationReport, setIsLoadingOrientationReport] = useState(false)
+  const [orientationReportError, setOrientationReportError] = useState<string | null>(null)
+  const [orientationTrackedIds, setOrientationTrackedIds] = useState<string[]>([])
+  const [orientationMonitoringUntil, setOrientationMonitoringUntil] = useState<number | null>(null)
+  const orientationCheckInFlight = useRef(false)
 
   useEffect(() => {
     const storedTimestamp = localStorage.getItem('last_fetched_youtube_videos')
@@ -195,6 +273,54 @@ export function AdminFetchVideos() {
   useEffect(() => {
     void fetchUncategorizedCount()
   }, [])
+
+  useEffect(() => {
+    if (!isAdminProfile(profile) || orientationTrackedIds.length === 0 || !orientationMonitoringUntil) return
+    let cancelled = false
+
+    const loadReport = async () => {
+      if (orientationCheckInFlight.current || cancelled) return
+      orientationCheckInFlight.current = true
+      setIsLoadingOrientationReport(true)
+      try {
+        const rows: OrientationReportVideo[] = []
+
+        for (let offset = 0; offset < orientationTrackedIds.length; offset += 100) {
+          const ids = orientationTrackedIds.slice(offset, offset + 100)
+          const { data, error: reportError } = await supabase
+            .from('dental_videos')
+            .select('id,video_id,title,thumbnail_url,video_type')
+            .in('id', ids)
+            .not('video_type', 'is', null)
+          if (reportError) throw reportError
+          rows.push(...(data || []).filter((video): video is OrientationReportVideo => (
+            video.video_type === 'short_video' || video.video_type === 'video'
+          )))
+        }
+
+        if (cancelled) return
+        const order = new Map(orientationTrackedIds.map((id, index) => [id, index]))
+        rows.sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+        setOrientationReport(rows)
+        setOrientationReportError(null)
+        if (rows.length === orientationTrackedIds.length || Date.now() >= orientationMonitoringUntil) {
+          setOrientationMonitoringUntil(null)
+        }
+      } catch {
+        if (!cancelled) setOrientationReportError('Live results could not be checked. Keep this page open and try copying a new temporary code.')
+      } finally {
+        orientationCheckInFlight.current = false
+        if (!cancelled) setIsLoadingOrientationReport(false)
+      }
+    }
+
+    void loadReport()
+    const intervalId = window.setInterval(() => void loadReport(), 5000)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [orientationMonitoringUntil, orientationTrackedIds, profile])
 
   if (!isAdminProfile(profile)) {
     return (
@@ -222,7 +348,7 @@ export function AdminFetchVideos() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ category, limit: importSize }),
+        body: JSON.stringify({ category, language: importLanguage, limit: importSize }),
       })
       const data = await response.json().catch(() => null)
 
@@ -237,6 +363,7 @@ export function AdminFetchVideos() {
 
       setResult({
         category: data.category ?? category,
+        language: data.language ?? importLanguage,
         requested: data.requested ?? importSize,
         fetched: data.fetched ?? 0,
         eligible: data.eligible ?? 0,
@@ -296,6 +423,75 @@ export function AdminFetchVideos() {
     }
   }
 
+  const handleCopyClassifierCode = async () => {
+    if (isCreatingClassifierCode) return
+    setIsCreatingClassifierCode(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Your session has expired. Sign in again and retry.')
+
+      const response = await fetch('/dental-api/orientation-videos', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || typeof data?.token !== 'string') {
+        throw new Error(data?.error || 'Unable to create a classifier access code.')
+      }
+
+      const pendingVideoIds = Array.isArray(data.pendingVideoIds)
+        ? data.pendingVideoIds.filter((id: unknown): id is string => typeof id === 'string')
+        : []
+      if (pendingVideoIds.length === 0) throw new Error('There are no videos awaiting orientation classification.')
+
+      const accessCode = `${window.location.origin}|${data.token}`
+      await navigator.clipboard.writeText(accessCode)
+      setOrientationPending(typeof data.pending === 'number' ? data.pending : null)
+      setOrientationTrackedIds(pendingVideoIds)
+      setOrientationMonitoringUntil(Date.now() + (Number(data.expiresIn) || 2 * 60 * 60) * 1000)
+      setOrientationReport([])
+      setOrientationReportError(null)
+      toast.success('Temporary classifier code copied', {
+        description: 'Paste it into the classifier and keep this page open for live results.',
+      })
+    } catch (requestError) {
+      toast.error('Classifier code was not copied', {
+        description: requestError instanceof Error ? requestError.message : 'Try again from a secure browser window.',
+      })
+    } finally {
+      setIsCreatingClassifierCode(false)
+    }
+  }
+
+  const handleDownloadClassifier = () => {
+    // CMD expands %RANDOM% every time it runs, preventing Cloudflare or the
+    // browser from serving an older cached copy of the PowerShell classifier.
+    const scriptUrl = `${window.location.origin}/downloads/DentalVideoClassifier.ps1?v=%RANDOM%%RANDOM%%RANDOM%`
+    const launcher = [
+      '@echo off',
+      'setlocal',
+      'set "CLASSIFIER_SCRIPT=%TEMP%\\DentalVideoClassifier.ps1"',
+      'echo Downloading the latest DentalLearn classifier...',
+      `powershell.exe -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri '${scriptUrl}' -OutFile '%CLASSIFIER_SCRIPT%'"`,
+      'if errorlevel 1 (',
+      '  echo Unable to download the classifier. Check your internet connection and try again.',
+      '  pause',
+      '  exit /b 1',
+      ')',
+      'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%CLASSIFIER_SCRIPT%"',
+      'if errorlevel 1 pause',
+      'endlocal',
+    ].join('\r\n')
+    const downloadUrl = URL.createObjectURL(new Blob([launcher], { type: 'application/octet-stream' }))
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = 'DentalVideoClassifier.cmd'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(downloadUrl)
+  }
+
   return (
     <AdminLayout
       title="Video ingestion"
@@ -321,10 +517,10 @@ export function AdminFetchVideos() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <AdminSectionCard
           title="Automatic YouTube import"
-          description="Choose one specialty. The importer runs English-first searches plus Thai, Chinese, Korean, Japanese, and Malay searches, then files accepted videos directly into that category."
+          description="Choose one specialty and language. The importer searches only in that language, verifies the result language, and files accepted videos directly into the selected category."
         >
           <form noValidate onSubmit={handleFetchVideos} className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_220px_160px]">
               <div className="space-y-2">
                 <label htmlFor="youtube-import-category" className="text-sm font-medium text-foreground">
                   Dental category
@@ -344,6 +540,30 @@ export function AdminFetchVideos() {
                   <SelectContent align="start" className="rounded-xl">
                     {VIDEO_CATEGORIES.map((item) => (
                       <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="youtube-import-language" className="text-sm font-medium text-foreground">
+                  Video language
+                </label>
+                <Select
+                  value={importLanguage}
+                  onValueChange={(value) => setImportLanguage(value as ImportVideoLanguage)}
+                  disabled={isFetching}
+                >
+                  <SelectTrigger
+                    id="youtube-import-language"
+                    className="h-11 w-full rounded-xl bg-background/70 px-3.5"
+                    aria-label="Video language"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="rounded-xl">
+                    {IMPORT_VIDEO_LANGUAGE_OPTIONS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -452,6 +672,102 @@ export function AdminFetchVideos() {
         </AdminSectionCard>
       </div>
 
+      <AdminSectionCard
+        title="Video orientation classifier"
+        description="Use the Windows classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
+      >
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] bg-primary/12 text-primary">
+              <ScanLine className="h-6 w-6" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm leading-6 text-muted-foreground">
+                Download the classifier once, then copy a temporary access code each time you run it. The tool reads video dimensions without downloading the videos and can only submit orientation results.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <AdminStatusBadge
+                  label={orientationPending === null ? 'Pending count available with access code' : `${orientationPending} awaiting orientation`}
+                  tone={orientationPending && orientationPending > 0 ? 'warning' : 'default'}
+                />
+                <AdminStatusBadge label="Windows" tone="info" />
+                <AdminStatusBadge
+                  label={orientationMonitoringUntil ? 'Watching for results' : '2-hour access'}
+                  tone={orientationMonitoringUntil ? 'success' : 'default'}
+                  dot={Boolean(orientationMonitoringUntil)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[240px]">
+            <button
+              type="button"
+              onClick={handleDownloadClassifier}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Download className="h-4 w-4" />
+              Download classifier
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyClassifierCode}
+              disabled={isCreatingClassifierCode}
+              aria-busy={isCreatingClassifierCode}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isCreatingClassifierCode ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Creating code…</>
+              ) : (
+                <><Copy className="h-4 w-4" />Copy temporary code</>
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="mt-5 flex items-start gap-3 rounded-[20px] border border-border/80 bg-background/55 p-4">
+          <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <p className="text-sm leading-6 text-muted-foreground">
+            The downloaded file contains no database administrator key. Keep the temporary code private; it expires automatically and only authorizes orientation classification.
+          </p>
+        </div>
+      </AdminSectionCard>
+
+      {isLoadingOrientationReport && orientationReport === null && (
+        <AdminSectionCard title="Loading latest orientation results">
+          <div className="flex min-h-28 items-center justify-center gap-3 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            Watching this page for classification results…
+          </div>
+        </AdminSectionCard>
+      )}
+
+      {orientationReportError && (
+        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
+          <div role="alert" className="flex items-start gap-3">
+            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Live classification results unavailable</p>
+              <p className="mt-1 text-sm text-muted-foreground">{orientationReportError}</p>
+            </div>
+          </div>
+        </AdminSectionCard>
+      )}
+
+      {orientationReport && orientationReport.length > 0 && (
+        <div aria-live="polite">
+          <OrientationReport videos={orientationReport} />
+        </div>
+      )}
+
+      {orientationMonitoringUntil && orientationReport?.length === 0 && !isLoadingOrientationReport && !orientationReportError && (
+        <AdminSectionCard title="Waiting for classification results">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            Run the downloaded classifier and keep this page open. Results will appear here automatically.
+          </div>
+        </AdminSectionCard>
+      )}
+
       {error && (
         <AdminSectionCard className="border-destructive/20 bg-destructive/5">
           <div role="alert" className="flex items-start gap-3">
@@ -477,8 +793,8 @@ export function AdminFetchVideos() {
 
       {result && (
         <AdminSectionCard
-          title={`Import result · ${result.category}`}
-          description={`Requested up to ${result.requested} new videos. Accepted videos were assigned directly to the selected category.`}
+          title={`Import result · ${result.category} · ${getVideoLanguageLabel(result.language)}`}
+          description={`Requested up to ${result.requested} new ${getVideoLanguageLabel(result.language)} videos. Accepted videos were assigned directly to the selected category.`}
         >
           <div aria-live="polite">
             <ResultSummary result={result} />

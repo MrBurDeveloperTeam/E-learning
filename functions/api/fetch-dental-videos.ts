@@ -14,36 +14,35 @@ const CATEGORY_SEARCH_TERMS = {
   Handpieces: ["dental handpiece maintenance tutorial", "dental handpiece types explained", "high speed handpiece dentistry", "dental handpiece sterilization"],
   "Clinic Management": ["dental clinic management training", "dental practice management tutorial", "dental clinic workflow", "dental practice patient management"],
   Radiology: ["dental radiology interpretation lecture", "intraoral dental x ray technique", "panoramic radiograph dentistry", "CBCT dental imaging tutorial"],
-  Others: ["oral medicine dentistry lecture", "dental anesthesia tutorial", "dental materials lecture", "dentistry clinical education"],
 } as const;
 
 type DentalCategory = keyof typeof CATEGORY_SEARCH_TERMS;
 type ImportSize = 10 | 25 | 50;
+const IMPORT_LANGUAGES = ["en", "zh", "th", "ko", "ja", "id", "ar"] as const;
+type ImportLanguage = typeof IMPORT_LANGUAGES[number];
 
 const LOCALIZED_CATEGORY_SEARCH_TERMS: Record<DentalCategory, {
   th: string;
-  "zh-Hans": string;
+  zh: string;
   ko: string;
   ja: string;
-  ms: string;
+  id: string;
+  ar: string;
 }> = {
-  "General Dentistry": { th: "ทันตกรรมทั่วไป การสอน", "zh-Hans": "普通牙科 临床 教学", ko: "일반 치과 임상 강의", ja: "一般歯科 臨床 講座", ms: "pergigian am tutorial klinikal" },
-  Implantology: { th: "รากฟันเทียม ทันตกรรม การสอน", "zh-Hans": "种植牙 临床 教学", ko: "치과 임플란트 수술 강의", ja: "歯科インプラント 手術 講座", ms: "implan pergigian tutorial" },
-  Orthodontics: { th: "ทันตกรรมจัดฟัน การสอน", "zh-Hans": "口腔正畸 临床 教学", ko: "치과 교정 임상 강의", ja: "歯科矯正 臨床 講座", ms: "ortodontik tutorial klinikal" },
-  Endodontics: { th: "รักษารากฟัน การสอน", "zh-Hans": "根管治疗 临床 教学", ko: "근관 치료 임상 강의", ja: "根管治療 臨床 講座", ms: "rawatan akar gigi tutorial" },
-  Periodontology: { th: "ปริทันต์ การรักษา การสอน", "zh-Hans": "牙周治疗 临床 教学", ko: "치주 치료 임상 강의", ja: "歯周治療 臨床 講座", ms: "periodontik rawatan tutorial" },
-  "Oral Surgery": { th: "ศัลยกรรมช่องปาก การสอน", "zh-Hans": "口腔外科 手术 教学", ko: "구강 외과 수술 강의", ja: "口腔外科 手術 講座", ms: "pembedahan mulut tutorial" },
-  "Pediatric Dentistry": { th: "ทันตกรรมเด็ก การสอน", "zh-Hans": "儿童牙科 临床 教学", ko: "소아 치과 임상 강의", ja: "小児歯科 臨床 講座", ms: "pergigian kanak-kanak tutorial" },
-  Prosthodontics: { th: "ทันตกรรมประดิษฐ์ การสอน", "zh-Hans": "口腔修复 临床 教学", ko: "보철 치과 임상 강의", ja: "補綴歯科 臨床 講座", ms: "prostodontik tutorial klinikal" },
-  "Oral Hygiene": { th: "สุขอนามัยช่องปาก การสอน", "zh-Hans": "口腔卫生 洁牙 教学", ko: "구강 위생 치과 강의", ja: "口腔衛生 歯科 講座", ms: "kebersihan mulut tutorial pergigian" },
-  "Dental Burs": { th: "หัวกรอฟัน การใช้งาน", "zh-Hans": "牙科车针 使用 教学", ko: "치과 버 사용법", ja: "歯科用バー 使い方", ms: "bur pergigian cara penggunaan" },
-  Handpieces: { th: "ด้ามกรอฟัน การดูแล", "zh-Hans": "牙科手机 使用 维护", ko: "치과 핸드피스 사용 관리", ja: "歯科ハンドピース 使用 メンテナンス", ms: "handpiece pergigian penggunaan penyelenggaraan" },
-  "Clinic Management": { th: "การบริหารคลินิกทันตกรรม", "zh-Hans": "牙科诊所 管理 教学", ko: "치과 병원 경영 강의", ja: "歯科医院 経営 講座", ms: "pengurusan klinik pergigian" },
-  Radiology: { th: "รังสีวิทยาทางทันตกรรม การสอน", "zh-Hans": "牙科影像 放射 教学", ko: "치과 방사선 영상 강의", ja: "歯科放射線 画像 講座", ms: "radiologi pergigian tutorial" },
-  Others: { th: "ทันตแพทยศาสตร์ การสอน", "zh-Hans": "牙科 临床 教学", ko: "치과 임상 교육", ja: "歯科 臨床 教育", ms: "pendidikan klinikal pergigian" },
+  "General Dentistry": { th: "ทันตกรรมทั่วไป การสอน", zh: "普通牙科 临床 教学", ko: "일반 치과 임상 강의", ja: "一般歯科 臨床 講座", id: "kedokteran gigi umum tutorial klinis", ar: "طب الأسنان العام شرح سريري" },
+  Implantology: { th: "รากฟันเทียม ทันตกรรม การสอน", zh: "种植牙 临床 教学", ko: "치과 임플란트 수술 강의", ja: "歯科インプラント 手術 講座", id: "implan gigi tutorial klinis", ar: "زراعة الأسنان شرح سريري" },
+  Orthodontics: { th: "ทันตกรรมจัดฟัน การสอน", zh: "口腔正畸 临床 教学", ko: "치과 교정 임상 강의", ja: "歯科矯正 臨床 講座", id: "ortodonti tutorial klinis", ar: "تقويم الأسنان شرح سريري" },
+  Endodontics: { th: "รักษารากฟัน การสอน", zh: "根管治疗 临床 教学", ko: "근관 치료 임상 강의", ja: "根管治療 臨床 講座", id: "perawatan saluran akar gigi tutorial", ar: "علاج جذور الأسنان شرح سريري" },
+  Periodontology: { th: "ปริทันต์ การรักษา การสอน", zh: "牙周治疗 临床 教学", ko: "치주 치료 임상 강의", ja: "歯周治療 臨床 講座", id: "periodonti perawatan gusi tutorial", ar: "علاج اللثة شرح سريري" },
+  "Oral Surgery": { th: "ศัลยกรรมช่องปาก การสอน", zh: "口腔外科 手术 教学", ko: "구강 외과 수술 강의", ja: "口腔外科 手術 講座", id: "bedah mulut tutorial klinis", ar: "جراحة الفم والأسنان شرح" },
+  "Pediatric Dentistry": { th: "ทันตกรรมเด็ก การสอน", zh: "儿童牙科 临床 教学", ko: "소아 치과 임상 강의", ja: "小児歯科 臨床 講座", id: "kedokteran gigi anak tutorial", ar: "طب أسنان الأطفال شرح سريري" },
+  Prosthodontics: { th: "ทันตกรรมประดิษฐ์ การสอน", zh: "口腔修复 临床 教学", ko: "보철 치과 임상 강의", ja: "補綴歯科 臨床 講座", id: "prostodonti tutorial klinis", ar: "تركيبات الأسنان شرح سريري" },
+  "Oral Hygiene": { th: "สุขอนามัยช่องปาก การสอน", zh: "口腔卫生 洁牙 教学", ko: "구강 위생 치과 강의", ja: "口腔衛生 歯科 講座", id: "kebersihan mulut dan gigi tutorial", ar: "نظافة الفم والأسنان شرح" },
+  "Dental Burs": { th: "หัวกรอฟัน การใช้งาน", zh: "牙科车针 使用 教学", ko: "치과 버 사용법", ja: "歯科用バー 使い方", id: "bur gigi cara penggunaan", ar: "أنواع مبارد حفر الأسنان شرح" },
+  Handpieces: { th: "ด้ามกรอฟัน การดูแล", zh: "牙科手机 使用 维护", ko: "치과 핸드피스 사용 관리", ja: "歯科ハンドピース 使用 メンテナンス", id: "handpiece gigi penggunaan perawatan", ar: "قبضة حفر الأسنان الاستخدام والصيانة" },
+  "Clinic Management": { th: "การบริหารคลินิกทันตกรรม", zh: "牙科诊所 管理 教学", ko: "치과 병원 경영 강의", ja: "歯科医院 経営 講座", id: "manajemen klinik gigi", ar: "إدارة عيادة الأسنان شرح" },
+  Radiology: { th: "รังสีวิทยาทางทันตกรรม การสอน", zh: "牙科影像 放射 教学", ko: "치과 방사선 영상 강의", ja: "歯科放射線 画像 講座", id: "radiologi kedokteran gigi tutorial", ar: "أشعة الأسنان شرح سريري" },
 };
-
-const LOCALIZED_LANGUAGES = ["th", "zh-Hans", "ko", "ja", "ms"] as const;
 
 const ALLOWED_IMPORT_SIZES = new Set<ImportSize>([10, 25, 50]);
 const SEARCH_RESULTS_PER_PAGE = 50;
@@ -54,7 +53,7 @@ const DENTAL_RELEVANCE_TERMS = [
   "endodont", "periodont", "prosthodont", "implant", "root canal", "gingiv",
   "occlusion", "dentur", "radiograph", "cbct",
   "ทันต", "ฟัน", "ช่องปาก", "牙", "口腔", "齿", "치과", "치아", "구강",
-  "歯科", "歯", "口腔", "pergigian", "gigi", "mulut",
+  "歯科", "歯", "口腔", "kedokteran", "gigi", "mulut", "طب الأسنان", "الأسنان", "الفم",
 ];
 
 type YouTubeFailure = {
@@ -119,8 +118,7 @@ function detectLanguageFromMetadata(title: string, description: string): string 
   if (/[А-Яа-яЁё]/u.test(metadata)) return "ru";
   if (/[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệịỉĩọỏốồổỗộớờởỡợụủũứừửữựỳỵỷỹ]/u.test(lowerMetadata)) return "vi";
   if (/[一-龯]/u.test(metadata)) return "zh";
-  if (/\b(pergigian|gigi|mulut|rawatan|klinikal|kesihatan|kanak-kanak|pembedahan|pengurusan|kebersihan)\b/u.test(lowerMetadata)) return "ms";
-  if (/\b(kedokteran|dokter gigi|kesehatan gigi|perawatan gigi|pencabutan|rongga mulut)\b/u.test(lowerMetadata)) return "id";
+  if (/\b(kedokteran|dokter gigi|kesehatan gigi|perawatan gigi|pencabutan|rongga mulut|gigi|klinis|kebersihan)\b/u.test(lowerMetadata)) return "id";
   if (/\b(tratamento dentário|tratamento dentario|cirurgia dentária|cirurgia dentaria|saúde bucal|saude bucal)\b/u.test(lowerMetadata)) return "pt";
   if (/\b(odontología|dental en español|tratamiento dental|cirugía dental|cirugia dental|dientes)\b/u.test(lowerMetadata)) return "es";
   if (/\b(dentisterie|médecin-dentiste|chirurgie dentaire|soins dentaires|hygiène bucco-dentaire)\b/u.test(lowerMetadata)) return "fr";
@@ -191,6 +189,7 @@ export async function onRequest(context: any) {
 
     const body = await context.request.json().catch(() => ({}));
     const category = body?.category as DentalCategory;
+    const language = body?.language as ImportLanguage;
     const requestedLimit = Number(body?.limit ?? 25) as ImportSize;
     if (!category || !(category in CATEGORY_SEARCH_TERMS)) {
       return jsonResponse({ error: "Choose a valid dental category before importing.", code: "INVALID_CATEGORY" }, 400);
@@ -198,19 +197,17 @@ export async function onRequest(context: any) {
     if (!ALLOWED_IMPORT_SIZES.has(requestedLimit)) {
       return jsonResponse({ error: "Import size must be 10, 25, or 50 videos.", code: "INVALID_LIMIT" }, 400);
     }
+    if (!IMPORT_LANGUAGES.includes(language)) {
+      return jsonResponse({ error: "Choose a valid video language before importing.", code: "INVALID_LANGUAGE" }, 400);
+    }
 
     const candidateIds = new Set<string>();
     const failures: YouTubeFailure[] = [];
     let successfulSearches = 0;
 
-    const searchQueries = [
-      ...CATEGORY_SEARCH_TERMS[category].map((keyword) => ({ keyword, language: "en", pages: MAX_PAGES_PER_TERM })),
-      ...LOCALIZED_LANGUAGES.map((language) => ({
-        keyword: LOCALIZED_CATEGORY_SEARCH_TERMS[category][language],
-        language,
-        pages: 1,
-      })),
-    ];
+    const searchQueries = language === "en"
+      ? CATEGORY_SEARCH_TERMS[category].map((keyword) => ({ keyword, language, pages: MAX_PAGES_PER_TERM }))
+      : [{ keyword: LOCALIZED_CATEGORY_SEARCH_TERMS[category][language], language, pages: MAX_PAGES_PER_TERM }];
 
     for (const { keyword, language, pages } of searchQueries) {
       let pageToken: string | undefined;
@@ -259,7 +256,7 @@ export async function onRequest(context: any) {
 
     const uniqueVideoIds = [...candidateIds];
     if (uniqueVideoIds.length === 0) {
-      return jsonResponse({ category, requested: requestedLimit, fetched: 0, eligible: 0, inserted: 0, alreadyInDb: 0, filteredOut: 0, skipped: 0, warnings: failures.map(describeYouTubeFailure) });
+      return jsonResponse({ category, language, requested: requestedLimit, fetched: 0, eligible: 0, inserted: 0, alreadyInDb: 0, filteredOut: 0, skipped: 0, videos: [], warnings: failures.map(describeYouTubeFailure) });
     }
 
     const existingIds = new Set<string>();
@@ -307,7 +304,11 @@ export async function onRequest(context: any) {
     const eligibleVideos = videoDetails.filter((video) => {
       const duration = parseIsoDurationSeconds(video?.contentDetails?.duration);
       const isLive = video?.snippet?.liveBroadcastContent !== "none";
-      return video?.status?.embeddable === true && !isLive && duration >= MINIMUM_DURATION_SECONDS && isDentalVideo(video);
+      return video?.status?.embeddable === true
+        && !isLive
+        && duration >= MINIMUM_DURATION_SECONDS
+        && isDentalVideo(video)
+        && detectVideoLanguage(video) === language;
     });
     const selectedVideos = eligibleVideos.slice(0, requestedLimit);
     const rowsToInsert = selectedVideos.map((video) => {
@@ -353,6 +354,7 @@ export async function onRequest(context: any) {
     const filteredOut = videoDetails.length - eligibleVideos.length;
     return jsonResponse({
       category,
+      language,
       requested: requestedLimit,
       fetched: uniqueVideoIds.length,
       eligible: eligibleVideos.length,

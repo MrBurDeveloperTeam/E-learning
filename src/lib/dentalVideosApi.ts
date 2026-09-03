@@ -80,6 +80,7 @@ export async function getVideos(
 
   if (params?.category) searchParams.set("category", params.category);
   if (params?.language) searchParams.set("language", params.language);
+  if (params?.videoType) searchParams.set("videoType", params.videoType);
   if (params?.q) searchParams.set("q", params.q);
   if (params?.page) searchParams.set("page", String(params.page));
   if (params?.limit) searchParams.set("limit", String(params.limit));
