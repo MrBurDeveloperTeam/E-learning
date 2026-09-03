@@ -105,7 +105,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
   if (!authorization.ok) return json(context.request, { error: authorization.error }, authorization.status);
 
   const requested = Number(new URL(context.request.url).searchParams.get("limit") || 10);
+  const requestedOffset = Number(new URL(context.request.url).searchParams.get("offset") || 0);
   const limit = Number.isFinite(requested) ? Math.min(MAX_BATCH_SIZE, Math.max(1, Math.floor(requested))) : 10;
+  const offset = Number.isFinite(requestedOffset) ? Math.min(500, Math.max(0, Math.floor(requestedOffset))) : 0;
   const supabase = createClient(config.url, config.serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -114,7 +116,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     .select("id,video_id,title")
     .is("video_type", null)
     .order("fetched_at", { ascending: true })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error) return json(context.request, { error: "Unable to load unclassified videos." }, 500);
   return json(context.request, { videos: data || [] });

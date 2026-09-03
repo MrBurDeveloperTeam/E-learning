@@ -464,7 +464,9 @@ export function AdminFetchVideos() {
   }
 
   const handleDownloadClassifier = () => {
-    const scriptUrl = `${window.location.origin}/downloads/DentalVideoClassifier.ps1`
+    // CMD expands %RANDOM% every time it runs, preventing Cloudflare or the
+    // browser from serving an older cached copy of the PowerShell classifier.
+    const scriptUrl = `${window.location.origin}/downloads/DentalVideoClassifier.ps1?v=%RANDOM%%RANDOM%%RANDOM%`
     const launcher = [
       '@echo off',
       'setlocal',

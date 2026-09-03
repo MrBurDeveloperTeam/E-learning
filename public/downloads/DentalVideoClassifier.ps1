@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 $Host.UI.RawUI.WindowTitle = "DentalLearn Video Classifier"
 
 Write-Host "DentalLearn Video Orientation Classifier" -ForegroundColor Cyan
+Write-Host "Classifier version: 2026-09-03.2" -ForegroundColor DarkGray
 Write-Host "Classifies portrait videos as short_video and all other videos as video."
 Write-Host "No video files are downloaded.`n"
 
@@ -53,18 +54,28 @@ if (-not (Test-Path -LiteralPath $ytDlpPath)) {
     Remove-Item -LiteralPath $ytDlpPath -Force
     throw "The downloaded metadata tool failed its security check."
   }
+} else {
+  Write-Host "Checking for orientation metadata tool updates..."
+  $updateOutput = & $ytDlpPath --update-to stable 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "The metadata tool could not be updated. Continuing with the installed version."
+  }
 }
 
 $processed = 0
 $shortVideos = 0
 $videos = 0
 $failed = 0
+$attemptedVideoIds = [System.Collections.Generic.HashSet[string]]::new()
+$failedVideoIds = [System.Collections.Generic.HashSet[string]]::new()
+$failureMessages = [System.Collections.Generic.Dictionary[string,string]]::new()
 
-while (($processed + $failed) -lt $maximumVideos) {
-  $remaining = $maximumVideos - ($processed + $failed)
+while ($attemptedVideoIds.Count -lt $maximumVideos) {
+  $remaining = $maximumVideos - $attemptedVideoIds.Count
   $batchLimit = [Math]::Min(10, $remaining)
+  $failedOffset = $failedVideoIds.Count
   try {
-    $batch = Invoke-RestMethod -Method Get -Uri "${endpoint}?limit=$batchLimit" -Headers $headers
+    $batch = Invoke-RestMethod -Method Get -Uri "${endpoint}?limit=${batchLimit}&offset=${failedOffset}" -Headers $headers
   } catch {
     $serverMessage = $_.Exception.Message
     if ($_.ErrorDetails.Message) {
@@ -81,11 +92,16 @@ while (($processed + $failed) -lt $maximumVideos) {
 
   $results = @()
   foreach ($item in $batch.videos) {
+    if (-not $attemptedVideoIds.Add([string]$item.id)) { continue }
     Write-Host ("Checking: " + $item.title)
     try {
       $youtubeUrl = "https://www.youtube.com/watch?v=$($item.video_id)"
-      $jsonOutput = & $ytDlpPath --dump-single-json --skip-download --no-warnings --no-playlist $youtubeUrl 2>$null | Out-String
-      if ($LASTEXITCODE -ne 0 -or -not $jsonOutput.Trim()) { throw "Metadata unavailable" }
+      $jsonOutput = & $ytDlpPath --dump-single-json --skip-download --no-warnings --no-playlist $youtubeUrl 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0 -or -not $jsonOutput.Trim()) {
+        $errorLine = ($jsonOutput -split "`r?`n" | Where-Object { $_ -match "ERROR:" } | Select-Object -Last 1)
+        if (-not $errorLine) { $errorLine = "Metadata unavailable" }
+        throw $errorLine.Trim()
+      }
       $metadata = $jsonOutput | ConvertFrom-Json
       $width = [int]($metadata.width)
       $height = [int]($metadata.height)
@@ -105,19 +121,24 @@ while (($processed + $failed) -lt $maximumVideos) {
       if ($videoType -eq "short_video") { $shortVideos++ } else { $videos++ }
       $processed++
     } catch {
-      Write-Warning ("Skipped " + $item.video_id + ": " + $_.Exception.Message)
-      $failed++
+      $failureMessage = $_.Exception.Message
+      Write-Warning ("Skipped " + $item.video_id + ": " + $failureMessage)
+      if ($failedVideoIds.Add([string]$item.id)) {
+        $failureMessages[[string]$item.video_id] = $failureMessage
+        $failed++
+      }
     }
   }
 
-  if ($results.Count -eq 0) { break }
-  $payload = @{ results = $results } | ConvertTo-Json -Depth 4
-  try {
-    $response = Invoke-RestMethod -Method Patch -Uri $endpoint -Headers $headers -ContentType "application/json" -Body $payload
-    Write-Host ("Saved " + $response.updated + " classifications.`n") -ForegroundColor Green
-    if ($response.updated -eq 0) { throw "The server did not accept any classifications" }
-  } catch {
-    throw "Classification succeeded locally, but the results could not be saved. Copy a new code and retry."
+  if ($results.Count -gt 0) {
+    $payload = @{ results = $results } | ConvertTo-Json -Depth 4
+    try {
+      $response = Invoke-RestMethod -Method Patch -Uri $endpoint -Headers $headers -ContentType "application/json" -Body $payload
+      Write-Host ("Saved " + $response.updated + " classifications.`n") -ForegroundColor Green
+      if ($response.updated -eq 0) { throw "The server did not accept any classifications" }
+    } catch {
+      throw "Classification succeeded locally, but the results could not be saved. Copy a new code and retry."
+    }
   }
 }
 
@@ -125,7 +146,13 @@ Write-Host "Classification complete" -ForegroundColor Green
 Write-Host "Processed: $processed"
 Write-Host "Short videos: $shortVideos"
 Write-Host "Videos: $videos"
-Write-Host "Skipped: $failed"
+Write-Host "Unique videos skipped: $failed"
+if ($failureMessages.Count -gt 0) {
+  Write-Host "`nSkipped video details:" -ForegroundColor Yellow
+  foreach ($entry in $failureMessages.GetEnumerator()) {
+    Write-Host ("- " + $entry.Key + ": " + $entry.Value) -ForegroundColor Yellow
+  }
+}
 }
 
 $prompt = "Paste the temporary access code from the Admin page (or press Enter to close)"
