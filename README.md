@@ -113,7 +113,7 @@ Configure production secrets in the target platform instead of committing them t
 
 ## Video orientation classifier
 
-The Fetch videos admin screen can issue a 15-minute access code and download a
+The Fetch videos admin screen can issue a 2-hour access code and download a
 Windows launcher for the local orientation classifier. The classifier uses
 `yt-dlp` metadata without downloading video files. Portrait videos are saved as
 `short_video`; landscape and square videos are saved as `video`. Duration is
@@ -135,11 +135,11 @@ Admin workflow:
 2. Select **Download classifier** and run the downloaded `.cmd` file on Windows.
 3. Select **Copy temporary code** and paste the code into the classifier.
 4. Enter the maximum number to classify. Start with the default batch of 10.
-5. Keep the computer online until the completion summary appears. The classifier
-   then opens **Admin → Fetch videos** with a temporary report containing the
-   videos classified in that run and their resulting orientation type.
+5. Keep the Admin page open, then keep the computer online until the completion
+   summary appears. The current Admin page watches the pending videos and shows
+   each result below the classifier controls without opening another tab.
 
 If a code expires, copy a new one and run the classifier again. Successfully
-classified rows are skipped automatically on the next run. The report is passed
-through the new browser tab only, removed from the URL after it is read, and is
-not stored in a new table or column. Refreshing or closing that tab clears it.
+classified rows are skipped automatically on the next run. The live report is
+kept only in the current browser page and is not stored in a new table or column.
+Refreshing or closing the page clears it.

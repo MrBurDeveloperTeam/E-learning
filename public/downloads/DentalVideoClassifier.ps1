@@ -55,7 +55,6 @@ $processed = 0
 $shortVideos = 0
 $videos = 0
 $failed = 0
-$classifiedResults = @()
 
 while (($processed + $failed) -lt $maximumVideos) {
   $remaining = $maximumVideos - ($processed + $failed)
@@ -113,9 +112,6 @@ while (($processed + $failed) -lt $maximumVideos) {
     $response = Invoke-RestMethod -Method Patch -Uri $endpoint -Headers $headers -ContentType "application/json" -Body $payload
     Write-Host ("Saved " + $response.updated + " classifications.`n") -ForegroundColor Green
     if ($response.updated -eq 0) { throw "The server did not accept any classifications" }
-    foreach ($classified in $response.classified) {
-      $classifiedResults += @{ i = $classified.id; t = $classified.videoType }
-    }
   } catch {
     throw "Classification succeeded locally, but the results could not be saved. Copy a new code and retry."
   }
@@ -126,20 +122,4 @@ Write-Host "Processed: $processed"
 Write-Host "Short videos: $shortVideos"
 Write-Host "Videos: $videos"
 Write-Host "Skipped: $failed"
-
-if ($classifiedResults.Count -gt 0) {
-  $reportIds = @()
-  $reportTypes = ""
-  foreach ($classified in $classifiedResults) {
-    $reportIds += $classified.i.Replace("-", "")
-    $reportTypes += if ($classified.t -eq "short_video") { "1" } else { "0" }
-  }
-  $reportJson = @{ i = $reportIds; t = $reportTypes } | ConvertTo-Json -Compress -Depth 3
-  $reportBytes = [Text.Encoding]::UTF8.GetBytes($reportJson)
-  $reportCode = [Convert]::ToBase64String($reportBytes).TrimEnd("=").Replace("+", "-").Replace("/", "_")
-  $reportUrl = "$siteOrigin/admin/fetch-videos#orientation-results=$reportCode"
-  Write-Host "Opening the classification report in your browser..." -ForegroundColor Cyan
-  Start-Process $reportUrl
-}
-
 Read-Host "Press Enter to close"

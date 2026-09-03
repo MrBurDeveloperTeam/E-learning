@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getCorsHeaders, signHS256, verifyHS256 } from "../api/_shared/auth";
 
 const TOKEN_SCOPE = "dental_video_orientation";
-const TOKEN_TTL_SECONDS = 15 * 60;
+const TOKEN_TTL_SECONDS = 2 * 60 * 60;
 const MAX_BATCH_SIZE = 25;
 const ALLOWED_VIDEO_TYPES = new Set(["short_video", "video"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -82,12 +82,19 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     payload: { sub: user.id, scope: TOKEN_SCOPE, iat: now, exp: now + TOKEN_TTL_SECONDS },
     secret: config.signingSecret,
   });
-  const { count } = await supabase
+  const { data: pendingRows, count } = await supabase
     .from("dental_videos")
-    .select("id", { count: "exact", head: true })
-    .is("video_type", null);
+    .select("id", { count: "exact" })
+    .is("video_type", null)
+    .order("fetched_at", { ascending: true })
+    .limit(500);
 
-  return json(context.request, { token, expiresIn: TOKEN_TTL_SECONDS, pending: count ?? 0 });
+  return json(context.request, {
+    token,
+    expiresIn: TOKEN_TTL_SECONDS,
+    pending: count ?? 0,
+    pendingVideoIds: (pendingRows || []).map((row) => row.id),
+  });
 }
 
 // Return only the identifiers required by the local classifier.

@@ -76,45 +76,13 @@ type OrientationReportVideo = {
   video_type: OrientationType
 }
 
-type OrientationReportEntry = {
-  i: string
-  t: OrientationType
-}
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function decodeOrientationReport(hash: string): OrientationReportEntry[] | null {
-  const prefix = '#orientation-results='
-  if (!hash.startsWith(prefix)) return null
-
-  try {
-    const encoded = hash.slice(prefix.length).replace(/-/g, '+').replace(/_/g, '/')
-    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')
-    const parsed = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(padded), (character) => character.charCodeAt(0))))
-    if (!Array.isArray(parsed?.i) || typeof parsed?.t !== 'string' || parsed.i.length === 0 || parsed.i.length > 500) return null
-    if (parsed.t.length !== parsed.i.length || !/^[01]+$/.test(parsed.t)) return null
-
-    const entries = parsed.i.map((compactId: unknown, index: number) => {
-      if (typeof compactId !== 'string' || !/^[0-9a-f]{32}$/i.test(compactId)) return null
-      const id = `${compactId.slice(0, 8)}-${compactId.slice(8, 12)}-${compactId.slice(12, 16)}-${compactId.slice(16, 20)}-${compactId.slice(20)}`
-      if (!UUID_PATTERN.test(id)) return null
-      return { i: id, t: parsed.t[index] === '1' ? 'short_video' : 'video' } satisfies OrientationReportEntry
-    })
-    return entries.every((entry: OrientationReportEntry | null): entry is OrientationReportEntry => entry !== null)
-      ? entries
-      : null
-  } catch {
-    return null
-  }
-}
-
 function OrientationReport({ videos }: { videos: OrientationReportVideo[] }) {
   const shortVideoCount = videos.filter((video) => video.video_type === 'short_video').length
 
   return (
     <AdminSectionCard
       title="Latest orientation results"
-      description="This temporary report is available only in this tab and is not stored as a separate database record."
+      description="Results detected while this Admin page remains open. This report is not stored as a separate database record."
       action={<AdminStatusBadge label={`${videos.length} classified`} tone="success" />}
     >
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
@@ -274,7 +242,9 @@ export function AdminFetchVideos() {
   const [orientationReport, setOrientationReport] = useState<OrientationReportVideo[] | null>(null)
   const [isLoadingOrientationReport, setIsLoadingOrientationReport] = useState(false)
   const [orientationReportError, setOrientationReportError] = useState<string | null>(null)
-  const orientationReportConsumed = useRef(false)
+  const [orientationTrackedIds, setOrientationTrackedIds] = useState<string[]>([])
+  const [orientationMonitoringUntil, setOrientationMonitoringUntil] = useState<number | null>(null)
+  const orientationCheckInFlight = useRef(false)
 
   useEffect(() => {
     const storedTimestamp = localStorage.getItem('last_fetched_youtube_videos')
@@ -297,49 +267,52 @@ export function AdminFetchVideos() {
   }, [])
 
   useEffect(() => {
-    if (!isAdminProfile(profile) || orientationReportConsumed.current) return
-    const entries = decodeOrientationReport(window.location.hash)
-    if (!window.location.hash.startsWith('#orientation-results=')) return
-
-    orientationReportConsumed.current = true
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
-    if (!entries) {
-      setOrientationReportError('The temporary classification report is invalid. Run the classifier again to create a new report.')
-      return
-    }
+    if (!isAdminProfile(profile) || orientationTrackedIds.length === 0 || !orientationMonitoringUntil) return
+    let cancelled = false
 
     const loadReport = async () => {
+      if (orientationCheckInFlight.current || cancelled) return
+      orientationCheckInFlight.current = true
       setIsLoadingOrientationReport(true)
-      setOrientationReportError(null)
       try {
-        const reportTypes = new Map(entries.map((entry) => [entry.i, entry.t]))
-        const rows: Omit<OrientationReportVideo, 'video_type'>[] = []
+        const rows: OrientationReportVideo[] = []
 
-        for (let offset = 0; offset < entries.length; offset += 100) {
-          const ids = entries.slice(offset, offset + 100).map((entry) => entry.i)
+        for (let offset = 0; offset < orientationTrackedIds.length; offset += 100) {
+          const ids = orientationTrackedIds.slice(offset, offset + 100)
           const { data, error: reportError } = await supabase
             .from('dental_videos')
-            .select('id,video_id,title,thumbnail_url')
+            .select('id,video_id,title,thumbnail_url,video_type')
             .in('id', ids)
+            .not('video_type', 'is', null)
           if (reportError) throw reportError
-          rows.push(...(data || []))
+          rows.push(...(data || []).filter((video): video is OrientationReportVideo => (
+            video.video_type === 'short_video' || video.video_type === 'video'
+          )))
         }
 
-        const byId = new Map(rows.map((video) => [video.id, video]))
-        setOrientationReport(entries.flatMap((entry) => {
-          const video = byId.get(entry.i)
-          const videoType = reportTypes.get(entry.i)
-          return video && videoType ? [{ ...video, video_type: videoType }] : []
-        }))
+        if (cancelled) return
+        const order = new Map(orientationTrackedIds.map((id, index) => [id, index]))
+        rows.sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+        setOrientationReport(rows)
+        setOrientationReportError(null)
+        if (rows.length === orientationTrackedIds.length || Date.now() >= orientationMonitoringUntil) {
+          setOrientationMonitoringUntil(null)
+        }
       } catch {
-        setOrientationReportError('The videos were classified, but this temporary report could not be loaded. Refreshing will not undo the classifications.')
+        if (!cancelled) setOrientationReportError('Live results could not be checked. Keep this page open and try copying a new temporary code.')
       } finally {
-        setIsLoadingOrientationReport(false)
+        orientationCheckInFlight.current = false
+        if (!cancelled) setIsLoadingOrientationReport(false)
       }
     }
 
     void loadReport()
-  }, [profile])
+    const intervalId = window.setInterval(() => void loadReport(), 5000)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [orientationMonitoringUntil, orientationTrackedIds, profile])
 
   if (!isAdminProfile(profile)) {
     return (
@@ -457,11 +430,20 @@ export function AdminFetchVideos() {
         throw new Error(data?.error || 'Unable to create a classifier access code.')
       }
 
+      const pendingVideoIds = Array.isArray(data.pendingVideoIds)
+        ? data.pendingVideoIds.filter((id: unknown): id is string => typeof id === 'string')
+        : []
+      if (pendingVideoIds.length === 0) throw new Error('There are no videos awaiting orientation classification.')
+
       const accessCode = `${window.location.origin}|${data.token}`
       await navigator.clipboard.writeText(accessCode)
       setOrientationPending(typeof data.pending === 'number' ? data.pending : null)
+      setOrientationTrackedIds(pendingVideoIds)
+      setOrientationMonitoringUntil(Date.now() + (Number(data.expiresIn) || 2 * 60 * 60) * 1000)
+      setOrientationReport([])
+      setOrientationReportError(null)
       toast.success('Temporary classifier code copied', {
-        description: 'Paste it into the classifier within 15 minutes.',
+        description: 'Paste it into the classifier and keep this page open for live results.',
       })
     } catch (requestError) {
       toast.error('Classifier code was not copied', {
@@ -674,7 +656,11 @@ export function AdminFetchVideos() {
                   tone={orientationPending && orientationPending > 0 ? 'warning' : 'default'}
                 />
                 <AdminStatusBadge label="Windows" tone="info" />
-                <AdminStatusBadge label="15-minute access" tone="success" />
+                <AdminStatusBadge
+                  label={orientationMonitoringUntil ? 'Watching for results' : '2-hour access'}
+                  tone={orientationMonitoringUntil ? 'success' : 'default'}
+                  dot={Boolean(orientationMonitoringUntil)}
+                />
               </div>
             </div>
           </div>
@@ -711,11 +697,11 @@ export function AdminFetchVideos() {
         </div>
       </AdminSectionCard>
 
-      {isLoadingOrientationReport && (
+      {isLoadingOrientationReport && orientationReport === null && (
         <AdminSectionCard title="Loading latest orientation results">
           <div className="flex min-h-28 items-center justify-center gap-3 text-sm text-muted-foreground" role="status">
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            Loading the videos classified in this run…
+            Watching this page for classification results…
           </div>
         </AdminSectionCard>
       )}
@@ -725,7 +711,7 @@ export function AdminFetchVideos() {
           <div role="alert" className="flex items-start gap-3">
             <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
             <div>
-              <p className="text-sm font-semibold text-foreground">Classification report unavailable</p>
+              <p className="text-sm font-semibold text-foreground">Live classification results unavailable</p>
               <p className="mt-1 text-sm text-muted-foreground">{orientationReportError}</p>
             </div>
           </div>
@@ -736,6 +722,15 @@ export function AdminFetchVideos() {
         <div aria-live="polite">
           <OrientationReport videos={orientationReport} />
         </div>
+      )}
+
+      {orientationMonitoringUntil && orientationReport?.length === 0 && !isLoadingOrientationReport && !orientationReportError && (
+        <AdminSectionCard title="Waiting for classification results">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            Run the downloaded classifier and keep this page open. Results will appear here automatically.
+          </div>
+        </AdminSectionCard>
       )}
 
       {error && (
