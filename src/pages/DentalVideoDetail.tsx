@@ -96,7 +96,7 @@ export function DentalVideoDetail() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [playbackMode, setPlaybackMode] = useState<'content' | 'sponsor'>('content')
-  const playerElementRef = useRef<HTMLDivElement | null>(null)
+  const playerHostRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -132,10 +132,14 @@ export function DentalVideoDetail() {
       : video
 
   useEffect(() => {
-    if (!activeVideo || !playerElementRef.current) return
+    const playerHost = playerHostRef.current
+    if (!activeVideo || !playerHost) return
 
     let cancelled = false
     let player: YouTubePlayer | null = null
+    const playerMount = document.createElement('div')
+    playerMount.className = 'h-full w-full'
+    playerHost.replaceChildren(playerMount)
 
     const continuePlayback = () => {
       if (!adjacent.next) return
@@ -153,8 +157,8 @@ export function DentalVideoDetail() {
 
     loadYouTubeApi()
       .then((YT) => {
-        if (cancelled || !playerElementRef.current) return
-        player = new YT.Player(playerElementRef.current, {
+        if (cancelled) return
+        player = new YT.Player(playerMount, {
           videoId: activeVideo.video_id,
           playerVars: {
             autoplay: 1,
@@ -185,7 +189,12 @@ export function DentalVideoDetail() {
 
     return () => {
       cancelled = true
-      player?.destroy()
+      try {
+        player?.destroy()
+      } catch {
+        // YouTube may already have detached its iframe during a fast route change.
+      }
+      playerHost.replaceChildren()
     }
   }, [activeVideo, adjacent.next, adjacent.sponsor, navigate, playbackMode])
 
@@ -287,8 +296,7 @@ export function DentalVideoDetail() {
               style={{ paddingBottom: '56.25%' }}
             >
               <div
-                key={`${playbackMode}-${activeVideo?.video_id}`}
-                ref={playerElementRef}
+                ref={playerHostRef}
                 className="absolute inset-0 h-full w-full"
                 aria-label={activeVideo?.title}
               />
