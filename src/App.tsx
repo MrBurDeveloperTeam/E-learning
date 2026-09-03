@@ -9,7 +9,9 @@ import { supabase } from './lib/supabase'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import CatMascot from './components/CatMascot.jsx'
 import MolarAIFloat from './components/MolarAIFloat.jsx'
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer'
+import ElearningVirtualPet from './petExperience/ElearningVirtualPet'
+import { PersonalizedInsightBridgeProvider } from './aiExperience/petDialogue/PersonalizedInsightBridge'
+import MeowdokuLauncher from './games/MeowdokuLauncher'
 import usePageDurationTracker, { type PageViewLogMeta } from './hooks/usePageDurationTracker'
 import { logElearningActivity } from './lib/logActivityToOdoo'
 
@@ -59,7 +61,27 @@ function InnerApp() {
   const { user, profile, session, isLoading } = useAuth({ initialize: true })
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname)
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false)
+  const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false)
   const isAuthRoute = currentPath === '/login' || currentPath === '/register'
+
+  // Meowdoku predates molar-experience and isn't one of its 3 built-in
+  // games (flappy-cat/pac-cat/tetris), so it's passed in as a host-local
+  // extra game (0.9.5's SharedVirtualPetProps.extraGames) rather than
+  // living inside the shared package. The shared Games selector renders
+  // this as its 4th card; onSelect just flips local isMeowdokuOpen —
+  // MeowdokuLauncher (rendered below, outside the Pet's own overlay so it
+  // can stack on top of it) owns everything about actually playing it.
+  const extraGames = useMemo(
+    () => [
+      {
+        id: 'meowdoku',
+        title: 'Meowdoku',
+        iconUrl: '/games/meowdoku/cover-148.png',
+        onSelect: () => setIsMeowdokuOpen(true),
+      },
+    ],
+    []
+  )
 
   const aiContext = useMemo(() => {
     return [
@@ -107,7 +129,7 @@ function InnerApp() {
   }, [])
 
   return (
-    <>
+    <PersonalizedInsightBridgeProvider>
       <RouterProvider router={router} />
       {!isAuthRoute && (
         <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
@@ -125,11 +147,17 @@ function InnerApp() {
           />
         </div>
       )}
-      <VirtualPetContainer
+      <ElearningVirtualPet
         isOpen={isVirtualPetOpen}
         onClose={() => setIsVirtualPetOpen(false)}
+        extraGames={extraGames}
       />
-    </>
+      <MeowdokuLauncher
+        isOpen={isMeowdokuOpen}
+        onClose={() => setIsMeowdokuOpen(false)}
+        userId={session?.user?.id ?? null}
+      />
+    </PersonalizedInsightBridgeProvider>
   )
 }
 

@@ -1,178 +1,128 @@
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import MolarChat from './MolarChat';
-import { chatWithMolarAI } from '../services/geminiService';
+import { useEffect, useMemo, useState } from 'react';
+import { Mail } from 'lucide-react';
+import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
 import { supabase } from '../lib/supabase';
+import { useElearningDataChatSources } from '../aiExperience/dataChat/hooks/useElearningDataChatSources';
+import { createElearningMolarAdapter } from '../aiExperience/elearningMolarAdapter';
+import { MOLAR_LOGO_URL } from '../aiExperience/molarExperienceAssets';
+
+// Carried over from the pre-migration local MolarChat.jsx panel, which
+// rendered this exact card inside its own chat window (removed along
+// with the rest of that file's now-shared-package-owned UI). Restored
+// via molar-experience 0.9.5's SharedMolarAIProps.footerContent, which
+// renders it back inside the panel (below suggestions/messages, above
+// the composer) instead of as a separate floating element — same
+// markup/CSS classes (src/index.css) as the pre-migration original.
+function ElearningSupportCard() {
+  return (
+    <div className="elearning-support-region relative z-20">
+      <a
+        href="https://mail.google.com/mail/?view=cm&fs=1&to=support%40snabbb.com&su=Customer%20Inquiry"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Email support at support@snabbb.com"
+        className="elearning-support-link group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none active:scale-[0.99]"
+      >
+        <span className="elearning-support-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105">
+          <Mail className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="elearning-support-title block text-sm font-semibold">
+            Email Support
+          </span>
+          <span className="elearning-support-meta block truncate text-xs">
+            Contact support@snabbb.com
+          </span>
+        </span>
+      </a>
+    </div>
+  );
+}
+
+const DEFAULT_EMPTY_STATE = {
+  title: 'E-learning Simulator',
+  subtitle: 'Ask a question or try one of the suggestions below to test the E-learning AI.',
+  prompts: [],
+};
+
+const FALLBACK_PROMPTS = [
+  { label: 'How does it work?', iconName: 'Zap' },
+  { label: 'Show examples', iconName: 'Lightbulb' },
+  { label: 'Best practices', iconName: 'Star' },
+  { label: 'Get help', iconName: 'Info' },
+];
 
 /**
- * Self-contained floating Molar AI button + chat panel.
- * Drop this anywhere in the layout.
+ * Thin host wrapper around `@mrburdeveloperteam/molar-experience/ai`'s
+ * <SharedMolarAI>. All generic chat UI lifecycle (open/close, history,
+ * input draft, loading/error presentation, submit mechanics, scroll,
+ * clear/reset, Markdown rendering) now lives in the shared package. This
+ * file keeps only what's genuinely E-Learning-specific: the General
+ * Chat/Data Chat orchestration (in `elearningMolarAdapter.ts`), the
+ * Phase-3 Data Chat sources, and the empty-state content fetch.
  */
 export default function MolarAIFloat({ userContext, disabled = false, onPetToggle }) {
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const chatEndRef = useRef(null);
-  const [isHovered, setIsHovered] = useState(false);
-  const [badgeText, setBadgeText] = useState('Meow! 🐾');
+  // Phase-3 Data-Driven Chat: reads existing React Query cache only —
+  // never triggers a fetch of its own (see the hook's own file header).
+  const dataChatSources = useElearningDataChatSources();
 
+  const adapter = useMemo(
+    () => createElearningMolarAdapter({ userContext: userContext || '', dataChatSources }),
+    [userContext, dataChatSources]
+  );
+
+  const [emptyState, setEmptyState] = useState(DEFAULT_EMPTY_STATE);
+
+  // TIMING SEAM: the pre-migration MolarChat.jsx fetched this only once the
+  // chat panel opened (`if (isOpen) fetchSimConfig()`); SharedMolarAI needs
+  // `emptyState` already resolved, so this now fetches once at mount
+  // instead — one additional harmless read-only Supabase query per mount,
+  // matching the accepted precedent from every other app's Molar AI
+  // migration in this session.
   useEffect(() => {
-    const texts = disabled 
-      ? ['Log In', 'Get Started']
-      : ['Ask Me', 'Try Me!', 'SNAI'];
-    
-    let i = 0;
-    setBadgeText(texts[0]);
+    const fetchSimConfig = async () => {
+      try {
+        const { data: configs } = await supabase
+          .from('aiboard_simulator_configs')
+          .select('id, title, subtitle')
+          .eq('module_name', 'E-learning')
+          .limit(1);
 
-    const interval = setInterval(() => {
-      i = (i + 1) % texts.length;
-      setBadgeText(texts[i]);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [disabled]);
+        if (configs && configs.length > 0) {
+          const { data: promptData } = await supabase
+            .from('aiboard_simulator_prompts')
+            .select('text, icon_name, sort_order')
+            .eq('config_id', configs[0].id)
+            .order('sort_order', { ascending: true });
 
-  const handleSendMessage = async (e) => {
-    if (e) e.preventDefault();
-    if (disabled) return;
-    const msg = chatInput.trim();
-    if (!msg || isChatLoading) return;
+          const prompts = promptData && promptData.length > 0
+            ? promptData.map((p) => ({ label: p.text, iconName: p.icon_name }))
+            : FALLBACK_PROMPTS;
 
-    setChatInput('');
-    setChatHistory(prev => [...prev, { role: 'user', parts: [{ text: msg }] }]);
-    setIsChatLoading(true);
-
-    try {
-      let response = null;
-
-      // 1. Check custom responses first
-      const { data: apps } = await supabase
-        .from('aiboard_response_target_apps')
-        .select('response_id')
-        .in('app_name', ['E-learning', 'All']);
-
-      if (apps && apps.length > 0) {
-        const responseIds = apps.map(a => a.response_id);
-        const { data: keywords } = await supabase
-          .from('aiboard_response_keywords')
-          .select('keyword, response_id')
-          .in('response_id', responseIds);
-
-        if (keywords && keywords.length > 0) {
-          const matchedKeyword = keywords.find(k => msg.toLowerCase().includes(k.keyword.toLowerCase()));
-
-          if (matchedKeyword) {
-            const { data: respData } = await supabase
-              .from('aiboard_responses')
-              .select('response')
-              .eq('id', matchedKeyword.response_id)
-              .single();
-
-            if (respData) {
-              response = respData.response;
-            }
-          }
+          setEmptyState({
+            title: configs[0].title,
+            subtitle: configs[0].subtitle || DEFAULT_EMPTY_STATE.subtitle,
+            prompts,
+          });
+        } else {
+          setEmptyState({ ...DEFAULT_EMPTY_STATE, prompts: FALLBACK_PROMPTS });
         }
+      } catch (err) {
+        console.error('Error fetching sim configs:', err);
       }
+    };
 
-      // 2. Fallback to Gemini
-      if (!response) {
-        response = await chatWithMolarAI(chatHistory, msg, userContext || '');
-      }
-      
-      // Parse actions from backticks if present
-      let cleanResponse = response;
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || response.match(/```\s*(\{[\s\S]*?\})\s*```/);
-      
-      if (jsonMatch) {
-         try {
-            const actionObj = JSON.parse(jsonMatch[1]);
-            cleanResponse = response.replace(jsonMatch[0], '').trim();
-            
-            if (actionObj.action && window.__MOLAR_ACTIONS__) {
-               const handlers = window.__MOLAR_ACTIONS__;
-               const { action, data, id } = actionObj;
-               
-               console.log('[MolarAI] Executing action:', action, data);
-               
-               switch(action) {
-                  case 'OPEN_LESSON': handlers.openLesson?.(id || data?.id); break;
-                  case 'OPEN_CATEGORY': handlers.openCategory?.(id || data?.slug); break;
-                  case 'OPEN_SEARCH': handlers.openSearch?.(data?.query || data?.q || ''); break;
-                  default: console.warn('[MolarAI] Unknown action:', action);
-               }
-            }
-         } catch (e) {
-            console.error('[MolarAI] Action parse failed:', e);
-         }
-      }
-
-      setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: cleanResponse || "SNAI: Action executed." }] }]);
-    } catch (error) {
-      setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: "SNAI Error: Unable to process request." }] }]);
-    } finally {
-      setIsChatLoading(false);
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  };
-
-  const handleOpenChat = () => {
-    if (disabled) return;
-    setIsChatOpen(true);
-  };
-
-  const handleClearChat = () => setChatHistory([]);
+    fetchSimConfig();
+  }, []);
 
   return (
-    <>
-      {/* Floating trigger button - SuperApp Style */}
-      {!isChatOpen && (
-        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-[60] flex flex-col items-center group md:bottom-6 md:right-6">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={badgeText}
-                  initial={{ opacity: 0, y: 5, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -5, scale: 0.9 }}
-                  className="bg-white text-emerald-500 text-[10px] sm:text-[12px] font-bold tracking-wider px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 whitespace-nowrap"
-                >
-                  {badgeText}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-            <button
-              onClick={() => setIsChatOpen(true)}
-              disabled={disabled}
-              className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 hover:shadow-xl transition-all shadow-[#1F7A6F]/30 relative overflow-hidden ${disabled ? 'bg-slate-300 grayscale cursor-not-allowed opacity-70' : 'bg-[#1F7A6F]'}`}
-            >
-              
-              <img 
-                src="/images/ai_logo.png" 
-                alt="Molar AI" 
-                className={`w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-sm transition-transform ${disabled ? 'brightness-80' : ''}`} 
-              />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <MolarChat
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        chatHistory={chatHistory}
-        isChatLoading={isChatLoading}
-        chatInput={chatInput}
-        setChatInput={setChatInput}
-        onSendMessage={handleSendMessage}
-        onClearChat={handleClearChat}
-        onPetToggle={onPetToggle}
-        chatEndRef={chatEndRef}
-      />
-
-
-    </>
+    <SharedMolarAI
+      adapter={adapter}
+      disabled={disabled}
+      onPetToggle={onPetToggle}
+      emptyState={emptyState}
+      logoUrl={MOLAR_LOGO_URL}
+      footerContent={<ElearningSupportCard />}
+    />
   );
 }
