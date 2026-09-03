@@ -102,23 +102,45 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
   const authorization = await requireAdmin(context.request, context.env)
   if (!authorization.ok) return json(context.request, { error: authorization.error }, authorization.status)
 
-  const body = await context.request.json().catch(() => null) as { id?: unknown; videoType?: unknown } | null
-  const id = String(body?.id || '')
-  const videoType = String(body?.videoType || '')
-  if (!UUID_PATTERN.test(id) || !ALLOWED_VIDEO_TYPES.has(videoType)) {
+  const body = await context.request.json().catch(() => null) as {
+    id?: unknown
+    videoType?: unknown
+    results?: Array<{ id?: unknown; videoType?: unknown }>
+  } | null
+  const submitted = Array.isArray(body?.results)
+    ? body.results
+    : [{ id: body?.id, videoType: body?.videoType }]
+  const results = submitted.map((entry) => ({
+    id: String(entry?.id || ''),
+    videoType: String(entry?.videoType || ''),
+  }))
+
+  if (
+    results.length < 1 ||
+    results.length > PAGE_SIZE ||
+    new Set(results.map((entry) => entry.id)).size !== results.length ||
+    results.some((entry) => !UUID_PATTERN.test(entry.id) || !ALLOWED_VIDEO_TYPES.has(entry.videoType))
+  ) {
     return json(context.request, { error: 'The classification request is invalid.' }, 400)
   }
 
-  const { data, error } = await authorization.supabase
-    .from('dental_videos')
-    .update({ video_type: videoType })
-    .eq('id', id)
-    .is('video_type', null)
-    .select('id,video_type')
-    .maybeSingle()
+  const updated: Array<{ id: string; video_type: string }> = []
+  const failed: string[] = []
+  for (const entry of results) {
+    const { data, error } = await authorization.supabase
+      .from('dental_videos')
+      .update({ video_type: entry.videoType })
+      .eq('id', entry.id)
+      .is('video_type', null)
+      .select('id,video_type')
+      .maybeSingle()
 
-  if (error) return json(context.request, { error: 'The classification could not be saved.' }, 500)
-  if (!data) return json(context.request, { error: 'This video has already been classified or no longer exists.' }, 409)
+    if (error || !data) failed.push(entry.id)
+    else updated.push(data)
+  }
 
-  return json(context.request, { video: data })
+  if (updated.length === 0) {
+    return json(context.request, { error: 'The selected videos were already classified or could not be saved.', failed }, 409)
+  }
+  return json(context.request, { updated: updated.length, videos: updated, failed }, failed.length > 0 ? 207 : 200)
 }

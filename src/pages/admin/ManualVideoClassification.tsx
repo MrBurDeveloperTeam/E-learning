@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft,
+  Check,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -51,6 +52,7 @@ export function ManualVideoClassification() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [classifiedThisVisit, setClassifiedThisVisit] = useState(0)
 
   const loadVideos = useCallback(async () => {
@@ -69,6 +71,7 @@ export function ManualVideoClassification() {
       if (!response.ok || !data) throw new Error(data?.error || 'Unable to load videos.')
 
       setVideos(data.videos)
+      setSelectedIds(new Set())
       setTotal(data.total)
       setPageSize(data.pageSize)
       if (data.videos.length === 0 && data.total > 0 && page > 1) setPage((current) => current - 1)
@@ -83,9 +86,9 @@ export function ManualVideoClassification() {
     if (isAdminProfile(profile)) void loadVideos()
   }, [loadVideos, profile])
 
-  const classifyVideo = async (item: PendingVideo, videoType: VideoType) => {
+  const saveClassifications = async (items: PendingVideo[], videoType: VideoType, savingKey: string) => {
     if (savingId) return
-    setSavingId(item.id)
+    setSavingId(savingKey)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Your session has expired. Sign in again.')
@@ -96,14 +99,15 @@ export function ManualVideoClassification() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id: item.id, videoType }),
+        body: JSON.stringify({ results: items.map((item) => ({ id: item.id, videoType })) }),
       })
       const data = await response.json().catch(() => null)
       if (!response.ok) throw new Error(data?.error || 'The classification could not be saved.')
 
-      setClassifiedThisVisit((current) => current + 1)
-      toast.success('Video classified', {
-        description: `${item.title} → ${videoType === 'short_video' ? 'Short video' : 'Video'}`,
+      const updated = typeof data?.updated === 'number' ? data.updated : items.length
+      setClassifiedThisVisit((current) => current + updated)
+      toast.success(updated === 1 ? 'Video classified' : `${updated} videos classified`, {
+        description: `Saved as ${videoType === 'short_video' ? 'Short video' : 'Video'}.`,
       })
       await loadVideos()
     } catch (saveError) {
@@ -113,6 +117,27 @@ export function ManualVideoClassification() {
     } finally {
       setSavingId(null)
     }
+  }
+
+  const classifyVideo = (item: PendingVideo, videoType: VideoType) => (
+    saveClassifications([item], videoType, item.id)
+  )
+
+  const classifySelected = (videoType: VideoType) => {
+    const selectedVideos = videos.filter((video) => selectedIds.has(video.id))
+    if (selectedVideos.length === 0) return Promise.resolve()
+    return saveClassifications(selectedVideos, videoType, 'bulk')
+  }
+
+  const allVisibleSelected = videos.length > 0 && videos.every((video) => selectedIds.has(video.id))
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   if (!isAdminProfile(profile)) {
@@ -185,6 +210,47 @@ export function ManualVideoClassification() {
         description="Open or preview a video, then choose Short video for portrait orientation or Video for landscape and square orientation."
         action={<AdminStatusBadge label={`Page ${page} of ${totalPages}`} tone="default" />}
       >
+        {!isLoading && videos.length > 0 && (
+          <div className="mb-5 flex flex-col gap-3 rounded-[20px] border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedIds(allVisibleSelected ? new Set() : new Set(videos.map((video) => video.id)))}
+                disabled={Boolean(savingId)}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+              >
+                <span className={`flex h-5 w-5 items-center justify-center rounded border ${allVisibleSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'}`}>
+                  {allVisibleSelected && <Check className="h-3.5 w-3.5" />}
+                </span>
+                {allVisibleSelected ? 'Clear page selection' : 'Select all on this page'}
+              </button>
+              <AdminStatusBadge
+                label={`${selectedIds.size} selected`}
+                tone={selectedIds.size > 0 ? 'info' : 'default'}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <button
+                type="button"
+                onClick={() => void classifySelected('short_video')}
+                disabled={selectedIds.size === 0 || Boolean(savingId)}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-background px-3 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-40"
+              >
+                {savingId === 'bulk' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+                Set selected as Short video
+              </button>
+              <button
+                type="button"
+                onClick={() => void classifySelected('video')}
+                disabled={selectedIds.size === 0 || Boolean(savingId)}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+              >
+                {savingId === 'bulk' ? <Loader2 className="h-4 w-4 animate-spin" /> : <MonitorPlay className="h-4 w-4" />}
+                Set selected as Video
+              </button>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground" role="status">
             <Loader2 className="h-5 w-5 animate-spin" /> Loading unclassified videos…
@@ -199,8 +265,22 @@ export function ManualVideoClassification() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {videos.map((item) => {
               const isSaving = savingId === item.id
+              const isSelected = selectedIds.has(item.id)
               return (
-                <article key={item.id} className="overflow-hidden rounded-[22px] border border-border/80 bg-background/60">
+                <article
+                  key={item.id}
+                  className={`relative overflow-hidden rounded-[22px] border bg-background/60 transition-all ${isSelected ? 'border-primary ring-2 ring-primary/20' : 'border-border/80'}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleSelection(item.id)}
+                    disabled={Boolean(savingId)}
+                    aria-pressed={isSelected}
+                    aria-label={`${isSelected ? 'Deselect' : 'Select'} ${item.title}`}
+                    className={`absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm backdrop-blur ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-white/70 bg-black/55 text-white hover:bg-black/70'}`}
+                  >
+                    {isSelected ? <Check className="h-5 w-5" /> : <span className="h-4 w-4 rounded border border-current" />}
+                  </button>
                   <a
                     href={`https://www.youtube.com/watch?v=${encodeURIComponent(item.video_id)}`}
                     target="_blank"

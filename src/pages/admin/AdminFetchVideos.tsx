@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  ArrowRight,
   BrainCircuit,
   CheckCircle,
   Clapperboard,
@@ -708,9 +709,10 @@ export function AdminFetchVideos() {
         action={(
           <Link
             to="/admin/fetch-videos/manual-classification"
-            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             Manually classify skipped videos
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
         )}
       >
