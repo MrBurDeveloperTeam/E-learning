@@ -60,7 +60,27 @@ function InnerApp() {
   const { user, profile, session, isLoading } = useAuth({ initialize: true })
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname)
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false)
+  const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false)
   const isAuthRoute = currentPath === '/login' || currentPath === '/register'
+
+  // Meowdoku predates molar-experience and isn't one of its 3 built-in
+  // games (flappy-cat/pac-cat/tetris), so it's passed in as a host-local
+  // extra game (0.9.5's SharedVirtualPetProps.extraGames) rather than
+  // living inside the shared package. The shared Games selector renders
+  // this as its 4th card; onSelect just flips local isMeowdokuOpen —
+  // MeowdokuLauncher (rendered below, outside the Pet's own overlay so it
+  // can stack on top of it) owns everything about actually playing it.
+  const extraGames = useMemo(
+    () => [
+      {
+        id: 'meowdoku',
+        title: 'Meowdoku',
+        iconUrl: '/games/meowdoku/cover-148.png',
+        onSelect: () => setIsMeowdokuOpen(true),
+      },
+    ],
+    []
+  )
 
   const aiContext = useMemo(() => {
     return [
@@ -124,18 +144,17 @@ function InnerApp() {
             userContext={aiContext}
             onPetToggle={() => setIsVirtualPetOpen(true)}
           />
-          {/* Meowdoku predates the shared molar-experience package and isn't
-              one of its 3 built-in games (flappy-cat/pac-cat/tetris) — kept
-              as an E-learning-local launcher, same visual tier as Cat/Pet. */}
-          <MeowdokuLauncher
-            disabled={isLoading || !session?.user}
-            userId={session?.user?.id ?? null}
-          />
         </div>
       )}
       <ElearningVirtualPet
         isOpen={isVirtualPetOpen}
         onClose={() => setIsVirtualPetOpen(false)}
+        extraGames={extraGames}
+      />
+      <MeowdokuLauncher
+        isOpen={isMeowdokuOpen}
+        onClose={() => setIsMeowdokuOpen(false)}
+        userId={session?.user?.id ?? null}
       />
     </PersonalizedInsightBridgeProvider>
   )

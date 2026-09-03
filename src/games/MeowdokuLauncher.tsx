@@ -5,6 +5,15 @@
 // legacy `src/VirtualPet/components/GamePage.tsx` (now deleted) so
 // Meowdoku keeps working after that legacy directory is retired.
 //
+// This is a controlled overlay only — no floating trigger button of its
+// own. The single entry point is the shared Games selector's fourth
+// card (Virtual Pet → Games → Meowdoku), wired via molar-experience
+// 0.9.5's `SharedVirtualPetProps.extraGames` in ElearningVirtualPet.tsx;
+// `isOpen`/`onClose` are owned by App.tsx, flipped by that card's
+// `onSelect`. z-[1100] (above SharedVirtualPet's own z-[1000] overlay)
+// so this renders on top of the Pet UI it was opened from, exactly like
+// the shared package's own 3 built-in games render on top of PetRoom.
+//
 // Coin bridge: the legacy version read/wrote coins through the local
 // `useGameState` hook's `stats`/`setStats` — the same local state the
 // legacy Pet UI persisted via a raw, non-atomic upsert. That local state
@@ -32,12 +41,12 @@ const MEOWDOKU_URL = `/games/meowdoku/index.html?v=${GAME_BUILD}`;
 const DEFAULT_COINS = 100;
 
 interface MeowdokuLauncherProps {
-  disabled?: boolean;
+  isOpen: boolean;
+  onClose: () => void;
   userId: string | null;
 }
 
-export default function MeowdokuLauncher({ disabled = false, userId }: MeowdokuLauncherProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function MeowdokuLauncher({ isOpen, onClose, userId }: MeowdokuLauncherProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [coins, setCoins] = useState(DEFAULT_COINS);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -242,29 +251,23 @@ export default function MeowdokuLauncher({ disabled = false, userId }: MeowdokuL
     };
   }, [isOpen]);
 
-  const handleOpen = async () => {
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
     setIsLoading(true);
-    const currentCoins = await loadCurrentCoins();
-    setCoins(currentCoins);
-    setIsOpen(true);
-  };
+    loadCurrentCoins().then((currentCoins) => {
+      if (!cancelled) setCoins(currentCoins);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
-  if (disabled) return null;
+  if (!isOpen) return null;
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleOpen}
-        aria-label="Play Meowdoku"
-        title="Meowdoku"
-        className="fixed bottom-6 left-6 z-[9996] flex h-14 w-14 items-center justify-center rounded-full border border-white/40 bg-white/80 text-2xl shadow-xl backdrop-blur-md transition-transform hover:scale-105 active:scale-95"
-      >
-        🐱
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black" style={{ fontFamily: "'Fredoka', sans-serif" }}>
+    <div className="fixed inset-0 z-[1100] bg-black" style={{ fontFamily: "'Fredoka', sans-serif" }}>
           <div className="relative h-full w-full">
             <div
               className="absolute z-[70] flex items-center"
@@ -280,7 +283,7 @@ export default function MeowdokuLauncher({ disabled = false, userId }: MeowdokuL
               </div>
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={onClose}
                 aria-label="Close Meowdoku"
                 title="Close"
                 className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/10 bg-black/40 text-white/70 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-black/80 hover:text-white active:scale-95"
@@ -308,8 +311,6 @@ export default function MeowdokuLauncher({ disabled = false, userId }: MeowdokuL
               />
             </div>
           </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }

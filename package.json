@@ -18,7 +18,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/geist": "^5.2.8",
-    "@mrburdeveloperteam/molar-experience": "0.9.4",
+    "@mrburdeveloperteam/molar-experience": "0.9.5",
     "@mux/mux-player-react": "^3.11.7",
     "@mux/upchunk": "^3.5.0",
     "@supabase/supabase-js": "^2.49.4",

@@ -7,24 +7,35 @@ import { createElearningMolarAdapter } from '../aiExperience/elearningMolarAdapt
 import { MOLAR_LOGO_URL } from '../aiExperience/molarExperienceAssets';
 
 // Carried over from the pre-migration local MolarChat.jsx panel, which
-// rendered this same link inside its own chat window (removed along with
-// the rest of that file's now-shared-package-owned UI). SharedMolarAI
-// has no footer/support-link slot, so this stays a small, independent
-// floating affordance instead of being lost — same destination/copy as
-// before, just no longer nested inside the chat panel's own markup.
-function ElearningSupportShortcut({ disabled }) {
-  if (disabled) return null;
+// rendered this exact card inside its own chat window (removed along
+// with the rest of that file's now-shared-package-owned UI). Restored
+// via molar-experience 0.9.5's SharedMolarAIProps.footerContent, which
+// renders it back inside the panel (below suggestions/messages, above
+// the composer) instead of as a separate floating element — same
+// markup/CSS classes (src/index.css) as the pre-migration original.
+function ElearningSupportCard() {
   return (
-    <a
-      href="https://mail.google.com/mail/?view=cm&fs=1&to=support%40snabbb.com&su=Customer%20Inquiry"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Email support at support@snabbb.com"
-      className="elearning-support-link group fixed bottom-24 right-6 z-[9997] flex items-center gap-2 rounded-full border border-slate-300/70 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur-md transition-all duration-200 hover:bg-white active:scale-[0.97]"
-    >
-      <Mail className="h-4 w-4" aria-hidden="true" />
-      Support
-    </a>
+    <div className="elearning-support-region relative z-20">
+      <a
+        href="https://mail.google.com/mail/?view=cm&fs=1&to=support%40snabbb.com&su=Customer%20Inquiry"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Email support at support@snabbb.com"
+        className="elearning-support-link group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none active:scale-[0.99]"
+      >
+        <span className="elearning-support-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105">
+          <Mail className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="elearning-support-title block text-sm font-semibold">
+            Email Support
+          </span>
+          <span className="elearning-support-meta block truncate text-xs">
+            Contact support@snabbb.com
+          </span>
+        </span>
+      </a>
+    </div>
   );
 }
 
@@ -105,15 +116,13 @@ export default function MolarAIFloat({ userContext, disabled = false, onPetToggl
   }, []);
 
   return (
-    <>
-      <SharedMolarAI
-        adapter={adapter}
-        disabled={disabled}
-        onPetToggle={onPetToggle}
-        emptyState={emptyState}
-        logoUrl={MOLAR_LOGO_URL}
-      />
-      <ElearningSupportShortcut disabled={disabled} />
-    </>
+    <SharedMolarAI
+      adapter={adapter}
+      disabled={disabled}
+      onPetToggle={onPetToggle}
+      emptyState={emptyState}
+      logoUrl={MOLAR_LOGO_URL}
+      footerContent={<ElearningSupportCard />}
+    />
   );
 }

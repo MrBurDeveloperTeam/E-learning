@@ -29,7 +29,7 @@
 // too would just be a redundant second write to the same style property,
 // not a behavior difference.
 import { useEffect, useRef, useState } from 'react';
-import { SharedVirtualPet } from '@mrburdeveloperteam/molar-experience/pet';
+import { SharedVirtualPet, type ExtraGame } from '@mrburdeveloperteam/molar-experience/pet';
 import { supabase } from '../lib/supabase';
 import { elearningPetRepository } from './elearningPetRepository';
 import { PET_ASSET_URLS } from '../aiExperience/molarExperienceAssets';
@@ -144,9 +144,12 @@ async function detectAndLogVisit(): Promise<string> {
 interface ElearningVirtualPetProps {
   isOpen: boolean;
   onClose: () => void;
+  /** molar-experience 0.9.5's host-extension games — see `ExtraGame`'s
+   *  own doc in the shared package. Passed straight through. */
+  extraGames?: ExtraGame[];
 }
 
-export default function ElearningVirtualPet({ isOpen, onClose }: ElearningVirtualPetProps) {
+export default function ElearningVirtualPet({ isOpen, onClose, extraGames }: ElearningVirtualPetProps) {
   const hasLoggedRef = useRef(false);
   const [detectedCurrency, setDetectedCurrency] = useState(DEFAULT_CURRENCY_CODE);
   const [userId, setUserId] = useState<string | null>(null);
@@ -231,6 +234,7 @@ export default function ElearningVirtualPet({ isOpen, onClose }: ElearningVirtua
       userId={userId}
       currencyCode={detectedCurrency}
       assetUrls={PET_ASSET_URLS}
+      extraGames={extraGames}
     />
   );
 }
