@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
@@ -16,6 +16,65 @@ function formatPublishedDate(dateString: string): string {
 const emptyAdjacentVideos: AdjacentDentalVideos = {
   previous: null,
   next: null,
+  sponsor: null,
+}
+
+type YouTubePlayer = {
+  destroy: () => void
+  mute: () => void
+  playVideo: () => void
+}
+
+type YouTubeApi = {
+  Player: new (
+    element: HTMLElement,
+    options: {
+      videoId: string
+      playerVars: Record<string, number>
+      events: {
+        onReady: (event: { target: YouTubePlayer }) => void
+        onStateChange: (event: { data: number }) => void
+        onError: () => void
+      }
+    }
+  ) => YouTubePlayer
+  PlayerState: { ENDED: number }
+}
+
+declare global {
+  interface Window {
+    YT?: YouTubeApi
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
+
+let youtubeApiPromise: Promise<YouTubeApi> | null = null
+
+function loadYouTubeApi(): Promise<YouTubeApi> {
+  if (window.YT?.Player) return Promise.resolve(window.YT)
+  if (youtubeApiPromise) return youtubeApiPromise
+
+  youtubeApiPromise = new Promise((resolve, reject) => {
+    const previousReadyHandler = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => {
+      previousReadyHandler?.()
+      if (window.YT) resolve(window.YT)
+      else reject(new Error('YouTube player API did not load'))
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://www.youtube.com/iframe_api"]'
+    )
+    if (existingScript) return
+
+    const script = document.createElement('script')
+    script.src = 'https://www.youtube.com/iframe_api'
+    script.async = true
+    script.onerror = () => reject(new Error('Unable to load YouTube player'))
+    document.head.appendChild(script)
+  })
+
+  return youtubeApiPromise
 }
 
 async function getVideoPage(id: string) {
@@ -36,12 +95,15 @@ export function DentalVideoDetail() {
     useState<AdjacentDentalVideos>(emptyAdjacentVideos)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [playbackMode, setPlaybackMode] = useState<'content' | 'sponsor'>('content')
+  const playerHostRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
     setError(null)
     setAdjacent(emptyAdjacentVideos)
+    setPlaybackMode('content')
 
     getVideoPage(id)
       .then(({ video: videoData, adjacent: adjacentData }) => {
@@ -63,6 +125,78 @@ export function DentalVideoDetail() {
       cancelled = true
     }
   }, [id])
+
+  const activeVideo =
+    playbackMode === 'sponsor' && adjacent.sponsor
+      ? adjacent.sponsor
+      : video
+
+  useEffect(() => {
+    const playerHost = playerHostRef.current
+    if (!activeVideo || !playerHost) return
+
+    let cancelled = false
+    let player: YouTubePlayer | null = null
+    const playerMount = document.createElement('div')
+    playerMount.className = 'h-full w-full'
+    playerHost.replaceChildren(playerMount)
+
+    const continuePlayback = () => {
+      if (!adjacent.next) return
+
+      if (playbackMode === 'content' && adjacent.sponsor) {
+        setPlaybackMode('sponsor')
+        return
+      }
+
+      navigate({
+        to: '/dental-videos/$id',
+        params: { id: adjacent.next.id },
+      })
+    }
+
+    loadYouTubeApi()
+      .then((YT) => {
+        if (cancelled) return
+        player = new YT.Player(playerMount, {
+          videoId: activeVideo.video_id,
+          playerVars: {
+            autoplay: 1,
+            mute: 1,
+            playsinline: 1,
+            rel: 0,
+          },
+          events: {
+            onReady: ({ target }) => {
+              target.mute()
+              target.playVideo()
+            },
+            onStateChange: ({ data }) => {
+              if (data === YT.PlayerState.ENDED) continuePlayback()
+            },
+            onError: continuePlayback,
+          },
+        })
+      })
+      .catch(() => {
+        if (playbackMode === 'sponsor' && adjacent.next) {
+          navigate({
+            to: '/dental-videos/$id',
+            params: { id: adjacent.next.id },
+          })
+        }
+      })
+
+    return () => {
+      cancelled = true
+      try {
+        player?.destroy()
+      } catch {
+        // YouTube may already have detached its iframe during a fast route change.
+      }
+      playerHost.replaceChildren()
+    }
+  }, [activeVideo, adjacent.next, adjacent.sponsor, navigate, playbackMode])
 
   useEffect(() => {
     const handleArrowNavigation = (event: KeyboardEvent) => {
@@ -161,15 +295,25 @@ export function DentalVideoDetail() {
               className="relative w-full overflow-hidden rounded-xl bg-black"
               style={{ paddingBottom: '56.25%' }}
             >
-              <iframe
-                key={video.video_id}
+              <div
+                ref={playerHostRef}
                 className="absolute inset-0 h-full w-full"
-                src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&playsinline=1&rel=0`}
-                title={video.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
+                aria-label={activeVideo?.title}
               />
+
+              {playbackMode === 'sponsor' && adjacent.sponsor ? (
+                <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-6rem)] rounded-lg border border-white/25 bg-black/70 px-3 py-2 text-white shadow-lg backdrop-blur-sm md:left-4 md:top-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#A9DBD7]">
+                    Featured partner video
+                  </p>
+                  <p className="mt-0.5 truncate text-xs font-medium">
+                    {adjacent.sponsor.channel_name}
+                  </p>
+                  <p className="mt-0.5 hidden text-[11px] text-white/75 sm:block">
+                    Your next video will play when this finishes.
+                  </p>
+                </div>
+              ) : null}
 
               {adjacent.previous ? (
                 <Link

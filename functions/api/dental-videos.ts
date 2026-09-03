@@ -198,12 +198,56 @@ export async function onRequestGet(context: {
           ? sameDate[currentIndex + 1]
           : olderResult.data?.[0]) || null;
 
+      // Choose a stable featured-partner video for this transition. Alternating
+      // the preferred channel keeps exposure balanced without storing user data.
+      const sponsorSeed = Array.from(current.id).reduce(
+        (total, character) => total + character.charCodeAt(0),
+        0
+      );
+      const excludedIds = [current.id, next?.id].filter(Boolean);
+      let sponsorQuery = supabase
+        .from("dental_videos")
+        .select("id,video_id,title,channel_name")
+        .eq("needs_review", false)
+        .or(
+          "channel_name.ilike.%Mr Bur%,channel_name.ilike.%MR.BUR%,channel_name.ilike.%Kaneiko%"
+        )
+        .order("published_at", { ascending: false })
+        .limit(60);
+
+      if (excludedIds.length > 0) {
+        sponsorQuery = sponsorQuery.not(
+          "id",
+          "in",
+          `(${excludedIds.join(",")})`
+        );
+      }
+
+      const { data: sponsorCandidates, error: sponsorError } = await sponsorQuery;
+      if (sponsorError) {
+        console.error("dental-videos sponsor query error:", sponsorError);
+      }
+
+      const preferredChannel = sponsorSeed % 2 === 0 ? "mr bur" : "kaneiko";
+      const preferredCandidates = (sponsorCandidates || []).filter((item) =>
+        item.channel_name?.toLowerCase().replace(".", " ").includes(preferredChannel)
+      );
+      const sponsorPool =
+        preferredCandidates.length > 0
+          ? preferredCandidates
+          : sponsorCandidates || [];
+      const sponsor =
+        sponsorPool.length > 0
+          ? sponsorPool[sponsorSeed % sponsorPool.length]
+          : null;
+
       const compact = (item: any) =>
         item ? { id: item.id, title: item.title } : null;
 
       return jsonResponse({
         previous: compact(previous),
         next: compact(next),
+        sponsor,
       });
     }
 
