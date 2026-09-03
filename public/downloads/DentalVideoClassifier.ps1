@@ -61,9 +61,18 @@ while (($processed + $failed) -lt $maximumVideos) {
   $remaining = $maximumVideos - ($processed + $failed)
   $batchLimit = [Math]::Min(10, $remaining)
   try {
-    $batch = Invoke-RestMethod -Method Get -Uri "$endpoint?limit=$batchLimit" -Headers $headers
+    $batch = Invoke-RestMethod -Method Get -Uri "${endpoint}?limit=$batchLimit" -Headers $headers
   } catch {
-    throw "Unable to load videos. The access code may have expired. Copy a new code and run the classifier again."
+    $serverMessage = $_.Exception.Message
+    if ($_.ErrorDetails.Message) {
+      try {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        if ($errorBody.error) { $serverMessage = $errorBody.error }
+      } catch {
+        $serverMessage = $_.ErrorDetails.Message
+      }
+    }
+    throw "Unable to load videos: $serverMessage"
   }
   if (-not $batch.videos -or $batch.videos.Count -eq 0) { break }
 
