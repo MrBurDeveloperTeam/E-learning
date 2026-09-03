@@ -35,6 +35,11 @@ import { isAdminProfile } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { VIDEO_CATEGORIES, type VideoCategory } from '@/types'
+import {
+  getVideoLanguageLabel,
+  IMPORT_VIDEO_LANGUAGE_OPTIONS,
+  type ImportVideoLanguage,
+} from '@/constants/videoLanguages'
 
 type ImportSize = 10 | 25 | 50
 
@@ -46,10 +51,12 @@ type ImportedVideo = {
   channel_name: string
   published_at: string
   category: VideoCategory
+  language: string
 }
 
 type FetchResult = {
   category: VideoCategory
+  language: ImportVideoLanguage
   requested: number
   fetched: number
   eligible: number
@@ -222,6 +229,7 @@ function ImportedVideoList({ videos }: { videos: ImportedVideo[] }) {
 export function AdminFetchVideos() {
   const profile = useAuthStore((state) => state.profile)
   const [category, setCategory] = useState<VideoCategory>('General Dentistry')
+  const [importLanguage, setImportLanguage] = useState<ImportVideoLanguage>('en')
   const [importSize, setImportSize] = useState<ImportSize>(25)
   const [isFetching, setIsFetching] = useState(false)
   const [result, setResult] = useState<FetchResult | null>(null)
@@ -340,7 +348,7 @@ export function AdminFetchVideos() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ category, limit: importSize }),
+        body: JSON.stringify({ category, language: importLanguage, limit: importSize }),
       })
       const data = await response.json().catch(() => null)
 
@@ -355,6 +363,7 @@ export function AdminFetchVideos() {
 
       setResult({
         category: data.category ?? category,
+        language: data.language ?? importLanguage,
         requested: data.requested ?? importSize,
         fetched: data.fetched ?? 0,
         eligible: data.eligible ?? 0,
@@ -506,10 +515,10 @@ export function AdminFetchVideos() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <AdminSectionCard
           title="Automatic YouTube import"
-          description="Choose one specialty. The importer runs English-first searches plus Thai, Chinese, Korean, Japanese, and Malay searches, then files accepted videos directly into that category."
+          description="Choose one specialty and language. The importer searches only in that language, verifies the result language, and files accepted videos directly into the selected category."
         >
           <form noValidate onSubmit={handleFetchVideos} className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_220px_160px]">
               <div className="space-y-2">
                 <label htmlFor="youtube-import-category" className="text-sm font-medium text-foreground">
                   Dental category
@@ -529,6 +538,30 @@ export function AdminFetchVideos() {
                   <SelectContent align="start" className="rounded-xl">
                     {VIDEO_CATEGORIES.map((item) => (
                       <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="youtube-import-language" className="text-sm font-medium text-foreground">
+                  Video language
+                </label>
+                <Select
+                  value={importLanguage}
+                  onValueChange={(value) => setImportLanguage(value as ImportVideoLanguage)}
+                  disabled={isFetching}
+                >
+                  <SelectTrigger
+                    id="youtube-import-language"
+                    className="h-11 w-full rounded-xl bg-background/70 px-3.5"
+                    aria-label="Video language"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="rounded-xl">
+                    {IMPORT_VIDEO_LANGUAGE_OPTIONS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -758,8 +791,8 @@ export function AdminFetchVideos() {
 
       {result && (
         <AdminSectionCard
-          title={`Import result · ${result.category}`}
-          description={`Requested up to ${result.requested} new videos. Accepted videos were assigned directly to the selected category.`}
+          title={`Import result · ${result.category} · ${getVideoLanguageLabel(result.language)}`}
+          description={`Requested up to ${result.requested} new ${getVideoLanguageLabel(result.language)} videos. Accepted videos were assigned directly to the selected category.`}
         >
           <div aria-live="polite">
             <ResultSummary result={result} />

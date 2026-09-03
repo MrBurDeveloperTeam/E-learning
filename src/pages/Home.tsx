@@ -25,17 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-const VIDEO_LANGUAGES = [
-  { value: 'All', label: 'All languages' },
-  { value: 'en', label: 'English' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'th', label: 'Thai' },
-  { value: 'ko', label: 'Korean' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'ms', label: 'Malay' },
-  { value: 'ar', label: 'Arabic' },
-] as const
+import { VIDEO_LANGUAGE_OPTIONS } from '@/constants/videoLanguages'
 
 const VIDEO_TYPES = [
   { value: 'All', label: 'All video types' },
@@ -255,12 +245,12 @@ export function Home() {
                 aria-label="Filter videos by language"
               >
                 <SelectValue>
-                  {VIDEO_LANGUAGES.find((item) => item.value === language)?.label
+                  {VIDEO_LANGUAGE_OPTIONS.find((item) => item.value === language)?.label
                     ?? 'All languages'}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent align="start" className="rounded-xl">
-                {VIDEO_LANGUAGES.map((item) => (
+                {VIDEO_LANGUAGE_OPTIONS.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
                     {item.label}
                   </SelectItem>
@@ -300,7 +290,7 @@ export function Home() {
                   : videoType !== 'All'
                     ? `No ${VIDEO_TYPES.find((item) => item.value === videoType)?.label.toLowerCase() ?? 'videos'} are available for this selection.`
                   : language !== 'All'
-                    ? `No ${VIDEO_LANGUAGES.find((item) => item.value === language)?.label ?? language} videos are available for this selection.`
+                    ? `No ${VIDEO_LANGUAGE_OPTIONS.find((item) => item.value === language)?.label ?? language} videos are available for this selection.`
                   : category === 'All'
                     ? 'No videos are available yet.'
                     : `No videos are available in ${category} yet.`
