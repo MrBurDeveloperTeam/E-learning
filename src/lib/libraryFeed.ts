@@ -30,12 +30,14 @@ function getDentalSortDate(video: DentalVideo) {
 export async function fetchUnifiedVideoPage({
   category,
   language,
+  videoType,
   q,
   page = 0,
   pageSize = 24,
 }: {
   category?: string
   language?: string
+  videoType?: 'short_video' | 'video'
   q?: string
   page?: number
   pageSize?: number
@@ -44,7 +46,7 @@ export async function fetchUnifiedVideoPage({
   const dentalCategory = getDentalCategoryFilter(normalizedCategory)
 
   const [communityVideos, dentalResponse] = await Promise.all([
-    language
+    language || videoType
       ? Promise.resolve([])
       : fetchVideosPaginated(
           { category: normalizedCategory, q },
@@ -54,6 +56,7 @@ export async function fetchUnifiedVideoPage({
     getVideos({
       category: dentalCategory,
       language,
+      videoType,
       q,
       page: page + 1,
       limit: pageSize,

@@ -138,6 +138,9 @@ Admin workflow:
 5. Keep the Admin page open, then keep the computer online until the completion
    summary appears. The current Admin page watches the pending videos and shows
    each result below the classifier controls without opening another tab.
+6. After a run finishes, paste another temporary code into the same classifier
+   window to start the next batch. Press Enter without a code only when you want
+   to close it.
 
 If a code expires, copy a new one and run the classifier again. Successfully
 classified rows are skipped automatically on the next run. The live report is

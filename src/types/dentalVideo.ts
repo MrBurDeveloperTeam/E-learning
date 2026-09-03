@@ -35,6 +35,7 @@ export interface DentalCategory {
 export interface DentalVideosParams {
   category?: string;
   language?: string;
+  videoType?: "short_video" | "video";
   q?: string;
   page?: number;
   limit?: number;

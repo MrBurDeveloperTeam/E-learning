@@ -5,13 +5,17 @@ Write-Host "DentalLearn Video Orientation Classifier" -ForegroundColor Cyan
 Write-Host "Classifies portrait videos as short_video and all other videos as video."
 Write-Host "No video files are downloaded.`n"
 
-$secureAccessCode = Read-Host "Paste the temporary access code from the Admin page" -AsSecureString
-$accessCodePointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureAccessCode)
-try {
-  $accessCode = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($accessCodePointer)
-} finally {
-  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($accessCodePointer)
+function Read-SecretText([string]$Prompt) {
+  $secureText = Read-Host $Prompt -AsSecureString
+  $textPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureText)
+  try {
+    return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($textPointer)
+  } finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($textPointer)
+  }
 }
+
+function Invoke-ClassificationSession([string]$accessCode) {
 $separator = $accessCode.IndexOf("|")
 if ($separator -lt 1) {
   throw "The access code format is invalid. Copy a new code from the Admin page."
@@ -122,4 +126,19 @@ Write-Host "Processed: $processed"
 Write-Host "Short videos: $shortVideos"
 Write-Host "Videos: $videos"
 Write-Host "Skipped: $failed"
-Read-Host "Press Enter to close"
+}
+
+$prompt = "Paste the temporary access code from the Admin page (or press Enter to close)"
+while ($true) {
+  $accessCode = Read-SecretText $prompt
+  if ([string]::IsNullOrWhiteSpace($accessCode)) { break }
+
+  try {
+    Invoke-ClassificationSession $accessCode.Trim()
+  } catch {
+    Write-Host ("`nClassification stopped: " + $_.Exception.Message) -ForegroundColor Red
+  }
+
+  Write-Host "`nYou can copy another temporary code from the same Admin page and continue." -ForegroundColor Cyan
+  $prompt = "Paste the next temporary access code (or press Enter to close)"
+}
