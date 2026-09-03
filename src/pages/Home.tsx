@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
 import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
@@ -7,6 +8,7 @@ import { FollowButton } from '@/components/creator/FollowButton'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { useFollowing } from '@/hooks/useFollow'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
+import { useMarkRead } from '@/hooks/useNotifications'
 import { getCategories } from '@/lib/dentalVideosApi'
 import { fetchUnifiedVideoPage } from '@/lib/libraryFeed'
 import { fetchTopPublicCreators } from '@/lib/queries/profiles'
@@ -17,6 +19,9 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import usePageDurationTracker, { type PageViewLogMeta } from '@/hooks/usePageDurationTracker'
 import { logElearningActivity } from '@/lib/logActivityToOdoo'
+import { useElearningPersonalizedInsightState } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
+import { usePublishPersonalizedInsight, type PersonalizedInsightBridgeState } from '@/aiExperience/petDialogue/PersonalizedInsightBridge'
+import type { ElearningInsightCandidate } from '@/aiExperience/resolver/resolveElearningInsight'
 import { Clapperboard, Languages } from 'lucide-react'
 import {
   Select,
@@ -41,6 +46,77 @@ export function Home() {
   const profile = useAuthStore((state) => state.profile)
   const user = useAuthStore((state) => state.user)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const navigate = useNavigate()
+  // Phase-2B: Followed Creator Posted, Latest Video Performance, Most
+  // Viewed Video. Pure, synchronous, reevaluates whenever the shared
+  // notifications/following React Query caches change (mark-read,
+  // realtime insert, unfollow) or the own-video-analytics query resolves
+  // — no session dedupe on the analytics candidates. See
+  // src/aiExperience/hooks/useElearningPersonalizedInsight.ts. Uses the
+  // readiness-carrying variant (not_ready vs ready+candidates) so the
+  // proactive Cat reminder bridge below can tell "still loading" apart
+  // from "resolved, no candidates".
+  const elearningInsightState = useElearningPersonalizedInsightState()
+  const markNotificationRead = useMarkRead()
+
+  // Takes the candidate to act on explicitly — never closes over
+  // `elearningInsight` — so this stays correct even when the caller is Cat
+  // showing a different (dismissal-revealed) candidate than the inline
+  // banner's current winner. This is what guarantees the CTA always marks
+  // the RIGHT notification read and navigates to the RIGHT video — see
+  // PersonalizedInsightBridge.tsx's onAction doc for why this matters.
+  const handleElearningInsightAction = useCallback((candidate: ElearningInsightCandidate | null) => {
+    if (!candidate) return
+
+    if (candidate.triggerId === 'elearning_followed_creator_posted') {
+      const { notificationId, notificationSource, videoId } = candidate.facts
+      // Fire-and-forget mark-read + immediate navigate, mirroring the
+      // exact existing behavior in NotificationBell.tsx/Notifications.tsx
+      // (neither awaits the mutation before navigating). On failure,
+      // useMarkRead's own onError toast fires and — since this mutation
+      // has no optimistic update — the notifications cache is left
+      // unchanged, so `is_read` was never flipped client-side and this
+      // candidate naturally remains eligible on the next evaluation,
+      // rather than being silently and permanently dismissed.
+      markNotificationRead.mutate({ id: notificationId, source: notificationSource })
+      void navigate({ to: '/watch/$videoId', params: { videoId } })
+      return
+    }
+
+    // Latest Video Performance / Most Viewed Video: navigation only, no
+    // mutation — these candidates have no read/dedupe state to update.
+    const { videoId } = candidate.facts
+    void navigate({ to: '/watch/$videoId', params: { videoId } })
+    // `markNotificationRead.mutate` (not the whole mutation object) is the
+    // dependency: `useMarkRead()` returns a fresh `useMutation(...)` result
+    // object every render (unmemoized — see src/hooks/useNotifications.ts),
+    // but React Query guarantees `.mutate`'s own identity is stable across
+    // renders of the same mutation hook instance. Depending on the whole
+    // object would recreate this callback (and therefore `bridgeState`
+    // below) every render for no semantic reason.
+  }, [markNotificationRead.mutate, navigate])
+
+  // Publishes readiness (not_ready | ready+candidate/candidates) + this
+  // exact action handler to CatMascot (mounted outside Home, in App.tsx)
+  // via a read-only context — no new query, no duplicated resolver/action
+  // logic. Publishing `not_ready` explicitly (rather than nothing) is what
+  // lets CatMascot tell "Home is still loading, wait" apart from "Home
+  // isn't mounted at all, don't wait" — see
+  // src/aiExperience/petDialogue/PersonalizedInsightBridge.tsx.
+  // Memoized so this object keeps the same reference across renders where
+  // none of its real semantic inputs changed.
+  const bridgeState: PersonalizedInsightBridgeState = useMemo(
+    () =>
+      elearningInsightState.status === 'ready'
+        ? {
+            status: 'ready',
+            candidates: elearningInsightState.candidates,
+            onAction: handleElearningInsightAction,
+          }
+        : { status: 'not_ready' },
+    [elearningInsightState, handleElearningInsightAction],
+  )
+  usePublishPersonalizedInsight(bridgeState)
   const { data: dentalCategories = [] } = useQuery({
     queryKey: ['dental-categories'],
     queryFn: getCategories,

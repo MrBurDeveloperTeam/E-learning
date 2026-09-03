@@ -9,7 +9,9 @@ import { supabase } from './lib/supabase'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import CatMascot from './components/CatMascot.jsx'
 import MolarAIFloat from './components/MolarAIFloat.jsx'
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer'
+import ElearningVirtualPet from './petExperience/ElearningVirtualPet'
+import { PersonalizedInsightBridgeProvider } from './aiExperience/petDialogue/PersonalizedInsightBridge'
+import MeowdokuLauncher from './games/MeowdokuLauncher'
 import usePageDurationTracker, { type PageViewLogMeta } from './hooks/usePageDurationTracker'
 import { logElearningActivity } from './lib/logActivityToOdoo'
 
@@ -106,7 +108,7 @@ function InnerApp() {
   }, [])
 
   return (
-    <>
+    <PersonalizedInsightBridgeProvider>
       <RouterProvider router={router} />
       {!isAuthRoute && (
         <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
@@ -122,13 +124,20 @@ function InnerApp() {
             userContext={aiContext}
             onPetToggle={() => setIsVirtualPetOpen(true)}
           />
+          {/* Meowdoku predates the shared molar-experience package and isn't
+              one of its 3 built-in games (flappy-cat/pac-cat/tetris) — kept
+              as an E-learning-local launcher, same visual tier as Cat/Pet. */}
+          <MeowdokuLauncher
+            disabled={isLoading || !session?.user}
+            userId={session?.user?.id ?? null}
+          />
         </div>
       )}
-      <VirtualPetContainer
+      <ElearningVirtualPet
         isOpen={isVirtualPetOpen}
         onClose={() => setIsVirtualPetOpen(false)}
       />
-    </>
+    </PersonalizedInsightBridgeProvider>
   )
 }
 
