@@ -111,6 +111,41 @@ npm run deploy
 
 Configure production secrets in the target platform instead of committing them to `.env`.
 
+### Scheduled YouTube imports
+
+The dedicated `dental-youtube-scheduler` Cloudflare Worker runs every three
+hours. Each run imports up to 10 videos for exactly one category/language pair.
+Both the category and language change on every run. Because the 13-category and
+7-language cycles are coprime, all 91 combinations are covered exactly once
+every 11.375 days while the seven languages remain evenly distributed through
+the schedule. The rotation is calculated from UTC time and does not restart
+when the site or Worker is redeployed.
+
+The schedule intentionally limits each invocation to one combination. This
+prevents an exhausted YouTube search quota from repeatedly favoring the first
+categories. Failed slots do not block later combinations; they are attempted
+again during the next full rotation.
+
+Setup:
+
+1. Generate a new random secret containing at least 32 characters. Do not reuse
+   the Supabase service-role key or expose the value as a `VITE_*` variable.
+2. Add that value as the encrypted `YOUTUBE_SCHEDULER_SECRET` secret in both the
+   Cloudflare Pages **Production** environment and the
+   `dental-youtube-scheduler` Worker.
+3. Redeploy the Pages project so its Functions receive the new secret.
+4. Deploy the scheduler Worker:
+
+```bash
+npm run deploy:scheduler
+npx wrangler secret put YOUTUBE_SCHEDULER_SECRET --config wrangler.scheduler.jsonc
+```
+
+The Worker calls only the scheduled video-import endpoint using the shared
+secret. The YouTube API key and Supabase service-role key remain inside the Pages
+environment and are not copied into the scheduler Worker. The schedule is
+defined in `wrangler.scheduler.jsonc` as `0 */3 * * *` (UTC).
+
 ## Video orientation classifier
 
 The Fetch videos admin screen can issue a 2-hour access code and download a
@@ -132,7 +167,9 @@ service-role key remains server-side.
 Admin workflow:
 
 1. Open **Admin → Fetch videos**.
-2. Select **Download classifier** and run the downloaded `.cmd` file on Windows.
+2. Select **Download for Windows** and run the downloaded `.cmd` file, or select
+   **Download for macOS** and open the downloaded `.command` file. On macOS,
+   right-click the file and choose **Open** if the first launch is blocked.
 3. Select **Copy temporary code** and paste the code into the classifier.
 4. Enter the maximum number to classify. Start with the default batch of 10.
 5. Keep the Admin page open, then keep the computer online until the completion

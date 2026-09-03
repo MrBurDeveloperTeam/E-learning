@@ -1,10 +1,26 @@
 $ErrorActionPreference = "Stop"
-$Host.UI.RawUI.WindowTitle = "DentalLearn Video Classifier"
+$Host.UI.RawUI.WindowTitle = "DentalLearn | Video Orientation Classifier"
 
-Write-Host "DentalLearn Video Orientation Classifier" -ForegroundColor Cyan
-Write-Host "Classifier version: 2026-09-03.2" -ForegroundColor DarkGray
-Write-Host "Classifies portrait videos as short_video and all other videos as video."
-Write-Host "No video files are downloaded.`n"
+function Write-Divider([ConsoleColor]$Color = [ConsoleColor]::DarkGray) {
+  Write-Host ("=" * 76) -ForegroundColor $Color
+}
+
+function Write-Section([string]$Title) {
+  Write-Host ""
+  Write-Host ("  " + $Title.ToUpperInvariant()) -ForegroundColor Cyan
+  Write-Host ("  " + ("-" * 72)) -ForegroundColor DarkGray
+}
+
+function Write-ClassifierHeader {
+  Write-Divider -Color Cyan
+  Write-Host "  DENTALLEARN" -ForegroundColor Green
+  Write-Host "  VIDEO ORIENTATION CLASSIFIER" -ForegroundColor Cyan
+  Write-Host "  Classifier version: 2026-09-03.2" -ForegroundColor DarkGray
+  Write-Divider -Color Cyan
+  Write-Host "  Portrait videos  -> Short video"
+  Write-Host "  Landscape/square -> Video"
+  Write-Host "  Metadata only. No video files are downloaded." -ForegroundColor DarkGray
+}
 
 function Read-SecretText([string]$Prompt) {
   $secureText = Read-Host $Prompt -AsSecureString
@@ -26,7 +42,9 @@ $token = $accessCode.Substring($separator + 1).Trim()
 $endpoint = "$siteOrigin/dental-api/orientation-videos"
 $headers = @{ Authorization = "Bearer $token" }
 
-$maximumText = Read-Host "Maximum videos to classify this run (1-500, default 10)"
+Write-Section "Setup"
+Write-Host "  Choose how many unclassified videos to check (1-500)." -ForegroundColor Gray
+$maximumText = Read-Host "  Maximum videos [default: 10]"
 $maximumVideos = 10
 if ($maximumText) {
   if ($maximumText -notmatch "^\d+$" -or [int]$maximumText -lt 1 -or [int]$maximumText -gt 500) {
@@ -40,7 +58,7 @@ $ytDlpPath = Join-Path $toolDirectory "yt-dlp.exe"
 New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
 
 if (-not (Test-Path -LiteralPath $ytDlpPath)) {
-  Write-Host "Downloading the orientation metadata tool..."
+  Write-Host "  [SETUP] Downloading the metadata tool..." -ForegroundColor Cyan
   $downloadUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
   $checksumUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS"
   $checksumPath = Join-Path $toolDirectory "SHA2-256SUMS"
@@ -55,10 +73,87 @@ if (-not (Test-Path -LiteralPath $ytDlpPath)) {
     throw "The downloaded metadata tool failed its security check."
   }
 } else {
-  Write-Host "Checking for orientation metadata tool updates..."
+  Write-Host "  [SETUP] Checking the metadata tool for updates..." -ForegroundColor Cyan
   $updateOutput = & $ytDlpPath --update-to stable 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0) {
-    Write-Warning "The metadata tool could not be updated. Continuing with the installed version."
+    Write-Host "  [SKIPPED] Update unavailable; using the installed metadata tool." -ForegroundColor Yellow
+  }
+}
+
+function Invoke-ClassifierRequest {
+  param(
+    [string]$Method,
+    [string]$Uri,
+    [hashtable]$Headers,
+    [string]$Body = $null
+  )
+
+  $lastError = $null
+  for ($attempt = 1; $attempt -le 3; $attempt++) {
+    try {
+      $requestParameters = @{
+        Method = $Method
+        Uri = $Uri
+        Headers = $Headers
+        TimeoutSec = 30
+      }
+      if ($null -ne $Body) {
+        $requestParameters.ContentType = "application/json"
+        $requestParameters.Body = $Body
+      }
+      return Invoke-RestMethod @requestParameters
+    } catch {
+      $lastError = $_
+      if ($attempt -lt 3) {
+        Write-Host "  [RETRY] Server request timed out or failed. Retrying ($attempt/3)..." -ForegroundColor Yellow
+        Start-Sleep -Seconds (2 * $attempt)
+      }
+    }
+  }
+
+  throw $lastError
+}
+
+function Get-VideoMetadataJson {
+  param(
+    [string]$YtDlpPath,
+    [string]$YoutubeUrl,
+    [string]$ToolDirectory
+  )
+
+  $runId = [Guid]::NewGuid().ToString("N")
+  $stdoutPath = Join-Path $ToolDirectory "metadata-$runId.json"
+  $stderrPath = Join-Path $ToolDirectory "metadata-$runId.err"
+  try {
+    $arguments = @(
+      "--dump-single-json",
+      "--skip-download",
+      "--no-warnings",
+      "--no-playlist",
+      "--socket-timeout", "20",
+      "--retries", "2",
+      "--extractor-retries", "2",
+      $YoutubeUrl
+    )
+    $process = Start-Process -FilePath $YtDlpPath -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+    if (-not $process.WaitForExit(60000)) {
+      try { $process.Kill() } catch {}
+      $process.WaitForExit()
+      throw "YouTube metadata request exceeded 60 seconds"
+    }
+    $process.WaitForExit()
+
+    $jsonOutput = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+    $errorOutput = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
+    if ($process.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($jsonOutput)) {
+      $errorLine = ($errorOutput -split "`r?`n" | Where-Object { $_ -match "ERROR:" } | Select-Object -Last 1)
+      if (-not $errorLine) { $errorLine = "Metadata unavailable" }
+      throw $errorLine.Trim()
+    }
+    return $jsonOutput
+  } finally {
+    Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
   }
 }
 
@@ -70,12 +165,16 @@ $attemptedVideoIds = [System.Collections.Generic.HashSet[string]]::new()
 $failedVideoIds = [System.Collections.Generic.HashSet[string]]::new()
 $failureMessages = [System.Collections.Generic.Dictionary[string,string]]::new()
 
+Write-Section "Classification progress"
+Write-Host ("  Target: up to " + $maximumVideos + " videos") -ForegroundColor Gray
+
 while ($attemptedVideoIds.Count -lt $maximumVideos) {
   $remaining = $maximumVideos - $attemptedVideoIds.Count
   $batchLimit = [Math]::Min(10, $remaining)
   $failedOffset = $failedVideoIds.Count
+  Write-Host ("`n  [LOAD] Fetching the next batch... " + $attemptedVideoIds.Count + "/" + $maximumVideos + " checked") -ForegroundColor Cyan
   try {
-    $batch = Invoke-RestMethod -Method Get -Uri "${endpoint}?limit=${batchLimit}&offset=${failedOffset}" -Headers $headers
+    $batch = Invoke-ClassifierRequest -Method Get -Uri "${endpoint}?limit=${batchLimit}&offset=${failedOffset}" -Headers $headers
   } catch {
     $serverMessage = $_.Exception.Message
     if ($_.ErrorDetails.Message) {
@@ -93,15 +192,14 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
   $results = @()
   foreach ($item in $batch.videos) {
     if (-not $attemptedVideoIds.Add([string]$item.id)) { continue }
-    Write-Host ("Checking: " + $item.title)
+    $progressPercent = [Math]::Min(100, [Math]::Floor(($attemptedVideoIds.Count / $maximumVideos) * 100))
+    $displayTitle = [string]$item.title
+    if ($displayTitle.Length -gt 76) { $displayTitle = $displayTitle.Substring(0, 73) + "..." }
+    Write-Host ("  [{0,3}%] [{1}/{2}] " -f $progressPercent, $attemptedVideoIds.Count, $maximumVideos) -ForegroundColor Cyan -NoNewline
+    Write-Host $displayTitle -ForegroundColor White
     try {
       $youtubeUrl = "https://www.youtube.com/watch?v=$($item.video_id)"
-      $jsonOutput = & $ytDlpPath --dump-single-json --skip-download --no-warnings --no-playlist $youtubeUrl 2>&1 | Out-String
-      if ($LASTEXITCODE -ne 0 -or -not $jsonOutput.Trim()) {
-        $errorLine = ($jsonOutput -split "`r?`n" | Where-Object { $_ -match "ERROR:" } | Select-Object -Last 1)
-        if (-not $errorLine) { $errorLine = "Metadata unavailable" }
-        throw $errorLine.Trim()
-      }
+      $jsonOutput = Get-VideoMetadataJson -YtDlpPath $ytDlpPath -YoutubeUrl $youtubeUrl -ToolDirectory $toolDirectory
       $metadata = $jsonOutput | ConvertFrom-Json
       $width = [int]($metadata.width)
       $height = [int]($metadata.height)
@@ -120,9 +218,11 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
       $results += @{ id = $item.id; videoType = $videoType }
       if ($videoType -eq "short_video") { $shortVideos++ } else { $videos++ }
       $processed++
+      $displayType = if ($videoType -eq "short_video") { "Short video" } else { "Video" }
+      Write-Host ("         [SUCCESS] " + $width + "x" + $height + " -> " + $displayType) -ForegroundColor Green
     } catch {
       $failureMessage = $_.Exception.Message
-      Write-Warning ("Skipped " + $item.video_id + ": " + $failureMessage)
+      Write-Host ("         [SKIPPED] " + $item.video_id + " - " + $failureMessage) -ForegroundColor Yellow
       if ($failedVideoIds.Add([string]$item.id)) {
         $failureMessages[[string]$item.video_id] = $failureMessage
         $failed++
@@ -133,8 +233,9 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
   if ($results.Count -gt 0) {
     $payload = @{ results = $results } | ConvertTo-Json -Depth 4
     try {
-      $response = Invoke-RestMethod -Method Patch -Uri $endpoint -Headers $headers -ContentType "application/json" -Body $payload
-      Write-Host ("Saved " + $response.updated + " classifications.`n") -ForegroundColor Green
+      Write-Host "  [SAVE] Saving successful classifications..." -ForegroundColor Cyan
+      $response = Invoke-ClassifierRequest -Method Patch -Uri $endpoint -Headers $headers -Body $payload
+      Write-Host ("  [SUCCESS] Saved " + $response.updated + " classifications.") -ForegroundColor Green
       if ($response.updated -eq 0) { throw "The server did not accept any classifications" }
     } catch {
       throw "Classification succeeded locally, but the results could not be saved. Copy a new code and retry."
@@ -142,30 +243,53 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
   }
 }
 
-Write-Host "Classification complete" -ForegroundColor Green
-Write-Host "Processed: $processed"
-Write-Host "Short videos: $shortVideos"
-Write-Host "Videos: $videos"
-Write-Host "Unique videos skipped: $failed"
+Write-Section "Result summary"
+$totalChecked = $processed + $failed
+$successRate = if ($totalChecked -gt 0) { [Math]::Round(($processed / $totalChecked) * 100, 1) } else { 0 }
+Write-Divider -Color DarkGray
+Write-Host ("  STATUS           COMPLETED") -ForegroundColor Green
+Write-Host ("  TOTAL CHECKED    " + $totalChecked) -ForegroundColor White
+Write-Host ("  SUCCESSFUL       " + $processed) -ForegroundColor Green
+Write-Host ("  SHORT VIDEOS     " + $shortVideos) -ForegroundColor Cyan
+Write-Host ("  VIDEOS           " + $videos) -ForegroundColor Cyan
+Write-Host ("  SKIPPED          " + $failed) -ForegroundColor Yellow
+Write-Host ("  SUCCESS RATE     " + $successRate + "%") -ForegroundColor White
+Write-Divider -Color DarkGray
 if ($failureMessages.Count -gt 0) {
-  Write-Host "`nSkipped video details:" -ForegroundColor Yellow
+  Write-Host "`n  Skipped video details:" -ForegroundColor Yellow
   foreach ($entry in $failureMessages.GetEnumerator()) {
-    Write-Host ("- " + $entry.Key + ": " + $entry.Value) -ForegroundColor Yellow
+    Write-Host ("  - " + $entry.Key + ": " + $entry.Value) -ForegroundColor Yellow
   }
 }
 }
 
-$prompt = "Paste the temporary access code from the Admin page (or press Enter to close)"
+Write-ClassifierHeader
+$prompt = "  Temporary access code"
 while ($true) {
+  Write-Section "Temporary access code"
+  Write-Host "  Copy a fresh code from Admin > Fetch videos." -ForegroundColor Gray
+  Write-Host "  The code is hidden while you paste it. Press Enter without a code to exit." -ForegroundColor DarkGray
   $accessCode = Read-SecretText $prompt
   if ([string]::IsNullOrWhiteSpace($accessCode)) { break }
 
   try {
     Invoke-ClassificationSession $accessCode.Trim()
   } catch {
-    Write-Host ("`nClassification stopped: " + $_.Exception.Message) -ForegroundColor Red
+    Write-Section "Classification failed"
+    Write-Host ("  [FAILED] " + $_.Exception.Message) -ForegroundColor Red
   }
 
-  Write-Host "`nYou can copy another temporary code from the same Admin page and continue." -ForegroundColor Cyan
-  $prompt = "Paste the next temporary access code (or press Enter to close)"
+  Write-Section "Next action"
+  Write-Host "  [1] Start another classification round" -ForegroundColor Cyan
+  Write-Host "  [2] Exit" -ForegroundColor Gray
+  do {
+    $nextAction = Read-Host "  Select 1 or 2"
+    if ($nextAction -ne "1" -and $nextAction -ne "2") {
+      Write-Host "  Please enter 1 to continue or 2 to exit." -ForegroundColor Yellow
+    }
+  } while ($nextAction -ne "1" -and $nextAction -ne "2")
+  if ($nextAction -eq "2") { break }
+  $prompt = "  New temporary access code"
 }
+
+Write-Host "`n  DentalLearn classifier closed safely." -ForegroundColor DarkGray

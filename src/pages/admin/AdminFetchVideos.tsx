@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  BrainCircuit,
+  ArrowRight,
   CheckCircle,
   Clapperboard,
   Copy,
   Download,
   ExternalLink,
   Filter,
+  History,
   Loader2,
+  RefreshCw,
   ScanLine,
   SearchCheck,
   ShieldCheck,
@@ -16,6 +18,7 @@ import {
   Youtube,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Link } from '@tanstack/react-router'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import {
@@ -74,6 +77,69 @@ type RequestError = {
 }
 
 type OrientationType = 'short_video' | 'video'
+type OfficialChannelKey = 'mrburglobal' | 'kaneiko-global'
+type ChannelImportTarget = OfficialChannelKey | { url: string }
+
+type ChannelImportSummary = {
+  found: number
+  inserted: number
+  duplicates: number
+  unavailable: number
+  pages: number
+}
+
+type AutomaticImportRun = {
+  id: string
+  rotation_slot: number | null
+  category: VideoCategory
+  language: ImportVideoLanguage
+  requested: number
+  status: 'running' | 'completed' | 'completed_with_warnings' | 'failed'
+  fetched: number
+  eligible: number
+  inserted: number
+  already_in_db: number
+  filtered_out: number
+  skipped: number
+  videos: ImportedVideo[]
+  warnings: string[]
+  error_code: string | null
+  error_message: string | null
+  scheduled_for: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+type ChannelNotAddedVideo = {
+  video_id: string
+  title: string
+  reason: string
+  reasonCode: 'duplicate' | 'unavailable' | 'save_duplicate'
+  youtube_url: string
+  channelLabel: string
+}
+
+type ChannelImportCompletion = {
+  message: string
+  completedAt: string
+}
+
+const CHANNEL_IMPORT_REPORT_KEY = 'dental_channel_import_report'
+
+function readStoredChannelImportReport(): {
+  summary: ChannelImportSummary
+  completion: ChannelImportCompletion
+} | null {
+  try {
+    const stored = localStorage.getItem(CHANNEL_IMPORT_REPORT_KEY)
+    if (!stored) return null
+    const parsed = JSON.parse(stored)
+    if (!parsed?.summary || typeof parsed?.completion?.message !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
 
 type OrientationReportVideo = {
   id: string
@@ -227,6 +293,7 @@ function ImportedVideoList({ videos }: { videos: ImportedVideo[] }) {
 }
 
 export function AdminFetchVideos() {
+  const storedChannelImportReport = useRef(readStoredChannelImportReport()).current
   const profile = useAuthStore((state) => state.profile)
   const [category, setCategory] = useState<VideoCategory>('General Dentistry')
   const [importLanguage, setImportLanguage] = useState<ImportVideoLanguage>('en')
@@ -235,16 +302,17 @@ export function AdminFetchVideos() {
   const [result, setResult] = useState<FetchResult | null>(null)
   const [error, setError] = useState<RequestError | null>(null)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
+  const [automaticImportRuns, setAutomaticImportRuns] = useState<AutomaticImportRun[]>([])
+  const [isLoadingAutomaticHistory, setIsLoadingAutomaticHistory] = useState(false)
+  const [automaticHistoryError, setAutomaticHistoryError] = useState<string | null>(null)
+  const [isImportingChannels, setIsImportingChannels] = useState(false)
+  const [channelImportName, setChannelImportName] = useState<string | null>(null)
+  const [channelImportSummary, setChannelImportSummary] = useState<ChannelImportSummary | null>(storedChannelImportReport?.summary || null)
+  const [channelImportError, setChannelImportError] = useState<string | null>(null)
+  const [customChannelUrl, setCustomChannelUrl] = useState('')
+  const [channelNotAddedVideos, setChannelNotAddedVideos] = useState<ChannelNotAddedVideo[]>([])
+  const [channelImportCompletion, setChannelImportCompletion] = useState<ChannelImportCompletion | null>(storedChannelImportReport?.completion || null)
 
-  const [isCategorizing, setIsCategorizing] = useState(false)
-  const [categorizeResult, setCategorizeResult] = useState<{
-    processed: number
-    updated: number
-    failed: number
-    errors?: string[]
-  } | null>(null)
-  const [categorizeError, setCategorizeError] = useState<string | null>(null)
-  const [uncategorizedCount, setUncategorizedCount] = useState(0)
   const [isCreatingClassifierCode, setIsCreatingClassifierCode] = useState(false)
   const [orientationPending, setOrientationPending] = useState<number | null>(null)
   const [orientationReport, setOrientationReport] = useState<OrientationReportVideo[] | null>(null)
@@ -261,18 +329,30 @@ export function AdminFetchVideos() {
     }
   }, [])
 
-  const fetchUncategorizedCount = async () => {
-    const { count, error: countError } = await supabase
-      .from('dental_videos')
-      .select('*', { count: 'exact', head: true })
-      .is('category', null)
-
-    if (!countError && count !== null) setUncategorizedCount(count)
+  const loadAutomaticImportHistory = async () => {
+    if (!isAdminProfile(profile) || isLoadingAutomaticHistory) return
+    setIsLoadingAutomaticHistory(true)
+    try {
+      const { data, error: historyError } = await supabase
+        .from('automatic_youtube_import_runs')
+        .select('id,rotation_slot,category,language,requested,status,fetched,eligible,inserted,already_in_db,filtered_out,skipped,videos,warnings,error_code,error_message,scheduled_for,completed_at,created_at')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (historyError) throw historyError
+      setAutomaticImportRuns((data || []) as AutomaticImportRun[])
+      setAutomaticHistoryError(null)
+    } catch (historyError) {
+      setAutomaticHistoryError(historyError instanceof Error ? historyError.message : 'Automatic import history could not be loaded.')
+    } finally {
+      setIsLoadingAutomaticHistory(false)
+    }
   }
 
   useEffect(() => {
-    void fetchUncategorizedCount()
-  }, [])
+    if (isAdminProfile(profile)) void loadAutomaticImportHistory()
+    // The history loader is intentionally run again only when the signed-in profile changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile])
 
   useEffect(() => {
     if (!isAdminProfile(profile) || orientationTrackedIds.length === 0 || !orientationMonitoringUntil) return
@@ -389,40 +469,6 @@ export function AdminFetchVideos() {
     }
   }
 
-  const handleCategorizeVideos = async () => {
-    if (uncategorizedCount === 0 || isCategorizing) return
-
-    setIsCategorizing(true)
-    setCategorizeError(null)
-    setCategorizeResult(null)
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Your session has expired. Sign in again and retry.')
-
-      const response = await fetch('/api/categorize-dental-videos', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'The AI categorization request failed.')
-      }
-
-      setCategorizeResult(data)
-      void fetchUncategorizedCount()
-    } catch (requestError) {
-      setCategorizeError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'The AI categorization request failed.'
-      )
-    } finally {
-      setIsCategorizing(false)
-    }
-  }
-
   const handleCopyClassifierCode = async () => {
     if (isCreatingClassifierCode) return
     setIsCreatingClassifierCode(true)
@@ -492,6 +538,130 @@ export function AdminFetchVideos() {
     URL.revokeObjectURL(downloadUrl)
   }
 
+  const handleDownloadMacClassifier = () => {
+    const scriptUrl = `${window.location.origin}/downloads/DentalVideoClassifierMac.sh?v=${Date.now()}`
+    const launcher = [
+      '#!/bin/bash',
+      'set -u',
+      'CLASSIFIER_SCRIPT="${TMPDIR:-/tmp}/DentalVideoClassifierMac.sh"',
+      'printf "Downloading the latest DentalLearn classifier for macOS...\\n"',
+      `if ! curl -fL --retry 3 --connect-timeout 20 '${scriptUrl}' -o "$CLASSIFIER_SCRIPT"; then`,
+      '  printf "Unable to download the classifier. Check your internet connection and try again.\\n"',
+      '  printf "Press Enter to close..."',
+      '  read -r _',
+      '  exit 1',
+      'fi',
+      'chmod 700 "$CLASSIFIER_SCRIPT"',
+      '"$CLASSIFIER_SCRIPT"',
+      'status=$?',
+      'rm -f "$CLASSIFIER_SCRIPT"',
+      'exit $status',
+    ].join('\n')
+    const downloadUrl = URL.createObjectURL(new Blob([launcher], { type: 'application/octet-stream' }))
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = 'DentalVideoClassifier.command'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(downloadUrl)
+  }
+
+  const handleImportOfficialChannels = async (channels: ChannelImportTarget[]) => {
+    if (isImportingChannels) return
+    setIsImportingChannels(true)
+    setChannelImportError(null)
+    setChannelNotAddedVideos([])
+    setChannelImportCompletion(null)
+    localStorage.removeItem(CHANNEL_IMPORT_REPORT_KEY)
+    const summary: ChannelImportSummary = { found: 0, inserted: 0, duplicates: 0, unavailable: 0, pages: 0 }
+    setChannelImportSummary({ ...summary })
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Your session has expired. Sign in again and retry.')
+
+      for (const channel of channels) {
+        let pageToken = ''
+        let pageGuard = 0
+        const isCustom = typeof channel === 'object'
+        const displayName = isCustom
+          ? 'custom YouTube channel'
+          : channel === 'mrburglobal' ? 'MR.BUR Global' : 'KANEIKO Global'
+        do {
+          pageGuard++
+          if (pageGuard > 200) throw new Error('The channel is larger than the safe import limit. Run the importer again to continue.')
+          setChannelImportName(`${displayName} · page ${pageGuard}`)
+
+          const response = await fetch('/dental-api/import-youtube-channels', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(isCustom ? { channelUrl: channel.url, pageToken } : { channel, pageToken }),
+          })
+          const data = await response.json().catch(() => null)
+          if (!response.ok || !data) throw new Error(data?.error || 'The YouTube channel import failed.')
+
+          summary.found += Number(data.found) || 0
+          summary.inserted += Number(data.inserted) || 0
+          summary.duplicates += Number(data.duplicates) || 0
+          summary.unavailable += Number(data.unavailable) || 0
+          summary.pages++
+          setChannelImportSummary({ ...summary })
+          if (Array.isArray(data.notAdded) && data.notAdded.length > 0) {
+            const reportRows = data.notAdded
+              .filter((item: unknown): item is Omit<ChannelNotAddedVideo, 'channelLabel'> => (
+                typeof item === 'object' && item !== null && typeof (item as ChannelNotAddedVideo).video_id === 'string'
+              ))
+              .map((item: Omit<ChannelNotAddedVideo, 'channelLabel'>) => ({
+                ...item,
+                channelLabel: typeof data.channelLabel === 'string' ? data.channelLabel : displayName,
+              }))
+            setChannelNotAddedVideos((current) => [...current, ...reportRows])
+          }
+          pageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : ''
+        } while (pageToken)
+      }
+
+      setChannelImportName(null)
+      const importedLabels = channels.map((channel) => (
+        typeof channel === 'object'
+          ? 'the selected custom channel'
+          : channel === 'mrburglobal' ? 'MR.BUR Global' : 'KANEIKO Global'
+      ))
+      const completion: ChannelImportCompletion = {
+        message: importedLabels.length === 2
+          ? 'MR.BUR Global and KANEIKO Global were fully scanned.'
+          : `${importedLabels[0]} was fully scanned.`,
+        completedAt: new Date().toLocaleString(),
+      }
+      setChannelImportCompletion(completion)
+      localStorage.setItem(CHANNEL_IMPORT_REPORT_KEY, JSON.stringify({ summary, completion }))
+      toast.success('Official channel import completed', {
+        description: `${summary.inserted} new videos and Shorts were added.`,
+      })
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : 'The channel import failed.'
+      setChannelImportError(message)
+      toast.error('Channel import stopped', { description: message })
+    } finally {
+      setChannelImportName(null)
+      setIsImportingChannels(false)
+    }
+  }
+
+  const handleImportCustomChannel = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const url = customChannelUrl.trim()
+    if (!url) {
+      setChannelImportError('Enter a YouTube channel link before importing.')
+      return
+    }
+    void handleImportOfficialChannels([{ url }])
+  }
+
   return (
     <AdminLayout
       title="Video ingestion"
@@ -506,15 +676,11 @@ export function AdminFetchVideos() {
               label={lastFetched ? `Last fetched: ${lastFetched}` : 'No fetch recorded yet'}
               tone="default"
             />
-            <AdminStatusBadge
-              label={`${uncategorizedCount} uncategorized`}
-              tone={uncategorizedCount > 0 ? 'warning' : 'success'}
-            />
           </div>
         </div>
       }
     >
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+      <div className="grid items-start gap-4">
         <AdminSectionCard
           title="Automatic YouTube import"
           description="Choose one specialty and language. The importer searches only in that language, verifies the result language, and files accepted videos directly into the selected category."
@@ -635,46 +801,256 @@ export function AdminFetchVideos() {
           </form>
         </AdminSectionCard>
 
-        <AdminSectionCard
-          title="Legacy AI categorization"
-          description="Use this only for videos imported before category-first search was added."
-        >
-          <div className="flex flex-col gap-5">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
-                <BrainCircuit className="h-6 w-6" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm leading-6 text-muted-foreground">
-                  New category-first imports bypass this step. Existing uncategorized records can still be enriched here.
-                </p>
-                <AdminStatusBadge
-                  label={`${uncategorizedCount} pending`}
-                  tone={uncategorizedCount > 0 ? 'warning' : 'success'}
-                />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCategorizeVideos}
-              disabled={isCategorizing || uncategorizedCount === 0}
-              aria-busy={isCategorizing}
-              className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isCategorizing ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Categorizing…</>
-              ) : (
-                <><BrainCircuit className="h-4 w-4" />Categorize legacy videos</>
-              )}
-            </button>
-          </div>
-        </AdminSectionCard>
       </div>
 
       <AdminSectionCard
+        title="Automatic import history"
+        description="The latest scheduled YouTube runs. Open a run to review the exact videos added, warnings, or failure reason."
+        action={(
+          <button
+            type="button"
+            onClick={() => void loadAutomaticImportHistory()}
+            disabled={isLoadingAutomaticHistory}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoadingAutomaticHistory ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        )}
+      >
+        {automaticHistoryError ? (
+          <div className="rounded-[18px] border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
+            {automaticHistoryError}
+          </div>
+        ) : automaticImportRuns.length === 0 ? (
+          <div className="flex min-h-28 items-center justify-center gap-3 rounded-[20px] border border-dashed border-border bg-background/40 px-5 text-center text-sm text-muted-foreground">
+            {isLoadingAutomaticHistory ? <Loader2 className="h-5 w-5 animate-spin" /> : <History className="h-5 w-5" />}
+            {isLoadingAutomaticHistory ? 'Loading scheduled import history…' : 'No scheduled run has been recorded yet. The first entry will appear after the Cron Worker runs.'}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {automaticImportRuns.map((run) => {
+              const runTime = run.scheduled_for || run.created_at
+              const tone = run.status === 'failed' ? 'warning' : run.status === 'completed' ? 'success' : run.status === 'running' ? 'info' : 'warning'
+              const label = run.status === 'completed_with_warnings'
+                ? 'Completed with warnings'
+                : run.status.charAt(0).toUpperCase() + run.status.slice(1)
+              return (
+                <details key={run.id} className="overflow-hidden rounded-[20px] border border-border/80 bg-background/55">
+                  <summary className="grid cursor-pointer list-none gap-3 px-4 py-4 hover:bg-accent/50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <AdminStatusBadge label={label} tone={tone} dot />
+                        <p className="font-medium text-foreground">{run.category}</p>
+                        <AdminStatusBadge label={getVideoLanguageLabel(run.language)} tone="default" />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {new Date(runTime).toLocaleString()} · Rotation {run.rotation_slot ?? '—'}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-right text-xs text-muted-foreground">
+                      <div><span className="block text-base font-semibold text-foreground">{run.fetched}</span>Found</div>
+                      <div><span className="block text-base font-semibold text-emerald-600 dark:text-emerald-400">{run.inserted}</span>Added</div>
+                      <div><span className="block text-base font-semibold text-foreground">{run.already_in_db}</span>Existing</div>
+                    </div>
+                  </summary>
+                  <div className="border-t border-border/70 p-4">
+                    {run.error_message && (
+                      <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+                        {run.error_code && <span className="font-semibold">{run.error_code}: </span>}{run.error_message}
+                      </div>
+                    )}
+                    {run.warnings?.length > 0 && (
+                      <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-300">
+                        {run.warnings.map((warning, index) => <li key={`${run.id}-warning-${index}`}>{warning}</li>)}
+                      </ul>
+                    )}
+                    <div className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div><p className="text-xs text-muted-foreground">Eligible</p><p className="font-semibold text-foreground">{run.eligible}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Filtered out</p><p className="font-semibold text-foreground">{run.filtered_out}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Skipped</p><p className="font-semibold text-foreground">{run.skipped}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Requested</p><p className="font-semibold text-foreground">{run.requested}</p></div>
+                    </div>
+                    {run.videos?.length > 0 ? <ImportedVideoList videos={run.videos} /> : (
+                      <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">No new videos were added during this run.</p>
+                    )}
+                  </div>
+                </details>
+              )
+            })}
+          </div>
+        )}
+      </AdminSectionCard>
+
+      <AdminSectionCard
+        title="Official YouTube channel import"
+        description="Import every public upload from the approved channels, including regular videos and YouTube Shorts. Video duration is not filtered."
+      >
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] bg-red-500/10 text-red-600 dark:text-red-400">
+              <Youtube className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                MR.BUR Global and KANEIKO Global
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                The importer reads each channel's complete Uploads list page by page, skips existing YouTube IDs, detects language, and assigns a dental category from the title and description. Unclear items go to General Dentistry.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <AdminStatusBadge label="Includes Shorts" tone="success" />
+                <AdminStatusBadge label="No duration limit" tone="info" />
+                <AdminStatusBadge label="Duplicates skipped" tone="default" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[520px]">
+            <button
+              type="button"
+              onClick={() => void handleImportOfficialChannels(['mrburglobal'])}
+              disabled={isImportingChannels}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+            >
+              Import MR.BUR
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleImportOfficialChannels(['kaneiko-global'])}
+              disabled={isImportingChannels}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+            >
+              Import KANEIKO
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleImportOfficialChannels(['mrburglobal', 'kaneiko-global'])}
+              disabled={isImportingChannels}
+              aria-busy={isImportingChannels}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isImportingChannels ? <Loader2 className="h-4 w-4 animate-spin" /> : <Youtube className="h-4 w-4" />}
+              Import both
+            </button>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleImportCustomChannel}
+          className="mt-5 flex flex-col gap-3 border-t border-border/70 pt-5 sm:flex-row sm:items-end"
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <label htmlFor="custom-youtube-channel" className="text-sm font-medium text-foreground">
+              Import another YouTube channel
+            </label>
+            <input
+              id="custom-youtube-channel"
+              type="text"
+              inputMode="url"
+              value={customChannelUrl}
+              onChange={(event) => setCustomChannelUrl(event.target.value)}
+              disabled={isImportingChannels}
+              placeholder="https://www.youtube.com/@channelname"
+              className="h-11 w-full rounded-xl border border-border bg-background/70 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+            />
+            <p className="text-xs text-muted-foreground">
+              Supports @handle, /channel/UC…, /user/… and legacy /c/… channel links. Video and playlist links are rejected.
+            </p>
+          </div>
+          <button
+            type="submit"
+            disabled={isImportingChannels || !customChannelUrl.trim()}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isImportingChannels ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            Import this channel
+          </button>
+        </form>
+
+        {(isImportingChannels || channelImportSummary) && (
+          <div className="mt-5 rounded-[20px] border border-border/80 bg-background/60 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">
+                {isImportingChannels ? `Importing ${channelImportName || 'channel videos'}…` : 'Latest channel import'}
+              </p>
+              {isImportingChannels && <AdminStatusBadge label={`${channelImportSummary?.pages || 0} pages processed`} tone="info" dot />}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div><p className="text-xs text-muted-foreground">Found</p><p className="mt-1 text-xl font-semibold text-foreground">{channelImportSummary?.found || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Inserted</p><p className="mt-1 text-xl font-semibold text-emerald-600 dark:text-emerald-400">{channelImportSummary?.inserted || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Already in DB</p><p className="mt-1 text-xl font-semibold text-foreground">{channelImportSummary?.duplicates || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Unavailable</p><p className="mt-1 text-xl font-semibold text-amber-600 dark:text-amber-400">{channelImportSummary?.unavailable || 0}</p></div>
+            </div>
+          </div>
+        )}
+
+        {channelImportCompletion && !isImportingChannels && (
+          <div className="mt-4 flex items-start gap-3 rounded-[20px] border border-emerald-500/25 bg-emerald-500/10 p-4" role="status">
+            <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Import completed successfully</p>
+              <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">{channelImportCompletion.message}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Completed {channelImportCompletion.completedAt}. Every readable upload in this run is now inserted or was already in the database.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {channelImportError && (
+          <div className="mt-4 rounded-[18px] border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
+            {channelImportError} Successfully imported pages remain saved; run the import again later to safely skip them.
+          </div>
+        )}
+
+        {channelNotAddedVideos.length > 0 && (
+          <details className="mt-4 overflow-hidden rounded-[20px] border border-amber-500/20 bg-amber-500/5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-amber-500/10">
+              <span>Videos not added ({channelNotAddedVideos.length})</span>
+              <AdminStatusBadge label="Review details" tone="warning" />
+            </summary>
+            <div className="max-h-[440px] divide-y divide-border/70 overflow-y-auto border-t border-border/70">
+              {channelNotAddedVideos.map((video, index) => (
+                <div key={`${video.video_id}-${index}`} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">{video.title}</p>
+                      <AdminStatusBadge
+                        label={video.reasonCode === 'duplicate' ? 'Already in DB' : video.reasonCode === 'unavailable' ? 'Unavailable' : 'Save duplicate'}
+                        tone={video.reasonCode === 'duplicate' ? 'default' : 'warning'}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{video.channelLabel} · {video.video_id}</p>
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{video.reason}</p>
+                  </div>
+                  <a
+                    href={video.youtube_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-9 flex-shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-accent"
+                  >
+                    Check on YouTube <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </AdminSectionCard>
+
+      <AdminSectionCard
         title="Video orientation classifier"
-        description="Use the Windows classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
+        description="Use the Windows or macOS classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
+        action={(
+          <Link
+            to="/admin/fetch-videos/manual-classification"
+            className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            Manually classify skipped videos
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          </Link>
+        )}
       >
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex items-start gap-4">
@@ -690,7 +1066,7 @@ export function AdminFetchVideos() {
                   label={orientationPending === null ? 'Pending count available with access code' : `${orientationPending} awaiting orientation`}
                   tone={orientationPending && orientationPending > 0 ? 'warning' : 'default'}
                 />
-                <AdminStatusBadge label="Windows" tone="info" />
+                <AdminStatusBadge label="Windows + macOS" tone="info" />
                 <AdminStatusBadge
                   label={orientationMonitoringUntil ? 'Watching for results' : '2-hour access'}
                   tone={orientationMonitoringUntil ? 'success' : 'default'}
@@ -707,7 +1083,15 @@ export function AdminFetchVideos() {
               className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Download className="h-4 w-4" />
-              Download classifier
+              Download for Windows
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadMacClassifier}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Download className="h-4 w-4" />
+              Download for macOS
             </button>
             <button
               type="button"
@@ -728,6 +1112,7 @@ export function AdminFetchVideos() {
           <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
           <p className="text-sm leading-6 text-muted-foreground">
             The downloaded file contains no database administrator key. Keep the temporary code private; it expires automatically and only authorizes orientation classification.
+            On macOS, right-click the downloaded file and choose Open if macOS blocks the first launch.
           </p>
         </div>
       </AdminSectionCard>
@@ -813,40 +1198,6 @@ export function AdminFetchVideos() {
         </AdminSectionCard>
       )}
 
-      {categorizeError && (
-        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
-          <div role="alert" className="flex items-start gap-3">
-            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Categorization failed</p>
-              <p className="mt-1 text-sm text-muted-foreground">{categorizeError}</p>
-            </div>
-          </div>
-        </AdminSectionCard>
-      )}
-
-      {categorizeResult && (
-        <AdminSectionCard
-          title="Categorization result"
-          description="Result for existing uncategorized videos."
-        >
-          <div className="grid gap-4 md:grid-cols-3" aria-live="polite">
-            <AdminStatCard label="Processed" value={categorizeResult.processed.toLocaleString()} icon={BrainCircuit} hint="Videos sent through categorization" />
-            <AdminStatCard label="Updated" value={categorizeResult.updated.toLocaleString()} icon={CheckCircle} accent="success" hint="Videos successfully enriched" />
-            <AdminStatCard label="Failed" value={categorizeResult.failed.toLocaleString()} icon={XCircle} accent={categorizeResult.failed > 0 ? 'danger' : 'default'} hint="Videos that need another attempt" />
-          </div>
-          {categorizeResult.errors && categorizeResult.errors.length > 0 && (
-            <div className="mt-5 rounded-[20px] border border-destructive/10 bg-destructive/5 p-4">
-              <p className="text-sm font-semibold text-foreground">Error details</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                {categorizeResult.errors.map((entry, index) => (
-                  <li key={`${entry}-${index}`}>{entry}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </AdminSectionCard>
-      )}
     </AdminLayout>
   )
 }
