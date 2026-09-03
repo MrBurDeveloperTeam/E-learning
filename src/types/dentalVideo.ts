@@ -25,6 +25,12 @@ export interface DentalVideosResponse {
   totalPages: number;
 }
 
+/** The videos immediately before and after a video in the public library. */
+export interface AdjacentDentalVideos {
+  previous: Pick<DentalVideo, "id" | "title"> | null;
+  next: Pick<DentalVideo, "id" | "title"> | null;
+}
+
 /** A category with its associated video count. */
 export interface DentalCategory {
   category: string;

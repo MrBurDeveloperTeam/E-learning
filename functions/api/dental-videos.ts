@@ -133,6 +133,79 @@ export async function onRequestGet(context: {
     // --- Parse query params ---
     const url = new URL(context.request.url);
     const idParam = url.searchParams.get("id");
+    const adjacentToParam = url.searchParams.get("adjacentTo");
+
+    // -----------------------------------------------------------------------
+    // Adjacent public videos in the default newest-first library order
+    // -----------------------------------------------------------------------
+    if (adjacentToParam) {
+      const { data: current, error: currentError } = await supabase
+        .from("dental_videos")
+        .select("id,published_at")
+        .eq("id", adjacentToParam)
+        .eq("needs_review", false)
+        .maybeSingle();
+
+      if (currentError) {
+        console.error("dental-videos adjacent lookup error:", currentError);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      if (!current) {
+        return jsonResponse({ error: "Video not found" }, 404);
+      }
+
+      const selectAdjacent = "id,title,published_at";
+      const [sameDateResult, newerResult, olderResult] = await Promise.all([
+        supabase
+          .from("dental_videos")
+          .select(selectAdjacent)
+          .eq("needs_review", false)
+          .eq("published_at", current.published_at)
+          .order("id", { ascending: false }),
+        supabase
+          .from("dental_videos")
+          .select(selectAdjacent)
+          .eq("needs_review", false)
+          .gt("published_at", current.published_at)
+          .order("published_at", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(1),
+        supabase
+          .from("dental_videos")
+          .select(selectAdjacent)
+          .eq("needs_review", false)
+          .lt("published_at", current.published_at)
+          .order("published_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(1),
+      ]);
+
+      const adjacentError =
+        sameDateResult.error || newerResult.error || olderResult.error;
+      if (adjacentError) {
+        console.error("dental-videos adjacent query error:", adjacentError);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      const sameDate = sameDateResult.data || [];
+      const currentIndex = sameDate.findIndex((item) => item.id === current.id);
+      const previous =
+        (currentIndex > 0 ? sameDate[currentIndex - 1] : newerResult.data?.[0]) ||
+        null;
+      const next =
+        (currentIndex >= 0 && currentIndex < sameDate.length - 1
+          ? sameDate[currentIndex + 1]
+          : olderResult.data?.[0]) || null;
+
+      const compact = (item: any) =>
+        item ? { id: item.id, title: item.title } : null;
+
+      return jsonResponse({
+        previous: compact(previous),
+        next: compact(next),
+      });
+    }
 
     // -----------------------------------------------------------------------
     // Single video by id
