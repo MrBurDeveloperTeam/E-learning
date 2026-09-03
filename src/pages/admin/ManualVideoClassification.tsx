@@ -41,18 +41,29 @@ type PendingResponse = {
   error?: string
 }
 
+const MANUAL_SELECTION_KEY = 'manual_video_classification_selection'
+
+function readStoredSelection() {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(MANUAL_SELECTION_KEY) || '[]')
+    return new Set(Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [])
+  } catch {
+    return new Set<string>()
+  }
+}
+
 export function ManualVideoClassification() {
   const profile = useAuthStore((state) => state.profile)
   const [videos, setVideos] = useState<PendingVideo[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(24)
+  const [pageSize, setPageSize] = useState(96)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(readStoredSelection)
   const [classifiedThisVisit, setClassifiedThisVisit] = useState(0)
 
   const loadVideos = useCallback(async () => {
@@ -62,7 +73,7 @@ export function ManualVideoClassification() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Your session has expired. Sign in again.')
 
-      const params = new URLSearchParams({ page: String(page) })
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
       if (search) params.set('q', search)
       const response = await fetch(`/dental-api/manual-orientation-videos?${params}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -71,22 +82,24 @@ export function ManualVideoClassification() {
       if (!response.ok || !data) throw new Error(data?.error || 'Unable to load videos.')
 
       setVideos(data.videos)
-      setSelectedIds(new Set())
       setTotal(data.total)
-      setPageSize(data.pageSize)
       if (data.videos.length === 0 && data.total > 0 && page > 1) setPage((current) => current - 1)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load videos.')
     } finally {
       setIsLoading(false)
     }
-  }, [page, search])
+  }, [page, pageSize, search])
+
+  useEffect(() => {
+    sessionStorage.setItem(MANUAL_SELECTION_KEY, JSON.stringify([...selectedIds]))
+  }, [selectedIds])
 
   useEffect(() => {
     if (isAdminProfile(profile)) void loadVideos()
   }, [loadVideos, profile])
 
-  const saveClassifications = async (items: PendingVideo[], videoType: VideoType, savingKey: string) => {
+  const saveClassifications = async (items: Array<Pick<PendingVideo, 'id'>>, videoType: VideoType, savingKey: string) => {
     if (savingId) return
     setSavingId(savingKey)
     try {
@@ -106,6 +119,8 @@ export function ManualVideoClassification() {
 
       const updated = typeof data?.updated === 'number' ? data.updated : items.length
       setClassifiedThisVisit((current) => current + updated)
+      const submittedIds = new Set(items.map((item) => item.id))
+      setSelectedIds((current) => new Set([...current].filter((id) => !submittedIds.has(id))))
       toast.success(updated === 1 ? 'Video classified' : `${updated} videos classified`, {
         description: `Saved as ${videoType === 'short_video' ? 'Short video' : 'Video'}.`,
       })
@@ -124,7 +139,7 @@ export function ManualVideoClassification() {
   )
 
   const classifySelected = (videoType: VideoType) => {
-    const selectedVideos = videos.filter((video) => selectedIds.has(video.id))
+    const selectedVideos = [...selectedIds].map((id) => ({ id }))
     if (selectedVideos.length === 0) return Promise.resolve()
     return saveClassifications(selectedVideos, videoType, 'bulk')
   }
@@ -193,6 +208,23 @@ export function ManualVideoClassification() {
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/70 px-3 text-sm text-muted-foreground">
+            Per page
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPage(1)
+                setPageSize(Number(event.target.value))
+              }}
+              disabled={isLoading || Boolean(savingId)}
+              className="bg-transparent font-medium text-foreground outline-none"
+              aria-label="Videos per page"
+            >
+              <option value={24}>24</option>
+              <option value={48}>48</option>
+              <option value={96}>96</option>
+            </select>
+          </label>
         </form>
       </AdminSectionCard>
 
@@ -222,7 +254,7 @@ export function ManualVideoClassification() {
                 <span className={`flex h-5 w-5 items-center justify-center rounded border ${allVisibleSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'}`}>
                   {allVisibleSelected && <Check className="h-3.5 w-3.5" />}
                 </span>
-                {allVisibleSelected ? 'Clear page selection' : 'Select all on this page'}
+                {allVisibleSelected ? 'Clear this page' : `Select all ${videos.length} on this page`}
               </button>
               <AdminStatusBadge
                 label={`${selectedIds.size} selected`}
@@ -281,21 +313,22 @@ export function ManualVideoClassification() {
                   >
                     {isSelected ? <Check className="h-5 w-5" /> : <span className="h-4 w-4 rounded border border-current" />}
                   </button>
-                  <a
-                    href={`https://www.youtube.com/watch?v=${encodeURIComponent(item.video_id)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group relative block aspect-video overflow-hidden bg-muted"
+                  <button
+                    type="button"
+                    onClick={() => toggleSelection(item.id)}
+                    disabled={Boolean(savingId)}
+                    aria-label={`${isSelected ? 'Deselect' : 'Select'} ${item.title}`}
+                    className="group relative block aspect-video w-full overflow-hidden bg-muted text-left disabled:cursor-not-allowed"
                   >
                     {item.thumbnail_url ? (
                       <img src={item.thumbnail_url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
                     ) : (
                       <div className="flex h-full items-center justify-center"><MonitorPlay className="h-9 w-9 text-muted-foreground" /></div>
                     )}
-                    <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-lg bg-black/75 px-2 py-1 text-xs font-medium text-white">
-                      Open on YouTube <ExternalLink className="h-3 w-3" />
+                    <span className="absolute bottom-3 right-3 rounded-lg bg-black/75 px-2 py-1 text-xs font-medium text-white">
+                      Click image to {isSelected ? 'deselect' : 'select'}
                     </span>
-                  </a>
+                  </button>
                   <div className="space-y-3 p-4">
                     <div>
                       <h2 className="line-clamp-2 min-h-12 text-sm font-semibold leading-6 text-foreground">{item.title}</h2>
@@ -305,6 +338,14 @@ export function ManualVideoClassification() {
                       {item.category && <AdminStatusBadge label={item.category} tone="default" />}
                       {item.language && <AdminStatusBadge label={item.language.toUpperCase()} tone="info" />}
                     </div>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${encodeURIComponent(item.video_id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-accent"
+                    >
+                      Open on YouTube <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
                     <div className="grid grid-cols-2 gap-2 border-t border-border/70 pt-3">
                       <button
                         type="button"

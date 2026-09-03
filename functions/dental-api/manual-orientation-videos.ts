@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { getCorsHeaders } from '../api/_shared/auth'
 
-const PAGE_SIZE = 24
+const DEFAULT_PAGE_SIZE = 96
+const ALLOWED_PAGE_SIZES = new Set([24, 48, 96])
+const MAX_BATCH_SIZE = 100
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const ALLOWED_VIDEO_TYPES = new Set(['short_video', 'video'])
 
@@ -71,9 +73,11 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
   const url = new URL(context.request.url)
   const requestedPage = Number(url.searchParams.get('page') || 1)
   const page = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1
+  const requestedPageSize = Number(url.searchParams.get('pageSize') || DEFAULT_PAGE_SIZE)
+  const pageSize = ALLOWED_PAGE_SIZES.has(requestedPageSize) ? requestedPageSize : DEFAULT_PAGE_SIZE
   const search = (url.searchParams.get('q') || '').trim().slice(0, 100)
-  const from = (page - 1) * PAGE_SIZE
-  const to = from + PAGE_SIZE - 1
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
 
   let query = authorization.supabase
     .from('dental_videos')
@@ -93,7 +97,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
   return json(context.request, {
     videos: data || [],
     page,
-    pageSize: PAGE_SIZE,
+    pageSize,
     total: count ?? 0,
   })
 }
@@ -117,7 +121,7 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
 
   if (
     results.length < 1 ||
-    results.length > PAGE_SIZE ||
+    results.length > MAX_BATCH_SIZE ||
     new Set(results.map((entry) => entry.id)).size !== results.length ||
     results.some((entry) => !UUID_PATTERN.test(entry.id) || !ALLOWED_VIDEO_TYPES.has(entry.videoType))
   ) {
@@ -126,17 +130,23 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
 
   const updated: Array<{ id: string; video_type: string }> = []
   const failed: string[] = []
-  for (const entry of results) {
+  for (const videoType of ALLOWED_VIDEO_TYPES) {
+    const ids = results.filter((entry) => entry.videoType === videoType).map((entry) => entry.id)
+    if (ids.length === 0) continue
     const { data, error } = await authorization.supabase
       .from('dental_videos')
-      .update({ video_type: entry.videoType })
-      .eq('id', entry.id)
+      .update({ video_type: videoType })
+      .in('id', ids)
       .is('video_type', null)
       .select('id,video_type')
-      .maybeSingle()
-
-    if (error || !data) failed.push(entry.id)
-    else updated.push(data)
+    if (error) {
+      failed.push(...ids)
+      continue
+    }
+    const saved = data || []
+    updated.push(...saved)
+    const savedIds = new Set(saved.map((item) => item.id))
+    failed.push(...ids.filter((id) => !savedIds.has(id)))
   }
 
   if (updated.length === 0) {
