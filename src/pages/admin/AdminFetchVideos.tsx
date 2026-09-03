@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BrainCircuit,
   CheckCircle,
+  Clapperboard,
+  Copy,
+  Download,
   ExternalLink,
   Filter,
   Loader2,
+  ScanLine,
   SearchCheck,
+  ShieldCheck,
   Sparkles,
   XCircle,
   Youtube,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import {
@@ -58,6 +64,94 @@ type RequestError = {
   message: string
   details: string[]
   code?: string
+}
+
+type OrientationType = 'short_video' | 'video'
+
+type OrientationReportVideo = {
+  id: string
+  video_id: string
+  title: string
+  thumbnail_url: string
+  video_type: OrientationType
+}
+
+type OrientationReportEntry = {
+  i: string
+  t: OrientationType
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function decodeOrientationReport(hash: string): OrientationReportEntry[] | null {
+  const prefix = '#orientation-results='
+  if (!hash.startsWith(prefix)) return null
+
+  try {
+    const encoded = hash.slice(prefix.length).replace(/-/g, '+').replace(/_/g, '/')
+    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')
+    const parsed = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(padded), (character) => character.charCodeAt(0))))
+    if (!Array.isArray(parsed?.i) || typeof parsed?.t !== 'string' || parsed.i.length === 0 || parsed.i.length > 500) return null
+    if (parsed.t.length !== parsed.i.length || !/^[01]+$/.test(parsed.t)) return null
+
+    const entries = parsed.i.map((compactId: unknown, index: number) => {
+      if (typeof compactId !== 'string' || !/^[0-9a-f]{32}$/i.test(compactId)) return null
+      const id = `${compactId.slice(0, 8)}-${compactId.slice(8, 12)}-${compactId.slice(12, 16)}-${compactId.slice(16, 20)}-${compactId.slice(20)}`
+      if (!UUID_PATTERN.test(id)) return null
+      return { i: id, t: parsed.t[index] === '1' ? 'short_video' : 'video' } satisfies OrientationReportEntry
+    })
+    return entries.every((entry: OrientationReportEntry | null): entry is OrientationReportEntry => entry !== null)
+      ? entries
+      : null
+  } catch {
+    return null
+  }
+}
+
+function OrientationReport({ videos }: { videos: OrientationReportVideo[] }) {
+  const shortVideoCount = videos.filter((video) => video.video_type === 'short_video').length
+
+  return (
+    <AdminSectionCard
+      title="Latest orientation results"
+      description="This temporary report is available only in this tab and is not stored as a separate database record."
+      action={<AdminStatusBadge label={`${videos.length} classified`} tone="success" />}
+    >
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        <AdminStatCard label="Short videos" value={shortVideoCount} icon={ScanLine} accent="success" />
+        <AdminStatCard label="Videos" value={videos.length - shortVideoCount} icon={Clapperboard} />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {videos.map((video) => (
+          <article key={video.id} className="flex gap-3 rounded-[20px] border border-border/80 bg-background/70 p-3">
+            <img
+              src={video.thumbnail_url}
+              alt=""
+              loading="lazy"
+              className="aspect-video h-20 flex-shrink-0 rounded-xl bg-muted object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <AdminStatusBadge
+                label={video.video_type === 'short_video' ? 'Short video' : 'Video'}
+                tone={video.video_type === 'short_video' ? 'success' : 'info'}
+              />
+              <h3 className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-foreground" title={video.title}>
+                {video.title}
+              </h3>
+              <a
+                href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.video_id)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                View on YouTube <ExternalLink className="h-3 w-3" aria-hidden="true" />
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </AdminSectionCard>
+  )
 }
 
 function ResultSummary({ result }: { result: FetchResult }) {
@@ -175,6 +269,12 @@ export function AdminFetchVideos() {
   } | null>(null)
   const [categorizeError, setCategorizeError] = useState<string | null>(null)
   const [uncategorizedCount, setUncategorizedCount] = useState(0)
+  const [isCreatingClassifierCode, setIsCreatingClassifierCode] = useState(false)
+  const [orientationPending, setOrientationPending] = useState<number | null>(null)
+  const [orientationReport, setOrientationReport] = useState<OrientationReportVideo[] | null>(null)
+  const [isLoadingOrientationReport, setIsLoadingOrientationReport] = useState(false)
+  const [orientationReportError, setOrientationReportError] = useState<string | null>(null)
+  const orientationReportConsumed = useRef(false)
 
   useEffect(() => {
     const storedTimestamp = localStorage.getItem('last_fetched_youtube_videos')
@@ -195,6 +295,51 @@ export function AdminFetchVideos() {
   useEffect(() => {
     void fetchUncategorizedCount()
   }, [])
+
+  useEffect(() => {
+    if (!isAdminProfile(profile) || orientationReportConsumed.current) return
+    const entries = decodeOrientationReport(window.location.hash)
+    if (!window.location.hash.startsWith('#orientation-results=')) return
+
+    orientationReportConsumed.current = true
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    if (!entries) {
+      setOrientationReportError('The temporary classification report is invalid. Run the classifier again to create a new report.')
+      return
+    }
+
+    const loadReport = async () => {
+      setIsLoadingOrientationReport(true)
+      setOrientationReportError(null)
+      try {
+        const reportTypes = new Map(entries.map((entry) => [entry.i, entry.t]))
+        const rows: Omit<OrientationReportVideo, 'video_type'>[] = []
+
+        for (let offset = 0; offset < entries.length; offset += 100) {
+          const ids = entries.slice(offset, offset + 100).map((entry) => entry.i)
+          const { data, error: reportError } = await supabase
+            .from('dental_videos')
+            .select('id,video_id,title,thumbnail_url')
+            .in('id', ids)
+          if (reportError) throw reportError
+          rows.push(...(data || []))
+        }
+
+        const byId = new Map(rows.map((video) => [video.id, video]))
+        setOrientationReport(entries.flatMap((entry) => {
+          const video = byId.get(entry.i)
+          const videoType = reportTypes.get(entry.i)
+          return video && videoType ? [{ ...video, video_type: videoType }] : []
+        }))
+      } catch {
+        setOrientationReportError('The videos were classified, but this temporary report could not be loaded. Refreshing will not undo the classifications.')
+      } finally {
+        setIsLoadingOrientationReport(false)
+      }
+    }
+
+    void loadReport()
+  }, [profile])
 
   if (!isAdminProfile(profile)) {
     return (
@@ -294,6 +439,64 @@ export function AdminFetchVideos() {
     } finally {
       setIsCategorizing(false)
     }
+  }
+
+  const handleCopyClassifierCode = async () => {
+    if (isCreatingClassifierCode) return
+    setIsCreatingClassifierCode(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Your session has expired. Sign in again and retry.')
+
+      const response = await fetch('/dental-api/orientation-videos', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || typeof data?.token !== 'string') {
+        throw new Error(data?.error || 'Unable to create a classifier access code.')
+      }
+
+      const accessCode = `${window.location.origin}|${data.token}`
+      await navigator.clipboard.writeText(accessCode)
+      setOrientationPending(typeof data.pending === 'number' ? data.pending : null)
+      toast.success('Temporary classifier code copied', {
+        description: 'Paste it into the classifier within 15 minutes.',
+      })
+    } catch (requestError) {
+      toast.error('Classifier code was not copied', {
+        description: requestError instanceof Error ? requestError.message : 'Try again from a secure browser window.',
+      })
+    } finally {
+      setIsCreatingClassifierCode(false)
+    }
+  }
+
+  const handleDownloadClassifier = () => {
+    const scriptUrl = `${window.location.origin}/downloads/DentalVideoClassifier.ps1`
+    const launcher = [
+      '@echo off',
+      'setlocal',
+      'set "CLASSIFIER_SCRIPT=%TEMP%\\DentalVideoClassifier.ps1"',
+      'echo Downloading the latest DentalLearn classifier...',
+      `powershell.exe -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri '${scriptUrl}' -OutFile '%CLASSIFIER_SCRIPT%'"`,
+      'if errorlevel 1 (',
+      '  echo Unable to download the classifier. Check your internet connection and try again.',
+      '  pause',
+      '  exit /b 1',
+      ')',
+      'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%CLASSIFIER_SCRIPT%"',
+      'if errorlevel 1 pause',
+      'endlocal',
+    ].join('\r\n')
+    const downloadUrl = URL.createObjectURL(new Blob([launcher], { type: 'application/octet-stream' }))
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = 'DentalVideoClassifier.cmd'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(downloadUrl)
   }
 
   return (
@@ -451,6 +654,89 @@ export function AdminFetchVideos() {
           </div>
         </AdminSectionCard>
       </div>
+
+      <AdminSectionCard
+        title="Video orientation classifier"
+        description="Use the Windows classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
+      >
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] bg-primary/12 text-primary">
+              <ScanLine className="h-6 w-6" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm leading-6 text-muted-foreground">
+                Download the classifier once, then copy a temporary access code each time you run it. The tool reads video dimensions without downloading the videos and can only submit orientation results.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <AdminStatusBadge
+                  label={orientationPending === null ? 'Pending count available with access code' : `${orientationPending} awaiting orientation`}
+                  tone={orientationPending && orientationPending > 0 ? 'warning' : 'default'}
+                />
+                <AdminStatusBadge label="Windows" tone="info" />
+                <AdminStatusBadge label="15-minute access" tone="success" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[240px]">
+            <button
+              type="button"
+              onClick={handleDownloadClassifier}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Download className="h-4 w-4" />
+              Download classifier
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyClassifierCode}
+              disabled={isCreatingClassifierCode}
+              aria-busy={isCreatingClassifierCode}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isCreatingClassifierCode ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Creating code…</>
+              ) : (
+                <><Copy className="h-4 w-4" />Copy temporary code</>
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="mt-5 flex items-start gap-3 rounded-[20px] border border-border/80 bg-background/55 p-4">
+          <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <p className="text-sm leading-6 text-muted-foreground">
+            The downloaded file contains no database administrator key. Keep the temporary code private; it expires automatically and only authorizes orientation classification.
+          </p>
+        </div>
+      </AdminSectionCard>
+
+      {isLoadingOrientationReport && (
+        <AdminSectionCard title="Loading latest orientation results">
+          <div className="flex min-h-28 items-center justify-center gap-3 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            Loading the videos classified in this run…
+          </div>
+        </AdminSectionCard>
+      )}
+
+      {orientationReportError && (
+        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
+          <div role="alert" className="flex items-start gap-3">
+            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Classification report unavailable</p>
+              <p className="mt-1 text-sm text-muted-foreground">{orientationReportError}</p>
+            </div>
+          </div>
+        </AdminSectionCard>
+      )}
+
+      {orientationReport && orientationReport.length > 0 && (
+        <div aria-live="polite">
+          <OrientationReport videos={orientationReport} />
+        </div>
+      )}
 
       {error && (
         <AdminSectionCard className="border-destructive/20 bg-destructive/5">

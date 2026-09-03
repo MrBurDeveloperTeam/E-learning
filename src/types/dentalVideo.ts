@@ -9,6 +9,7 @@ export interface DentalVideo {
   published_at: string; // ISO timestamp string
   category: string | null;
   language: string | null;
+  video_type: "short_video" | "video" | null;
   confidence_score: number | null;
   tags: string[] | null;
   needs_review: boolean;
