@@ -76,6 +76,25 @@ type RequestError = {
 }
 
 type OrientationType = 'short_video' | 'video'
+type OfficialChannelKey = 'mrburglobal' | 'kaneiko-global'
+type ChannelImportTarget = OfficialChannelKey | { url: string }
+
+type ChannelImportSummary = {
+  found: number
+  inserted: number
+  duplicates: number
+  unavailable: number
+  pages: number
+}
+
+type ChannelNotAddedVideo = {
+  video_id: string
+  title: string
+  reason: string
+  reasonCode: 'duplicate' | 'unavailable' | 'save_duplicate'
+  youtube_url: string
+  channelLabel: string
+}
 
 type OrientationReportVideo = {
   id: string
@@ -237,6 +256,12 @@ export function AdminFetchVideos() {
   const [result, setResult] = useState<FetchResult | null>(null)
   const [error, setError] = useState<RequestError | null>(null)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
+  const [isImportingChannels, setIsImportingChannels] = useState(false)
+  const [channelImportName, setChannelImportName] = useState<string | null>(null)
+  const [channelImportSummary, setChannelImportSummary] = useState<ChannelImportSummary | null>(null)
+  const [channelImportError, setChannelImportError] = useState<string | null>(null)
+  const [customChannelUrl, setCustomChannelUrl] = useState('')
+  const [channelNotAddedVideos, setChannelNotAddedVideos] = useState<ChannelNotAddedVideo[]>([])
 
   const [isCategorizing, setIsCategorizing] = useState(false)
   const [categorizeResult, setCategorizeResult] = useState<{
@@ -523,6 +548,86 @@ export function AdminFetchVideos() {
     URL.revokeObjectURL(downloadUrl)
   }
 
+  const handleImportOfficialChannels = async (channels: ChannelImportTarget[]) => {
+    if (isImportingChannels) return
+    setIsImportingChannels(true)
+    setChannelImportError(null)
+    setChannelNotAddedVideos([])
+    const summary: ChannelImportSummary = { found: 0, inserted: 0, duplicates: 0, unavailable: 0, pages: 0 }
+    setChannelImportSummary({ ...summary })
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Your session has expired. Sign in again and retry.')
+
+      for (const channel of channels) {
+        let pageToken = ''
+        let pageGuard = 0
+        const isCustom = typeof channel === 'object'
+        const displayName = isCustom
+          ? 'custom YouTube channel'
+          : channel === 'mrburglobal' ? 'MR.BUR Global' : 'KANEIKO Global'
+        do {
+          pageGuard++
+          if (pageGuard > 200) throw new Error('The channel is larger than the safe import limit. Run the importer again to continue.')
+          setChannelImportName(`${displayName} · page ${pageGuard}`)
+
+          const response = await fetch('/dental-api/import-youtube-channels', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(isCustom ? { channelUrl: channel.url, pageToken } : { channel, pageToken }),
+          })
+          const data = await response.json().catch(() => null)
+          if (!response.ok || !data) throw new Error(data?.error || 'The YouTube channel import failed.')
+
+          summary.found += Number(data.found) || 0
+          summary.inserted += Number(data.inserted) || 0
+          summary.duplicates += Number(data.duplicates) || 0
+          summary.unavailable += Number(data.unavailable) || 0
+          summary.pages++
+          setChannelImportSummary({ ...summary })
+          if (Array.isArray(data.notAdded) && data.notAdded.length > 0) {
+            const reportRows = data.notAdded
+              .filter((item: unknown): item is Omit<ChannelNotAddedVideo, 'channelLabel'> => (
+                typeof item === 'object' && item !== null && typeof (item as ChannelNotAddedVideo).video_id === 'string'
+              ))
+              .map((item: Omit<ChannelNotAddedVideo, 'channelLabel'>) => ({
+                ...item,
+                channelLabel: typeof data.channelLabel === 'string' ? data.channelLabel : displayName,
+              }))
+            setChannelNotAddedVideos((current) => [...current, ...reportRows])
+          }
+          pageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : ''
+        } while (pageToken)
+      }
+
+      setChannelImportName(null)
+      toast.success('Official channel import completed', {
+        description: `${summary.inserted} new videos and Shorts were added.`,
+      })
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : 'The channel import failed.'
+      setChannelImportError(message)
+      toast.error('Channel import stopped', { description: message })
+    } finally {
+      setChannelImportName(null)
+      setIsImportingChannels(false)
+    }
+  }
+
+  const handleImportCustomChannel = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const url = customChannelUrl.trim()
+    if (!url) {
+      setChannelImportError('Enter a YouTube channel link before importing.')
+      return
+    }
+    void handleImportOfficialChannels([{ url }])
+  }
+
   return (
     <AdminLayout
       title="Video ingestion"
@@ -702,6 +807,150 @@ export function AdminFetchVideos() {
           </div>
         </AdminSectionCard>
       </div>
+
+      <AdminSectionCard
+        title="Official YouTube channel import"
+        description="Import every public upload from the approved channels, including regular videos and YouTube Shorts. Video duration is not filtered."
+      >
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] bg-red-500/10 text-red-600 dark:text-red-400">
+              <Youtube className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                MR.BUR Global and KANEIKO Global
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                The importer reads each channel's complete Uploads list page by page, skips existing YouTube IDs, detects language, and assigns a dental category from the title and description. Unclear items go to General Dentistry.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <AdminStatusBadge label="Includes Shorts" tone="success" />
+                <AdminStatusBadge label="No duration limit" tone="info" />
+                <AdminStatusBadge label="Duplicates skipped" tone="default" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[520px]">
+            <button
+              type="button"
+              onClick={() => void handleImportOfficialChannels(['mrburglobal'])}
+              disabled={isImportingChannels}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+            >
+              Import MR.BUR
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleImportOfficialChannels(['kaneiko-global'])}
+              disabled={isImportingChannels}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+            >
+              Import KANEIKO
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleImportOfficialChannels(['mrburglobal', 'kaneiko-global'])}
+              disabled={isImportingChannels}
+              aria-busy={isImportingChannels}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isImportingChannels ? <Loader2 className="h-4 w-4 animate-spin" /> : <Youtube className="h-4 w-4" />}
+              Import both
+            </button>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleImportCustomChannel}
+          className="mt-5 flex flex-col gap-3 border-t border-border/70 pt-5 sm:flex-row sm:items-end"
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <label htmlFor="custom-youtube-channel" className="text-sm font-medium text-foreground">
+              Import another YouTube channel
+            </label>
+            <input
+              id="custom-youtube-channel"
+              type="text"
+              inputMode="url"
+              value={customChannelUrl}
+              onChange={(event) => setCustomChannelUrl(event.target.value)}
+              disabled={isImportingChannels}
+              placeholder="https://www.youtube.com/@channelname"
+              className="h-11 w-full rounded-xl border border-border bg-background/70 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+            />
+            <p className="text-xs text-muted-foreground">
+              Supports @handle, /channel/UC…, /user/… and legacy /c/… channel links. Video and playlist links are rejected.
+            </p>
+          </div>
+          <button
+            type="submit"
+            disabled={isImportingChannels || !customChannelUrl.trim()}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isImportingChannels ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            Import this channel
+          </button>
+        </form>
+
+        {(isImportingChannels || channelImportSummary) && (
+          <div className="mt-5 rounded-[20px] border border-border/80 bg-background/60 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">
+                {isImportingChannels ? `Importing ${channelImportName || 'channel videos'}…` : 'Latest channel import'}
+              </p>
+              {isImportingChannels && <AdminStatusBadge label={`${channelImportSummary?.pages || 0} pages processed`} tone="info" dot />}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div><p className="text-xs text-muted-foreground">Found</p><p className="mt-1 text-xl font-semibold text-foreground">{channelImportSummary?.found || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Inserted</p><p className="mt-1 text-xl font-semibold text-emerald-600 dark:text-emerald-400">{channelImportSummary?.inserted || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Already in DB</p><p className="mt-1 text-xl font-semibold text-foreground">{channelImportSummary?.duplicates || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Unavailable</p><p className="mt-1 text-xl font-semibold text-amber-600 dark:text-amber-400">{channelImportSummary?.unavailable || 0}</p></div>
+            </div>
+          </div>
+        )}
+
+        {channelImportError && (
+          <div className="mt-4 rounded-[18px] border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
+            {channelImportError} Successfully imported pages remain saved; run the import again later to safely skip them.
+          </div>
+        )}
+
+        {channelNotAddedVideos.length > 0 && (
+          <details className="mt-4 overflow-hidden rounded-[20px] border border-amber-500/20 bg-amber-500/5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-amber-500/10">
+              <span>Videos not added ({channelNotAddedVideos.length})</span>
+              <AdminStatusBadge label="Review details" tone="warning" />
+            </summary>
+            <div className="max-h-[440px] divide-y divide-border/70 overflow-y-auto border-t border-border/70">
+              {channelNotAddedVideos.map((video, index) => (
+                <div key={`${video.video_id}-${index}`} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">{video.title}</p>
+                      <AdminStatusBadge
+                        label={video.reasonCode === 'duplicate' ? 'Already in DB' : video.reasonCode === 'unavailable' ? 'Unavailable' : 'Save duplicate'}
+                        tone={video.reasonCode === 'duplicate' ? 'default' : 'warning'}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{video.channelLabel} · {video.video_id}</p>
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{video.reason}</p>
+                  </div>
+                  <a
+                    href={video.youtube_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-9 flex-shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-accent"
+                  >
+                    Check on YouTube <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </AdminSectionCard>
 
       <AdminSectionCard
         title="Video orientation classifier"
