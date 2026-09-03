@@ -96,6 +96,28 @@ type ChannelNotAddedVideo = {
   channelLabel: string
 }
 
+type ChannelImportCompletion = {
+  message: string
+  completedAt: string
+}
+
+const CHANNEL_IMPORT_REPORT_KEY = 'dental_channel_import_report'
+
+function readStoredChannelImportReport(): {
+  summary: ChannelImportSummary
+  completion: ChannelImportCompletion
+} | null {
+  try {
+    const stored = localStorage.getItem(CHANNEL_IMPORT_REPORT_KEY)
+    if (!stored) return null
+    const parsed = JSON.parse(stored)
+    if (!parsed?.summary || typeof parsed?.completion?.message !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 type OrientationReportVideo = {
   id: string
   video_id: string
@@ -248,6 +270,7 @@ function ImportedVideoList({ videos }: { videos: ImportedVideo[] }) {
 }
 
 export function AdminFetchVideos() {
+  const storedChannelImportReport = useRef(readStoredChannelImportReport()).current
   const profile = useAuthStore((state) => state.profile)
   const [category, setCategory] = useState<VideoCategory>('General Dentistry')
   const [importLanguage, setImportLanguage] = useState<ImportVideoLanguage>('en')
@@ -258,10 +281,11 @@ export function AdminFetchVideos() {
   const [lastFetched, setLastFetched] = useState<string | null>(null)
   const [isImportingChannels, setIsImportingChannels] = useState(false)
   const [channelImportName, setChannelImportName] = useState<string | null>(null)
-  const [channelImportSummary, setChannelImportSummary] = useState<ChannelImportSummary | null>(null)
+  const [channelImportSummary, setChannelImportSummary] = useState<ChannelImportSummary | null>(storedChannelImportReport?.summary || null)
   const [channelImportError, setChannelImportError] = useState<string | null>(null)
   const [customChannelUrl, setCustomChannelUrl] = useState('')
   const [channelNotAddedVideos, setChannelNotAddedVideos] = useState<ChannelNotAddedVideo[]>([])
+  const [channelImportCompletion, setChannelImportCompletion] = useState<ChannelImportCompletion | null>(storedChannelImportReport?.completion || null)
 
   const [isCategorizing, setIsCategorizing] = useState(false)
   const [categorizeResult, setCategorizeResult] = useState<{
@@ -553,6 +577,8 @@ export function AdminFetchVideos() {
     setIsImportingChannels(true)
     setChannelImportError(null)
     setChannelNotAddedVideos([])
+    setChannelImportCompletion(null)
+    localStorage.removeItem(CHANNEL_IMPORT_REPORT_KEY)
     const summary: ChannelImportSummary = { found: 0, inserted: 0, duplicates: 0, unavailable: 0, pages: 0 }
     setChannelImportSummary({ ...summary })
 
@@ -605,6 +631,19 @@ export function AdminFetchVideos() {
       }
 
       setChannelImportName(null)
+      const importedLabels = channels.map((channel) => (
+        typeof channel === 'object'
+          ? 'the selected custom channel'
+          : channel === 'mrburglobal' ? 'MR.BUR Global' : 'KANEIKO Global'
+      ))
+      const completion: ChannelImportCompletion = {
+        message: importedLabels.length === 2
+          ? 'MR.BUR Global and KANEIKO Global were fully scanned.'
+          : `${importedLabels[0]} was fully scanned.`,
+        completedAt: new Date().toLocaleString(),
+      }
+      setChannelImportCompletion(completion)
+      localStorage.setItem(CHANNEL_IMPORT_REPORT_KEY, JSON.stringify({ summary, completion }))
       toast.success('Official channel import completed', {
         description: `${summary.inserted} new videos and Shorts were added.`,
       })
@@ -907,6 +946,19 @@ export function AdminFetchVideos() {
               <div><p className="text-xs text-muted-foreground">Inserted</p><p className="mt-1 text-xl font-semibold text-emerald-600 dark:text-emerald-400">{channelImportSummary?.inserted || 0}</p></div>
               <div><p className="text-xs text-muted-foreground">Already in DB</p><p className="mt-1 text-xl font-semibold text-foreground">{channelImportSummary?.duplicates || 0}</p></div>
               <div><p className="text-xs text-muted-foreground">Unavailable</p><p className="mt-1 text-xl font-semibold text-amber-600 dark:text-amber-400">{channelImportSummary?.unavailable || 0}</p></div>
+            </div>
+          </div>
+        )}
+
+        {channelImportCompletion && !isImportingChannels && (
+          <div className="mt-4 flex items-start gap-3 rounded-[20px] border border-emerald-500/25 bg-emerald-500/10 p-4" role="status">
+            <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Import completed successfully</p>
+              <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">{channelImportCompletion.message}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Completed {channelImportCompletion.completedAt}. Every readable upload in this run is now inserted or was already in the database.
+              </p>
             </div>
           </div>
         )}
