@@ -87,8 +87,8 @@ export async function onRequestOptions() {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/dental-videos          → paginated list
-// GET /api/dental-videos?id=<id>  → single video by id
+// GET /dental-api/dental-videos          → paginated list
+// GET /dental-api/dental-videos?id=<id>  → single video by id
 // ---------------------------------------------------------------------------
 export async function onRequestGet(context: {
   env: Env;

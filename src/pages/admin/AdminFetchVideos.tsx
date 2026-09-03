@@ -216,7 +216,7 @@ export function AdminFetchVideos() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Your session has expired. Sign in again and retry.')
 
-      const response = await fetch('/api/fetch-dental-videos', {
+      const response = await fetch('/dental-api/fetch-dental-videos', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,

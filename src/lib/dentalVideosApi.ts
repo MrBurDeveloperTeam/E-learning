@@ -86,7 +86,7 @@ export async function getVideos(
   if (params?.sort) searchParams.set("sort", params.sort);
 
   const qs = searchParams.toString();
-  const path = `/api/dental-videos${qs ? `?${qs}` : ""}`;
+  const path = `/dental-api/dental-videos${qs ? `?${qs}` : ""}`;
 
   return apiFetch<DentalVideosResponse>(path);
 }
@@ -105,7 +105,7 @@ export async function getVideos(
  * ```
  */
 export async function getVideoById(id: string): Promise<DentalVideo> {
-  return apiFetch<DentalVideo>(`/api/dental-videos?id=${encodeURIComponent(id)}`);
+  return apiFetch<DentalVideo>(`/dental-api/dental-videos?id=${encodeURIComponent(id)}`);
 }
 
 /**

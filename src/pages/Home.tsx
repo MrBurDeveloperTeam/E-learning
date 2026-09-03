@@ -219,7 +219,10 @@ export function Home() {
                 className="h-12 w-full cursor-pointer rounded-xl bg-card pl-9 pr-3"
                 aria-label="Filter videos by language"
               >
-                <SelectValue />
+                <SelectValue>
+                  {VIDEO_LANGUAGES.find((item) => item.value === language)?.label
+                    ?? 'All languages'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent align="start" className="rounded-xl">
                 {VIDEO_LANGUAGES.map((item) => (
