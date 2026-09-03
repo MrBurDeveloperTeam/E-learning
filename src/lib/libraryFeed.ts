@@ -69,7 +69,7 @@ export async function fetchUnifiedVideoPage({
       video: {
         ...video,
         category: (
-          normalizeLibraryCategory(video.category) ?? 'Others'
+          normalizeLibraryCategory(video.category) ?? 'General Dentistry'
         ) as VideoWithCreator['category'],
       },
     })),
@@ -79,7 +79,7 @@ export async function fetchUnifiedVideoPage({
       sortDate: getDentalSortDate(video),
       video: {
         ...video,
-        category: normalizeLibraryCategory(video.category) ?? 'Others',
+        category: normalizeLibraryCategory(video.category) ?? 'General Dentistry',
       },
     })),
   ].sort(

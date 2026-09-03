@@ -45,9 +45,9 @@ export async function fetchVideosPaginated(
     .eq('visibility', 'public')
     .range(page * pageSize, (page + 1) * pageSize - 1)
 
-  if (filters?.category === 'Others') {
+  if (filters?.category === 'General Dentistry') {
     query = query.or(
-      'category.is.null,category.eq.Others,category.eq.Restorative'
+      'category.is.null,category.eq.General Dentistry,category.eq.Others,category.eq.Restorative'
     )
   } else if (filters?.category) {
     query = query.eq('category', filters.category)

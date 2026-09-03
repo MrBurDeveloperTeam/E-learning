@@ -3,6 +3,9 @@ import type { DentalCategory } from '@/types/dentalVideo'
 
 const CATEGORY_NORMALIZATION_MAP: Record<string, string> = {
   Periodontics: 'Periodontology',
+  Others: 'General Dentistry',
+  Other: 'General Dentistry',
+  Restorative: 'General Dentistry',
 }
 
 const DENTAL_CATEGORY_FILTER_MAP: Record<string, string> = {
@@ -36,11 +39,7 @@ export function buildCombinedCategoryList(
   function addCategory(category: string | null | undefined) {
     const normalized = normalizeLibraryCategory(category)
 
-    if (
-      !normalized ||
-      normalized === 'Others' ||
-      seen.has(normalized)
-    ) {
+    if (!normalized || seen.has(normalized)) {
       return
     }
 
@@ -54,8 +53,6 @@ export function buildCombinedCategoryList(
     .map((item) => item.category)
     .sort((left, right) => left.localeCompare(right))
     .forEach(addCategory)
-
-  categories.push('Others')
 
   return categories
 }

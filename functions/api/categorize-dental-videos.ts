@@ -120,8 +120,7 @@ export async function onRequest(context: any) {
       'Orthodontics', 'Oral Surgery', 'Endodontics', 'Periodontics',
       'Pediatric Dentistry', 'Prosthodontics', 'Oral Hygiene',
       'Radiology', 'General Dentistry', 'Implantology',
-      'Dental Burs', 'Handpieces', 'Clinic Management',
-      'Others'
+      'Dental Burs', 'Handpieces', 'Clinic Management'
     ];
     const fallbackCategory = 'General Dentistry';
 
@@ -156,8 +155,7 @@ Category definitions:
 - Clinic Management: non-clinical business/operational content — dental inventory management, appointment scheduling workflow, staff workflow, clinic productivity, practice operations
 - Oral Hygiene: brushing, flossing, preventive care, patient education on home care
 - Radiology: X-rays, CBCT, imaging interpretation, radiographic diagnosis
-- Others: dental content that does not clearly fit any category above. Use rarely.
-- General Dentistry: routine checkups, dental exams, teeth cleaning (non-periodontal), fluoride treatments, dental anxiety, tooth sensitivity, tooth decay prevention. Use ONLY when no specialist category above fits.
+- General Dentistry: routine checkups, dental exams, teeth cleaning (non-periodontal), fluoride treatments, dental anxiety, tooth sensitivity, tooth decay prevention, and any dental content that does not clearly fit a specialist category. Use when no specialist category above fits.
 
 Critical decision rules:
 1. KEYWORD MATCH IS THE STRONGEST SIGNAL: If the title, description, or tags contain a category name (e.g. "prosthodontics", "endodontics", "orthodontics", "implantology"), you MUST classify into that category with confidence >= 0.9.
@@ -187,7 +185,6 @@ Format: { "category": "...", "confidence": 0.0-1.0, "tags": ["...", "..."] }`;
       'Dental Burs': ['dental bur', 'dental burs', 'diamond bur', 'carbide bur', 'bur kit', 'crown cutting bur', 'occlusal reduction bur', 'surgical bur', 'endodontic bur', 'finishing bur', 'polishing bur'],
       'Handpieces': ['handpiece', 'high-speed handpiece', 'low-speed handpiece', 'contra angle', 'straight handpiece', 'handpiece maintenance', 'handpiece sterilization'],
       'Clinic Management': ['clinic management', 'practice management', 'dental inventory', 'appointment workflow', 'clinic productivity', 'practice operations'],
-      'Others': [],
     };
 
     function detectCategoryHint(title: string, description: string, tags: string[]): string | null {

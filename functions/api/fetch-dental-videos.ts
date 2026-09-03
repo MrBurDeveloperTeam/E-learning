@@ -14,7 +14,6 @@ const CATEGORY_SEARCH_TERMS = {
   Handpieces: ["dental handpiece maintenance tutorial", "dental handpiece types explained", "high speed handpiece dentistry", "dental handpiece sterilization"],
   "Clinic Management": ["dental clinic management training", "dental practice management tutorial", "dental clinic workflow", "dental practice patient management"],
   Radiology: ["dental radiology interpretation lecture", "intraoral dental x ray technique", "panoramic radiograph dentistry", "CBCT dental imaging tutorial"],
-  Others: ["oral medicine dentistry lecture", "dental anesthesia tutorial", "dental materials lecture", "dentistry clinical education"],
 } as const;
 
 type DentalCategory = keyof typeof CATEGORY_SEARCH_TERMS;
@@ -40,7 +39,6 @@ const LOCALIZED_CATEGORY_SEARCH_TERMS: Record<DentalCategory, {
   Handpieces: { th: "ด้ามกรอฟัน การดูแล", "zh-Hans": "牙科手机 使用 维护", ko: "치과 핸드피스 사용 관리", ja: "歯科ハンドピース 使用 メンテナンス", ms: "handpiece pergigian penggunaan penyelenggaraan" },
   "Clinic Management": { th: "การบริหารคลินิกทันตกรรม", "zh-Hans": "牙科诊所 管理 教学", ko: "치과 병원 경영 강의", ja: "歯科医院 経営 講座", ms: "pengurusan klinik pergigian" },
   Radiology: { th: "รังสีวิทยาทางทันตกรรม การสอน", "zh-Hans": "牙科影像 放射 教学", ko: "치과 방사선 영상 강의", ja: "歯科放射線 画像 講座", ms: "radiologi pergigian tutorial" },
-  Others: { th: "ทันตแพทยศาสตร์ การสอน", "zh-Hans": "牙科 临床 教学", ko: "치과 임상 교육", ja: "歯科 臨床 教育", ms: "pendidikan klinikal pergigian" },
 };
 
 const LOCALIZED_LANGUAGES = ["th", "zh-Hans", "ko", "ja", "ms"] as const;

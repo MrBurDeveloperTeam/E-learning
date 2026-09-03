@@ -61,21 +61,26 @@ function sanitiseSearchQuery(raw: string): string {
     .join(" & ");
 }
 
-function isOthersCategory(category: string | null): boolean {
-  return category?.trim().toLowerCase() === "others";
+function isGeneralCategory(category: string | null): boolean {
+  const normalized = category?.trim().toLowerCase();
+  return normalized === "general dentistry" || normalized === "others" || normalized === "other";
 }
 
 function applyCategoryFilter(query: any, category: string | null) {
   if (!category) return query;
 
-  if (isOthersCategory(category)) {
-    return query.or("category.is.null,category.eq.Others");
+  if (isGeneralCategory(category)) {
+    return query.or("category.is.null,category.eq.General Dentistry,category.eq.Others,category.eq.Restorative");
   }
 
   return query.eq("category", category);
 }
 
 function normalizeVideoCategory(video: any) {
+  const category = video?.category?.trim();
+  if (!category || ["others", "other", "restorative"].includes(category.toLowerCase())) {
+    return { ...video, category: "General Dentistry" };
+  }
   return video;
 }
 
@@ -220,7 +225,7 @@ export async function onRequestGet(context: {
     // If full-text search is requested, use an RPC call for the tsquery.
     // Otherwise use the standard query builder.
     if (q) {
-      if (isOthersCategory(category)) {
+      if (isGeneralCategory(category)) {
         const escapedQuery = q.trim().replace(/[%_,]/g, "");
 
         let othersQuery = supabase
@@ -231,7 +236,7 @@ export async function onRequestGet(context: {
             `title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`
           )
           .or(
-            "category.is.null,category.eq.Others"
+            "category.is.null,category.eq.General Dentistry,category.eq.Others,category.eq.Restorative"
           )
           .order(sortColumn, { ascending })
           .range(from, to);
@@ -244,7 +249,7 @@ export async function onRequestGet(context: {
 
         if (othersError) {
           console.error(
-            "dental-videos Others search error:",
+            "dental-videos General Dentistry search error:",
             othersError
           );
 
