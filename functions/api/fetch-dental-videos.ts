@@ -153,6 +153,15 @@ function youtubeQuotaResponse() {
   }, 429);
 }
 
+function secretsMatch(expected: unknown, provided: string | null): boolean {
+  if (typeof expected !== "string" || expected.length < 32 || !provided || provided.length !== expected.length) return false;
+  let difference = 0;
+  for (let index = 0; index < expected.length; index++) {
+    difference |= expected.charCodeAt(index) ^ provided.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 export async function onRequest(context: any) {
   try {
     if (context.request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -169,23 +178,30 @@ export async function onRequest(context: any) {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const authHeader = context.request.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) return jsonResponse({ error: "Sign in again before importing videos." }, 401);
+    const isScheduledRequest = secretsMatch(
+      context.env.YOUTUBE_SCHEDULER_SECRET,
+      context.request.headers.get("X-Dental-Scheduler-Secret"),
+    );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) return jsonResponse({ error: "Your session has expired. Sign in again and retry." }, 401);
+    if (!isScheduledRequest) {
+      const authHeader = context.request.headers.get("Authorization");
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (!token) return jsonResponse({ error: "Sign in again before importing videos." }, 401);
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("account_type")
-      .eq("user_id", user.id)
-      .single();
-    if (profileError) {
-      console.error("fetch-dental-videos profile lookup error:", profileError);
-      return jsonResponse({ error: "Unable to verify administrator access." }, 500);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) return jsonResponse({ error: "Your session has expired. Sign in again and retry." }, 401);
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("account_type")
+        .eq("user_id", user.id)
+        .single();
+      if (profileError) {
+        console.error("fetch-dental-videos profile lookup error:", profileError);
+        return jsonResponse({ error: "Unable to verify administrator access." }, 500);
+      }
+      if (profile?.account_type !== "admin") return jsonResponse({ error: "Administrator access is required." }, 403);
     }
-    if (profile?.account_type !== "admin") return jsonResponse({ error: "Administrator access is required." }, 403);
 
     const body = await context.request.json().catch(() => ({}));
     const category = body?.category as DentalCategory;
