@@ -48,6 +48,8 @@ export function Navbar() {
   const badgeLabel = profile?.position || profile?.company_name
   const canAccessCreatorTools = isCreatorProfile(profile)
   const canAccessAdmin = isAdminProfile(profile)
+  const hasCreatorAccount = profile?.is_creator === true || profile?.role === 'creator'
+  const shouldShowCreatorRequest = !hasCreatorAccount && !canAccessAdmin
   const navLinks = canAccessAdmin
     ? [...baseNavLinks, { label: 'Admin', path: '/admin' }]
     : baseNavLinks
@@ -65,7 +67,7 @@ export function Navbar() {
       if (error) throw error
       return (data ?? null) as CreatorApplication | null
     },
-    enabled: Boolean(profile?.user_id && !canAccessCreatorTools && !canAccessAdmin),
+    enabled: Boolean(profile?.user_id && shouldShowCreatorRequest),
   })
   const creatorApplication = creatorApplicationQuery.data ?? null
   const creatorApplicationStatus = creatorApplication?.status ?? null
@@ -311,12 +313,12 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {!canAccessCreatorTools && !canAccessAdmin && (
+                {shouldShowCreatorRequest && (
                   <button
                     type="button"
                     onClick={() => void handleRequestCreatorAccess()}
                     disabled={creatorApplicationQuery.isLoading || creatorRequestPending || isRequestingCreatorAccess}
-                    className="hidden min-h-9 items-center rounded-lg border border-primary/30 bg-primary/10 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60 md:inline-flex"
+                    className="btn-primary hidden items-center gap-1.5 px-4 py-2 text-sm md:inline-flex"
                   >
                     {isRequestingCreatorAccess
                       ? 'Sending request…'
