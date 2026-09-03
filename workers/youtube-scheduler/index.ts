@@ -52,6 +52,8 @@ async function runScheduledImport(env: Env, scheduledTime: number) {
       category: rotation.category,
       language: rotation.language,
       limit: 10,
+      rotationSlot: rotation.slot,
+      scheduledFor: new Date(scheduledTime).toISOString(),
     }),
   })
   const result = await response.json().catch(() => null) as Record<string, unknown> | null
@@ -68,6 +70,9 @@ async function runScheduledImport(env: Env, scheduledTime: number) {
     inserted: result?.inserted || 0,
     alreadyInDb: result?.alreadyInDb || 0,
     fetched: result?.fetched || 0,
+    videos: Array.isArray(result?.videos)
+      ? result.videos.map((video: any) => ({ videoId: video.video_id, title: video.title }))
+      : [],
   }))
 }
 

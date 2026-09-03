@@ -7,7 +7,9 @@ import {
   Download,
   ExternalLink,
   Filter,
+  History,
   Loader2,
+  RefreshCw,
   ScanLine,
   SearchCheck,
   ShieldCheck,
@@ -84,6 +86,28 @@ type ChannelImportSummary = {
   duplicates: number
   unavailable: number
   pages: number
+}
+
+type AutomaticImportRun = {
+  id: string
+  rotation_slot: number | null
+  category: VideoCategory
+  language: ImportVideoLanguage
+  requested: number
+  status: 'running' | 'completed' | 'completed_with_warnings' | 'failed'
+  fetched: number
+  eligible: number
+  inserted: number
+  already_in_db: number
+  filtered_out: number
+  skipped: number
+  videos: ImportedVideo[]
+  warnings: string[]
+  error_code: string | null
+  error_message: string | null
+  scheduled_for: string | null
+  completed_at: string | null
+  created_at: string
 }
 
 type ChannelNotAddedVideo = {
@@ -278,6 +302,9 @@ export function AdminFetchVideos() {
   const [result, setResult] = useState<FetchResult | null>(null)
   const [error, setError] = useState<RequestError | null>(null)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
+  const [automaticImportRuns, setAutomaticImportRuns] = useState<AutomaticImportRun[]>([])
+  const [isLoadingAutomaticHistory, setIsLoadingAutomaticHistory] = useState(false)
+  const [automaticHistoryError, setAutomaticHistoryError] = useState<string | null>(null)
   const [isImportingChannels, setIsImportingChannels] = useState(false)
   const [channelImportName, setChannelImportName] = useState<string | null>(null)
   const [channelImportSummary, setChannelImportSummary] = useState<ChannelImportSummary | null>(storedChannelImportReport?.summary || null)
@@ -301,6 +328,31 @@ export function AdminFetchVideos() {
       setLastFetched(new Date(Number(storedTimestamp)).toLocaleString())
     }
   }, [])
+
+  const loadAutomaticImportHistory = async () => {
+    if (!isAdminProfile(profile) || isLoadingAutomaticHistory) return
+    setIsLoadingAutomaticHistory(true)
+    try {
+      const { data, error: historyError } = await supabase
+        .from('automatic_youtube_import_runs')
+        .select('id,rotation_slot,category,language,requested,status,fetched,eligible,inserted,already_in_db,filtered_out,skipped,videos,warnings,error_code,error_message,scheduled_for,completed_at,created_at')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (historyError) throw historyError
+      setAutomaticImportRuns((data || []) as AutomaticImportRun[])
+      setAutomaticHistoryError(null)
+    } catch (historyError) {
+      setAutomaticHistoryError(historyError instanceof Error ? historyError.message : 'Automatic import history could not be loaded.')
+    } finally {
+      setIsLoadingAutomaticHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isAdminProfile(profile)) void loadAutomaticImportHistory()
+    // The history loader is intentionally run again only when the signed-in profile changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile])
 
   useEffect(() => {
     if (!isAdminProfile(profile) || orientationTrackedIds.length === 0 || !orientationMonitoringUntil) return
@@ -750,6 +802,85 @@ export function AdminFetchVideos() {
         </AdminSectionCard>
 
       </div>
+
+      <AdminSectionCard
+        title="Automatic import history"
+        description="The latest scheduled YouTube runs. Open a run to review the exact videos added, warnings, or failure reason."
+        action={(
+          <button
+            type="button"
+            onClick={() => void loadAutomaticImportHistory()}
+            disabled={isLoadingAutomaticHistory}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoadingAutomaticHistory ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        )}
+      >
+        {automaticHistoryError ? (
+          <div className="rounded-[18px] border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
+            {automaticHistoryError}
+          </div>
+        ) : automaticImportRuns.length === 0 ? (
+          <div className="flex min-h-28 items-center justify-center gap-3 rounded-[20px] border border-dashed border-border bg-background/40 px-5 text-center text-sm text-muted-foreground">
+            {isLoadingAutomaticHistory ? <Loader2 className="h-5 w-5 animate-spin" /> : <History className="h-5 w-5" />}
+            {isLoadingAutomaticHistory ? 'Loading scheduled import history…' : 'No scheduled run has been recorded yet. The first entry will appear after the Cron Worker runs.'}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {automaticImportRuns.map((run) => {
+              const runTime = run.scheduled_for || run.created_at
+              const tone = run.status === 'failed' ? 'warning' : run.status === 'completed' ? 'success' : run.status === 'running' ? 'info' : 'warning'
+              const label = run.status === 'completed_with_warnings'
+                ? 'Completed with warnings'
+                : run.status.charAt(0).toUpperCase() + run.status.slice(1)
+              return (
+                <details key={run.id} className="overflow-hidden rounded-[20px] border border-border/80 bg-background/55">
+                  <summary className="grid cursor-pointer list-none gap-3 px-4 py-4 hover:bg-accent/50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <AdminStatusBadge label={label} tone={tone} dot />
+                        <p className="font-medium text-foreground">{run.category}</p>
+                        <AdminStatusBadge label={getVideoLanguageLabel(run.language)} tone="default" />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {new Date(runTime).toLocaleString()} · Rotation {run.rotation_slot ?? '—'}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-right text-xs text-muted-foreground">
+                      <div><span className="block text-base font-semibold text-foreground">{run.fetched}</span>Found</div>
+                      <div><span className="block text-base font-semibold text-emerald-600 dark:text-emerald-400">{run.inserted}</span>Added</div>
+                      <div><span className="block text-base font-semibold text-foreground">{run.already_in_db}</span>Existing</div>
+                    </div>
+                  </summary>
+                  <div className="border-t border-border/70 p-4">
+                    {run.error_message && (
+                      <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+                        {run.error_code && <span className="font-semibold">{run.error_code}: </span>}{run.error_message}
+                      </div>
+                    )}
+                    {run.warnings?.length > 0 && (
+                      <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-300">
+                        {run.warnings.map((warning, index) => <li key={`${run.id}-warning-${index}`}>{warning}</li>)}
+                      </ul>
+                    )}
+                    <div className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div><p className="text-xs text-muted-foreground">Eligible</p><p className="font-semibold text-foreground">{run.eligible}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Filtered out</p><p className="font-semibold text-foreground">{run.filtered_out}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Skipped</p><p className="font-semibold text-foreground">{run.skipped}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Requested</p><p className="font-semibold text-foreground">{run.requested}</p></div>
+                    </div>
+                    {run.videos?.length > 0 ? <ImportedVideoList videos={run.videos} /> : (
+                      <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">No new videos were added during this run.</p>
+                    )}
+                  </div>
+                </details>
+              )
+            })}
+          </div>
+        )}
+      </AdminSectionCard>
 
       <AdminSectionCard
         title="Official YouTube channel import"

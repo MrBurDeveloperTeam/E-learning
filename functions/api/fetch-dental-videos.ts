@@ -145,14 +145,6 @@ function isYouTubeQuotaFailure(failure: YouTubeFailure): boolean {
   return reason.includes("quota") || reason === "dailylimitexceeded";
 }
 
-function youtubeQuotaResponse() {
-  return jsonResponse({
-    error: "Today's YouTube search quota has been reached. Please try again after Google resets the daily quota. You will not be charged.",
-    code: "YOUTUBE_QUOTA_EXCEEDED",
-    details: [],
-  }, 429);
-}
-
 function secretsMatch(expected: unknown, provided: string | null): boolean {
   if (typeof expected !== "string" || expected.length < 32 || !provided || provided.length !== expected.length) return false;
   let difference = 0;
@@ -163,6 +155,43 @@ function secretsMatch(expected: unknown, provided: string | null): boolean {
 }
 
 export async function onRequest(context: any) {
+  let scheduledRunId: string | null = null;
+  let scheduledSupabase: any = null;
+
+  const respond = async (body: any, status = 200) => {
+    if (scheduledRunId && scheduledSupabase) {
+      const warnings = Array.isArray(body?.warnings)
+        ? body.warnings
+        : Array.isArray(body?.details)
+          ? body.details
+          : [];
+      const runStatus = status >= 400
+        ? "failed"
+        : warnings.length > 0
+          ? "completed_with_warnings"
+          : "completed";
+      const { error: logError } = await scheduledSupabase
+        .from("automatic_youtube_import_runs")
+        .update({
+          status: runStatus,
+          fetched: Number(body?.fetched || 0),
+          eligible: Number(body?.eligible || 0),
+          inserted: Number(body?.inserted || 0),
+          already_in_db: Number(body?.alreadyInDb || 0),
+          filtered_out: Number(body?.filteredOut || 0),
+          skipped: Number(body?.skipped || 0),
+          videos: Array.isArray(body?.videos) ? body.videos : [],
+          warnings,
+          error_code: status >= 400 ? String(body?.code || `HTTP_${status}`) : null,
+          error_message: status >= 400 ? String(body?.error || "Scheduled import failed.") : null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", scheduledRunId);
+      if (logError) console.error("automatic YouTube import log update error:", logError);
+    }
+    return jsonResponse(body, status);
+  };
+
   try {
     if (context.request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
@@ -217,6 +246,27 @@ export async function onRequest(context: any) {
       return jsonResponse({ error: "Choose a valid video language before importing.", code: "INVALID_LANGUAGE" }, 400);
     }
 
+    if (isScheduledRequest) {
+      scheduledSupabase = supabase;
+      const { data: run, error: runError } = await supabase
+        .from("automatic_youtube_import_runs")
+        .insert({
+          rotation_slot: Number.isInteger(body?.rotationSlot) ? body.rotationSlot : null,
+          category,
+          language,
+          requested: requestedLimit,
+          status: "running",
+          scheduled_for: typeof body?.scheduledFor === "string" ? body.scheduledFor : null,
+        })
+        .select("id")
+        .single();
+      if (runError) {
+        console.error("automatic YouTube import log creation error:", runError);
+      } else {
+        scheduledRunId = run.id;
+      }
+    }
+
     const candidateIds = new Set<string>();
     const failures: YouTubeFailure[] = [];
     let successfulSearches = 0;
@@ -250,7 +300,13 @@ export async function onRequest(context: any) {
           const failure = parseYouTubeFailure(searchPayload, searchResponse.status, "search", keyword);
           failures.push(failure);
           console.error("YouTube search failed:", failure);
-          if (isYouTubeQuotaFailure(failure)) return youtubeQuotaResponse();
+          if (isYouTubeQuotaFailure(failure)) {
+            return await respond({
+              error: "Today's YouTube search quota has been reached. Please try again after Google resets the daily quota. You will not be charged.",
+              code: "YOUTUBE_QUOTA_EXCEEDED",
+              details: [],
+            }, 429);
+          }
           break;
         }
 
@@ -263,7 +319,7 @@ export async function onRequest(context: any) {
 
     if (successfulSearches === 0) {
       const primaryFailure = failures[0];
-      return jsonResponse({
+      return await respond({
         error: primaryFailure ? `YouTube search failed: ${describeYouTubeFailure(primaryFailure)}` : "YouTube returned no searchable results.",
         code: "YOUTUBE_SEARCH_FAILED",
         details: failures.map(describeYouTubeFailure),
@@ -272,7 +328,7 @@ export async function onRequest(context: any) {
 
     const uniqueVideoIds = [...candidateIds];
     if (uniqueVideoIds.length === 0) {
-      return jsonResponse({ category, language, requested: requestedLimit, fetched: 0, eligible: 0, inserted: 0, alreadyInDb: 0, filteredOut: 0, skipped: 0, videos: [], warnings: failures.map(describeYouTubeFailure) });
+      return await respond({ category, language, requested: requestedLimit, fetched: 0, eligible: 0, inserted: 0, alreadyInDb: 0, filteredOut: 0, skipped: 0, videos: [], warnings: failures.map(describeYouTubeFailure) });
     }
 
     const existingIds = new Set<string>();
@@ -283,7 +339,7 @@ export async function onRequest(context: any) {
         .in("video_id", uniqueVideoIds.slice(index, index + 100));
       if (existingError) {
         console.error("fetch-dental-videos duplicate lookup error:", existingError);
-        return jsonResponse({ error: "Could not check the video library for duplicates." }, 500);
+        return await respond({ error: "Could not check the video library for duplicates." }, 500);
       }
       for (const row of existingRows || []) existingIds.add(row.video_id);
     }
@@ -302,7 +358,13 @@ export async function onRequest(context: any) {
         const failure = parseYouTubeFailure(detailsPayload, detailsResponse.status, "details");
         failures.push(failure);
         console.error("YouTube video details failed:", failure);
-        if (isYouTubeQuotaFailure(failure)) return youtubeQuotaResponse();
+        if (isYouTubeQuotaFailure(failure)) {
+          return await respond({
+            error: "Today's YouTube search quota has been reached. Please try again after Google resets the daily quota. You will not be charged.",
+            code: "YOUTUBE_QUOTA_EXCEEDED",
+            details: [],
+          }, 429);
+        }
         continue;
       }
       videoDetails.push(...(detailsPayload.items || []));
@@ -310,7 +372,7 @@ export async function onRequest(context: any) {
 
     if (newVideoIds.length > 0 && videoDetails.length === 0) {
       const primaryFailure = failures.find((failure) => failure.stage === "details");
-      return jsonResponse({
+      return await respond({
         error: primaryFailure ? `YouTube video details failed: ${describeYouTubeFailure(primaryFailure)}` : "YouTube did not return details for the selected videos.",
         code: "YOUTUBE_DETAILS_FAILED",
         details: failures.map(describeYouTubeFailure),
@@ -361,14 +423,14 @@ export async function onRequest(context: any) {
         .select("id,video_id,title,thumbnail_url,channel_name,published_at,category,language");
       if (insertError) {
         console.error("fetch-dental-videos upsert error:", insertError);
-        return jsonResponse({ error: "The videos were found, but Supabase could not save them.", code: "DATABASE_INSERT_FAILED" }, 500);
+        return await respond({ error: "The videos were found, but Supabase could not save them.", code: "DATABASE_INSERT_FAILED" }, 500);
       }
       insertedVideos = (data || []) as typeof insertedVideos;
     }
 
     const insertedCount = insertedVideos.length;
     const filteredOut = videoDetails.length - eligibleVideos.length;
-    return jsonResponse({
+    return await respond({
       category,
       language,
       requested: requestedLimit,
@@ -383,6 +445,6 @@ export async function onRequest(context: any) {
     });
   } catch (error: any) {
     console.error("fetch-dental-videos unhandled error:", error);
-    return jsonResponse({ error: "The import could not be completed. Check the Cloudflare function logs and retry.", code: "IMPORT_FAILED" }, 500);
+    return await respond({ error: "The import could not be completed. Check the Cloudflare function logs and retry.", code: "IMPORT_FAILED" }, 500);
   }
 }
