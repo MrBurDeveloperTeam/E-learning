@@ -14,12 +14,15 @@
 // stay on one consistent, race-free coin balance rather than forking
 // into two divergent local copies.
 //
-// Known, deliberate simplification: the legacy version also nudged the
-// pet's `happiness` stat by +15 on a coin reward. There is no atomic
-// RPC for that (only coins/inventory/XP have one), and bolting a
-// read-modify-write onto `saveSnapshot` here would risk racing the
-// shared Pet's own debounced snapshot save. Dropped for this release
-// rather than reintroducing an unguarded write path.
+// Happiness: the legacy version also nudged the pet's `happiness` stat
+// by +15 on a coin reward. There is no atomic RPC for that (only coins/
+// inventory/XP have one), but `PetRepository.saveSnapshot` is explicitly
+// documented (see elearningPetRepository.ts) to ignore coins/xp/level on
+// an already-existing row and only ever debounce-write the remaining
+// stats (hunger/energy/happiness/hygiene) — the same pattern the shared
+// Pet UI itself already uses for those four. A load-modify-save through
+// that same official contract is therefore the sanctioned way to
+// preserve this, not a second/competing persistence path.
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { elearningPetRepository } from '../petExperience/elearningPetRepository';
@@ -194,6 +197,30 @@ export default function MeowdokuLauncher({ disabled = false, userId }: MeowdokuL
               setCoins(nextCoins);
             } catch (error) {
               console.error('[MeowdokuLauncher] mutateCoins reward failed:', error);
+            }
+            // +15 happiness on reward, same as the legacy behavior. Coins/
+            // xp/level are NOT part of this call: PetRepository.saveSnapshot
+            // (see elearningPetRepository.ts's own doc) is documented to
+            // ignore those three fields for an already-existing row —
+            // they're managed exclusively by mutateCoins/addXP's own atomic
+            // deltas — so passing the snapshot's own last-known values here
+            // is a safe no-op for them, not a competing write path. This is
+            // the same debounced-snapshot pattern the shared Pet UI itself
+            // uses for hunger/energy/happiness/hygiene.
+            try {
+              const snapshot = await elearningPetRepository.loadSnapshot(userId);
+              if (snapshot) {
+                await elearningPetRepository.saveSnapshot({
+                  ...snapshot,
+                  stats: {
+                    ...snapshot.stats,
+                    happiness: Math.min(100, (snapshot.stats.happiness || 0) + 15),
+                  },
+                  updatedAt: new Date().toISOString(),
+                });
+              }
+            } catch (error) {
+              console.error('[MeowdokuLauncher] happiness saveSnapshot failed:', error);
             }
           }
           break;
