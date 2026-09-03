@@ -337,7 +337,7 @@ export function Settings() {
         queryKey: ['creator-application', profile.user_id],
       })
       toast.success(
-        'Application submitted! We will review your application within 1–2 business days.'
+        'Creator request submitted! An administrator will review it within 1–2 business days.'
       )
     } catch (error) {
       console.error('[verification-request][settings] creator_applications upsert failed', error)
@@ -356,7 +356,7 @@ export function Settings() {
 
     return (
       <div className="border-b border-border py-6">
-        <SectionLabel>Verification</SectionLabel>
+        <SectionLabel>Creator access</SectionLabel>
 
         {creatorApplicationQuery.isLoading ? (
           <p className="text-xs text-muted-foreground">
@@ -376,11 +376,11 @@ export function Settings() {
           <div className="flex flex-col gap-4 rounded-2xl border border-destructive/15 bg-destructive/5 p-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">
-                Verification was rejected
+                Creator request was rejected
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
                 {creatorApplication?.rejection_reason ||
-                  'Your last creator application was rejected. You can update your profile and request verification again.'}
+                  'Your last creator application was rejected. You can update your profile and request creator access again.'}
               </p>
             </div>
             <button
@@ -389,17 +389,17 @@ export function Settings() {
               disabled={isApplyingForCreator}
               className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
             >
-              {isApplyingForCreator ? 'Requesting...' : 'Request verification again'}
+              {isApplyingForCreator ? 'Sending request...' : 'Request creator access again'}
             </button>
           </div>
         ) : creatorApplicationStatus === 'revoked' ? (
           <div className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">
-                Verification was revoked
+                Creator access was revoked
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-                Your account is back on member access. You can request verification again when ready.
+                Your account is back on member access. You can request creator access again when ready.
               </p>
             </div>
             <button
@@ -408,17 +408,17 @@ export function Settings() {
               disabled={isApplyingForCreator}
               className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
             >
-              {isApplyingForCreator ? 'Requesting...' : 'Request verification again'}
+              {isApplyingForCreator ? 'Sending request...' : 'Request creator access again'}
             </button>
           </div>
         ) : canApplyForCreator ? (
           <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">
-                Request verification
+                Become a creator
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-                Request a review for your professional profile. Our team will verify your application within 1-2 business days.
+                Apply for creator access. An administrator will review your request within 1-2 business days before you can upload videos.
               </p>
             </div>
             <button
@@ -427,7 +427,7 @@ export function Settings() {
               disabled={isApplyingForCreator}
               className="btn-primary text-white text-sm px-4 py-2 md:flex-shrink-0"
             >
-              {isApplyingForCreator ? 'Requesting...' : 'Request verification'}
+              {isApplyingForCreator ? 'Sending request...' : 'Request to become a creator'}
             </button>
           </div>
         ) : (
