@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
-  BrainCircuit,
   CheckCircle,
   Clapperboard,
   Copy,
@@ -287,15 +286,6 @@ export function AdminFetchVideos() {
   const [channelNotAddedVideos, setChannelNotAddedVideos] = useState<ChannelNotAddedVideo[]>([])
   const [channelImportCompletion, setChannelImportCompletion] = useState<ChannelImportCompletion | null>(storedChannelImportReport?.completion || null)
 
-  const [isCategorizing, setIsCategorizing] = useState(false)
-  const [categorizeResult, setCategorizeResult] = useState<{
-    processed: number
-    updated: number
-    failed: number
-    errors?: string[]
-  } | null>(null)
-  const [categorizeError, setCategorizeError] = useState<string | null>(null)
-  const [uncategorizedCount, setUncategorizedCount] = useState(0)
   const [isCreatingClassifierCode, setIsCreatingClassifierCode] = useState(false)
   const [orientationPending, setOrientationPending] = useState<number | null>(null)
   const [orientationReport, setOrientationReport] = useState<OrientationReportVideo[] | null>(null)
@@ -310,19 +300,6 @@ export function AdminFetchVideos() {
     if (storedTimestamp) {
       setLastFetched(new Date(Number(storedTimestamp)).toLocaleString())
     }
-  }, [])
-
-  const fetchUncategorizedCount = async () => {
-    const { count, error: countError } = await supabase
-      .from('dental_videos')
-      .select('*', { count: 'exact', head: true })
-      .is('category', null)
-
-    if (!countError && count !== null) setUncategorizedCount(count)
-  }
-
-  useEffect(() => {
-    void fetchUncategorizedCount()
   }, [])
 
   useEffect(() => {
@@ -437,40 +414,6 @@ export function AdminFetchVideos() {
       })
     } finally {
       setIsFetching(false)
-    }
-  }
-
-  const handleCategorizeVideos = async () => {
-    if (uncategorizedCount === 0 || isCategorizing) return
-
-    setIsCategorizing(true)
-    setCategorizeError(null)
-    setCategorizeResult(null)
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Your session has expired. Sign in again and retry.')
-
-      const response = await fetch('/api/categorize-dental-videos', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'The AI categorization request failed.')
-      }
-
-      setCategorizeResult(data)
-      void fetchUncategorizedCount()
-    } catch (requestError) {
-      setCategorizeError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'The AI categorization request failed.'
-      )
-    } finally {
-      setIsCategorizing(false)
     }
   }
 
@@ -681,15 +624,11 @@ export function AdminFetchVideos() {
               label={lastFetched ? `Last fetched: ${lastFetched}` : 'No fetch recorded yet'}
               tone="default"
             />
-            <AdminStatusBadge
-              label={`${uncategorizedCount} uncategorized`}
-              tone={uncategorizedCount > 0 ? 'warning' : 'success'}
-            />
           </div>
         </div>
       }
     >
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+      <div className="grid items-start gap-4">
         <AdminSectionCard
           title="Automatic YouTube import"
           description="Choose one specialty and language. The importer searches only in that language, verifies the result language, and files accepted videos directly into the selected category."
@@ -810,41 +749,6 @@ export function AdminFetchVideos() {
           </form>
         </AdminSectionCard>
 
-        <AdminSectionCard
-          title="Legacy AI categorization"
-          description="Use this only for videos imported before category-first search was added."
-        >
-          <div className="flex flex-col gap-5">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
-                <BrainCircuit className="h-6 w-6" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm leading-6 text-muted-foreground">
-                  New category-first imports bypass this step. Existing uncategorized records can still be enriched here.
-                </p>
-                <AdminStatusBadge
-                  label={`${uncategorizedCount} pending`}
-                  tone={uncategorizedCount > 0 ? 'warning' : 'success'}
-                />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCategorizeVideos}
-              disabled={isCategorizing || uncategorizedCount === 0}
-              aria-busy={isCategorizing}
-              className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isCategorizing ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Categorizing…</>
-              ) : (
-                <><BrainCircuit className="h-4 w-4" />Categorize legacy videos</>
-              )}
-            </button>
-          </div>
-        </AdminSectionCard>
       </div>
 
       <AdminSectionCard
@@ -1163,40 +1067,6 @@ export function AdminFetchVideos() {
         </AdminSectionCard>
       )}
 
-      {categorizeError && (
-        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
-          <div role="alert" className="flex items-start gap-3">
-            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Categorization failed</p>
-              <p className="mt-1 text-sm text-muted-foreground">{categorizeError}</p>
-            </div>
-          </div>
-        </AdminSectionCard>
-      )}
-
-      {categorizeResult && (
-        <AdminSectionCard
-          title="Categorization result"
-          description="Result for existing uncategorized videos."
-        >
-          <div className="grid gap-4 md:grid-cols-3" aria-live="polite">
-            <AdminStatCard label="Processed" value={categorizeResult.processed.toLocaleString()} icon={BrainCircuit} hint="Videos sent through categorization" />
-            <AdminStatCard label="Updated" value={categorizeResult.updated.toLocaleString()} icon={CheckCircle} accent="success" hint="Videos successfully enriched" />
-            <AdminStatCard label="Failed" value={categorizeResult.failed.toLocaleString()} icon={XCircle} accent={categorizeResult.failed > 0 ? 'danger' : 'default'} hint="Videos that need another attempt" />
-          </div>
-          {categorizeResult.errors && categorizeResult.errors.length > 0 && (
-            <div className="mt-5 rounded-[20px] border border-destructive/10 bg-destructive/5 p-4">
-              <p className="text-sm font-semibold text-foreground">Error details</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                {categorizeResult.errors.map((entry, index) => (
-                  <li key={`${entry}-${index}`}>{entry}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </AdminSectionCard>
-      )}
     </AdminLayout>
   )
 }
