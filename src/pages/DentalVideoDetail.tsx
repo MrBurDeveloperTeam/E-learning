@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
+import { AdvertisementOverlay } from '@/components/dental/AdvertisementOverlay'
 import { CategoryBadge } from '@/components/CategoryBadge'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
+import { getAdvertisementForVideo, type VideoAdvertisement } from '@/lib/videoAdvertisements'
 import type { AdjacentDentalVideos, DentalVideo } from '@/types/dentalVideo'
 
 function formatPublishedDate(dateString: string): string {
@@ -95,15 +97,19 @@ export function DentalVideoDetail() {
     useState<AdjacentDentalVideos>(emptyAdjacentVideos)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [playbackMode, setPlaybackMode] = useState<'content' | 'sponsor'>('content')
+  const [advertisement, setAdvertisement] = useState<VideoAdvertisement | null>(null)
+  const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
+  const countedVideoRef = useRef<string | null>(null)
+  const shouldShowAdvertisementRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
     setError(null)
     setAdjacent(emptyAdjacentVideos)
-    setPlaybackMode('content')
+    setAdvertisement(null)
+    setIsAdvertisementResolving(true)
 
     getVideoPage(id)
       .then(({ video: videoData, adjacent: adjacentData }) => {
@@ -126,14 +132,42 @@ export function DentalVideoDetail() {
     }
   }, [id])
 
-  const activeVideo =
-    playbackMode === 'sponsor' && adjacent.sponsor
-      ? adjacent.sponsor
-      : video
+  useEffect(() => {
+    if (!video) return
+    let cancelled = false
+
+    if (countedVideoRef.current !== video.id) {
+      countedVideoRef.current = video.id
+      const storedCount = Number(window.sessionStorage.getItem('dental-ad-video-count') || '2')
+      const nextCount = Number.isFinite(storedCount) ? storedCount + 1 : 3
+      shouldShowAdvertisementRef.current = nextCount >= 3
+      window.sessionStorage.setItem('dental-ad-video-count', shouldShowAdvertisementRef.current ? '0' : String(nextCount))
+    }
+
+    if (!shouldShowAdvertisementRef.current) {
+      setAdvertisement(null)
+      setIsAdvertisementResolving(false)
+      return
+    }
+
+    setIsAdvertisementResolving(true)
+    getAdvertisementForVideo(video)
+      .then((matchedAdvertisement) => {
+        if (!cancelled) setAdvertisement(matchedAdvertisement)
+      })
+      .catch(() => {
+        if (!cancelled) setAdvertisement(null)
+      })
+      .finally(() => {
+        if (!cancelled) setIsAdvertisementResolving(false)
+      })
+
+    return () => { cancelled = true }
+  }, [video])
 
   useEffect(() => {
     const playerHost = playerHostRef.current
-    if (!activeVideo || !playerHost) return
+    if (!video || !playerHost || advertisement || isAdvertisementResolving) return
 
     let cancelled = false
     let player: YouTubePlayer | null = null
@@ -143,11 +177,6 @@ export function DentalVideoDetail() {
 
     const continuePlayback = () => {
       if (!adjacent.next) return
-
-      if (playbackMode === 'content' && adjacent.sponsor) {
-        setPlaybackMode('sponsor')
-        return
-      }
 
       navigate({
         to: '/dental-videos/$id',
@@ -159,7 +188,7 @@ export function DentalVideoDetail() {
       .then((YT) => {
         if (cancelled) return
         player = new YT.Player(playerMount, {
-          videoId: activeVideo.video_id,
+          videoId: video.video_id,
           playerVars: {
             autoplay: 1,
             mute: 1,
@@ -179,12 +208,7 @@ export function DentalVideoDetail() {
         })
       })
       .catch(() => {
-        if (playbackMode === 'sponsor' && adjacent.next) {
-          navigate({
-            to: '/dental-videos/$id',
-            params: { id: adjacent.next.id },
-          })
-        }
+        if (adjacent.next) navigate({ to: '/dental-videos/$id', params: { id: adjacent.next.id } })
       })
 
     return () => {
@@ -196,10 +220,11 @@ export function DentalVideoDetail() {
       }
       playerHost.replaceChildren()
     }
-  }, [activeVideo, adjacent.next, adjacent.sponsor, navigate, playbackMode])
+  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, video])
 
   useEffect(() => {
     const handleArrowNavigation = (event: KeyboardEvent) => {
+      if (advertisement || isAdvertisementResolving) return
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
 
       const target = event.target as HTMLElement | null
@@ -225,7 +250,7 @@ export function DentalVideoDetail() {
 
     window.addEventListener('keydown', handleArrowNavigation)
     return () => window.removeEventListener('keydown', handleArrowNavigation)
-  }, [adjacent, navigate])
+  }, [advertisement, adjacent, isAdvertisementResolving, navigate])
 
   useEffect(() => {
     if (video) {
@@ -298,22 +323,8 @@ export function DentalVideoDetail() {
               <div
                 ref={playerHostRef}
                 className="absolute inset-0 h-full w-full"
-                aria-label={activeVideo?.title}
+                aria-label={video.title}
               />
-
-              {playbackMode === 'sponsor' && adjacent.sponsor ? (
-                <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-6rem)] rounded-lg border border-white/25 bg-black/70 px-3 py-2 text-white shadow-lg backdrop-blur-sm md:left-4 md:top-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#A9DBD7]">
-                    Featured partner video
-                  </p>
-                  <p className="mt-0.5 truncate text-xs font-medium">
-                    {adjacent.sponsor.channel_name}
-                  </p>
-                  <p className="mt-0.5 hidden text-[11px] text-white/75 sm:block">
-                    Your next video will play when this finishes.
-                  </p>
-                </div>
-              ) : null}
 
               {adjacent.previous ? (
                 <Link
@@ -412,6 +423,8 @@ export function DentalVideoDetail() {
           </div>
         ) : null}
       </div>
+
+      {advertisement && <AdvertisementOverlay advertisement={advertisement} onComplete={() => setAdvertisement(null)} />}
     </>
   )
 }
