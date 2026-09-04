@@ -116,6 +116,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     .select("id,video_id,title")
     .is("video_type", null)
     .order("fetched_at", { ascending: true })
+    .order("id", { ascending: true })
     .range(offset, offset + limit - 1);
 
   if (error) return json(context.request, { error: "Unable to load unclassified videos." }, 500);

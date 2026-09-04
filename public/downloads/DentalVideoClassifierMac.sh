@@ -177,6 +177,7 @@ classify_session() {
     }
     [ -s "$rows_file" ] || break
 
+    checked_before_batch="$checked"
     payload_items=""
     batch_results=0
     while IFS="$(printf '\t')" read -r row_id youtube_id; do
@@ -218,6 +219,11 @@ classify_session() {
         printf "${color_yellow}         [SKIPPED] %s${color_reset}\n" "$reason"
       fi
     done < "$rows_file"
+
+    if [ "$checked" -eq "$checked_before_batch" ]; then
+      printf "${color_cyan}  [COMPLETE] No additional unclassified videos are available.${color_reset}\n"
+      break
+    fi
 
     if [ "$batch_results" -gt 0 ]; then
       save_file="$session_dir/save.json"

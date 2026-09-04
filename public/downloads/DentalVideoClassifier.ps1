@@ -189,6 +189,7 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
   }
   if (-not $batch.videos -or $batch.videos.Count -eq 0) { break }
 
+  $attemptedBeforeBatch = $attemptedVideoIds.Count
   $results = @()
   foreach ($item in $batch.videos) {
     if (-not $attemptedVideoIds.Add([string]$item.id)) { continue }
@@ -228,6 +229,11 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
         $failed++
       }
     }
+  }
+
+  if ($attemptedVideoIds.Count -eq $attemptedBeforeBatch) {
+    Write-Host "  [COMPLETE] No additional unclassified videos are available." -ForegroundColor Cyan
+    break
   }
 
   if ($results.Count -gt 0) {
