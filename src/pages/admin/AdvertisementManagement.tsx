@@ -44,7 +44,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { VIDEO_LANGUAGE_OPTIONS, getVideoLanguageLabel } from '@/constants/videoLanguages'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -59,15 +58,15 @@ type ListFilter = 'all' | AdStatus
 
 type Advertisement = {
   id: string
-  campaign_name: string
-  advertiser_name: string
+  campaign_name: string | null
+  advertiser_name: string | null
   description: string | null
   status: AdStatus
   media_type: MediaType
   media_source: MediaSource
-  media_url: string
+  media_url: string | null
   media_storage_path: string | null
-  alt_text: string
+  alt_text: string | null
   target_category: string | null
   target_video_type: TargetVideoType
   target_language: string | null
@@ -90,7 +89,6 @@ type AdEvent = {
 type FormState = {
   campaignName: string
   advertiserName: string
-  description: string
   status: AdStatus
   mediaType: MediaType
   mediaSource: MediaSource
@@ -101,7 +99,6 @@ type FormState = {
   language: string
   priority: string
   weight: string
-  displayDuration: string
   skipAfter: string
   ctaEnabled: boolean
   ctaLabel: string
@@ -114,7 +111,6 @@ type FieldErrors = Partial<Record<keyof FormState | 'media', string>>
 const emptyForm: FormState = {
   campaignName: '',
   advertiserName: '',
-  description: '',
   status: 'draft',
   mediaType: 'image',
   mediaSource: 'upload',
@@ -125,7 +121,6 @@ const emptyForm: FormState = {
   language: 'all',
   priority: '100',
   weight: '100',
-  displayDuration: '15',
   skipAfter: '5',
   ctaEnabled: true,
   ctaLabel: 'Learn more',
@@ -158,9 +153,11 @@ function formatNumber(value: number) {
 function AdvertisementPreview({
   form,
   previewUrl,
+  onVideoDuration,
 }: {
   form: FormState
   previewUrl: string
+  onVideoDuration: (seconds: number) => void
 }) {
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
   const [elapsed, setElapsed] = useState(0)
@@ -191,7 +188,17 @@ function AdvertisementPreview({
             form.mediaType === 'image' ? (
               <img src={previewUrl} alt={form.altText || 'Advertisement preview'} className="h-full w-full object-cover" />
             ) : (
-              <video src={previewUrl} controls muted className="h-full w-full object-cover" aria-label={form.altText || 'Advertisement preview'} />
+              <video
+                src={previewUrl}
+                controls
+                muted
+                className="h-full w-full object-cover"
+                aria-label={form.altText || 'Advertisement preview'}
+                onLoadedMetadata={(event) => {
+                  const duration = Math.ceil(event.currentTarget.duration)
+                  if (Number.isFinite(duration) && duration > 0) onVideoDuration(duration)
+                }}
+              />
             )
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_top,#335d5a,#142222_65%)] px-6 text-center text-white/75">
@@ -236,6 +243,7 @@ export function AdvertisementManagement() {
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [objectUrl, setObjectUrl] = useState('')
+  const [detectedVideoDuration, setDetectedVideoDuration] = useState<number | null>(null)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<ListFilter>('all')
@@ -281,7 +289,7 @@ export function AdvertisementManagement() {
   const totalClicks = events.filter((event) => event.event_type === 'click').length
   const filteredAds = useMemo(() => ads.filter((ad) => {
     const matchesFilter = filter === 'all' || ad.status === filter
-    const haystack = `${ad.campaign_name} ${ad.advertiser_name} ${ad.target_category || ''}`.toLowerCase()
+    const haystack = `${ad.campaign_name || ''} ${ad.advertiser_name || ''} ${ad.target_category || ''}`.toLowerCase()
     return matchesFilter && haystack.includes(search.trim().toLowerCase())
   }), [ads, filter, search])
 
@@ -309,10 +317,16 @@ export function AdvertisementManagement() {
     if (objectUrl) URL.revokeObjectURL(objectUrl)
     setSelectedFile(file)
     setObjectUrl(URL.createObjectURL(file))
+    setDetectedVideoDuration(null)
     setErrors((current) => ({ ...current, media: undefined }))
   }
 
-  function validate() {
+  function validate(saveAsDraft: boolean) {
+    if (saveAsDraft) {
+      setErrors({})
+      return true
+    }
+
     const next: FieldErrors = {}
     if (!form.campaignName.trim()) next.campaignName = 'Enter an advertisement name.'
     if (!form.advertiserName.trim()) next.advertiserName = 'Enter the advertiser name.'
@@ -321,12 +335,12 @@ export function AdvertisementManagement() {
     if (form.mediaSource === 'upload' && !selectedFile && !editingAd?.media_storage_path) next.media = 'Choose a media file to upload.'
     const priority = Number(form.priority)
     const weight = Number(form.weight)
-    const duration = Number(form.displayDuration)
     const skip = Number(form.skipAfter)
     if (!Number.isInteger(priority) || priority < 0 || priority > 1000) next.priority = 'Use a whole number from 0 to 1000.'
     if (!Number.isInteger(weight) || weight < 1 || weight > 1000) next.weight = 'Use a whole number from 1 to 1000.'
-    if (!Number.isInteger(duration) || duration < 1 || duration > 300) next.displayDuration = 'Use 1 to 300 seconds.'
-    if (!Number.isInteger(skip) || skip < 0 || skip > duration) next.skipAfter = 'Skip time cannot be longer than the display duration.'
+    if (!Number.isInteger(skip) || skip < 0 || skip > 300) next.skipAfter = 'Use a whole number from 0 to 300.'
+    if (form.mediaType === 'video' && detectedVideoDuration === null) next.media = 'Wait for the video duration to be detected before saving.'
+    if (form.mediaType === 'video' && detectedVideoDuration !== null && skip > detectedVideoDuration) next.skipAfter = `This video is ${detectedVideoDuration} seconds long. Choose a shorter skip time.`
     if (form.ctaEnabled) {
       if (!form.ctaLabel.trim()) next.ctaLabel = 'Enter the button text.'
       if (!isHttpsUrl(form.clickUrl)) next.clickUrl = 'Enter a valid HTTPS destination URL.'
@@ -339,7 +353,7 @@ export function AdvertisementManagement() {
 
   async function submit(event: FormEvent, forceDraft = false) {
     event.preventDefault()
-    if (!user || saving || !validate()) return
+    if (!user || saving || !validate(forceDraft)) return
     setSaving(true)
     let uploadedPath: string | null = null
     try {
@@ -358,13 +372,19 @@ export function AdvertisementManagement() {
         }
       }
       const payload = {
-        campaign_name: form.campaignName.trim(), advertiser_name: form.advertiserName.trim(), description: form.description.trim() || null,
+        campaign_name: form.campaignName.trim() || null, advertiser_name: form.advertiserName.trim() || null,
         status: forceDraft ? 'draft' : form.status, media_type: form.mediaType, media_source: form.mediaSource,
-        media_url: mediaUrl, media_storage_path: mediaStoragePath, alt_text: form.altText.trim(),
+        media_url: mediaUrl || null, media_storage_path: mediaStoragePath, alt_text: form.altText.trim() || null,
         target_category: form.category === 'all' ? null : form.category,
         target_video_type: form.videoType === 'all' ? null : form.videoType,
         target_language: form.language === 'all' ? null : form.language,
-        priority: Number(form.priority), weight: Number(form.weight), display_duration_seconds: Number(form.displayDuration), skip_after_seconds: Number(form.skipAfter),
+        priority: Number(form.priority), weight: Number(form.weight),
+        // The database column remains for compatibility. Video duration is
+        // detected from the media; image delivery is governed by the skip rule.
+        display_duration_seconds: form.mediaType === 'video'
+          ? (detectedVideoDuration ?? Math.max(Number(form.skipAfter) || 0, 10))
+          : Math.max(Number(form.skipAfter), 10),
+        skip_after_seconds: Number(form.skipAfter),
         cta_label: form.ctaEnabled ? form.ctaLabel.trim() : null, click_url: form.ctaEnabled ? form.clickUrl.trim() : null,
         open_in_new_tab: form.ctaEnabled && form.openInNewTab, updated_by: user.id,
       }
@@ -390,16 +410,17 @@ export function AdvertisementManagement() {
 
   function resetForm() {
     if (objectUrl) URL.revokeObjectURL(objectUrl)
-    setObjectUrl(''); setSelectedFile(null); setEditingAd(null); setErrors({}); setForm(emptyForm)
+    setObjectUrl(''); setSelectedFile(null); setDetectedVideoDuration(null); setEditingAd(null); setErrors({}); setForm(emptyForm)
   }
 
   function editAd(ad: Advertisement) {
     setEditingAd(ad); setSelectedFile(null); setObjectUrl(''); setErrors({})
+    setDetectedVideoDuration(ad.media_type === 'video' ? ad.display_duration_seconds : null)
     setForm({
-      campaignName: ad.campaign_name, advertiserName: ad.advertiser_name, description: ad.description || '', status: ad.status,
-      mediaType: ad.media_type, mediaSource: ad.media_source, externalUrl: ad.media_source === 'external' ? ad.media_url : '', altText: ad.alt_text,
+      campaignName: ad.campaign_name || '', advertiserName: ad.advertiser_name || '', status: ad.status,
+      mediaType: ad.media_type, mediaSource: ad.media_source, externalUrl: ad.media_source === 'external' ? ad.media_url || '' : '', altText: ad.alt_text || '',
       category: ad.target_category || 'all', videoType: ad.target_video_type || 'all', language: ad.target_language || 'all',
-      priority: String(ad.priority), weight: String(ad.weight), displayDuration: String(ad.display_duration_seconds), skipAfter: String(ad.skip_after_seconds),
+      priority: String(ad.priority), weight: String(ad.weight), skipAfter: String(ad.skip_after_seconds),
       ctaEnabled: Boolean(ad.cta_label && ad.click_url), ctaLabel: ad.cta_label || '', clickUrl: ad.click_url || '', openInNewTab: ad.open_in_new_tab,
     })
     window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
@@ -439,13 +460,12 @@ export function AdvertisementManagement() {
                 <FormField label="Brand / advertiser *" error={errors.advertiserName}><Input data-field="advertiserName" aria-invalid={Boolean(errors.advertiserName)} value={form.advertiserName} onChange={(e) => updateForm('advertiserName', e.target.value)} placeholder="Brand name" className={fieldClass} /></FormField>
                 <FormField label="Status"><Select value={form.status} onValueChange={(value) => updateForm('status', value as AdStatus)}><SelectTrigger className={cn(fieldClass, 'w-full')}><SelectValue /></SelectTrigger><SelectContent>{(['draft','active','paused','archived'] as AdStatus[]).map((value) => <SelectItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></FormField>
               </div>
-              <FormField label="Internal description"><Textarea value={form.description} onChange={(e) => updateForm('description', e.target.value)} placeholder="Brief notes for administrators…" className="min-h-24 rounded-xl bg-background/70 dark:bg-muted/30" /></FormField>
             </div>
 
             <div className="border-t border-border/70 pt-6 space-y-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><ImageIcon className="h-4 w-4 text-primary" />Media</div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <FormField label="Media type"><Select value={form.mediaType} onValueChange={(value) => { updateForm('mediaType', value as MediaType); setSelectedFile(null); setObjectUrl('') }}><SelectTrigger className={cn(fieldClass, 'w-full')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="image">Image</SelectItem><SelectItem value="video">Video</SelectItem></SelectContent></Select></FormField>
+                <FormField label="Media type"><Select value={form.mediaType} onValueChange={(value) => { updateForm('mediaType', value as MediaType); setSelectedFile(null); setObjectUrl(''); setDetectedVideoDuration(null) }}><SelectTrigger className={cn(fieldClass, 'w-full')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="image">Image</SelectItem><SelectItem value="video">Video</SelectItem></SelectContent></Select></FormField>
                 <FormField label="Media source"><Select value={form.mediaSource} onValueChange={(value) => updateForm('mediaSource', value as MediaSource)}><SelectTrigger className={cn(fieldClass, 'w-full')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="upload">Upload file</SelectItem><SelectItem value="external">External HTTPS URL</SelectItem></SelectContent></Select></FormField>
               </div>
               {form.mediaSource === 'upload' ? (
@@ -455,8 +475,8 @@ export function AdvertisementManagement() {
                     <input data-field="media" type="file" className="sr-only" accept={form.mediaType === 'image' ? 'image/*' : 'video/*'} onChange={handleFile} />
                   </label>
                 </FormField>
-              ) : <FormField label="External media URL *" error={errors.externalUrl}><div className="relative"><Link2 className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" /><Input data-field="externalUrl" aria-invalid={Boolean(errors.externalUrl)} value={form.externalUrl} onChange={(e) => updateForm('externalUrl', e.target.value)} placeholder="https://cdn.example.com/ad.jpg" className={cn(fieldClass, 'pl-10')} /></div></FormField>}
-              <FormField label="Alt text / audio description *" error={errors.altText}><Input data-field="altText" aria-invalid={Boolean(errors.altText)} value={form.altText} onChange={(e) => updateForm('altText', e.target.value)} placeholder="Describe the advertisement for screen readers" className={fieldClass} /></FormField>
+              ) : <FormField label="External media URL *" error={errors.externalUrl || errors.media}><div className="relative"><Link2 className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" /><Input data-field="externalUrl" aria-invalid={Boolean(errors.externalUrl || errors.media)} value={form.externalUrl} onChange={(e) => { updateForm('externalUrl', e.target.value); setDetectedVideoDuration(null); setErrors((current) => ({ ...current, media: undefined })) }} placeholder="https://cdn.example.com/ad.jpg" className={cn(fieldClass, 'pl-10')} /></div>{form.mediaType === 'video' && <p className="text-xs text-muted-foreground">The video duration is detected automatically when the preview loads.</p>}</FormField>}
+              <FormField label="Accessibility description *" error={errors.altText}><Input data-field="altText" aria-invalid={Boolean(errors.altText)} value={form.altText} onChange={(e) => updateForm('altText', e.target.value)} placeholder="Describe the important visual content for screen-reader users" className={fieldClass} /><p className="text-xs text-muted-foreground">This is an accessible text description, not a separate audio track.</p></FormField>
             </div>
 
             <div className="border-t border-border/70 pt-6 space-y-4">
@@ -466,11 +486,10 @@ export function AdvertisementManagement() {
                 <FormField label="Language"><Select value={form.language} onValueChange={(value) => updateForm('language', value ?? 'all')}><SelectTrigger className={cn(fieldClass, 'w-full')}><SelectValue /></SelectTrigger><SelectContent>{VIDEO_LANGUAGE_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value.toLowerCase()}>{item.label}</SelectItem>)}</SelectContent></Select></FormField>
                 <FormField label="Video type"><Select value={form.videoType} onValueChange={(value) => updateForm('videoType', value ?? 'all')}><SelectTrigger className={cn(fieldClass, 'w-full')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All video types</SelectItem><SelectItem value="video">Video</SelectItem><SelectItem value="short_video">Short video</SelectItem></SelectContent></Select></FormField>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <FormField label="Priority (higher wins)" error={errors.priority}><Input data-field="priority" type="number" min="0" max="1000" value={form.priority} onChange={(e) => updateForm('priority', e.target.value)} className={fieldClass} /></FormField>
                 <FormField label="Weight" error={errors.weight}><Input data-field="weight" type="number" min="1" max="1000" value={form.weight} onChange={(e) => updateForm('weight', e.target.value)} className={fieldClass} /></FormField>
-                <FormField label="Display seconds" error={errors.displayDuration}><Input data-field="displayDuration" type="number" min="1" max="300" value={form.displayDuration} onChange={(e) => updateForm('displayDuration', e.target.value)} className={fieldClass} /></FormField>
-                <FormField label="Skip after seconds" error={errors.skipAfter}><Input data-field="skipAfter" type="number" min="0" max="300" value={form.skipAfter} onChange={(e) => updateForm('skipAfter', e.target.value)} className={fieldClass} /></FormField>
+                <FormField label="Allow skip after (seconds)" error={errors.skipAfter}><Input data-field="skipAfter" type="number" min="0" max="300" value={form.skipAfter} onChange={(e) => updateForm('skipAfter', e.target.value)} className={fieldClass} /><p className="text-xs text-muted-foreground">{form.mediaType === 'video' ? detectedVideoDuration ? `Video duration detected: ${detectedVideoDuration} seconds.` : 'Video duration will be detected automatically.' : 'The image remains visible until the viewer can skip it.'}</p></FormField>
               </div>
             </div>
 
@@ -486,7 +505,7 @@ export function AdvertisementManagement() {
             </div>
           </form>
         </AdminSectionCard>
-        <AdvertisementPreview form={form} previewUrl={previewUrl} />
+        <AdvertisementPreview form={form} previewUrl={previewUrl} onVideoDuration={setDetectedVideoDuration} />
       </div>
 
       <AdminSectionCard title="All advertisements" description="Review delivery status and performance. Archive keeps the record and its history recoverable." action={<Button variant="outline" size="lg" className="h-10 rounded-xl" onClick={() => void loadAdvertisements()} disabled={loading}><RefreshCw className={cn(loading && 'animate-spin')} />Refresh</Button>} contentClassName="space-y-4">
@@ -502,9 +521,9 @@ export function AdvertisementManagement() {
             const stat = statsByAd.get(ad.id) || { impressions: 0, clicks: 0 }
             const ctr = stat.impressions ? ((stat.clicks / stat.impressions) * 100).toFixed(2) : '0.00'
             return <article key={ad.id} className="grid gap-4 bg-card p-4 transition-colors hover:bg-muted/20 dark:bg-card/80 dark:hover:bg-muted/35 lg:grid-cols-[92px_minmax(0,1fr)_auto] lg:items-center">
-              <div className="aspect-video overflow-hidden rounded-xl bg-muted">{ad.media_type === 'image' ? <img src={ad.media_url} alt="" className="h-full w-full object-cover" /> : <video src={ad.media_url} muted preload="metadata" className="h-full w-full object-cover" />}</div>
-              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold text-foreground">{ad.campaign_name}</h3><AdminStatusBadge label={ad.status[0].toUpperCase() + ad.status.slice(1)} tone={statusTone[ad.status]} dot /></div><p className="mt-1 text-sm text-muted-foreground">{ad.advertiser_name} · {ad.target_category || 'All categories'} · {ad.target_language ? getVideoLanguageLabel(ad.target_language) : 'All languages'} · Priority {ad.priority}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" />Updated {new Date(ad.updated_at).toLocaleDateString()}</p></div>
-              <div className="flex flex-wrap items-center gap-3 lg:justify-end"><div className="grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : ad.status !== 'archived' ? <Button variant="outline" size="sm" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button> : null}{ad.status !== 'archived' && <Button variant="ghost" size="icon-sm" aria-label={`Archive ${ad.campaign_name}`} onClick={() => void changeStatus(ad, 'archived')}><Archive /></Button>}</div>
+              <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-muted">{ad.media_url ? (ad.media_type === 'image' ? <img src={ad.media_url} alt="" className="h-full w-full object-cover" /> : <video src={ad.media_url} muted preload="metadata" className="h-full w-full object-cover" />) : <FileImage className="h-6 w-6 text-muted-foreground" />}</div>
+              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold text-foreground">{ad.campaign_name || 'Untitled advertisement'}</h3><AdminStatusBadge label={ad.status[0].toUpperCase() + ad.status.slice(1)} tone={statusTone[ad.status]} dot /></div><p className="mt-1 text-sm text-muted-foreground">{ad.advertiser_name || 'Advertiser not set'} · {ad.target_category || 'All categories'} · {ad.target_language ? getVideoLanguageLabel(ad.target_language) : 'All languages'} · Priority {ad.priority}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" />Updated {new Date(ad.updated_at).toLocaleDateString()}</p></div>
+              <div className="flex flex-wrap items-center gap-3 lg:justify-end"><div className="grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : ad.status !== 'archived' ? <Button variant="outline" size="sm" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button> : null}{ad.status !== 'archived' && <Button variant="ghost" size="icon-sm" aria-label={`Archive ${ad.campaign_name || 'untitled advertisement'}`} onClick={() => void changeStatus(ad, 'archived')}><Archive /></Button>}</div>
             </article>
           })}
         </div>
