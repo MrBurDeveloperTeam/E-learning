@@ -71,3 +71,14 @@ export async function getAdvertisementForVideo(video: DentalVideo) {
 
   return candidates[0]
 }
+
+export async function getAdvertisementFrequency() {
+  const { data, error } = await supabase
+    .from('video_advertisement_settings')
+    .select('frequency_videos')
+    .eq('id', true)
+    .single()
+
+  if (error) throw error
+  return Math.max(1, Number(data.frequency_videos) || 3)
+}

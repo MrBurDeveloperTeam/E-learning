@@ -7,7 +7,7 @@ import { CategoryBadge } from '@/components/CategoryBadge'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
-import { getAdvertisementForVideo, type VideoAdvertisement } from '@/lib/videoAdvertisements'
+import { getAdvertisementForVideo, getAdvertisementFrequency, type VideoAdvertisement } from '@/lib/videoAdvertisements'
 import type { AdjacentDentalVideos, DentalVideo } from '@/types/dentalVideo'
 
 function formatPublishedDate(dateString: string): string {
@@ -101,7 +101,7 @@ export function DentalVideoDetail() {
   const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
   const countedVideoRef = useRef<string | null>(null)
-  const shouldShowAdvertisementRef = useRef(false)
+  const pendingVideoCountRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,24 +138,23 @@ export function DentalVideoDetail() {
 
     if (countedVideoRef.current !== video.id) {
       countedVideoRef.current = video.id
-      const storedCount = Number(window.sessionStorage.getItem('dental-ad-video-count') || '2')
-      const nextCount = Number.isFinite(storedCount) ? storedCount + 1 : 3
-      shouldShowAdvertisementRef.current = nextCount >= 3
-      window.sessionStorage.setItem('dental-ad-video-count', String(Math.min(nextCount, 3)))
-    }
-
-    if (!shouldShowAdvertisementRef.current) {
-      setAdvertisement(null)
-      setIsAdvertisementResolving(false)
-      return
+      const storedValue = window.sessionStorage.getItem('dental-ad-video-count')
+      const storedCount = storedValue === null ? null : Number(storedValue)
+      pendingVideoCountRef.current = storedCount !== null && Number.isFinite(storedCount) ? storedCount + 1 : null
     }
 
     setIsAdvertisementResolving(true)
-    getAdvertisementForVideo(video)
-      .then((matchedAdvertisement) => {
+    Promise.all([getAdvertisementForVideo(video), getAdvertisementFrequency()])
+      .then(([matchedAdvertisement, frequency]) => {
         if (!cancelled) {
-          setAdvertisement(matchedAdvertisement)
-          if (matchedAdvertisement) window.sessionStorage.setItem('dental-ad-video-count', '0')
+          if (!matchedAdvertisement) {
+            setAdvertisement(null)
+            return
+          }
+          const viewedVideos = pendingVideoCountRef.current ?? frequency
+          const shouldShow = viewedVideos >= frequency
+          setAdvertisement(shouldShow ? matchedAdvertisement : null)
+          window.sessionStorage.setItem('dental-ad-video-count', shouldShow ? '0' : String(viewedVideos))
         }
       })
       .catch(() => {
