@@ -59,7 +59,7 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { VIDEO_CATEGORIES } from '@/types'
 
-type AdStatus = 'draft' | 'active' | 'paused' | 'archived' | 'hidden'
+type AdStatus = 'draft' | 'active' | 'paused' | 'hidden'
 type EditableAdStatus = Exclude<AdStatus, 'hidden'>
 type MediaType = 'image' | 'video'
 type MediaSource = 'upload' | 'external'
@@ -142,7 +142,6 @@ const statusTone: Record<AdStatus, 'default' | 'success' | 'warning' | 'info'> =
   draft: 'default',
   active: 'success',
   paused: 'warning',
-  archived: 'info',
   hidden: 'info',
 }
 
@@ -455,7 +454,7 @@ export function AdvertisementManagement() {
   }
 
   async function hideAdvertisement() {
-    if (!user || !hideTarget || hideTarget.status === 'archived' || hideTarget.status === 'hidden' || hiding) return
+    if (!user || !hideTarget || hideTarget.status === 'hidden' || hiding) return
     setHiding(true)
     const ad = hideTarget
     try {
@@ -500,7 +499,7 @@ export function AdvertisementManagement() {
               <FormField label="Advertisement name *" error={errors.campaignName}><Input data-field="campaignName" aria-invalid={Boolean(errors.campaignName)} value={form.campaignName} onChange={(e) => updateForm('campaignName', e.target.value)} placeholder="e.g. ProDent Q3 Awareness" className={fieldClass} /></FormField>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Brand / advertiser *" error={errors.advertiserName}><Input data-field="advertiserName" aria-invalid={Boolean(errors.advertiserName)} value={form.advertiserName} onChange={(e) => updateForm('advertiserName', e.target.value)} placeholder="Brand name" className={fieldClass} /></FormField>
-                <FormField label="Status"><Select value={form.status} onValueChange={(value) => updateForm('status', value as EditableAdStatus)}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent>{(['draft','active','paused','archived'] as EditableAdStatus[]).map((value) => <SelectItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></FormField>
+                <FormField label="Status"><Select value={form.status} onValueChange={(value) => updateForm('status', value as EditableAdStatus)}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent>{(['draft','active','paused'] as EditableAdStatus[]).map((value) => <SelectItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></FormField>
               </div>
             </div>
 
@@ -553,7 +552,7 @@ export function AdvertisementManagement() {
       <AdminSectionCard title="All advertisements" description="Review delivery status and performance. Hidden advertisements remain recoverable from the Hidden tab." action={<Button variant="outline" size="lg" className="h-10 rounded-xl" onClick={() => void loadAdvertisements()} disabled={loading}><RefreshCw className={cn(loading && 'animate-spin')} />Refresh</Button>} contentClassName="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <AdminSearchField value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search advertisements…" aria-label="Search advertisements" className="max-w-xl" />
-          <AdminFilterTabs value={filter} onChange={setFilter} options={(['all','active','draft','paused','archived','hidden'] as ListFilter[]).map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1), count: value === 'all' ? ads.filter((ad) => ad.status !== 'hidden').length : ads.filter((ad) => ad.status === value).length }))} />
+          <AdminFilterTabs value={filter} onChange={setFilter} options={(['all','active','draft','paused','hidden'] as ListFilter[]).map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1), count: value === 'all' ? ads.filter((ad) => ad.status !== 'hidden').length : ads.filter((ad) => ad.status === value).length }))} />
         </div>
         {loadError && <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4" role="alert"><p className="font-medium text-destructive">Advertisements could not be loaded</p><p className="mt-1 text-sm text-muted-foreground">{loadError}</p><Button variant="outline" className="mt-3" onClick={() => void loadAdvertisements()}>Try again</Button></div>}
         {!loadError && loading && ads.length === 0 && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Loading advertisements…</div>}
@@ -565,7 +564,7 @@ export function AdvertisementManagement() {
             return <article key={ad.id} className="grid gap-4 bg-card p-4 transition-colors hover:bg-muted/20 dark:bg-card/80 dark:hover:bg-muted/35 lg:grid-cols-[92px_minmax(0,1fr)_auto] lg:items-center">
               <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-muted">{ad.media_url ? (ad.media_type === 'image' ? <img src={ad.media_url} alt="" className="h-full w-full object-cover" /> : <video src={ad.media_url} muted preload="metadata" className="h-full w-full object-cover" />) : <FileImage className="h-6 w-6 text-muted-foreground" />}</div>
               <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold text-foreground">{ad.campaign_name || 'Untitled advertisement'}</h3><AdminStatusBadge label={ad.status[0].toUpperCase() + ad.status.slice(1)} tone={statusTone[ad.status]} dot /></div><p className="mt-1 text-sm text-muted-foreground">{ad.advertiser_name || 'Advertiser not set'} · {ad.target_category || 'All categories'} · {ad.target_language ? getVideoLanguageLabel(ad.target_language) : 'All languages'} · Priority {ad.priority}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" />Updated {new Date(ad.updated_at).toLocaleDateString()}</p></div>
-              <div className="flex flex-wrap items-center gap-2.5 lg:justify-end"><div className="mr-1 grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 bg-background px-3.5 shadow-sm hover:border-primary/35 hover:bg-primary/7" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" className="h-9 rounded-xl border-amber-300/60 bg-amber-50 px-3.5 text-amber-800 shadow-sm hover:bg-amber-100 dark:border-amber-700/50 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/45" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : ad.status !== 'archived' ? <Button size="sm" className="h-9 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_6px_16px_rgba(45,110,106,0.18)] hover:bg-primary/85" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button> : null}{ad.status !== 'archived' && ad.status !== 'hidden' && <Button variant="ghost" size="icon-sm" className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/8 hover:text-destructive" aria-label={`Hide ${ad.campaign_name || 'untitled advertisement'}`} onClick={() => setHideTarget(ad)}><Trash2 /></Button>}</div>
+              <div className="flex flex-wrap items-center gap-2.5 lg:justify-end"><div className="mr-1 grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 bg-background px-3.5 shadow-sm hover:border-primary/35 hover:bg-primary/7" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" className="h-9 rounded-xl border-amber-300/60 bg-amber-50 px-3.5 text-amber-800 shadow-sm hover:bg-amber-100 dark:border-amber-700/50 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/45" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : <Button size="sm" className="h-9 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_6px_16px_rgba(45,110,106,0.18)] hover:bg-primary/85" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button>}{ad.status !== 'hidden' && <Button variant="ghost" size="icon-sm" className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/8 hover:text-destructive" aria-label={`Hide ${ad.campaign_name || 'untitled advertisement'}`} onClick={() => setHideTarget(ad)}><Trash2 /></Button>}</div>
             </article>
           })}
         </div>

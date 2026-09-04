@@ -7,7 +7,7 @@ alter table public.video_advertisements
 
 alter table public.video_advertisements
   add constraint video_advertisements_status_check
-  check (status in ('draft', 'active', 'paused', 'archived', 'hidden'));
+  check (status in ('draft', 'active', 'paused', 'hidden'));
 
 -- Permit incomplete drafts to move to hidden without requiring media first.
 alter table public.video_advertisements
