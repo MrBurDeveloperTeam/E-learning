@@ -111,9 +111,11 @@ export async function getVideoById(id: string): Promise<DentalVideo> {
 }
 
 /** Fetch the neighbouring videos in the library's newest-first order. */
-export async function getAdjacentVideos(id: string): Promise<AdjacentDentalVideos> {
+export async function getAdjacentVideos(id: string, excludeIds: string[] = []): Promise<AdjacentDentalVideos> {
+  const searchParams = new URLSearchParams({ adjacentTo: id });
+  if (excludeIds.length) searchParams.set("excludeIds", excludeIds.join(","));
   return apiFetch<AdjacentDentalVideos>(
-    `/dental-api/dental-videos?adjacentTo=${encodeURIComponent(id)}`
+    `/dental-api/dental-videos?${searchParams.toString()}`
   );
 }
 

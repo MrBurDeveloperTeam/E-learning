@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
@@ -43,6 +43,8 @@ type YouTubeApi = {
   PlayerState: { ENDED: number }
 }
 
+type VideoDestination = NonNullable<AdjacentDentalVideos['next']>
+
 declare global {
   interface Window {
     YT?: YouTubeApi
@@ -80,10 +82,18 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
 }
 
 async function getVideoPage(id: string) {
-  const [video, adjacent] = await Promise.all([
-    getVideoById(id),
-    getAdjacentVideos(id).catch(() => emptyAdjacentVideos),
-  ])
+  const video = await getVideoById(id)
+  const historyKey = `dental-video-history-${video.video_type || 'unknown'}`
+  let history: string[] = []
+  try {
+    const storedHistory = JSON.parse(window.sessionStorage.getItem(historyKey) || '[]')
+    if (Array.isArray(storedHistory)) history = storedHistory.filter((item): item is string => typeof item === 'string')
+  } catch {
+    history = []
+  }
+  if (!history.includes(video.id)) history.push(video.id)
+  window.sessionStorage.setItem(historyKey, JSON.stringify(history))
+  const adjacent = await getAdjacentVideos(id, history).catch(() => emptyAdjacentVideos)
 
   return { video, adjacent }
 }
@@ -99,9 +109,11 @@ export function DentalVideoDetail() {
   const [error, setError] = useState<string | null>(null)
   const [advertisement, setAdvertisement] = useState<VideoAdvertisement | null>(null)
   const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
+  const [playbackMode, setPlaybackMode] = useState<'content' | 'sponsor'>('content')
+  const [pendingDestination, setPendingDestination] = useState<VideoDestination | null>(null)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
   const countedVideoRef = useRef<string | null>(null)
-  const pendingVideoCountRef = useRef<number | null>(null)
+  const pendingVideoCountRef = useRef(1)
 
   useEffect(() => {
     let cancelled = false
@@ -110,6 +122,8 @@ export function DentalVideoDetail() {
     setAdjacent(emptyAdjacentVideos)
     setAdvertisement(null)
     setIsAdvertisementResolving(true)
+    setPlaybackMode('content')
+    setPendingDestination(null)
 
     getVideoPage(id)
       .then(({ video: videoData, adjacent: adjacentData }) => {
@@ -140,7 +154,7 @@ export function DentalVideoDetail() {
       countedVideoRef.current = video.id
       const storedValue = window.sessionStorage.getItem('dental-ad-video-count')
       const storedCount = storedValue === null ? null : Number(storedValue)
-      pendingVideoCountRef.current = storedCount !== null && Number.isFinite(storedCount) ? storedCount + 1 : null
+      pendingVideoCountRef.current = storedCount !== null && Number.isFinite(storedCount) ? storedCount + 1 : 1
     }
 
     setIsAdvertisementResolving(true)
@@ -151,7 +165,7 @@ export function DentalVideoDetail() {
             setAdvertisement(null)
             return
           }
-          const viewedVideos = pendingVideoCountRef.current ?? frequency
+          const viewedVideos = pendingVideoCountRef.current
           const shouldShow = viewedVideos >= frequency
           setAdvertisement(shouldShow ? matchedAdvertisement : null)
           window.sessionStorage.setItem('dental-ad-video-count', shouldShow ? '0' : String(viewedVideos))
@@ -167,9 +181,35 @@ export function DentalVideoDetail() {
     return () => { cancelled = true }
   }, [video])
 
+  const beginVideoTransition = useCallback((destination: VideoDestination) => {
+    if (adjacent.sponsor) {
+      if (video) {
+        const historyKey = `dental-video-history-${video.video_type || 'unknown'}`
+        try {
+          const storedHistory = JSON.parse(window.sessionStorage.getItem(historyKey) || '[]')
+          const history = Array.isArray(storedHistory)
+            ? storedHistory.filter((item): item is string => typeof item === 'string')
+            : []
+          if (!history.includes(adjacent.sponsor.id)) history.push(adjacent.sponsor.id)
+          window.sessionStorage.setItem(historyKey, JSON.stringify(history))
+        } catch {
+          window.sessionStorage.setItem(historyKey, JSON.stringify([video.id, adjacent.sponsor.id]))
+        }
+      }
+      setPendingDestination(destination)
+      setPlaybackMode('sponsor')
+      return
+    }
+
+    navigate({ to: '/dental-videos/$id', params: { id: destination.id } })
+  }, [adjacent.sponsor, navigate, video])
+
+  const activePlaybackVideo =
+    playbackMode === 'sponsor' && adjacent.sponsor ? adjacent.sponsor : video
+
   useEffect(() => {
     const playerHost = playerHostRef.current
-    if (!video || !playerHost || advertisement || isAdvertisementResolving) return
+    if (!activePlaybackVideo || !playerHost || advertisement || isAdvertisementResolving) return
 
     let cancelled = false
     let player: YouTubePlayer | null = null
@@ -178,19 +218,20 @@ export function DentalVideoDetail() {
     playerHost.replaceChildren(playerMount)
 
     const continuePlayback = () => {
-      if (!adjacent.next) return
-
-      navigate({
-        to: '/dental-videos/$id',
-        params: { id: adjacent.next.id },
-      })
+      if (playbackMode === 'sponsor') {
+        if (pendingDestination) {
+          navigate({ to: '/dental-videos/$id', params: { id: pendingDestination.id } })
+        }
+        return
+      }
+      if (adjacent.next) beginVideoTransition(adjacent.next)
     }
 
     loadYouTubeApi()
       .then((YT) => {
         if (cancelled) return
         player = new YT.Player(playerMount, {
-          videoId: video.video_id,
+          videoId: activePlaybackVideo.video_id,
           playerVars: {
             autoplay: 1,
             mute: 1,
@@ -210,7 +251,7 @@ export function DentalVideoDetail() {
         })
       })
       .catch(() => {
-        if (adjacent.next) navigate({ to: '/dental-videos/$id', params: { id: adjacent.next.id } })
+        continuePlayback()
       })
 
     return () => {
@@ -222,11 +263,11 @@ export function DentalVideoDetail() {
       }
       playerHost.replaceChildren()
     }
-  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, video])
+  }, [activePlaybackVideo, advertisement, adjacent.next, beginVideoTransition, isAdvertisementResolving, navigate, pendingDestination, playbackMode])
 
   useEffect(() => {
     const handleArrowNavigation = (event: KeyboardEvent) => {
-      if (advertisement || isAdvertisementResolving) return
+      if (advertisement || isAdvertisementResolving || playbackMode === 'sponsor') return
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
 
       const target = event.target as HTMLElement | null
@@ -246,13 +287,13 @@ export function DentalVideoDetail() {
 
       if (destination) {
         event.preventDefault()
-        navigate({ to: '/dental-videos/$id', params: { id: destination.id } })
+        beginVideoTransition(destination)
       }
     }
 
     window.addEventListener('keydown', handleArrowNavigation)
     return () => window.removeEventListener('keydown', handleArrowNavigation)
-  }, [advertisement, adjacent, isAdvertisementResolving, navigate])
+  }, [advertisement, adjacent, beginVideoTransition, isAdvertisementResolving, playbackMode])
 
   useEffect(() => {
     if (video) {
@@ -325,31 +366,37 @@ export function DentalVideoDetail() {
               <div
                 ref={playerHostRef}
                 className="absolute inset-0 h-full w-full"
-                aria-label={video.title}
+                aria-label={activePlaybackVideo?.title || video.title}
               />
 
-              {adjacent.previous ? (
-                <Link
-                  to="/dental-videos/$id"
-                  params={{ id: adjacent.previous.id }}
+              {playbackMode === 'sponsor' && adjacent.sponsor ? (
+                <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                  Featured partner · {adjacent.sponsor.channel_name}
+                </div>
+              ) : null}
+
+              {playbackMode === 'content' && adjacent.previous ? (
+                <button
+                  type="button"
+                  onClick={() => beginVideoTransition(adjacent.previous!)}
                   aria-label={`Previous video: ${adjacent.previous.title}`}
                   title={`Previous: ${adjacent.previous.title}`}
                   className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/60 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:left-4"
                 >
                   <ChevronLeft className="h-7 w-7" aria-hidden="true" />
-                </Link>
+                </button>
               ) : null}
 
-              {adjacent.next ? (
-                <Link
-                  to="/dental-videos/$id"
-                  params={{ id: adjacent.next.id }}
+              {playbackMode === 'content' && adjacent.next ? (
+                <button
+                  type="button"
+                  onClick={() => beginVideoTransition(adjacent.next!)}
                   aria-label={`Next video: ${adjacent.next.title}`}
                   title={`Next: ${adjacent.next.title}`}
                   className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/60 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:right-4"
                 >
                   <ChevronRight className="h-7 w-7" aria-hidden="true" />
-                </Link>
+                </button>
               ) : null}
             </div>
 
