@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import {
-  Archive,
   BarChart3,
   CalendarDays,
   CheckCircle2,
@@ -21,6 +20,7 @@ import {
   Smartphone,
   Sparkles,
   Target,
+  Trash2,
   UploadCloud,
   X,
 } from 'lucide-react'
@@ -35,6 +35,15 @@ import {
   AdminStatusBadge,
 } from '@/components/admin/AdminPrimitives'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -50,11 +59,12 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { VIDEO_CATEGORIES } from '@/types'
 
-type AdStatus = 'draft' | 'active' | 'paused' | 'archived'
+type AdStatus = 'draft' | 'active' | 'paused' | 'archived' | 'hidden'
+type EditableAdStatus = Exclude<AdStatus, 'hidden'>
 type MediaType = 'image' | 'video'
 type MediaSource = 'upload' | 'external'
 type TargetVideoType = 'video' | 'short_video' | null
-type ListFilter = 'all' | AdStatus
+type ListFilter = 'all' | EditableAdStatus
 
 type Advertisement = {
   id: string
@@ -89,7 +99,7 @@ type AdEvent = {
 type FormState = {
   campaignName: string
   advertiserName: string
-  status: AdStatus
+  status: EditableAdStatus
   mediaType: MediaType
   mediaSource: MediaSource
   externalUrl: string
@@ -133,6 +143,7 @@ const statusTone: Record<AdStatus, 'default' | 'success' | 'warning' | 'info'> =
   active: 'success',
   paused: 'warning',
   archived: 'info',
+  hidden: 'info',
 }
 
 const fieldClass = 'h-11 rounded-xl bg-background/70 px-3.5 dark:bg-muted/30 dark:hover:bg-muted/45'
@@ -242,6 +253,8 @@ export function AdvertisementManagement() {
   const [events, setEvents] = useState<AdEvent[]>([])
   const [form, setForm] = useState<FormState>(emptyForm)
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null)
+  const [hideTarget, setHideTarget] = useState<Advertisement | null>(null)
+  const [hiding, setHiding] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [objectUrl, setObjectUrl] = useState('')
   const [detectedVideoDuration, setDetectedVideoDuration] = useState<number | null>(null)
@@ -258,7 +271,7 @@ export function AdvertisementManagement() {
     setLoadError('')
     try {
       const [adsResult, eventsResult] = await Promise.all([
-        supabase.from('video_advertisements').select('*').order('created_at', { ascending: false }),
+        supabase.from('video_advertisements').select('*').neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('video_advertisement_events').select('advertisement_id,event_type').limit(10000),
       ])
       if (adsResult.error) throw adsResult.error
@@ -415,6 +428,7 @@ export function AdvertisementManagement() {
   }
 
   function editAd(ad: Advertisement) {
+    if (ad.status === 'hidden') return
     setEditingAd(ad); setSelectedFile(null); setObjectUrl(''); setErrors({})
     setDetectedVideoDuration(ad.media_type === 'video' ? ad.display_duration_seconds : null)
     setForm({
@@ -427,12 +441,34 @@ export function AdvertisementManagement() {
     window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
   }
 
-  async function changeStatus(ad: Advertisement, status: AdStatus) {
+  async function changeStatus(ad: Advertisement, status: EditableAdStatus) {
     if (!user) return
     const result = await supabase.from('video_advertisements').update({ status, updated_by: user.id }).eq('id', ad.id)
     if (result.error) { toast.error(result.error.message); return }
     setAds((current) => current.map((item) => item.id === ad.id ? { ...item, status } : item))
-    toast.success(status === 'archived' ? 'Advertisement archived' : `Advertisement ${status}`)
+    toast.success(`Advertisement ${status}`)
+  }
+
+  async function hideAdvertisement() {
+    if (!user || !hideTarget || hideTarget.status === 'archived' || hideTarget.status === 'hidden' || hiding) return
+    setHiding(true)
+    const ad = hideTarget
+    try {
+      const result = await supabase
+        .from('video_advertisements')
+        .update({ status: 'hidden', updated_by: user.id })
+        .eq('id', ad.id)
+        .eq('status', ad.status)
+      if (result.error) throw result.error
+      setAds((current) => current.filter((item) => item.id !== ad.id))
+      if (editingAd?.id === ad.id) resetForm()
+      setHideTarget(null)
+      toast.success(ad.status === 'active' ? 'Advertisement hidden and delivery stopped' : 'Advertisement hidden')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Advertisement could not be hidden.')
+    } finally {
+      setHiding(false)
+    }
   }
 
   if (!profile || !isAdmin) return <AdminGuard />
@@ -459,7 +495,7 @@ export function AdvertisementManagement() {
               <FormField label="Advertisement name *" error={errors.campaignName}><Input data-field="campaignName" aria-invalid={Boolean(errors.campaignName)} value={form.campaignName} onChange={(e) => updateForm('campaignName', e.target.value)} placeholder="e.g. ProDent Q3 Awareness" className={fieldClass} /></FormField>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Brand / advertiser *" error={errors.advertiserName}><Input data-field="advertiserName" aria-invalid={Boolean(errors.advertiserName)} value={form.advertiserName} onChange={(e) => updateForm('advertiserName', e.target.value)} placeholder="Brand name" className={fieldClass} /></FormField>
-                <FormField label="Status"><Select value={form.status} onValueChange={(value) => updateForm('status', value as AdStatus)}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent>{(['draft','active','paused','archived'] as AdStatus[]).map((value) => <SelectItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></FormField>
+                <FormField label="Status"><Select value={form.status} onValueChange={(value) => updateForm('status', value as EditableAdStatus)}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent>{(['draft','active','paused','archived'] as EditableAdStatus[]).map((value) => <SelectItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></FormField>
               </div>
             </div>
 
@@ -524,11 +560,29 @@ export function AdvertisementManagement() {
             return <article key={ad.id} className="grid gap-4 bg-card p-4 transition-colors hover:bg-muted/20 dark:bg-card/80 dark:hover:bg-muted/35 lg:grid-cols-[92px_minmax(0,1fr)_auto] lg:items-center">
               <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-muted">{ad.media_url ? (ad.media_type === 'image' ? <img src={ad.media_url} alt="" className="h-full w-full object-cover" /> : <video src={ad.media_url} muted preload="metadata" className="h-full w-full object-cover" />) : <FileImage className="h-6 w-6 text-muted-foreground" />}</div>
               <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold text-foreground">{ad.campaign_name || 'Untitled advertisement'}</h3><AdminStatusBadge label={ad.status[0].toUpperCase() + ad.status.slice(1)} tone={statusTone[ad.status]} dot /></div><p className="mt-1 text-sm text-muted-foreground">{ad.advertiser_name || 'Advertiser not set'} · {ad.target_category || 'All categories'} · {ad.target_language ? getVideoLanguageLabel(ad.target_language) : 'All languages'} · Priority {ad.priority}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" />Updated {new Date(ad.updated_at).toLocaleDateString()}</p></div>
-              <div className="flex flex-wrap items-center gap-2.5 lg:justify-end"><div className="mr-1 grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 bg-background px-3.5 shadow-sm hover:border-primary/35 hover:bg-primary/7" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" className="h-9 rounded-xl border-amber-300/60 bg-amber-50 px-3.5 text-amber-800 shadow-sm hover:bg-amber-100 dark:border-amber-700/50 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/45" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : ad.status !== 'archived' ? <Button size="sm" className="h-9 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_6px_16px_rgba(45,110,106,0.18)] hover:bg-primary/85" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button> : null}{ad.status !== 'archived' && <Button variant="ghost" size="icon-sm" className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/8 hover:text-destructive" aria-label={`Archive ${ad.campaign_name || 'untitled advertisement'}`} onClick={() => void changeStatus(ad, 'archived')}><Archive /></Button>}</div>
+              <div className="flex flex-wrap items-center gap-2.5 lg:justify-end"><div className="mr-1 grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 bg-background px-3.5 shadow-sm hover:border-primary/35 hover:bg-primary/7" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" className="h-9 rounded-xl border-amber-300/60 bg-amber-50 px-3.5 text-amber-800 shadow-sm hover:bg-amber-100 dark:border-amber-700/50 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/45" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : ad.status !== 'archived' ? <Button size="sm" className="h-9 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_6px_16px_rgba(45,110,106,0.18)] hover:bg-primary/85" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button> : null}{ad.status !== 'archived' && ad.status !== 'hidden' && <Button variant="ghost" size="icon-sm" className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/8 hover:text-destructive" aria-label={`Hide ${ad.campaign_name || 'untitled advertisement'}`} onClick={() => setHideTarget(ad)}><Trash2 /></Button>}</div>
             </article>
           })}
         </div>
       </AdminSectionCard>
+
+      <Dialog open={Boolean(hideTarget)} onOpenChange={(open) => { if (!open && !hiding) setHideTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hide this advertisement?</DialogTitle>
+            <DialogDescription>
+              “{hideTarget?.campaign_name || 'Untitled advertisement'}” will no longer appear in the advertisement list. Its database record and uploaded media will be retained.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" disabled={hiding} />}>Cancel</DialogClose>
+            <Button variant="destructive" disabled={hiding} onClick={() => void hideAdvertisement()}>
+              {hiding ? <RefreshCw className="animate-spin" /> : <Trash2 />}
+              {hiding ? 'Hiding…' : 'Hide advertisement'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }
