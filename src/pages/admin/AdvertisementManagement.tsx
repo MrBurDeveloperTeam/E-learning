@@ -64,7 +64,7 @@ type EditableAdStatus = Exclude<AdStatus, 'hidden'>
 type MediaType = 'image' | 'video'
 type MediaSource = 'upload' | 'external'
 type TargetVideoType = 'video' | 'short_video' | null
-type ListFilter = 'all' | EditableAdStatus
+type ListFilter = 'all' | AdStatus
 
 type Advertisement = {
   id: string
@@ -277,7 +277,7 @@ export function AdvertisementManagement() {
     setLoadError('')
     try {
       const [adsResult, eventsResult] = await Promise.all([
-        supabase.from('video_advertisements').select('*').neq('status', 'hidden').order('created_at', { ascending: false }),
+        supabase.from('video_advertisements').select('*').order('created_at', { ascending: false }),
         supabase.from('video_advertisement_events').select('advertisement_id,event_type').limit(10000),
       ])
       if (adsResult.error) throw adsResult.error
@@ -308,7 +308,7 @@ export function AdvertisementManagement() {
   const totalImpressions = events.filter((event) => event.event_type === 'impression').length
   const totalClicks = events.filter((event) => event.event_type === 'click').length
   const filteredAds = useMemo(() => ads.filter((ad) => {
-    const matchesFilter = filter === 'all' || ad.status === filter
+    const matchesFilter = filter === 'all' ? ad.status !== 'hidden' : ad.status === filter
     const haystack = `${ad.campaign_name || ''} ${ad.advertiser_name || ''} ${ad.target_category || ''}`.toLowerCase()
     return matchesFilter && haystack.includes(search.trim().toLowerCase())
   }), [ads, filter, search])
@@ -434,11 +434,10 @@ export function AdvertisementManagement() {
   }
 
   function editAd(ad: Advertisement) {
-    if (ad.status === 'hidden') return
     setEditingAd(ad); setSelectedFile(null); setObjectUrl(''); setErrors({})
     setDetectedVideoDuration(ad.media_type === 'video' ? ad.display_duration_seconds : null)
     setForm({
-      campaignName: ad.campaign_name || '', advertiserName: ad.advertiser_name || '', status: ad.status,
+      campaignName: ad.campaign_name || '', advertiserName: ad.advertiser_name || '', status: ad.status === 'hidden' ? 'draft' : ad.status,
       mediaType: ad.media_type, mediaSource: ad.media_source, externalUrl: ad.media_source === 'external' ? ad.media_url || '' : '', altText: ad.alt_text || '',
       category: ad.target_category || 'all', videoType: ad.target_video_type || 'all', language: ad.target_language || 'all',
       priority: String(ad.priority), weight: String(ad.weight), skipAfter: String(ad.skip_after_seconds),
@@ -551,10 +550,10 @@ export function AdvertisementManagement() {
         <AdvertisementPreview form={form} previewUrl={previewUrl} onVideoDuration={setDetectedVideoDuration} />
       </div>
 
-      <AdminSectionCard title="All advertisements" description="Review delivery status and performance. Archive keeps the record and its history recoverable." action={<Button variant="outline" size="lg" className="h-10 rounded-xl" onClick={() => void loadAdvertisements()} disabled={loading}><RefreshCw className={cn(loading && 'animate-spin')} />Refresh</Button>} contentClassName="space-y-4">
+      <AdminSectionCard title="All advertisements" description="Review delivery status and performance. Hidden advertisements remain recoverable from the Hidden tab." action={<Button variant="outline" size="lg" className="h-10 rounded-xl" onClick={() => void loadAdvertisements()} disabled={loading}><RefreshCw className={cn(loading && 'animate-spin')} />Refresh</Button>} contentClassName="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <AdminSearchField value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search advertisements…" aria-label="Search advertisements" className="max-w-xl" />
-          <AdminFilterTabs value={filter} onChange={setFilter} options={(['all','active','draft','paused','archived'] as ListFilter[]).map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1), count: value === 'all' ? ads.length : ads.filter((ad) => ad.status === value).length }))} />
+          <AdminFilterTabs value={filter} onChange={setFilter} options={(['all','active','draft','paused','archived','hidden'] as ListFilter[]).map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1), count: value === 'all' ? ads.filter((ad) => ad.status !== 'hidden').length : ads.filter((ad) => ad.status === value).length }))} />
         </div>
         {loadError && <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4" role="alert"><p className="font-medium text-destructive">Advertisements could not be loaded</p><p className="mt-1 text-sm text-muted-foreground">{loadError}</p><Button variant="outline" className="mt-3" onClick={() => void loadAdvertisements()}>Try again</Button></div>}
         {!loadError && loading && ads.length === 0 && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Loading advertisements…</div>}
