@@ -99,7 +99,6 @@ type AdEvent = {
 type FormState = {
   campaignName: string
   advertiserName: string
-  status: EditableAdStatus
   mediaType: MediaType
   mediaSource: MediaSource
   externalUrl: string
@@ -121,7 +120,6 @@ type FieldErrors = Partial<Record<keyof FormState | 'media', string>>
 const emptyForm: FormState = {
   campaignName: '',
   advertiserName: '',
-  status: 'draft',
   mediaType: 'image',
   mediaSource: 'upload',
   externalUrl: '',
@@ -390,9 +388,14 @@ export function AdvertisementManagement() {
           mediaUrl = supabase.storage.from('video-ad-media').getPublicUrl(uploadedPath).data.publicUrl
         }
       }
+      const nextStatus: EditableAdStatus = forceDraft
+        ? 'draft'
+        : editingAd
+          ? (editingAd.status === 'hidden' ? 'draft' : editingAd.status)
+          : 'active'
       const payload = {
         campaign_name: form.campaignName.trim() || null, advertiser_name: form.advertiserName.trim() || null,
-        status: forceDraft ? 'draft' : form.status, media_type: form.mediaType, media_source: form.mediaSource,
+        status: nextStatus, media_type: form.mediaType, media_source: form.mediaSource,
         media_url: mediaUrl || null, media_storage_path: mediaStoragePath, alt_text: form.altText.trim() || null,
         target_category: form.category === 'all' ? null : form.category,
         target_video_type: form.videoType === 'all' ? null : form.videoType,
@@ -411,11 +414,11 @@ export function AdvertisementManagement() {
         const result = await supabase.from('video_advertisements').update(payload).eq('id', editingAd.id).select().single()
         if (result.error) throw result.error
         if (uploadedPath && editingAd.media_storage_path) await supabase.storage.from('video-ad-media').remove([editingAd.media_storage_path])
-        toast.success('Advertisement updated')
+        toast.success(forceDraft ? 'Advertisement saved as draft' : nextStatus === 'draft' ? 'Advertisement updated as draft' : 'Advertisement updated')
       } else {
         const result = await supabase.from('video_advertisements').insert({ ...payload, created_by: user.id }).select().single()
         if (result.error) throw result.error
-        toast.success(forceDraft ? 'Draft saved' : 'Advertisement created')
+        toast.success(forceDraft ? 'Draft saved' : 'Advertisement created and activated')
       }
       resetForm()
       await loadAdvertisements()
@@ -436,7 +439,7 @@ export function AdvertisementManagement() {
     setEditingAd(ad); setSelectedFile(null); setObjectUrl(''); setErrors({})
     setDetectedVideoDuration(ad.media_type === 'video' ? ad.display_duration_seconds : null)
     setForm({
-      campaignName: ad.campaign_name || '', advertiserName: ad.advertiser_name || '', status: ad.status === 'hidden' ? 'draft' : ad.status,
+      campaignName: ad.campaign_name || '', advertiserName: ad.advertiser_name || '',
       mediaType: ad.media_type, mediaSource: ad.media_source, externalUrl: ad.media_source === 'external' ? ad.media_url || '' : '', altText: ad.alt_text || '',
       category: ad.target_category || 'all', videoType: ad.target_video_type || 'all', language: ad.target_language || 'all',
       priority: String(ad.priority), weight: String(ad.weight), skipAfter: String(ad.skip_after_seconds),
@@ -497,10 +500,7 @@ export function AdvertisementManagement() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Megaphone className="h-4 w-4 text-primary" />Advertisement details</div>
               <FormField label="Advertisement name *" error={errors.campaignName}><Input data-field="campaignName" aria-invalid={Boolean(errors.campaignName)} value={form.campaignName} onChange={(e) => updateForm('campaignName', e.target.value)} placeholder="e.g. ProDent Q3 Awareness" className={fieldClass} /></FormField>
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="Brand / advertiser *" error={errors.advertiserName}><Input data-field="advertiserName" aria-invalid={Boolean(errors.advertiserName)} value={form.advertiserName} onChange={(e) => updateForm('advertiserName', e.target.value)} placeholder="Brand name" className={fieldClass} /></FormField>
-                <FormField label="Status"><Select value={form.status} onValueChange={(value) => updateForm('status', value as EditableAdStatus)}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent>{(['draft','active','paused'] as EditableAdStatus[]).map((value) => <SelectItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></FormField>
-              </div>
+              <FormField label="Brand / advertiser *" error={errors.advertiserName}><Input data-field="advertiserName" aria-invalid={Boolean(errors.advertiserName)} value={form.advertiserName} onChange={(e) => updateForm('advertiserName', e.target.value)} placeholder="Brand name" className={fieldClass} /></FormField>
             </div>
 
             <div className="border-t border-border/70 pt-6 space-y-4">
