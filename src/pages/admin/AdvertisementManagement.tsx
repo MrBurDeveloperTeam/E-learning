@@ -162,6 +162,12 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value)
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message
+  return fallback
+}
+
 function AdvertisementPreview({
   form,
   previewUrl,
@@ -465,7 +471,7 @@ export function AdvertisementManagement() {
       setHideTarget(null)
       toast.success(ad.status === 'active' ? 'Advertisement hidden and delivery stopped' : 'Advertisement hidden')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Advertisement could not be hidden.')
+      toast.error(getErrorMessage(error, 'Advertisement could not be hidden.'))
     } finally {
       setHiding(false)
     }
