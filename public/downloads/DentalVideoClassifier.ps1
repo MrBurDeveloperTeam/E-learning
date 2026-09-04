@@ -97,7 +97,7 @@ function Invoke-ClassifierRequest {
         Headers = $Headers
         TimeoutSec = 30
       }
-      if ($null -ne $Body) {
+      if (-not [string]::IsNullOrWhiteSpace($Body)) {
         $requestParameters.ContentType = "application/json"
         $requestParameters.Body = $Body
       }
