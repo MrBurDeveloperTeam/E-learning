@@ -121,9 +121,9 @@ function Get-VideoMetadataJson {
     [string]$ToolDirectory
   )
 
-  $runId = [Guid]::NewGuid().ToString("N")
-  $stdoutPath = Join-Path $ToolDirectory "metadata-$runId.json"
-  $stderrPath = Join-Path $ToolDirectory "metadata-$runId.err"
+  $runtimeTempPath = Join-Path $ToolDirectory "runtime-temp"
+  New-Item -ItemType Directory -Path $runtimeTempPath -Force | Out-Null
+  $process = $null
   try {
     $arguments = @(
       "--dump-single-json",
@@ -135,25 +135,45 @@ function Get-VideoMetadataJson {
       "--extractor-retries", "2",
       $YoutubeUrl
     )
-    $process = Start-Process -FilePath $YtDlpPath -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+
+    # Read both streams directly. Windows PowerShell can occasionally lose
+    # redirected output when Start-Process exits quickly, which previously
+    # made every failure look like missing metadata.
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $YtDlpPath
+    $startInfo.Arguments = ($arguments -join " ")
+    $startInfo.WorkingDirectory = $ToolDirectory
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.EnvironmentVariables["TEMP"] = $runtimeTempPath
+    $startInfo.EnvironmentVariables["TMP"] = $runtimeTempPath
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) { throw "The metadata tool could not be started" }
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
     if (-not $process.WaitForExit(60000)) {
       try { $process.Kill() } catch {}
       $process.WaitForExit()
       throw "YouTube metadata request exceeded 60 seconds"
     }
-    $process.WaitForExit()
 
-    $jsonOutput = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
-    $errorOutput = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
+    $jsonOutput = $stdoutTask.Result
+    $errorOutput = $stderrTask.Result
     if ($process.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($jsonOutput)) {
       $errorLine = ($errorOutput -split "`r?`n" | Where-Object { $_ -match "ERROR:" } | Select-Object -Last 1)
-      if (-not $errorLine) { $errorLine = "Metadata unavailable" }
+      if (-not $errorLine) {
+        $errorLine = ($errorOutput -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1)
+      }
+      if (-not $errorLine) { $errorLine = "The metadata tool returned no details" }
       throw $errorLine.Trim()
     }
     return $jsonOutput
   } finally {
-    Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    if ($process) { $process.Dispose() }
   }
 }
 
@@ -189,6 +209,7 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
   }
   if (-not $batch.videos -or $batch.videos.Count -eq 0) { break }
 
+  $attemptedBeforeBatch = $attemptedVideoIds.Count
   $results = @()
   foreach ($item in $batch.videos) {
     if (-not $attemptedVideoIds.Add([string]$item.id)) { continue }
@@ -228,6 +249,11 @@ while ($attemptedVideoIds.Count -lt $maximumVideos) {
         $failed++
       }
     }
+  }
+
+  if ($attemptedVideoIds.Count -eq $attemptedBeforeBatch) {
+    Write-Host "  [COMPLETE] No additional unclassified videos are available." -ForegroundColor Cyan
+    break
   }
 
   if ($results.Count -gt 0) {
