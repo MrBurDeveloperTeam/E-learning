@@ -4,6 +4,7 @@ import {
   MessagesSquare,
   Users,
   Youtube,
+  Megaphone,
   SlidersHorizontal,
 } from 'lucide-react'
 import type { SidebarItem } from '@/components/layout/Sidebar'
@@ -46,6 +47,11 @@ export function getAdminSidebarItems(
       label: 'Fetch videos',
       path: '/admin/fetch-videos',
       icon: <Youtube className="h-4 w-4" />,
+    },
+    {
+      label: 'Advertisements',
+      path: '/admin/advertisements',
+      icon: <Megaphone className="h-4 w-4" />,
     },
     {
       label: 'Platform settings',

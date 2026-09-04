@@ -27,6 +27,7 @@ import { AdminDashboard } from '@/pages/admin/AdminDashboard'
 import { ContentReview } from '@/pages/admin/ContentReview'
 import { UserManagement } from '@/pages/admin/UserManagement'
 import { AdminFetchVideos } from '@/pages/admin/AdminFetchVideos'
+import { AdvertisementManagement } from '@/pages/admin/AdvertisementManagement'
 import { ManualVideoClassification } from '@/pages/admin/ManualVideoClassification'
 import { PlatformSettings } from '@/pages/admin/PlatformSettings'
 import { DentalVideos } from '@/pages/DentalVideos'
@@ -286,6 +287,16 @@ const adminSettingsRoute = createRoute({
   ),
 })
 
+const adminAdvertisementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/advertisements',
+  component: () => (
+    <ProtectedRoute requireAdmin>
+      <AdvertisementManagement />
+    </ProtectedRoute>
+  ),
+})
+
 const adminManualVideoClassificationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/fetch-videos/manual-classification',
@@ -333,6 +344,7 @@ const routeTree = rootRoute.addChildren([
   adminCommunityRoute,
   adminUsersRoute,
   adminFetchVideosRoute,
+  adminAdvertisementsRoute,
   adminManualVideoClassificationRoute,
   adminSettingsRoute,
   dentalVideosRoute,
