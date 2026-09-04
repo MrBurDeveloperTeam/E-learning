@@ -124,7 +124,17 @@ function Get-VideoMetadataJson {
   $runId = [Guid]::NewGuid().ToString("N")
   $stdoutPath = Join-Path $ToolDirectory "metadata-$runId.json"
   $stderrPath = Join-Path $ToolDirectory "metadata-$runId.err"
+  $runtimeTempPath = Join-Path $ToolDirectory "runtime-temp"
+  New-Item -ItemType Directory -Path $runtimeTempPath -Force | Out-Null
+  $previousTemp = $env:TEMP
+  $previousTmp = $env:TMP
   try {
+    # The standalone yt-dlp executable is packaged with PyInstaller and must
+    # unpack a small runtime before it can read metadata. Some Windows setups
+    # have an unavailable or restricted system TEMP directory, so use the
+    # classifier's own writable directory for this child process.
+    $env:TEMP = $runtimeTempPath
+    $env:TMP = $runtimeTempPath
     $arguments = @(
       "--dump-single-json",
       "--skip-download",
@@ -147,11 +157,16 @@ function Get-VideoMetadataJson {
     $errorOutput = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
     if ($process.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($jsonOutput)) {
       $errorLine = ($errorOutput -split "`r?`n" | Where-Object { $_ -match "ERROR:" } | Select-Object -Last 1)
-      if (-not $errorLine) { $errorLine = "Metadata unavailable" }
+      if (-not $errorLine) {
+        $errorLine = ($errorOutput -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1)
+      }
+      if (-not $errorLine) { $errorLine = "The metadata tool returned no details" }
       throw $errorLine.Trim()
     }
     return $jsonOutput
   } finally {
+    $env:TEMP = $previousTemp
+    $env:TMP = $previousTmp
     Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
   }
