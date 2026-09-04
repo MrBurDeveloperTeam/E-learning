@@ -37,13 +37,27 @@ export async function getAdvertisementForVideo(video: DentalVideo) {
 
   if (error) throw error
 
-  const matchesForVideo = (data as VideoAdvertisement[]).filter((advertisement) =>
+  const activeAdvertisements = data as VideoAdvertisement[]
+  const exactOrGlobalMatches = activeAdvertisements.filter((advertisement) =>
     matches(advertisement.target_category, video.category) &&
     matches(advertisement.target_video_type, video.video_type) &&
     matches(advertisement.target_language, video.language)
   )
 
-  if (!matchesForVideo.length) return null
+  if (!activeAdvertisements.length) return null
+
+  // Prefer ads whose targeting is fully compatible with the video. If none
+  // exists, fall back to the active ads sharing the most target attributes so
+  // a scheduled ad opportunity is not silently lost.
+  const targetingScore = (advertisement: VideoAdvertisement) => [
+          normalize(advertisement.target_category) === normalize(video.category),
+          normalize(advertisement.target_video_type) === normalize(video.video_type),
+          normalize(advertisement.target_language) === normalize(video.language),
+        ].filter(Boolean).length
+  const bestFallbackScore = Math.max(...activeAdvertisements.map(targetingScore))
+  const matchesForVideo = exactOrGlobalMatches.length
+    ? exactOrGlobalMatches
+    : activeAdvertisements.filter((advertisement) => targetingScore(advertisement) === bestFallbackScore)
 
   const highestPriority = Math.max(...matchesForVideo.map((advertisement) => advertisement.priority))
   const candidates = matchesForVideo.filter((advertisement) => advertisement.priority === highestPriority)

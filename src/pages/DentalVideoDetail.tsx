@@ -141,7 +141,7 @@ export function DentalVideoDetail() {
       const storedCount = Number(window.sessionStorage.getItem('dental-ad-video-count') || '2')
       const nextCount = Number.isFinite(storedCount) ? storedCount + 1 : 3
       shouldShowAdvertisementRef.current = nextCount >= 3
-      window.sessionStorage.setItem('dental-ad-video-count', shouldShowAdvertisementRef.current ? '0' : String(nextCount))
+      window.sessionStorage.setItem('dental-ad-video-count', String(Math.min(nextCount, 3)))
     }
 
     if (!shouldShowAdvertisementRef.current) {
@@ -153,7 +153,10 @@ export function DentalVideoDetail() {
     setIsAdvertisementResolving(true)
     getAdvertisementForVideo(video)
       .then((matchedAdvertisement) => {
-        if (!cancelled) setAdvertisement(matchedAdvertisement)
+        if (!cancelled) {
+          setAdvertisement(matchedAdvertisement)
+          if (matchedAdvertisement) window.sessionStorage.setItem('dental-ad-video-count', '0')
+        }
       })
       .catch(() => {
         if (!cancelled) setAdvertisement(null)
