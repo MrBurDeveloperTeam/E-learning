@@ -729,11 +729,20 @@ export async function toggleCommunityMessageReaction(messageId: string, emoji: s
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('Sign in before reacting to a message.')
-  const request = reacted
-    ? supabase.from(COMMUNITY_TABLES.messageReactions).delete().eq('message_id', messageId).eq('user_id', user.id).eq('emoji', emoji)
-    : supabase.from(COMMUNITY_TABLES.messageReactions).upsert({ message_id: messageId, user_id: user.id, emoji }, { onConflict: 'message_id,user_id,emoji' })
-  const { error } = await request
-  if (error) throw error
+  const removed = await supabase
+    .from(COMMUNITY_TABLES.messageReactions)
+    .delete()
+    .eq('message_id', messageId)
+    .eq('user_id', user.id)
+  if (removed.error) throw removed.error
+
+  // Clicking the active reaction removes it. Choosing a different emoji first
+  // removes the previous reaction, then stores the replacement.
+  if (reacted) return
+  const inserted = await supabase
+    .from(COMMUNITY_TABLES.messageReactions)
+    .insert({ message_id: messageId, user_id: user.id, emoji })
+  if (inserted.error) throw inserted.error
 }
 
 export type CommunitySettingsSection = 'posts' | 'likes' | 'reposts' | 'bookmarks' | 'history' | 'deleted' | 'following' | 'friends'
