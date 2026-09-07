@@ -6,15 +6,20 @@ import type { VideoAdvertisement } from '@/lib/videoAdvertisements'
 type AdvertisementOverlayProps = {
   advertisement: VideoAdvertisement
   onComplete: () => void
+  embedded?: boolean
 }
 
-export function AdvertisementOverlay({ advertisement, onComplete }: AdvertisementOverlayProps) {
+export function AdvertisementOverlay({ advertisement, onComplete, embedded = false }: AdvertisementOverlayProps) {
   const [secondsRemaining, setSecondsRemaining] = useState(Math.max(0, advertisement.skip_after_seconds))
   const [videoProgress, setVideoProgress] = useState(0)
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const canSkip = secondsRemaining === 0
 
   useEffect(() => {
+    if (embedded) {
+      dialogRef.current?.focus()
+      return
+    }
     const previousBodyOverflow = document.body.style.overflow
     const previousHtmlOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -24,7 +29,7 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
       document.body.style.overflow = previousBodyOverflow
       document.documentElement.style.overflow = previousHtmlOverflow
     }
-  }, [])
+  }, [embedded])
 
   useEffect(() => {
     if (secondsRemaining <= 0) return
@@ -78,8 +83,20 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
   }
 
   return (
-    <div className={`fixed inset-0 z-[1001] flex items-center justify-center overflow-hidden bg-background/70 p-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/55 sm:p-6 ${advertisement.click_url ? 'cursor-pointer' : ''}`} role="dialog" aria-modal="true" aria-labelledby="advertisement-title" onClick={openDestination}>
-      <div ref={dialogRef} tabIndex={0} className="relative flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-border bg-card text-foreground shadow-[0_24px_70px_rgba(45,110,106,0.16)] outline-none focus-visible:ring-2 focus-visible:ring-ring" onKeyDown={handleOverlayKeyDown} aria-label={advertisement.click_url ? `Open ${advertisement.advertiser_name} advertisement` : undefined}>
+    <div
+      className={`${embedded ? 'absolute inset-0 z-30 flex overflow-hidden bg-black' : 'fixed inset-0 z-[1001] flex items-center justify-center overflow-hidden bg-background/70 p-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/55 sm:p-6'} ${advertisement.click_url ? 'cursor-pointer' : ''}`}
+      role={embedded ? 'region' : 'dialog'}
+      aria-modal={embedded ? undefined : true}
+      aria-labelledby="advertisement-title"
+      onClick={openDestination}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={0}
+        className={`relative flex w-full flex-col overflow-hidden bg-card text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${embedded ? 'h-full' : 'max-h-[94dvh] max-w-5xl rounded-[1.75rem] border border-border shadow-[0_24px_70px_rgba(45,110,106,0.16)]'}`}
+        onKeyDown={handleOverlayKeyDown}
+        aria-label={advertisement.click_url ? `Open ${advertisement.advertiser_name} advertisement` : undefined}
+      >
         <div className="flex min-h-12 items-center justify-between gap-4 border-b border-border px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Advertisement</p>

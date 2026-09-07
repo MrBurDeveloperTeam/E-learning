@@ -22,8 +22,12 @@ const emptyAdjacentVideos: AdjacentDentalVideos = {
 
 type YouTubePlayer = {
   destroy: () => void
+  getCurrentTime: () => number
+  getDuration: () => number
   mute: () => void
+  pauseVideo: () => void
   playVideo: () => void
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void
 }
 
 type YouTubeApi = {
@@ -50,6 +54,16 @@ declare global {
 }
 
 let youtubeApiPromise: Promise<YouTubeApi> | null = null
+
+const MINIMUM_MIDROLL_VIDEO_SECONDS = 120
+
+function getRandomMidrollSecond(duration: number): number | null {
+  if (!Number.isFinite(duration) || duration < MINIMUM_MIDROLL_VIDEO_SECONDS) return null
+  const earliest = Math.max(30, duration * 0.2)
+  const latest = Math.min(duration - 30, duration * 0.75)
+  if (latest <= earliest) return null
+  return earliest + Math.random() * (latest - earliest)
+}
 
 function loadYouTubeApi(): Promise<YouTubeApi> {
   if (window.YT?.Player) return Promise.resolve(window.YT)
@@ -105,10 +119,18 @@ export function DentalVideoDetail() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [advertisement, setAdvertisement] = useState<VideoAdvertisement | null>(null)
+  const [isEntryAdvertisementPlaying, setIsEntryAdvertisementPlaying] = useState(false)
+  const [isAdvertisementPlaying, setIsAdvertisementPlaying] = useState(false)
   const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
+  const youtubePlayerRef = useRef<YouTubePlayer | null>(null)
   const countedVideoRef = useRef<string | null>(null)
   const pendingVideoCountRef = useRef(1)
+  const midrollSecondRef = useRef<number | null>(null)
+  const midrollShownForVideoRef = useRef<string | null>(null)
+  const entryAdvertisementPlayingRef = useRef(false)
+  const advertisementPlayingRef = useRef(false)
+  const resumeSecondRef = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -116,6 +138,13 @@ export function DentalVideoDetail() {
     setError(null)
     setAdjacent(emptyAdjacentVideos)
     setAdvertisement(null)
+    setIsEntryAdvertisementPlaying(false)
+    setIsAdvertisementPlaying(false)
+    entryAdvertisementPlayingRef.current = false
+    advertisementPlayingRef.current = false
+    midrollSecondRef.current = null
+    midrollShownForVideoRef.current = null
+    resumeSecondRef.current = 0
     setIsAdvertisementResolving(true)
 
     getVideoPage(id)
@@ -161,7 +190,11 @@ export function DentalVideoDetail() {
           const viewedVideos = pendingVideoCountRef.current
           const shouldShow = viewedVideos >= frequency
           setAdvertisement(shouldShow ? matchedAdvertisement : null)
-          window.sessionStorage.setItem('dental-ad-video-count', shouldShow ? '0' : String(viewedVideos))
+          setIsEntryAdvertisementPlaying(shouldShow)
+          entryAdvertisementPlayingRef.current = shouldShow
+          if (!shouldShow) {
+            window.sessionStorage.setItem('dental-ad-video-count', String(viewedVideos))
+          }
         }
       })
       .catch(() => {
@@ -176,10 +209,11 @@ export function DentalVideoDetail() {
 
   useEffect(() => {
     const playerHost = playerHostRef.current
-    if (!video || !playerHost || advertisement || isAdvertisementResolving) return
+    if (!video || !playerHost || isAdvertisementResolving) return
 
     let cancelled = false
     let player: YouTubePlayer | null = null
+    let midrollTimer: number | null = null
     const playerMount = document.createElement('div')
     playerMount.className = 'h-full w-full'
     playerHost.replaceChildren(playerMount)
@@ -203,8 +237,34 @@ export function DentalVideoDetail() {
           },
           events: {
             onReady: ({ target }) => {
+              youtubePlayerRef.current = target
               target.mute()
-              target.playVideo()
+              if (entryAdvertisementPlayingRef.current) target.pauseVideo()
+              else target.playVideo()
+              midrollTimer = window.setInterval(() => {
+                if (
+                  !advertisement ||
+                  advertisementPlayingRef.current ||
+                  midrollShownForVideoRef.current === video.id
+                ) {
+                  return
+                }
+
+                if (midrollSecondRef.current === null) {
+                  midrollSecondRef.current = getRandomMidrollSecond(target.getDuration())
+                  if (midrollSecondRef.current === null) return
+                }
+
+                const currentSecond = target.getCurrentTime()
+                if (currentSecond < midrollSecondRef.current) return
+
+                resumeSecondRef.current = currentSecond
+                midrollShownForVideoRef.current = video.id
+                advertisementPlayingRef.current = true
+                window.sessionStorage.setItem('dental-ad-video-count', '0')
+                target.pauseVideo()
+                setIsAdvertisementPlaying(true)
+              }, 500)
             },
             onStateChange: ({ data }) => {
               if (data === YT.PlayerState.ENDED) continuePlayback()
@@ -219,6 +279,8 @@ export function DentalVideoDetail() {
 
     return () => {
       cancelled = true
+      if (midrollTimer !== null) window.clearInterval(midrollTimer)
+      youtubePlayerRef.current = null
       try {
         player?.destroy()
       } catch {
@@ -228,9 +290,25 @@ export function DentalVideoDetail() {
     }
   }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, video])
 
+  const completeEntryAdvertisement = () => {
+    setIsEntryAdvertisementPlaying(false)
+    entryAdvertisementPlayingRef.current = false
+    window.sessionStorage.setItem('dental-ad-video-count', '0')
+    youtubePlayerRef.current?.playVideo()
+  }
+
+  const completeAdvertisement = () => {
+    setIsAdvertisementPlaying(false)
+    advertisementPlayingRef.current = false
+    const player = youtubePlayerRef.current
+    if (!player) return
+    player.seekTo(resumeSecondRef.current, true)
+    player.playVideo()
+  }
+
   useEffect(() => {
     const handleArrowNavigation = (event: KeyboardEvent) => {
-      if (advertisement || isAdvertisementResolving) return
+      if (isEntryAdvertisementPlaying || isAdvertisementPlaying || isAdvertisementResolving) return
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
 
       const target = event.target as HTMLElement | null
@@ -256,7 +334,7 @@ export function DentalVideoDetail() {
 
     window.addEventListener('keydown', handleArrowNavigation)
     return () => window.removeEventListener('keydown', handleArrowNavigation)
-  }, [advertisement, adjacent, isAdvertisementResolving, navigate])
+  }, [adjacent, isAdvertisementPlaying, isAdvertisementResolving, isEntryAdvertisementPlaying, navigate])
 
   useEffect(() => {
     if (video) {
@@ -269,6 +347,13 @@ export function DentalVideoDetail() {
   return (
     <>
       <Navbar />
+
+      {advertisement && isEntryAdvertisementPlaying ? (
+        <AdvertisementOverlay
+          advertisement={advertisement}
+          onComplete={completeEntryAdvertisement}
+        />
+      ) : null}
 
       <div className="mx-auto max-w-[960px] px-4 py-6 pb-20 md:px-6 md:pb-12">
         <Link
@@ -331,11 +416,11 @@ export function DentalVideoDetail() {
                   to="/dental-videos/$id"
                   params={{ id: adjacent.previous.id }}
                   title={`Previous: ${adjacent.previous.title}`}
-                  className="group flex min-w-0 items-center gap-2 px-1 py-3 text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
+                  className="group flex min-w-0 items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-4 py-2.5 text-left transition-colors hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-5"
                 >
                   <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
-                  <span className="flex min-w-0 items-center gap-2 border-b border-border pb-1 transition-colors group-hover:border-primary sm:gap-3">
-                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/45 group-hover:bg-primary/10 group-hover:text-primary">Previous</span>
+                  <span className="flex min-w-0 items-center gap-2 sm:gap-3">
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Previous</span>
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">
                       {adjacent.previous.title}
                     </span>
@@ -348,13 +433,13 @@ export function DentalVideoDetail() {
                   to="/dental-videos/$id"
                   params={{ id: adjacent.next.id }}
                   title={`Next: ${adjacent.next.title}`}
-                  className="group col-start-2 flex min-w-0 items-center justify-end gap-2 px-1 py-3 text-right transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
+                  className="group col-start-2 flex min-w-0 items-center justify-end gap-2 rounded-full border border-primary/25 bg-primary/5 px-4 py-2.5 text-right transition-colors hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-5"
                 >
-                  <span className="flex min-w-0 items-center gap-2 border-b border-border pb-1 transition-colors group-hover:border-primary sm:gap-3">
+                  <span className="flex min-w-0 items-center gap-2 sm:gap-3">
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">
                       {adjacent.next.title}
                     </span>
-                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/45 group-hover:bg-primary/10 group-hover:text-primary">Next</span>
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Next</span>
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                 </Link>
@@ -370,6 +455,13 @@ export function DentalVideoDetail() {
                 className="absolute inset-0 h-full w-full"
                 aria-label={video.title}
               />
+              {advertisement && isAdvertisementPlaying ? (
+                <AdvertisementOverlay
+                  advertisement={advertisement}
+                  embedded
+                  onComplete={completeAdvertisement}
+                />
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -445,7 +537,6 @@ export function DentalVideoDetail() {
         ) : null}
       </div>
 
-      {advertisement && <AdvertisementOverlay advertisement={advertisement} onComplete={() => setAdvertisement(null)} />}
     </>
   )
 }
