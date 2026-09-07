@@ -197,7 +197,15 @@ export function useDirectMessages(conversationId?: string) {
   })
 }
 
-export function useOpenDirectConversation(userId:string){const client=useQueryClient();return useMutation({mutationFn:openDirectConversation,onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-conversations',userId]})})}
+export function useOpenDirectConversation(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: openDirectConversation,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
+    },
+  })
+}
 export function useOpenCommunityConversation(){return useMutation({mutationFn:openCommunityConversation})}
 export function useCommunityMessageActions(conversationId?:string){const client=useQueryClient();return useMutation({mutationFn:({id,action,body}:{id:string;action:'edit'|'delete';body?:string})=>action==='edit'?updateCommunityMessage(id,body??''):deleteCommunityMessage(id),onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})})}
 

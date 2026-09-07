@@ -643,7 +643,21 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
   throw inserted.error
 }
 
-export async function openDirectConversation(_userId:string): Promise<string>{throw new CommunityBackendUnavailableError('Community direct conversations')}
+export async function openDirectConversation(userId: string): Promise<string> {
+  const targetUserId = userId.trim()
+  if (!targetUserId) throw new Error('Choose a member before starting a conversation.')
+
+  const { data, error } = await supabase.rpc('community_open_direct_conversation', {
+    target_user_id: targetUserId,
+  })
+
+  if (error) throw error
+  if (typeof data !== 'string' || !data) {
+    throw new Error('The conversation could not be opened.')
+  }
+
+  return data
+}
 export async function openCommunityConversation(_communityId:string): Promise<string>{throw new CommunityBackendUnavailableError('Community group conversations')}
 export async function markConversationRead(conversationId:string): Promise<void>{const{error}=await supabase.rpc('community_mark_conversation_read',{target_conversation_id:conversationId});if(error)throw error}
 export async function updateCommunityMessage(messageId:string,body:string){const{error}=await supabase.from(COMMUNITY_TABLES.messages).update({content:body.trim(),edited_at:new Date().toISOString()}).eq('id',messageId);if(error)throw error}

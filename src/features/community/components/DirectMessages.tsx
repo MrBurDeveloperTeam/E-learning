@@ -33,6 +33,13 @@ export function DirectMessages({ userId }: { userId: string }) {
   const messages = useDirectMessages(selectedId)
   const send = useSendDirectMessage(userId, selectedId)
   const messageActions=useCommunityMessageActions(selectedId)
+
+  useEffect(() => {
+    if (selected && draftRecipient?.user_id === selected.other_user.user_id) {
+      setDraftRecipient(null)
+    }
+  }, [draftRecipient?.user_id, selected])
+
   const suggestions=useMemo(()=>{
     const conversationRows=conversations.data??[]
     const remaining=Math.max(0,15-conversationRows.length)
@@ -60,7 +67,6 @@ export function DirectMessages({ userId }: { userId: string }) {
       if(!conversationId&&draftRecipient){
         conversationId=await openConversation.mutateAsync(draftRecipient.user_id)
         setSelectedId(conversationId)
-        setDraftRecipient(null)
       }
       await send.mutateAsync({body,clientNonce,conversationId})
       setBody('')
