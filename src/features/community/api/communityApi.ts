@@ -280,7 +280,6 @@ export async function softDeleteCommunityPost(id:string,authorId:string): Promis
 // Sharing is performed by the Clipboard API. There is no share-event table or
 // RPC in the current production contract, so missing analytics must not block it.
 export async function recordCommunityPostShare(_id:string): Promise<void>{}
-export async function setCommunityPostNotInterested(postId:string,userId:string){const{error}=await supabase.from(COMMUNITY_TABLES.userHiddenContent).upsert({post_id:postId,user_id:userId,hide_reason:'not_interested'});if(error)throw error}
 export async function recordCommunityPostView(_postId:string,_watchSeconds=0,_progress=0): Promise<void>{throw new CommunityBackendUnavailableError('Community post view tracking')}
 
 export async function fetchCommunityPost(postId:string,userId?:string){
@@ -305,7 +304,19 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
   const { data, error } = await request
   if (error) throw error
 
-  let comments = (data ?? []).map((row) => mapCommunityComment(row as DbCommunityComment))
+  let hiddenCommentIds = new Set<string>()
+  if (userId) {
+    const hidden = await supabase.from(COMMUNITY_TABLES.userHiddenContent)
+      .select('comment_id')
+      .eq('user_id', userId)
+      .not('comment_id', 'is', null)
+    if (hidden.error) throw hidden.error
+    hiddenCommentIds = new Set((hidden.data ?? []).flatMap((row) => row.comment_id ? [row.comment_id] : []))
+  }
+
+  let comments = (data ?? [])
+    .filter((row) => !hiddenCommentIds.has(row.id))
+    .map((row) => mapCommunityComment(row as DbCommunityComment))
 
   let priorityAuthors=new Set<string>()
   if(userId){
@@ -335,12 +346,15 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
   }
 
   let liked = new Set<string>()
-  if (userId && comments.length > 0) {
-    const result = await supabase.from(COMMUNITY_TABLES.commentLikes).select('comment_id').eq('user_id', userId).in('comment_id', comments.map((comment) => comment.id))
+  let likeCounts = new Map<string, number>()
+  if (comments.length > 0) {
+    const result = await supabase.from(COMMUNITY_TABLES.commentLikes).select('comment_id,user_id').in('comment_id', comments.map((comment) => comment.id))
     if (result.error) throw result.error
-    liked = new Set((result.data ?? []).map((row) => row.comment_id))
+    const rows = result.data ?? []
+    liked = new Set(rows.filter((row) => row.user_id === userId).map((row) => row.comment_id))
+    likeCounts = rows.reduce((counts, row) => counts.set(row.comment_id, (counts.get(row.comment_id) ?? 0) + 1), new Map<string, number>())
   }
-  return comments.map((comment) => ({ ...comment, profiles: profiles.get(comment.author_id) ?? null, viewer_has_liked: liked.has(comment.id) }))
+  return comments.map((comment) => ({ ...comment, profiles: profiles.get(comment.author_id) ?? null, like_count: likeCounts.get(comment.id) ?? 0, viewer_has_liked: liked.has(comment.id) }))
 }
 
 export async function checkCommunityCommentSafety(body: string): Promise<'safe' | 'warn' | 'review' | 'block'> {

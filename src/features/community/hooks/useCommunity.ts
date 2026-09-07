@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addCommunityRule, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, fetchCloseFriends, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, followCommunityPerson, hideCommunityMessageForCurrentUser, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAnnouncement, saveCommunityPreferences, searchCommunityPeople, sendDirectMessage, setCloseFriend, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, toggleCommunityMessageReaction, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
-import type { CommunityManagedPost, CommunityPerson, DirectMessage } from '@/features/community/types'
+import type { CommunityComment, CommunityManagedPost, CommunityPerson, DirectMessage } from '@/features/community/types'
 import { supabase } from '@/lib/supabase'
-import { recordCommunityPostShare, recordCommunityPostView, setCommunityPostNotInterested, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
+import { recordCommunityPostShare, recordCommunityPostView, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
 import { fetchCommunityPost } from '@/features/community/api/communityApi'
 import { recordCommunityOperationalEvent } from '@/features/community/api/communityReleaseApi'
 import { deleteCommunityDraft, fetchCommunityDrafts, migrateLocalCommunityDrafts, saveCommunityDraft, type CommunityDraftInput } from '@/features/community/api/communityDraftApi'
@@ -52,7 +52,7 @@ export function useCommunityPostInteraction(userId?: string) {
 
 export function useCommunityPost(postId:string,userId?:string){return useQuery({queryKey:['community-post',postId,userId],queryFn:()=>fetchCommunityPost(postId,userId),enabled:Boolean(postId)})}
 
-export function useCommunityPostActions(userId?:string){const client=useQueryClient();return useMutation({mutationFn:async(input:{action:'edit'|'delete'|'share'|'not_interested'|'view';postId:string;title?:string;body?:string;topic?:import('@/features/community/types').CommunityPostTopic;watchSeconds?:number;progress?:number})=>{if(!userId)throw new Error('Sign in to manage posts.');if(input.action==='edit')return updateCommunityPost({id:input.postId,authorId:userId,title:input.title??'',body:input.body??'',topic:input.topic??'general_dentistry'});if(input.action==='delete')return softDeleteCommunityPost(input.postId,userId);if(input.action==='share')return recordCommunityPostShare(input.postId);if(input.action==='not_interested')return setCommunityPostNotInterested(input.postId,userId);return recordCommunityPostView(input.postId,input.watchSeconds,input.progress)},onSuccess:()=>client.invalidateQueries({queryKey:['community-posts']})})}
+export function useCommunityPostActions(userId?:string){const client=useQueryClient();return useMutation({mutationFn:async(input:{action:'edit'|'delete'|'share'|'view';postId:string;title?:string;body?:string;topic?:import('@/features/community/types').CommunityPostTopic;watchSeconds?:number;progress?:number})=>{if(!userId)throw new Error('Sign in to manage posts.');if(input.action==='edit')return updateCommunityPost({id:input.postId,authorId:userId,title:input.title??'',body:input.body??'',topic:input.topic??'general_dentistry'});if(input.action==='delete')return softDeleteCommunityPost(input.postId,userId);if(input.action==='share')return recordCommunityPostShare(input.postId);return recordCommunityPostView(input.postId,input.watchSeconds,input.progress)},onSuccess:()=>client.invalidateQueries({queryKey:['community-posts']})})}
 
 export function useCommunityComments(postId: string, userId: string | undefined, enabled: boolean, page = 0, search = '') {
   const client = useQueryClient()
@@ -148,7 +148,20 @@ export function useCommunityCommentLike(postId: string, userId?: string) {
       if (!userId) throw new Error('Sign in to like comments.')
       return setCommunityCommentLike(commentId, userId, active)
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['community-comments', postId] }),
+    onMutate: async ({ commentId, active }) => {
+      await queryClient.cancelQueries({ queryKey: ['community-comments', postId] })
+      const previous = queryClient.getQueriesData<CommunityComment[]>({ queryKey: ['community-comments', postId] })
+      queryClient.setQueriesData<CommunityComment[]>({ queryKey: ['community-comments', postId] }, (comments) => comments?.map((comment) => comment.id === commentId ? {
+        ...comment,
+        viewer_has_liked: active,
+        like_count: Math.max(0, comment.like_count + (active ? 1 : -1)),
+      } : comment))
+      return { previous }
+    },
+    onError: (_error, _input, context) => {
+      for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['community-comments', postId] }),
   })
 }
 

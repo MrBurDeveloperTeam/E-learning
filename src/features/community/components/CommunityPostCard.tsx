@@ -8,7 +8,6 @@ import {
   Repeat2,
   Share2,
   Trash2,
-  EyeOff,
   Pencil,
   Pin,
 } from "lucide-react";
@@ -255,23 +254,6 @@ export function CommunityPostCard({
           >
             <Share2 />
           </Button>
-          {userId && userId !== post.author_id && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Not interested"
-              disabled={actions.isPending}
-              onClick={() =>
-                void actions
-                  .mutateAsync({ action: "not_interested", postId: post.id })
-                  .then(() =>
-                    toast.success("We will show fewer posts like this."),
-                  )
-              }
-            >
-              <EyeOff />
-            </Button>
-          )}
           {userId === post.author_id && (
             <>
               <Button

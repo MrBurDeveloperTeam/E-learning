@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Award,
   Check,
@@ -13,7 +13,6 @@ import {
   Search,
   ShieldAlert,
   Trash2,
-  UserX,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +39,6 @@ import {
   useCommunityCommentLike,
   useCommunityComments,
   useCommunityMentionUsers,
-  useCommunityUserBlock,
   useCreateCommunityComment,
   useDeleteCommunityComment,
   useUpdateCommunityComment,
@@ -86,11 +84,11 @@ export function CommunityComments({
     deleteMutation = useDeleteCommunityComment(postId, userId);
   const likeMutation = useCommunityCommentLike(postId, userId),
     featureMutation = useCommunityCommentFeature(postId),
-    blockMutation = useCommunityUserBlock(postId, userId),
     safetyMutation = useCheckCommunityCommentSafety();
   const [body, setBody] = useState(""),
     [files, setFiles] = useState<File[]>([]),
     [replying, setReplying] = useState<CommunityComment | null>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const [editing, setEditing] = useState<CommunityComment | null>(null),
     [editBody, setEditBody] = useState(""),
     [pendingDelete, setPendingDelete] = useState<CommunityComment | null>(null);
@@ -376,10 +374,8 @@ export function CommunityComments({
                 aria-pressed={comment.viewer_has_liked}
                 disabled={!userId || likeMutation.isPending}
                 onClick={() =>
-                  void likeMutation.mutateAsync({
-                    commentId: comment.id,
-                    active: !comment.viewer_has_liked,
-                  })
+                  void likeMutation.mutateAsync({ commentId: comment.id, active: !comment.viewer_has_liked })
+                    .catch((error) => toast.error(error instanceof Error ? error.message : "Could not update this like."))
                 }
               >
                 <Heart
@@ -398,6 +394,10 @@ export function CommunityComments({
                     setBody(
                       `@${comment.profiles?.username ?? ""} `.trimStart(),
                     );
+                    window.setTimeout(() => {
+                      replyInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      replyInputRef.current?.focus();
+                    }, 0);
                   }}
                 >
                   <Reply />
@@ -459,36 +459,11 @@ export function CommunityComments({
               </>
             )}
             {userId && !isOwner && (
-              <>
-                <CommunityReportDialog
-                  userId={userId}
-                  commentId={comment.id}
-                  targetName="comment"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Block ${name}`}
-                  disabled={blockMutation.isPending}
-                  onClick={() =>
-                    void blockMutation
-                      .mutateAsync({
-                        blockedUserId: comment.author_id,
-                        active: true,
-                      })
-                      .then(() => toast.success(`${name} blocked.`))
-                      .catch((error) =>
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Could not block user.",
-                        ),
-                      )
-                  }
-                >
-                  <UserX />
-                </Button>
-              </>
+              <CommunityReportDialog
+                userId={userId}
+                commentId={comment.id}
+                targetName="comment"
+              />
             )}
           </div>
         </article>
@@ -529,6 +504,7 @@ export function CommunityComments({
             </div>
           )}
           <Textarea
+            ref={replyInputRef}
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
