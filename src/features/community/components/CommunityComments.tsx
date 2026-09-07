@@ -88,7 +88,7 @@ export function CommunityComments({
   const [body, setBody] = useState(""),
     [files, setFiles] = useState<File[]>([]),
     [replying, setReplying] = useState<CommunityComment | null>(null);
-  const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const replyComposerRef = useRef<HTMLFormElement>(null);
   const [editing, setEditing] = useState<CommunityComment | null>(null),
     [editBody, setEditBody] = useState(""),
     [pendingDelete, setPendingDelete] = useState<CommunityComment | null>(null);
@@ -395,8 +395,8 @@ export function CommunityComments({
                       `@${comment.profiles?.username ?? ""} `.trimStart(),
                     );
                     window.setTimeout(() => {
-                      replyInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      replyInputRef.current?.focus();
+                      replyComposerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      replyComposerRef.current?.querySelector("textarea")?.focus();
                     }, 0);
                   }}
                 >
@@ -479,8 +479,9 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {expanded && (userId ? (
+      {(expanded || replying) && (userId ? (
         <form
+          ref={replyComposerRef}
           noValidate
           className="space-y-2"
           onSubmit={(e) => {
@@ -504,7 +505,6 @@ export function CommunityComments({
             </div>
           )}
           <Textarea
-            ref={replyInputRef}
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
