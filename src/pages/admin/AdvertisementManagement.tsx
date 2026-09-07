@@ -266,6 +266,8 @@ export function AdvertisementManagement() {
   const [filter, setFilter] = useState<ListFilter>('all')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [frequencyVideos, setFrequencyVideos] = useState('3')
+  const [savingFrequency, setSavingFrequency] = useState(false)
   const [loadError, setLoadError] = useState('')
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -289,6 +291,13 @@ export function AdvertisementManagement() {
   }
 
   useEffect(() => { void loadAdvertisements() }, [])
+  useEffect(() => {
+    supabase.from('video_advertisement_settings').select('frequency_videos').eq('id', true).single()
+      .then(({ data, error }) => {
+        if (error) { setLoadError(error.message); return }
+        setFrequencyVideos(String(data.frequency_videos || 3))
+      })
+  }, [])
   useEffect(() => () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }, [objectUrl])
 
   const statsByAd = useMemo(() => {
@@ -456,6 +465,29 @@ export function AdvertisementManagement() {
     toast.success(`Advertisement ${status}`)
   }
 
+  async function saveAdvertisementFrequency() {
+    if (!user || savingFrequency) return
+    const frequency = Number(frequencyVideos)
+    if (!Number.isInteger(frequency) || frequency < 1 || frequency > 100) {
+      toast.error('Enter a whole number from 1 to 100.')
+      return
+    }
+
+    setSavingFrequency(true)
+    try {
+      const { error } = await supabase
+        .from('video_advertisement_settings')
+        .update({ frequency_videos: frequency, updated_by: user.id, updated_at: new Date().toISOString() })
+        .eq('id', true)
+      if (error) throw error
+      toast.success(`Advertisements will now appear every ${frequency} videos.`)
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Advertisement frequency could not be saved.'))
+    } finally {
+      setSavingFrequency(false)
+    }
+  }
+
   async function hideAdvertisement() {
     if (!user || !hideTarget || hideTarget.status === 'hidden' || hiding) return
     setHiding(true)
@@ -483,7 +515,7 @@ export function AdvertisementManagement() {
   return (
     <AdminLayout
       title="Advertisement management"
-      subtitle="Create responsive interstitial ads matched to a video's category, language, and type. Ads are eligible to appear after every three video views."
+      subtitle="Create responsive interstitial ads matched to a video's category, language, and type. Delivery frequency is controlled once for all active advertisements."
       actions={<Button size="lg" className="h-11 rounded-xl px-4" onClick={() => { resetForm(); formRef.current?.scrollIntoView({ behavior: 'smooth' }) }}><Plus />New advertisement</Button>}
       heroAside={<div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/15 text-primary"><Sparkles className="h-5 w-5" /></div><div><p className="text-sm font-semibold text-foreground">Safe 16:9 delivery</p><p className="text-xs text-muted-foreground">Responsive on desktop and mobile</p></div></div>}
     >
@@ -493,6 +525,20 @@ export function AdvertisementManagement() {
         <AdminStatCard label="Impressions" value={formatNumber(totalImpressions)} icon={Eye} accent="default" hint="Recorded ad displays" />
         <AdminStatCard label="Clicks" value={formatNumber(totalClicks)} icon={MousePointerClick} accent="warning" hint={`${totalImpressions ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00'}% click-through rate`} />
       </div>
+
+      <AdminSectionCard title="Advertisement frequency" description="Set one delivery interval for every active advertisement. Changes apply across the E-Learning video experience.">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="w-full max-w-sm space-y-2">
+            <label htmlFor="advertisement-frequency" className={labelClass}>Show advertisements after how many videos</label>
+            <Input id="advertisement-frequency" type="number" min="1" max="100" value={frequencyVideos} onChange={(event) => setFrequencyVideos(event.target.value)} className={fieldClass} />
+            <p className="text-xs text-muted-foreground">For example, 5 displays one matched advertisement after every five learning videos.</p>
+          </div>
+          <Button type="button" size="lg" className="h-11 rounded-xl px-5" disabled={savingFrequency} onClick={() => void saveAdvertisementFrequency()}>
+            {savingFrequency ? <RefreshCw className="animate-spin" /> : <Clock3 />}
+            {savingFrequency ? 'Saving…' : 'Save frequency'}
+          </Button>
+        </div>
+      </AdminSectionCard>
 
       <div ref={formRef} className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <AdminSectionCard title={editingAd ? 'Edit advertisement' : 'Create advertisement'} description="Fields marked with * are required. All targeting values make the ad eligible for every matching video.">
@@ -528,8 +574,8 @@ export function AdvertisementManagement() {
                 <FormField label="Video type"><Select value={form.videoType} onValueChange={(value) => updateForm('videoType', value ?? 'all')}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All video types</SelectItem><SelectItem value="video">Video</SelectItem><SelectItem value="short_video">Short video</SelectItem></SelectContent></Select></FormField>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <FormField label="Priority (higher wins)" error={errors.priority}><Input data-field="priority" type="number" min="0" max="1000" value={form.priority} onChange={(e) => updateForm('priority', e.target.value)} className={fieldClass} /></FormField>
-                <FormField label="Weight" error={errors.weight}><Input data-field="weight" type="number" min="1" max="1000" value={form.weight} onChange={(e) => updateForm('weight', e.target.value)} className={fieldClass} /></FormField>
+                <FormField label="Priority (higher wins)" error={errors.priority}><Input data-field="priority" type="number" min="0" max="1000" value={form.priority} onChange={(e) => updateForm('priority', e.target.value)} className={fieldClass} /><p className="text-xs leading-relaxed text-muted-foreground">Matching advertisements with a higher priority are considered first. Lower-priority ads are used only when no higher-priority ad is eligible.</p></FormField>
+                <FormField label="Weight" error={errors.weight}><Input data-field="weight" type="number" min="1" max="1000" value={form.weight} onChange={(e) => updateForm('weight', e.target.value)} className={fieldClass} /><p className="text-xs leading-relaxed text-muted-foreground">Controls how often this ad is selected among eligible ads with the same priority. A higher weight gives it a larger share of appearances.</p></FormField>
                 <FormField label="Allow skip after (seconds)" error={errors.skipAfter}><Input data-field="skipAfter" type="number" min="0" max="300" value={form.skipAfter} onChange={(e) => updateForm('skipAfter', e.target.value)} className={fieldClass} /><p className="text-xs text-muted-foreground">{form.mediaType === 'video' ? detectedVideoDuration ? `Video duration detected: ${detectedVideoDuration} seconds.` : 'Video duration will be detected automatically.' : 'The image remains visible until the viewer can skip it.'}</p></FormField>
               </div>
             </div>

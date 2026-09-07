@@ -134,6 +134,9 @@ export async function onRequestGet(context: {
     const url = new URL(context.request.url);
     const idParam = url.searchParams.get("id");
     const adjacentToParam = url.searchParams.get("adjacentTo");
+    const excludedVideoIds = (url.searchParams.get("excludeIds") || "")
+      .split(",")
+      .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
 
     // -----------------------------------------------------------------------
     // Adjacent public videos in the default newest-first library order
@@ -141,7 +144,7 @@ export async function onRequestGet(context: {
     if (adjacentToParam) {
       const { data: current, error: currentError } = await supabase
         .from("dental_videos")
-        .select("id,published_at")
+        .select("id,video_type")
         .eq("id", adjacentToParam)
         .eq("needs_review", false)
         .maybeSingle();
@@ -155,99 +158,61 @@ export async function onRequestGet(context: {
         return jsonResponse({ error: "Video not found" }, 404);
       }
 
-      const selectAdjacent = "id,title,published_at";
-      const [sameDateResult, newerResult, olderResult] = await Promise.all([
-        supabase
-          .from("dental_videos")
-          .select(selectAdjacent)
+      const applyQueueFilters = (query: any) => {
+        let filtered = query
           .eq("needs_review", false)
-          .eq("published_at", current.published_at)
-          .order("id", { ascending: false }),
-        supabase
-          .from("dental_videos")
-          .select(selectAdjacent)
-          .eq("needs_review", false)
-          .gt("published_at", current.published_at)
-          .order("published_at", { ascending: true })
-          .order("id", { ascending: true })
-          .limit(1),
-        supabase
-          .from("dental_videos")
-          .select(selectAdjacent)
-          .eq("needs_review", false)
-          .lt("published_at", current.published_at)
-          .order("published_at", { ascending: false })
-          .order("id", { ascending: false })
-          .limit(1),
-      ]);
+          .neq("id", current.id);
+        if (current.video_type === "video" || current.video_type === "short_video") {
+          filtered = filtered.eq("video_type", current.video_type);
+        }
+        if (excludedVideoIds.length > 0) {
+          filtered = filtered.not("id", "in", `(${excludedVideoIds.join(",")})`);
+        }
+        return filtered;
+      };
 
-      const adjacentError =
-        sameDateResult.error || newerResult.error || olderResult.error;
-      if (adjacentError) {
-        console.error("dental-videos adjacent query error:", adjacentError);
+      const countResult = await applyQueueFilters(
+        supabase.from("dental_videos").select("id", { count: "exact", head: true })
+      );
+      if (countResult.error) {
+        console.error("dental-videos random queue count error:", countResult.error);
         return jsonResponse({ error: "Database error" }, 500);
       }
 
-      const sameDate = sameDateResult.data || [];
-      const currentIndex = sameDate.findIndex((item) => item.id === current.id);
-      const previous =
-        (currentIndex > 0 ? sameDate[currentIndex - 1] : newerResult.data?.[0]) ||
-        null;
-      const next =
-        (currentIndex >= 0 && currentIndex < sameDate.length - 1
-          ? sameDate[currentIndex + 1]
-          : olderResult.data?.[0]) || null;
-
-      // Choose a stable featured-partner video for this transition. Alternating
-      // the preferred channel keeps exposure balanced without storing user data.
-      const sponsorSeed = Array.from(current.id).reduce(
-        (total, character) => total + character.charCodeAt(0),
-        0
-      );
-      const excludedIds = [current.id, next?.id].filter(Boolean);
-      let sponsorQuery = supabase
-        .from("dental_videos")
-        .select("id,video_id,title,channel_name")
-        .eq("needs_review", false)
-        .or(
-          "channel_name.ilike.%Mr Bur%,channel_name.ilike.%MR.BUR%,channel_name.ilike.%Kaneiko%"
-        )
-        .order("published_at", { ascending: false })
-        .limit(60);
-
-      if (excludedIds.length > 0) {
-        sponsorQuery = sponsorQuery.not(
-          "id",
-          "in",
-          `(${excludedIds.join(",")})`
-        );
+      const candidateCount = countResult.count || 0;
+      if (candidateCount === 0) {
+        return jsonResponse({ previous: null, next: null });
       }
 
-      const { data: sponsorCandidates, error: sponsorError } = await sponsorQuery;
-      if (sponsorError) {
-        console.error("dental-videos sponsor query error:", sponsorError);
+      const previousOffset = Math.floor(Math.random() * candidateCount);
+      let nextOffset = Math.floor(Math.random() * candidateCount);
+      if (candidateCount > 1 && nextOffset === previousOffset) {
+        nextOffset = (nextOffset + 1 + Math.floor(Math.random() * (candidateCount - 1))) % candidateCount;
       }
 
-      const preferredChannel = sponsorSeed % 2 === 0 ? "mr bur" : "kaneiko";
-      const preferredCandidates = (sponsorCandidates || []).filter((item) =>
-        item.channel_name?.toLowerCase().replace(".", " ").includes(preferredChannel)
+      const fetchAtOffset = (offset: number) => applyQueueFilters(
+        supabase
+          .from("dental_videos")
+          .select("id,title")
+          .order("id", { ascending: true })
+          .range(offset, offset)
       );
-      const sponsorPool =
-        preferredCandidates.length > 0
-          ? preferredCandidates
-          : sponsorCandidates || [];
-      const sponsor =
-        sponsorPool.length > 0
-          ? sponsorPool[sponsorSeed % sponsorPool.length]
-          : null;
+      const [previousResult, nextResult] = await Promise.all([
+        fetchAtOffset(previousOffset),
+        fetchAtOffset(nextOffset),
+      ]);
+      const randomQueueError = previousResult.error || nextResult.error;
+      if (randomQueueError) {
+        console.error("dental-videos random queue error:", randomQueueError);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
 
-      const compact = (item: any) =>
-        item ? { id: item.id, title: item.title } : null;
+      const previous = previousResult.data?.[0] || null;
+      const next = nextResult.data?.[0] || null;
 
       return jsonResponse({
-        previous: compact(previous),
-        next: compact(next),
-        sponsor,
+        previous,
+        next,
       });
     }
 
