@@ -237,6 +237,9 @@ export function DentalVideoDetail() {
             mute: 1,
             playsinline: 1,
             rel: 0,
+            controls: playbackMode === 'sponsor' ? 0 : 1,
+            disablekb: playbackMode === 'sponsor' ? 1 : 0,
+            fs: playbackMode === 'sponsor' ? 0 : 1,
           },
           events: {
             onReady: ({ target }) => {
@@ -370,9 +373,15 @@ export function DentalVideoDetail() {
               />
 
               {playbackMode === 'sponsor' && adjacent.sponsor ? (
-                <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                  Featured partner · {adjacent.sponsor.channel_name}
-                </div>
+                <>
+                  <div
+                    className="absolute inset-0 z-[9] cursor-default"
+                    aria-hidden="true"
+                  />
+                  <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                    Featured partner · {adjacent.sponsor.channel_name}
+                  </div>
+                </>
               ) : null}
 
               {playbackMode === 'content' && adjacent.previous ? (
