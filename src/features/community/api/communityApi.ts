@@ -293,16 +293,26 @@ export async function fetchCommunityPost(postId:string,userId?:string){
 export const COMMENT_PAGE_SIZE = 6
 
 export async function fetchCommunityComments(postId: string, userId?: string, page = 0, search = '') {
-  let request = supabase
-    .from(COMMUNITY_TABLES.comments)
-    .select('id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,is_pinned,is_best_answer,created_at,updated_at')
-    .eq('post_id', postId)
-    .neq('moderation_status', 'removed')
-    .order('created_at', { ascending: false })
-    .limit(200)
-  if (search.trim()) request = request.ilike('content', `%${search.trim().replaceAll('%', '\\%').replaceAll('_', '\\_')}%`)
-  const { data, error } = await request
-  if (error) throw error
+  const runCommentQuery = (includeCuration: boolean) => {
+    let request = supabase
+      .from(COMMUNITY_TABLES.comments)
+      .select(includeCuration
+        ? 'id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,is_pinned,is_best_answer,created_at,updated_at'
+        : 'id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,created_at,updated_at')
+      .eq('post_id', postId)
+      .neq('moderation_status', 'removed')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (search.trim()) request = request.ilike('content', `%${search.trim().replaceAll('%', '\\%').replaceAll('_', '\\_')}%`)
+    return request
+  }
+
+  let result = await runCommentQuery(true)
+  if (result.error && (result.error.code === '42703' || result.error.code === 'PGRST204')) {
+    result = await runCommentQuery(false)
+  }
+  if (result.error) throw result.error
+  const data = result.data as unknown as DbCommunityComment[] | null
 
   let hiddenCommentIds = new Set<string>()
   if (userId) {
@@ -316,7 +326,7 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
 
   let comments = (data ?? [])
     .filter((row) => !hiddenCommentIds.has(row.id))
-    .map((row) => mapCommunityComment(row as DbCommunityComment))
+    .map((row) => mapCommunityComment(row))
 
   let priorityAuthors=new Set<string>()
   if(userId){

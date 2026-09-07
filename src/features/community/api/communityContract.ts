@@ -96,8 +96,8 @@ export type DbCommunityComment = {
   content: string
   moderation_status: 'visible' | 'auto_hidden' | 'admin_hidden' | 'removed'
   moderation_reason: string | null
-  is_pinned: boolean
-  is_best_answer: boolean
+  is_pinned?: boolean | null
+  is_best_answer?: boolean | null
   created_at: string
   updated_at: string
   profiles?: CommunityComment['profiles']
@@ -205,8 +205,8 @@ export function mapCommunityComment(row: DbCommunityComment): CommunityComment {
     like_count: 0,
     risk_score: 0,
     moderation_source: row.moderation_reason ? 'admin' : null,
-    is_pinned: row.is_pinned,
-    is_best_answer: row.is_best_answer,
+    is_pinned: row.is_pinned ?? false,
+    is_best_answer: row.is_best_answer ?? false,
     deleted_at: row.moderation_status === 'removed' ? row.updated_at : null,
     viewer_has_liked: false,
     profiles: row.profiles ?? null,
