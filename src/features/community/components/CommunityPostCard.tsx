@@ -66,7 +66,7 @@ export function CommunityPostCard({
   const interaction = useCommunityPostInteraction(userId);
   const actions = useCommunityPostActions(userId);
   const authorName =
-    post.profiles?.full_name || post.profiles?.name || "Community member";
+    post.profiles?.full_name || post.profiles?.name || post.profiles?.username || "Community member";
 
   async function toggle(
     table:

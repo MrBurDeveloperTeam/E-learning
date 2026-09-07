@@ -171,7 +171,12 @@ async function hydrateCommunityPosts(posts: CommunityPost[], userId?: string) {
   const reposted = new Set((reposts.data ?? []).filter((row) => row.user_id === userId).map((row) => row.post_id))
   const bookmarked = new Set((bookmarks.data ?? []).filter((row) => row.user_id === userId).map((row) => row.post_id))
 
-  const verifiedProfiles = await addCommunityVerification(posts.flatMap((post) => post.profiles ? [post.profiles] : []))
+  const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))]
+  const publicProfiles = authorIds.length
+    ? await supabase.from('public_profiles').select('user_id,full_name,name,username,avatar_url,is_verified').in('user_id', authorIds)
+    : { data: [], error: null }
+  if (publicProfiles.error) throw publicProfiles.error
+  const verifiedProfiles = await addCommunityVerification(publicProfiles.data ?? [])
   const profiles = new Map(verifiedProfiles.map((profile) => [profile.user_id, profile]))
 
   const mediaByPost = new Map<string, CommunityPost['media']>()
@@ -204,7 +209,7 @@ async function hydrateCommunityPosts(posts: CommunityPost[], userId?: string) {
     post.viewer_has_reposted = reposted.has(post.id)
     post.viewer_has_bookmarked = bookmarked.has(post.id)
     post.media = mediaByPost.get(post.id) ?? []
-    if (post.profiles) post.profiles = profiles.get(post.profiles.user_id) ?? post.profiles
+    post.profiles = profiles.get(post.author_id) ?? post.profiles
   }
 }
 

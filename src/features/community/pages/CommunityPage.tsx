@@ -1,20 +1,19 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Check, CircleUserRound, Compass, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, UserPlus, UserRoundCheck, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { CircleUserRound, Compass, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, UserRoundCheck, X } from 'lucide-react'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
-import { UserAvatar } from '@/components/shared/UserAvatar'
-import { useCommunityPeopleSearch, useCommunityPosts, useCommunityPreferences, useFollowCommunityPerson } from '@/features/community/hooks/useCommunity'
+import { useCommunityPosts, useCommunityPreferences } from '@/features/community/hooks/useCommunity'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FindPeopleDialog } from '@/features/community/components/FindPeopleDialog'
 
 const CreateCommunityPostDialog = lazy(() => import('@/features/community/components/CreateCommunityPostDialog').then(module => ({ default: module.CreateCommunityPostDialog })))
 const CommunityDirectory = lazy(() => import('@/features/community/components/CommunityDirectory').then(module => ({ default: module.CommunityDirectory })))
@@ -42,14 +41,11 @@ export function CommunityPage() {
   const activeTab = search.tab === 'following' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'chat' || search.tab === 'me' || search.tab === 'settings' ? (search.tab === 'settings' ? 'me' : search.tab) : 'home'
   const feedMode = activeTab === 'communities' || activeTab === 'chat' || activeTab === 'me' ? 'home' : activeTab
   const [postSearch,setPostSearch]=useState(search.q??'')
-  const [peopleSearch,setPeopleSearch]=useState('')
   const topic=search.topic??'all',sort=search.sort??'relevant'
   useEffect(()=>{setPostSearch(search.q??'')},[search.q])
   useEffect(()=>{if(postSearch===(search.q??''))return;const timer=window.setTimeout(()=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:postSearch.trim(),topic,sort},replace:true}),300);return()=>window.clearTimeout(timer)},[activeTab,navigate,postSearch,search.q,sort,topic])
   const postsQuery = useCommunityPosts(user?.id, feedMode, search.q??'',topic,sort)
   const preferences=useCommunityPreferences(user?.id??'')
-  const peopleSearchQuery=useCommunityPeopleSearch(user?.id??'',peopleSearch)
-  const followMutation=useFollowCommunityPerson(user?.id??'')
   const posts = postsQuery.data?.pages.flat() ?? []
   const isAdmin = isAdminProfile(profile)
   useEffect(()=>{if(activeTab!=='chat')return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[activeTab])
@@ -119,20 +115,10 @@ export function CommunityPage() {
                   : 'Clinical conversations, ranked by community engagement.'}
               </p>
             </div>
-            {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'chat' && activeTab !== 'me' && <div className="hidden sm:block"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
+            {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'chat' && activeTab !== 'me' && <div className="hidden items-center gap-2 sm:flex">{activeTab === 'home' && <FindPeopleDialog userId={user.id} />}<Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
           </div>
 
-          {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'chat' && activeTab !== 'me' && <div className="mt-5 sm:hidden"><Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
-          {activeTab === 'following' && user && <section className="mt-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
-            <label htmlFor="following-people-search" className="text-sm font-semibold">Find people to follow</label>
-            <p className="mt-1 text-xs text-muted-foreground">Search existing members by their name or username.</p>
-            <div className="relative mt-3"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input id="following-people-search" value={peopleSearch} onChange={(event)=>setPeopleSearch(event.target.value)} placeholder="Search members…" className="pl-9"/></div>
-            {peopleSearch.trim().length === 1 && <p className="mt-3 text-xs text-muted-foreground">Enter at least 2 characters.</p>}
-            {peopleSearchQuery.isLoading && <div className="flex min-h-20 items-center justify-center"><LoadingSpinner /></div>}
-            {peopleSearchQuery.isError && <div className="mt-3"><RetryCard onRetry={()=>void peopleSearchQuery.refetch()}/></div>}
-            {peopleSearch.trim().length >= 2 && !peopleSearchQuery.isLoading && !peopleSearchQuery.isError && peopleSearchQuery.data?.length === 0 && <p className="mt-4 text-sm text-muted-foreground">No matching members found.</p>}
-            {peopleSearchQuery.data && peopleSearchQuery.data.length > 0 && <div className="mt-3 divide-y divide-border">{peopleSearchQuery.data.map((person)=>{const name=person.full_name||person.name||'Community member';return <div key={person.user_id} className="flex flex-wrap items-center gap-3 py-3"><Link to="/profile/$userId" params={{userId:person.user_id}} aria-label={`View ${name}'s profile`} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"><UserAvatar name={name} avatarUrl={person.avatar_url} size={42}/><div className="min-w-0 flex-1 py-1"><p className="truncate text-sm font-semibold hover:text-primary">{name}</p>{person.username&&<p className="truncate text-xs text-muted-foreground">@{person.username}</p>}</div></Link><div className="ml-auto flex shrink-0 items-center gap-2"><Button size="sm" variant="ghost" render={<Link to="/profile/$userId" params={{userId:person.user_id}}/>}>View profile</Button><Button size="sm" variant={person.viewer_is_following?'outline':'default'} disabled={person.viewer_is_following||followMutation.isPending} onClick={()=>void followMutation.mutateAsync(person.user_id).then(()=>toast.success('Following.')).catch((error)=>toast.error(error instanceof Error?error.message:'Could not follow this member.'))}>{person.viewer_is_following?<><Check className="size-4"/>Following</>:<><UserPlus className="size-4"/>Follow</>}</Button></div></div>})}</div>}
-          </section>}
+          {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'chat' && activeTab !== 'me' && <div className="mt-5 flex gap-2 sm:hidden">{activeTab === 'home' && <FindPeopleDialog userId={user.id} />}<Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
 
           {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'me' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
 

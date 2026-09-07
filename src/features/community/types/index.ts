@@ -27,7 +27,7 @@ export interface CommunityPost {
   is_pinned: boolean
   published_at: string | null
   created_at: string
-  profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'avatar_url' | 'is_verified'> | null
+  profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'username' | 'avatar_url' | 'is_verified'> | null
   communities: { name: string; slug: string } | null
   viewer_has_liked: boolean
   viewer_has_reposted: boolean
