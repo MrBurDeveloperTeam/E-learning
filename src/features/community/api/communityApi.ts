@@ -295,7 +295,7 @@ export const COMMENT_PAGE_SIZE = 6
 export async function fetchCommunityComments(postId: string, userId?: string, page = 0, search = '') {
   let request = supabase
     .from(COMMUNITY_TABLES.comments)
-    .select('id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,created_at,updated_at')
+    .select('id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,is_pinned,is_best_answer,created_at,updated_at')
     .eq('post_id', postId)
     .neq('moderation_status', 'removed')
     .order('created_at', { ascending: false })
@@ -386,15 +386,20 @@ export async function updateCommunityComment(commentId: string, authorId: string
 }
 
 export async function deleteCommunityComment(commentId: string, authorId: string) {
-  const{error}=await supabase.from(COMMUNITY_TABLES.comments).update({moderation_status:'removed',edited_at:new Date().toISOString()}).eq('id',commentId).eq('author_id',authorId)
-  if(error)throw error
+  void authorId
+  const { error } = await supabase.rpc('community_delete_own_comment', {
+    p_comment_id: commentId,
+  })
+  if (error) throw error
 }
 
 export async function setCommunityCommentFeature(commentId: string, feature: 'pinned' | 'best_answer', enabled: boolean) {
-  void commentId
-  void feature
-  void enabled
-  throw new CommunityBackendUnavailableError('Community comment curation')
+  const { error } = await supabase.rpc('community_set_comment_feature', {
+    p_comment_id: commentId,
+    p_feature: feature,
+    p_enabled: enabled,
+  })
+  if (error) throw error
 }
 
 export async function setCommunityUserBlock(blockedUserId: string, userId: string, active: boolean) {

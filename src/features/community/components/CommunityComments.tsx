@@ -262,7 +262,7 @@ export function CommunityComments({
     return (
       <div
         key={comment.id}
-        className={depth ? "ml-5 border-l border-border pl-4 sm:ml-10" : ""}
+        className={depth === 1 ? "ml-5 border-l border-border pl-4 sm:ml-10" : ""}
       >
         <article className="flex gap-3 rounded-xl bg-muted/45 p-4">
           <UserAvatar
