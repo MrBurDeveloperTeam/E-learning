@@ -27,6 +27,7 @@ export function DirectMessages({ userId }: { userId: string }) {
   const [body, setBody] = useState('')
   const [peopleSearch,setPeopleSearch]=useState('')
   const [editingMessage,setEditingMessage]=useState<DirectMessage|null>(null),[editBody,setEditBody]=useState('')
+  const [withdrawingMessage,setWithdrawingMessage]=useState<DirectMessage|null>(null)
   const [sendError,setSendError]=useState('')
   const [failedNonce,setFailedNonce]=useState<string|null>(null)
   const [online,setOnline]=useState(()=>navigator.onLine)
@@ -85,6 +86,17 @@ export function DirectMessages({ userId }: { userId: string }) {
     }
   }
 
+  async function withdrawMessage() {
+    if (!withdrawingMessage) return
+    try {
+      await messageActions.mutateAsync({ id: withdrawingMessage.id, action: 'delete' })
+      setWithdrawingMessage(null)
+      toast.success('Message withdrawn.')
+    } catch (error) {
+      toast.error(getMessageError(error))
+    }
+  }
+
   if (conversations.isLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
   return (
     <div className="mt-4 grid h-[calc(100%-1rem)] min-h-0 overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
@@ -124,7 +136,7 @@ export function DirectMessages({ userId }: { userId: string }) {
           {!selected?<EmptyState icon={<MessageCircleMore/>} title="Start a conversation" description="Send your first message to begin this conversation."/>:messages.isLoading ? <div className="flex h-full items-center justify-center"><LoadingSpinner /></div> : messages.data?.map((message) => (
             <div key={message.id} className={cn('flex', message.sender_id === userId ? 'justify-end' : 'justify-start')}>
               <div className={cn('group max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-6', message.sender_id === userId ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary text-secondary-foreground')}>
-                {message.body}{message.edited_at&&<span className="ml-2 text-[10px] opacity-70">edited</span>}{message.sender_id===userId&&<span className="ml-2 inline-flex gap-1"><button type="button" aria-label="Edit message" onClick={()=>{setEditingMessage(message);setEditBody(message.body)}}><Pencil className="size-3"/></button><button type="button" aria-label="Delete message" onClick={()=>void messageActions.mutateAsync({id:message.id,action:'delete'})}><Trash2 className="size-3"/></button></span>}
+                {message.body}{message.edited_at&&<span className="ml-2 text-[10px] opacity-70">edited</span>}{message.sender_id===userId&&<span className="ml-2 inline-flex gap-1"><button type="button" aria-label="Edit message" onClick={()=>{setEditingMessage(message);setEditBody(message.body)}}><Pencil className="size-3"/></button><button type="button" aria-label="Withdraw message" disabled={messageActions.isPending} onClick={()=>setWithdrawingMessage(message)}><Trash2 className="size-3"/></button></span>}
               </div>
             </div>
           ))}
@@ -140,6 +152,16 @@ export function DirectMessages({ userId }: { userId: string }) {
         </form>
       </section>:<section className="flex min-h-0 items-center justify-center overflow-hidden"><EmptyState icon={<MessageCircleMore/>} title="Choose someone to chat with" description="Select a conversation or find a member from the list to start chatting."/></section>}
       <Dialog open={Boolean(editingMessage)} onOpenChange={open=>{if(!open)setEditingMessage(null)}}><DialogContent><DialogHeader><DialogTitle>Edit message</DialogTitle></DialogHeader><Textarea value={editBody} maxLength={5000} className="min-h-28 resize-none" onChange={event=>setEditBody(event.target.value)}/><div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditingMessage(null)}>Cancel</Button><Button disabled={!editBody.trim()||messageActions.isPending} onClick={()=>editingMessage&&void messageActions.mutateAsync({id:editingMessage.id,action:'edit',body:editBody}).then(()=>setEditingMessage(null))}>Save changes</Button></div></DialogContent></Dialog>
+      <Dialog open={Boolean(withdrawingMessage)} onOpenChange={open=>{if(!open&&!messageActions.isPending)setWithdrawingMessage(null)}}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Withdraw message?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">This message will be removed from the conversation for everyone.</p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" disabled={messageActions.isPending} onClick={()=>setWithdrawingMessage(null)}>Cancel</Button>
+            <Button type="button" variant="destructive" disabled={messageActions.isPending} onClick={()=>void withdrawMessage()}>{messageActions.isPending?<><Loader2 className="animate-spin"/>Withdrawing…</>:'Withdraw'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

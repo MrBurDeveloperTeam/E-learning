@@ -180,20 +180,46 @@ export function useCommunityOwnerActions(communityId:string){const client=useQue
 export function useRequestPrivateCommunityJoin(){return useMutation({mutationFn:({slug,message}:{slug:string;message:string})=>requestPrivateCommunityJoin(slug,message)})}
 
 export function useDirectConversations(userId?: string) {
-  const client=useQueryClient();useEffect(()=>{if(!userId)return;const channel=supabase.channel(`community-conversation-list:${userId}`).on('postgres_changes',{event:'*',schema:'public',table:'community_messages'},()=>void client.invalidateQueries({queryKey:['community-direct-conversations',userId]})).subscribe();return()=>{void supabase.removeChannel(channel)}},[client,userId])
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!userId) return
+    const refresh = () => void client.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
+    const channel = supabase
+      .channel(`community-conversation-list:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_conversation_participants', filter: `user_id=eq.${userId}` }, refresh)
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [client, userId])
   return useQuery({
     queryKey: ['community-direct-conversations', userId],
     queryFn: () => fetchDirectConversations(userId!),
     enabled: Boolean(userId),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   })
 }
 
 export function useDirectMessages(conversationId?: string) {
-  const client=useQueryClient();useEffect(()=>{if(!conversationId)return;void markConversationRead(conversationId);const channel=supabase.channel(`community-messages:${conversationId}`).on('postgres_changes',{event:'*',schema:'public',table:'community_messages',filter:`conversation_id=eq.${conversationId}`},()=>void client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})).subscribe();return()=>{void supabase.removeChannel(channel)}},[client,conversationId])
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!conversationId) return
+    void markConversationRead(conversationId)
+    const refresh = () => {
+      void client.invalidateQueries({ queryKey: ['community-direct-messages', conversationId] })
+    }
+    const channel = supabase
+      .channel(`community-messages:${conversationId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, refresh)
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [client, conversationId])
   return useQuery({
     queryKey: ['community-direct-messages', conversationId],
     queryFn: () => fetchDirectMessages(conversationId!),
     enabled: Boolean(conversationId),
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
   })
 }
 
