@@ -323,7 +323,7 @@ export function DentalVideoDetail() {
         ) : video ? (
           <div className="space-y-5">
             <nav
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-2 gap-6 sm:gap-12"
               aria-label="Video navigation"
             >
               {adjacent.previous ? (
@@ -331,12 +331,14 @@ export function DentalVideoDetail() {
                   to="/dental-videos/$id"
                   params={{ id: adjacent.previous.id }}
                   title={`Previous: ${adjacent.previous.title}`}
-                  className="group flex min-w-0 items-center gap-2 border-b border-border px-1 py-3 text-left transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
+                  className="group flex min-w-0 items-center gap-2 px-1 py-3 text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
                 >
                   <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">Previous</span>
-                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {adjacent.previous.title}
+                  <span className="flex min-w-0 items-center gap-2 border-b border-border pb-1 transition-colors group-hover:border-primary sm:gap-3">
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Previous</span>
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                      {adjacent.previous.title}
+                    </span>
                   </span>
                 </Link>
               ) : null}
@@ -346,12 +348,14 @@ export function DentalVideoDetail() {
                   to="/dental-videos/$id"
                   params={{ id: adjacent.next.id }}
                   title={`Next: ${adjacent.next.title}`}
-                  className="group col-start-2 flex min-w-0 items-center justify-end gap-2 border-b border-border px-1 py-3 text-right transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
+                  className="group col-start-2 flex min-w-0 items-center justify-end gap-2 px-1 py-3 text-right transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
                 >
-                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {adjacent.next.title}
+                  <span className="flex min-w-0 items-center gap-2 border-b border-border pb-1 transition-colors group-hover:border-primary sm:gap-3">
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                      {adjacent.next.title}
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Next</span>
                   </span>
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">Next</span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                 </Link>
               ) : null}
