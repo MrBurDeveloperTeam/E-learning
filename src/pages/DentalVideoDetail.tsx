@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
@@ -121,8 +121,6 @@ export function DentalVideoDetail() {
   const [advertisement, setAdvertisement] = useState<VideoAdvertisement | null>(null)
   const [isEntryAdvertisementPlaying, setIsEntryAdvertisementPlaying] = useState(false)
   const [isAdvertisementPlaying, setIsAdvertisementPlaying] = useState(false)
-  const [midrollMarkerPercent, setMidrollMarkerPercent] = useState<number | null>(null)
-  const [isMidrollMarkerVisible, setIsMidrollMarkerVisible] = useState(false)
   const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null)
@@ -133,18 +131,6 @@ export function DentalVideoDetail() {
   const entryAdvertisementPlayingRef = useRef(false)
   const advertisementPlayingRef = useRef(false)
   const resumeSecondRef = useRef(0)
-  const midrollMarkerTimerRef = useRef<number | null>(null)
-
-  const revealMidrollMarker = useCallback(() => {
-    setIsMidrollMarkerVisible(true)
-    if (midrollMarkerTimerRef.current !== null) {
-      window.clearTimeout(midrollMarkerTimerRef.current)
-    }
-    midrollMarkerTimerRef.current = window.setTimeout(() => {
-      setIsMidrollMarkerVisible(false)
-      midrollMarkerTimerRef.current = null
-    }, 2500)
-  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -154,12 +140,6 @@ export function DentalVideoDetail() {
     setAdvertisement(null)
     setIsEntryAdvertisementPlaying(false)
     setIsAdvertisementPlaying(false)
-    setMidrollMarkerPercent(null)
-    setIsMidrollMarkerVisible(false)
-    if (midrollMarkerTimerRef.current !== null) {
-      window.clearTimeout(midrollMarkerTimerRef.current)
-      midrollMarkerTimerRef.current = null
-    }
     entryAdvertisementPlayingRef.current = false
     advertisementPlayingRef.current = false
     midrollSecondRef.current = null
@@ -263,8 +243,6 @@ export function DentalVideoDetail() {
         const duration = target.getDuration()
         midrollSecondRef.current = getRandomMidrollSecond(duration)
         if (midrollSecondRef.current === null) return false
-        setMidrollMarkerPercent((midrollSecondRef.current / duration) * 100)
-        revealMidrollMarker()
       }
 
       const currentSecond = target.getCurrentTime()
@@ -323,7 +301,7 @@ export function DentalVideoDetail() {
       }
       playerHost.replaceChildren()
     }
-  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, revealMidrollMarker, video])
+  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, video])
 
   const completeEntryAdvertisement = () => {
     setIsEntryAdvertisementPlaying(false)
@@ -484,10 +462,6 @@ export function DentalVideoDetail() {
             <div
               className="relative w-full overflow-hidden rounded-xl bg-black"
               style={{ paddingBottom: '56.25%' }}
-              onMouseEnter={revealMidrollMarker}
-              onMouseMove={revealMidrollMarker}
-              onFocusCapture={revealMidrollMarker}
-              onTouchStart={revealMidrollMarker}
             >
               <div
                 ref={playerHostRef}
@@ -499,13 +473,6 @@ export function DentalVideoDetail() {
                   advertisement={advertisement}
                   embedded
                   onComplete={completeAdvertisement}
-                />
-              ) : null}
-              {midrollMarkerPercent !== null && isMidrollMarkerVisible && midrollShownForVideoRef.current !== video.id ? (
-                <span
-                  className="pointer-events-none absolute bottom-[14.5%] z-20 h-4 w-1 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_0_7px_rgba(250,204,21,0.8)]"
-                  style={{ left: `${midrollMarkerPercent}%` }}
-                  aria-hidden="true"
                 />
               ) : null}
             </div>
