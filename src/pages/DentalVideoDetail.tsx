@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
@@ -18,7 +18,6 @@ function formatPublishedDate(dateString: string): string {
 const emptyAdjacentVideos: AdjacentDentalVideos = {
   previous: null,
   next: null,
-  sponsor: null,
 }
 
 type YouTubePlayer = {
@@ -42,8 +41,6 @@ type YouTubeApi = {
   ) => YouTubePlayer
   PlayerState: { ENDED: number }
 }
-
-type VideoDestination = NonNullable<AdjacentDentalVideos['next']>
 
 declare global {
   interface Window {
@@ -109,8 +106,6 @@ export function DentalVideoDetail() {
   const [error, setError] = useState<string | null>(null)
   const [advertisement, setAdvertisement] = useState<VideoAdvertisement | null>(null)
   const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
-  const [playbackMode, setPlaybackMode] = useState<'content' | 'sponsor'>('content')
-  const [pendingDestination, setPendingDestination] = useState<VideoDestination | null>(null)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
   const countedVideoRef = useRef<string | null>(null)
   const pendingVideoCountRef = useRef(1)
@@ -122,8 +117,6 @@ export function DentalVideoDetail() {
     setAdjacent(emptyAdjacentVideos)
     setAdvertisement(null)
     setIsAdvertisementResolving(true)
-    setPlaybackMode('content')
-    setPendingDestination(null)
 
     getVideoPage(id)
       .then(({ video: videoData, adjacent: adjacentData }) => {
@@ -181,35 +174,9 @@ export function DentalVideoDetail() {
     return () => { cancelled = true }
   }, [video])
 
-  const beginVideoTransition = useCallback((destination: VideoDestination) => {
-    if (adjacent.sponsor) {
-      if (video) {
-        const historyKey = `dental-video-history-${video.video_type || 'unknown'}`
-        try {
-          const storedHistory = JSON.parse(window.sessionStorage.getItem(historyKey) || '[]')
-          const history = Array.isArray(storedHistory)
-            ? storedHistory.filter((item): item is string => typeof item === 'string')
-            : []
-          if (!history.includes(adjacent.sponsor.id)) history.push(adjacent.sponsor.id)
-          window.sessionStorage.setItem(historyKey, JSON.stringify(history))
-        } catch {
-          window.sessionStorage.setItem(historyKey, JSON.stringify([video.id, adjacent.sponsor.id]))
-        }
-      }
-      setPendingDestination(destination)
-      setPlaybackMode('sponsor')
-      return
-    }
-
-    navigate({ to: '/dental-videos/$id', params: { id: destination.id } })
-  }, [adjacent.sponsor, navigate, video])
-
-  const activePlaybackVideo =
-    playbackMode === 'sponsor' && adjacent.sponsor ? adjacent.sponsor : video
-
   useEffect(() => {
     const playerHost = playerHostRef.current
-    if (!activePlaybackVideo || !playerHost || advertisement || isAdvertisementResolving) return
+    if (!video || !playerHost || advertisement || isAdvertisementResolving) return
 
     let cancelled = false
     let player: YouTubePlayer | null = null
@@ -218,28 +185,21 @@ export function DentalVideoDetail() {
     playerHost.replaceChildren(playerMount)
 
     const continuePlayback = () => {
-      if (playbackMode === 'sponsor') {
-        if (pendingDestination) {
-          navigate({ to: '/dental-videos/$id', params: { id: pendingDestination.id } })
-        }
-        return
+      if (adjacent.next) {
+        navigate({ to: '/dental-videos/$id', params: { id: adjacent.next.id } })
       }
-      if (adjacent.next) beginVideoTransition(adjacent.next)
     }
 
     loadYouTubeApi()
       .then((YT) => {
         if (cancelled) return
         player = new YT.Player(playerMount, {
-          videoId: activePlaybackVideo.video_id,
+          videoId: video.video_id,
           playerVars: {
             autoplay: 1,
             mute: 1,
             playsinline: 1,
             rel: 0,
-            controls: playbackMode === 'sponsor' ? 0 : 1,
-            disablekb: playbackMode === 'sponsor' ? 1 : 0,
-            fs: playbackMode === 'sponsor' ? 0 : 1,
           },
           events: {
             onReady: ({ target }) => {
@@ -266,11 +226,11 @@ export function DentalVideoDetail() {
       }
       playerHost.replaceChildren()
     }
-  }, [activePlaybackVideo, advertisement, adjacent.next, beginVideoTransition, isAdvertisementResolving, navigate, pendingDestination, playbackMode])
+  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, video])
 
   useEffect(() => {
     const handleArrowNavigation = (event: KeyboardEvent) => {
-      if (advertisement || isAdvertisementResolving || playbackMode === 'sponsor') return
+      if (advertisement || isAdvertisementResolving) return
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
 
       const target = event.target as HTMLElement | null
@@ -290,13 +250,13 @@ export function DentalVideoDetail() {
 
       if (destination) {
         event.preventDefault()
-        beginVideoTransition(destination)
+        navigate({ to: '/dental-videos/$id', params: { id: destination.id } })
       }
     }
 
     window.addEventListener('keydown', handleArrowNavigation)
     return () => window.removeEventListener('keydown', handleArrowNavigation)
-  }, [advertisement, adjacent, beginVideoTransition, isAdvertisementResolving, playbackMode])
+  }, [advertisement, adjacent, isAdvertisementResolving, navigate])
 
   useEffect(() => {
     if (video) {
@@ -362,6 +322,43 @@ export function DentalVideoDetail() {
           </div>
         ) : video ? (
           <div className="space-y-5">
+            <nav
+              className="grid grid-cols-2 gap-3"
+              aria-label="Video navigation"
+            >
+              {adjacent.previous ? (
+                <Link
+                  to="/dental-videos/$id"
+                  params={{ id: adjacent.previous.id }}
+                  title={`Previous: ${adjacent.previous.title}`}
+                  className="group flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+                >
+                  <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-muted-foreground">Previous</span>
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {adjacent.previous.title}
+                    </span>
+                  </span>
+                </Link>
+              ) : null}
+
+              {adjacent.next ? (
+                <Link
+                  to="/dental-videos/$id"
+                  params={{ id: adjacent.next.id }}
+                  title={`Next: ${adjacent.next.title}`}
+                  className="group col-start-2 flex min-w-0 items-center justify-end gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-right transition-colors hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+                >
+                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {adjacent.next.title}
+                  </span>
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">Next</span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </nav>
+
             <div
               className="relative w-full overflow-hidden rounded-xl bg-black"
               style={{ paddingBottom: '56.25%' }}
@@ -369,44 +366,8 @@ export function DentalVideoDetail() {
               <div
                 ref={playerHostRef}
                 className="absolute inset-0 h-full w-full"
-                aria-label={activePlaybackVideo?.title || video.title}
+                aria-label={video.title}
               />
-
-              {playbackMode === 'sponsor' && adjacent.sponsor ? (
-                <>
-                  <div
-                    className="absolute inset-0 z-[9] cursor-default"
-                    aria-hidden="true"
-                  />
-                  <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                    Featured partner · {adjacent.sponsor.channel_name}
-                  </div>
-                </>
-              ) : null}
-
-              {playbackMode === 'content' && adjacent.previous ? (
-                <button
-                  type="button"
-                  onClick={() => beginVideoTransition(adjacent.previous!)}
-                  aria-label={`Previous video: ${adjacent.previous.title}`}
-                  title={`Previous: ${adjacent.previous.title}`}
-                  className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/60 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:left-4"
-                >
-                  <ChevronLeft className="h-7 w-7" aria-hidden="true" />
-                </button>
-              ) : null}
-
-              {playbackMode === 'content' && adjacent.next ? (
-                <button
-                  type="button"
-                  onClick={() => beginVideoTransition(adjacent.next!)}
-                  aria-label={`Next video: ${adjacent.next.title}`}
-                  title={`Next: ${adjacent.next.title}`}
-                  className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/60 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:right-4"
-                >
-                  <ChevronRight className="h-7 w-7" aria-hidden="true" />
-                </button>
-              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">

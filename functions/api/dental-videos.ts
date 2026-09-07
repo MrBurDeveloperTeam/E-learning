@@ -181,7 +181,7 @@ export async function onRequestGet(context: {
 
       const candidateCount = countResult.count || 0;
       if (candidateCount === 0) {
-        return jsonResponse({ previous: null, next: null, sponsor: null });
+        return jsonResponse({ previous: null, next: null });
       }
 
       const previousOffset = Math.floor(Math.random() * candidateCount);
@@ -210,34 +210,9 @@ export async function onRequestGet(context: {
       const previous = previousResult.data?.[0] || null;
       const next = nextResult.data?.[0] || null;
 
-      const excludedSponsorIds = Array.from(new Set([
-        current.id,
-        previous?.id,
-        next?.id,
-        ...excludedVideoIds,
-      ].filter(Boolean)));
-      let sponsorQuery = supabase
-        .from("dental_videos")
-        .select("id,video_id,title,channel_name")
-        .eq("needs_review", false)
-        .or("channel_name.ilike.%Mr Bur%,channel_name.ilike.%MR.BUR%,channel_name.ilike.%MrBur%,channel_name.ilike.%Kaneiko%")
-        .limit(200);
-      if (excludedSponsorIds.length > 0) {
-        sponsorQuery = sponsorQuery.not("id", "in", `(${excludedSponsorIds.join(",")})`);
-      }
-      const sponsorResult = await sponsorQuery;
-      if (sponsorResult.error) {
-        console.error("dental-videos sponsor lookup error:", sponsorResult.error);
-      }
-      const sponsorCandidates = sponsorResult.data || [];
-      const sponsor = sponsorCandidates.length > 0
-        ? sponsorCandidates[Math.floor(Math.random() * sponsorCandidates.length)]
-        : null;
-
       return jsonResponse({
         previous,
         next,
-        sponsor,
       });
     }
 

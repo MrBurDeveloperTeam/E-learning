@@ -84,6 +84,36 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
         </div>
 
         <div className="relative min-h-0 flex-1 bg-muted/35">
+          {advertisement.cta_label && advertisement.click_url ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="absolute left-3 top-3 z-10 h-9 rounded-xl border-white/30 bg-black/45 px-3 text-sm font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:left-4 sm:top-4"
+              onClick={(event) => {
+                event.stopPropagation()
+                openDestination()
+              }}
+              aria-label={`${advertisement.cta_label}: open advertiser website`}
+            >
+              {advertisement.cta_label}
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          ) : null}
+
+          <Button
+            data-ad-skip
+            type="button"
+            variant="outline"
+            className="absolute bottom-3 right-3 z-10 min-w-32 rounded-xl border-white/30 bg-black/45 px-4 text-base font-semibold text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/20 disabled:bg-black/30 disabled:text-white/70 disabled:opacity-100 sm:bottom-4 sm:right-4"
+            disabled={!canSkip}
+            onClick={(event) => {
+              event.stopPropagation()
+              onComplete()
+            }}
+          >
+            {canSkip ? 'Skip Ads' : `Skip in ${secondsRemaining}s`}
+          </Button>
+
           {advertisement.media_type === 'video' ? (
             <video className="pointer-events-none max-h-[72dvh] min-h-52 w-full bg-black object-contain" src={advertisement.media_url} aria-label={advertisement.alt_text} autoPlay muted playsInline controls={false} disablePictureInPicture controlsList="nodownload noplaybackrate noremoteplayback" onEnded={onComplete} onError={onComplete} />
           ) : (
@@ -91,16 +121,10 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
           )}
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="border-t border-border bg-card p-4 sm:px-5">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{advertisement.campaign_name}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">The learning video will continue after this advertisement.</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {advertisement.cta_label && advertisement.click_url && <span className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl bg-primary px-2.5 text-sm font-medium text-primary-foreground">{advertisement.cta_label}<ExternalLink className="h-4 w-4" /></span>}
-            <Button data-ad-skip variant="outline" className="relative z-10 min-w-28 rounded-xl" disabled={!canSkip} onClick={(event) => { event.stopPropagation(); onComplete() }}>
-              {canSkip ? 'Skip Ads' : `Skip in ${secondsRemaining}s`}
-            </Button>
           </div>
         </div>
       </div>

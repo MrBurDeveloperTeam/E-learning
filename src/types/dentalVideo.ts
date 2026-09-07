@@ -29,7 +29,6 @@ export interface DentalVideosResponse {
 export interface AdjacentDentalVideos {
   previous: Pick<DentalVideo, "id" | "title"> | null;
   next: Pick<DentalVideo, "id" | "title"> | null;
-  sponsor: Pick<DentalVideo, "id" | "video_id" | "title" | "channel_name"> | null;
 }
 
 /** A category with its associated video count. */
