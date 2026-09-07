@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addCommunityRule, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, followCommunityPerson, hideCommunityMessageForCurrentUser, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAnnouncement, saveCommunityPreferences, searchCommunityPeople, sendDirectMessage, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, toggleCommunityMessageReaction, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
-import type { CommunityManagedPost, CommunityPerson } from '@/features/community/types'
+import type { CommunityManagedPost, CommunityPerson, DirectMessage } from '@/features/community/types'
 import { supabase } from '@/lib/supabase'
 import { recordCommunityPostShare, recordCommunityPostView, setCommunityPostNotInterested, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
 import { fetchCommunityPost } from '@/features/community/api/communityApi'
@@ -235,7 +235,41 @@ export function useOpenDirectConversation(userId: string) {
 }
 export function useOpenCommunityConversation(){return useMutation({mutationFn:openCommunityConversation})}
 export function useCommunityMessageActions(conversationId?:string){const client=useQueryClient();return useMutation({mutationFn:({id,action,body}:{id:string;action:'edit'|'withdraw'|'hide';body?:string})=>action==='edit'?updateCommunityMessage(id,body??''):action==='withdraw'?deleteCommunityMessage(id):hideCommunityMessageForCurrentUser(id),onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})})}
-export function useCommunityMessageReaction(conversationId?:string){const client=useQueryClient();return useMutation({mutationFn:({id,emoji,reacted}:{id:string;emoji:string;reacted:boolean})=>toggleCommunityMessageReaction(id,emoji,reacted),onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})})}
+export function useCommunityMessageReaction(conversationId?: string) {
+  const client = useQueryClient()
+  const queryKey = ['community-direct-messages', conversationId]
+  return useMutation({
+    mutationFn: ({ id, emoji, reacted }: { id: string; emoji: string; reacted: boolean }) =>
+      toggleCommunityMessageReaction(id, emoji, reacted),
+    onMutate: async ({ id, emoji, reacted }) => {
+      await client.cancelQueries({ queryKey })
+      const previous = client.getQueryData<DirectMessage[]>(queryKey)
+      client.setQueryData<DirectMessage[]>(queryKey, (messages = []) => messages.map((message) => {
+        if (message.id !== id) return message
+        const reactions = message.reactions
+          .map((reaction) => reaction.viewer_reacted
+            ? { ...reaction, count: reaction.count - 1, viewer_reacted: false }
+            : reaction)
+          .filter((reaction) => reaction.count > 0)
+        if (!reacted) {
+          const selected = reactions.find((reaction) => reaction.emoji === emoji)
+          if (selected) {
+            selected.count += 1
+            selected.viewer_reacted = true
+          } else {
+            reactions.push({ emoji, count: 1, viewer_reacted: true })
+          }
+        }
+        return { ...message, reactions }
+      }))
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) client.setQueryData(queryKey, context.previous)
+    },
+    onSettled: () => client.invalidateQueries({ queryKey }),
+  })
+}
 
 export function useSendDirectMessage(userId: string, conversationId?: string) {
   const queryClient = useQueryClient()
