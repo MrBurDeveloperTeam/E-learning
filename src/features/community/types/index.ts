@@ -114,6 +114,9 @@ export interface DirectMessage {
   created_at: string
   edited_at: string | null
   status: 'sent' | 'edited' | 'deleted' | 'admin_hidden'
+  reply_to_message_id: string | null
+  reply_to: { id: string; sender_id: string; body: string; status: 'sent' | 'edited' | 'deleted' | 'admin_hidden' } | null
+  reactions: Array<{ emoji: string; count: number; viewer_reacted: boolean }>
 }
 
 export interface CommunityManagedPost {

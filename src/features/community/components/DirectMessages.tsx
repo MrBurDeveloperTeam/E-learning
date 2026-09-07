@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, MessageCircleMore, Pencil, Send, Trash2 } from 'lucide-react'
+import { Loader2, MessageCircleMore, Pencil, Reply, Send, SmilePlus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { useCommunityMessageActions, useCommunityPeopleSearch, useCommunitySettings, useDirectConversations, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
+import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDirectConversations, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
 import { cn } from '@/lib/utils'
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,6 +28,8 @@ export function DirectMessages({ userId }: { userId: string }) {
   const [peopleSearch,setPeopleSearch]=useState('')
   const [editingMessage,setEditingMessage]=useState<DirectMessage|null>(null),[editBody,setEditBody]=useState('')
   const [withdrawingMessage,setWithdrawingMessage]=useState<DirectMessage|null>(null)
+  const [replyingTo,setReplyingTo]=useState<DirectMessage|null>(null)
+  const [reactingMessageId,setReactingMessageId]=useState<string|null>(null)
   const [sendError,setSendError]=useState('')
   const [failedNonce,setFailedNonce]=useState<string|null>(null)
   const [online,setOnline]=useState(()=>navigator.onLine)
@@ -42,6 +44,7 @@ export function DirectMessages({ userId }: { userId: string }) {
   const messages = useDirectMessages(selectedId)
   const send = useSendDirectMessage(userId, selectedId)
   const messageActions=useCommunityMessageActions(selectedId)
+  const reactionAction=useCommunityMessageReaction(selectedId)
 
   useEffect(() => {
     if (selected && draftRecipient?.user_id === selected.other_user.user_id) {
@@ -77,8 +80,9 @@ export function DirectMessages({ userId }: { userId: string }) {
         conversationId=await openConversation.mutateAsync(draftRecipient.user_id)
         setSelectedId(conversationId)
       }
-      await send.mutateAsync({body,clientNonce,conversationId})
+      await send.mutateAsync({body,clientNonce,conversationId,replyToMessageId:replyingTo?.id})
       setBody('')
+      setReplyingTo(null)
       setFailedNonce(null)
     } catch (error) {
       setFailedNonce(clientNonce)
@@ -134,21 +138,28 @@ export function DirectMessages({ userId }: { userId: string }) {
         </header>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4" aria-live="polite">
           {!selected?<EmptyState icon={<MessageCircleMore/>} title="Start a conversation" description="Send your first message to begin this conversation."/>:messages.isLoading ? <div className="flex h-full items-center justify-center"><LoadingSpinner /></div> : messages.data?.map((message) => (
-            <div key={message.id} className={cn('flex', message.sender_id === userId ? 'justify-end' : 'justify-start')}>
-              <div className={cn('group max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-6', message.status==='deleted'?'border border-border bg-transparent italic text-muted-foreground':message.sender_id === userId ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary text-secondary-foreground')}>
-                {message.status==='deleted'?'This message was withdrawn.':message.body}{message.status!=='deleted'&&message.edited_at&&<span className="ml-2 text-[10px] opacity-70">edited</span>}{message.status!=='deleted'&&<span className="ml-2 inline-flex gap-1">{message.sender_id===userId&&<button type="button" aria-label="Edit message" onClick={()=>{setEditingMessage(message);setEditBody(message.body)}}><Pencil className="size-3"/></button>}<button type="button" aria-label="Delete message" disabled={messageActions.isPending} onClick={()=>setWithdrawingMessage(message)}><Trash2 className="size-3"/></button></span>}
+            <div id={`message-${message.id}`} key={message.id} className={cn('flex', message.sender_id === userId ? 'justify-end' : 'justify-start')}>
+              <div className="max-w-[82%]">
+                {message.status!=='deleted'&&reactingMessageId===message.id&&<div className="mb-1 flex gap-1 rounded-full border border-border bg-card p-1 shadow-sm">{['👍','❤️','😂','😮','😢','🎉'].map(emoji=><button key={emoji} type="button" className="rounded-full px-1.5 py-0.5 hover:bg-muted" onClick={()=>{const existing=message.reactions.find(reaction=>reaction.emoji===emoji);void reactionAction.mutateAsync({id:message.id,emoji,reacted:Boolean(existing?.viewer_reacted)}).catch(error=>toast.error(getMessageError(error)));setReactingMessageId(null)}}>{emoji}</button>)}</div>}
+                <div className={cn('group rounded-2xl px-4 py-2.5 text-sm leading-6', message.status==='deleted'?'border border-border bg-transparent italic text-muted-foreground':message.sender_id === userId ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary text-secondary-foreground')}>
+                  {message.reply_to&&<button type="button" className="mb-2 block w-full rounded-lg border-l-2 border-current bg-black/5 px-2 py-1 text-left text-xs opacity-75" onClick={()=>document.getElementById(`message-${message.reply_to?.id}`)?.scrollIntoView({behavior:'smooth',block:'center'})}>{message.reply_to.status==='deleted'?'This message was withdrawn.':message.reply_to.body.slice(0,120)}</button>}
+                  {message.status==='deleted'?'This message was withdrawn.':message.body}{message.status!=='deleted'&&message.edited_at&&<span className="ml-2 text-[10px] opacity-70">edited</span>}{message.status!=='deleted'&&<span className="ml-2 inline-flex gap-1"><button type="button" aria-label="React to message" onClick={()=>setReactingMessageId(current=>current===message.id?null:message.id)}><SmilePlus className="size-3"/></button><button type="button" aria-label="Reply to message" onClick={()=>{setReplyingTo(message);setReactingMessageId(null)}}><Reply className="size-3"/></button>{message.sender_id===userId&&<button type="button" aria-label="Edit message" onClick={()=>{setEditingMessage(message);setEditBody(message.body)}}><Pencil className="size-3"/></button>}<button type="button" aria-label="Delete message" disabled={messageActions.isPending} onClick={()=>setWithdrawingMessage(message)}><Trash2 className="size-3"/></button></span>}
+                </div>
+                {message.status!=='deleted'&&message.reactions.length>0&&<div className={cn('mt-1 flex flex-wrap gap-1',message.sender_id===userId&&'justify-end')}>{message.reactions.map(reaction=><button key={reaction.emoji} type="button" className={cn('rounded-full border px-2 py-0.5 text-xs',reaction.viewer_reacted?'border-primary bg-primary/10':'border-border bg-card')} onClick={()=>void reactionAction.mutateAsync({id:message.id,emoji:reaction.emoji,reacted:reaction.viewer_reacted}).catch(error=>toast.error(getMessageError(error)))}>{reaction.emoji} {reaction.count}</button>)}</div>}
               </div>
             </div>
           ))}
         </div>
         {!online&&<div className="border-t border-warning/30 bg-warning/10 px-4 py-2 text-xs text-foreground" role="status">You are offline. Messages stay in the composer until you reconnect.</div>}
         {sendError&&<div className="flex items-center gap-3 border-t border-destructive/25 bg-destructive/5 px-4 py-2 text-xs text-destructive" role="alert"><span className="min-w-0 flex-1">{sendError}</span><Button type="button" size="sm" variant="outline" disabled={send.isPending||!online} onClick={()=>void submit()}>Retry</Button></div>}
-        <form noValidate onSubmit={submit} className="flex gap-2 border-t border-border p-3">
-          <label htmlFor="direct-message" className="sr-only">Message</label>
-          <input id="direct-message" value={body} maxLength={5000} onChange={(event) => {setBody(event.target.value);setFailedNonce(null);setSendError('')}} placeholder="Write a private message…" className="input-field min-w-0 flex-1" />
-          <Button type="submit" size="icon-lg" disabled={!body.trim() || send.isPending || !online} aria-label="Send message">
-            {send.isPending ? <Loader2 className="animate-spin" /> : <Send />}
-          </Button>
+        <form noValidate onSubmit={submit} className="border-t border-border p-3">
+          {replyingTo&&<div className="mb-2 flex items-center gap-2 rounded-lg border-l-2 border-primary bg-muted px-3 py-2 text-xs"><Reply className="size-4 shrink-0"/><div className="min-w-0 flex-1"><p className="font-medium">Replying to a message</p><p className="truncate text-muted-foreground">{replyingTo.body}</p></div><button type="button" aria-label="Cancel reply" onClick={()=>setReplyingTo(null)}><X className="size-4"/></button></div>}
+          <div className="flex gap-2"><label htmlFor="direct-message" className="sr-only">Message</label>
+            <input id="direct-message" value={body} maxLength={5000} onChange={(event) => {setBody(event.target.value);setFailedNonce(null);setSendError('')}} placeholder="Write a private message…" className="input-field min-w-0 flex-1" />
+            <Button type="submit" size="icon-lg" disabled={!body.trim() || send.isPending || !online} aria-label="Send message">
+              {send.isPending ? <Loader2 className="animate-spin" /> : <Send />}
+            </Button>
+          </div>
         </form>
       </section>:<section className="flex min-h-0 items-center justify-center overflow-hidden"><EmptyState icon={<MessageCircleMore/>} title="Choose someone to chat with" description="Select a conversation or find a member from the list to start chatting."/></section>}
       <Dialog open={Boolean(editingMessage)} onOpenChange={open=>{if(!open)setEditingMessage(null)}}><DialogContent><DialogHeader><DialogTitle>Edit message</DialogTitle></DialogHeader><Textarea value={editBody} maxLength={5000} className="min-h-28 resize-none" onChange={event=>setEditBody(event.target.value)}/><div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditingMessage(null)}>Cancel</Button><Button disabled={!editBody.trim()||messageActions.isPending} onClick={()=>editingMessage&&void messageActions.mutateAsync({id:editingMessage.id,action:'edit',body:editBody}).then(()=>setEditingMessage(null))}>Save changes</Button></div></DialogContent></Dialog>

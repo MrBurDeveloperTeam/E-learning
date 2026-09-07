@@ -600,15 +600,41 @@ export async function fetchDirectMessages(conversationId: string) {
   const hiddenIds = new Set((hiddenResult.data ?? []).map((row) => row.message_id))
   const { data, error } = await supabase
     .from(COMMUNITY_TABLES.messages)
-    .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at')
+    .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at,reply_to_message_id')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
     .limit(200)
   if (error) throw error
-  return (data ?? []).filter((row) => !hiddenIds.has(row.id)).map((row) => mapDirectMessage(row as DbCommunityMessage))
+  const visibleRows = (data ?? []).filter((row) => !hiddenIds.has(row.id))
+  const messageIds = visibleRows.map((row) => row.id)
+  const reactionResult = messageIds.length
+    ? await supabase.from(COMMUNITY_TABLES.messageReactions).select('message_id,user_id,emoji').in('message_id', messageIds)
+    : { data: [], error: null }
+  if (reactionResult.error) throw reactionResult.error
+  const rowById = new Map((data ?? []).map((row) => [row.id, row]))
+  return visibleRows.map((row) => {
+    const message = mapDirectMessage(row as DbCommunityMessage)
+    const replyRow = row.reply_to_message_id ? rowById.get(row.reply_to_message_id) : null
+    const reactionMap = new Map<string, { emoji: string; count: number; viewer_reacted: boolean }>()
+    for (const reaction of reactionResult.data ?? []) {
+      if (reaction.message_id !== row.id) continue
+      const current = reactionMap.get(reaction.emoji) ?? { emoji: reaction.emoji, count: 0, viewer_reacted: false }
+      current.count += 1
+      current.viewer_reacted ||= reaction.user_id === user.id
+      reactionMap.set(reaction.emoji, current)
+    }
+    message.reactions = [...reactionMap.values()]
+    message.reply_to = replyRow ? {
+      id: replyRow.id,
+      sender_id: replyRow.sender_id ?? '',
+      body: replyRow.content ?? '',
+      status: replyRow.message_status,
+    } : null
+    return message
+  })
 }
 
-export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string): Promise<DirectMessage> {
+export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string, replyToMessageId?: string): Promise<DirectMessage> {
   const content=body.trim()
   if(!content)throw new Error('Write a message before sending.')
 
@@ -622,11 +648,12 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
     sender_id:user.id,
     content,
     message_status:'sent' as const,
+    reply_to_message_id:replyToMessageId??null,
   }
   const inserted=await supabase
     .from(COMMUNITY_TABLES.messages)
     .insert(messageRow)
-    .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at')
+    .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at,reply_to_message_id')
     .single()
 
   if(!inserted.error)return mapDirectMessage(inserted.data as DbCommunityMessage)
@@ -636,7 +663,7 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
   if(inserted.error.code==='23505'){
     const existing=await supabase
       .from(COMMUNITY_TABLES.messages)
-      .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at')
+      .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at,reply_to_message_id')
       .eq('id',clientNonce)
       .eq('conversation_id',conversationId)
       .eq('sender_id',user.id)
@@ -695,6 +722,17 @@ export async function hideCommunityMessageForCurrentUser(messageId: string): Pro
     { message_id: messageId, user_id: user.id },
     { onConflict: 'message_id,user_id' },
   )
+  if (error) throw error
+}
+
+export async function toggleCommunityMessageReaction(messageId: string, emoji: string, reacted: boolean): Promise<void> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in before reacting to a message.')
+  const request = reacted
+    ? supabase.from(COMMUNITY_TABLES.messageReactions).delete().eq('message_id', messageId).eq('user_id', user.id).eq('emoji', emoji)
+    : supabase.from(COMMUNITY_TABLES.messageReactions).upsert({ message_id: messageId, user_id: user.id, emoji }, { onConflict: 'message_id,user_id,emoji' })
+  const { error } = await request
   if (error) throw error
 }
 

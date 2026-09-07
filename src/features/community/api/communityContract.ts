@@ -33,6 +33,7 @@ export const COMMUNITY_TABLES = {
   messages: 'community_messages',
   messageAttachments: 'community_message_attachments',
   messageHiddenUsers: 'community_message_hidden_users',
+  messageReactions: 'community_message_reactions',
   notifications: 'community_notifications',
   videoInteractions: 'community_video_interactions',
   topics: 'community_topics',
@@ -107,6 +108,7 @@ export type DbCommunityMessage = {
   message_status: 'sent' | 'edited' | 'deleted' | 'admin_hidden'
   created_at: string
   edited_at: string | null
+  reply_to_message_id: string | null
 }
 
 const postStatusMap: Record<DbCommunityPost['moderation_status'], CommunityPostStatus> = {
@@ -218,5 +220,8 @@ export function mapDirectMessage(row: DbCommunityMessage): DirectMessage {
     created_at: row.created_at,
     edited_at: row.edited_at,
     status: row.message_status,
+    reply_to_message_id: row.reply_to_message_id,
+    reply_to: null,
+    reactions: [],
   }
 }
