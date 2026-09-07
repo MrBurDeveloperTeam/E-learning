@@ -127,6 +127,7 @@ export interface CommunityManagedPost {
   topic: CommunityPostTopic
   post_type: 'text' | 'image' | 'video'
   created_at: string
+  preview_media?: { media_type: 'image' | 'video'; public_url: string; alt_text: string | null } | null
 }
 
 export interface CommunityPerson {

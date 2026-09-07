@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, FileText, Heart, Pencil, Repeat2, Settings2, Star, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -102,8 +101,8 @@ export function CommunityMe({ userId, profile }: { userId: string; profile: Prof
     {activityQuery.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg" /></div>}
     {activityQuery.isError && <div className="mt-5"><RetryCard onRetry={() => void activityQuery.refetch()} /></div>}
     {!activityQuery.isLoading && !activityQuery.isError && posts.length === 0 && <div className="mt-5"><EmptyState icon={section === 'likes' ? <Heart /> : section === 'reposts' ? <Repeat2 /> : <FileText />} title={`No ${profileSections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>}
-    {!activityQuery.isLoading && !activityQuery.isError && posts.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {posts.map((post) => <article key={post.id} className="flex min-h-44 flex-col rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-sm"><div className="flex flex-wrap gap-2"><Badge variant="secondary">{post.post_type}</Badge>{section === 'posts' && <Badge variant={post.status === 'published' ? 'default' : 'outline'}>{post.status.replaceAll('_', ' ')}</Badge>}</div><h4 className="mt-4 line-clamp-2 font-semibold">{post.title || 'Untitled post'}</h4>{post.body && <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{post.body}</p>}<time className="mt-auto pt-4 text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</time></article>)}
+    {!activityQuery.isLoading && !activityQuery.isError && posts.length > 0 && <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {posts.map((post) => <article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-muted"><Link to="/community/post/$postId" params={{postId:post.id}} aria-label={`Open ${post.post_type} post`} className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">{post.preview_media?.media_type==='image'?<img src={post.preview_media.public_url} alt={post.preview_media.alt_text||''} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"/>:post.preview_media?.media_type==='video'?<video src={post.preview_media.public_url} muted playsInline preload="metadata" aria-label={post.preview_media.alt_text||'Video post preview'} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"/>:<span className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground"><FileText className="size-8"/><span className="text-xs">Text post</span></span>}<span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end bg-gradient-to-t from-black/45 to-transparent p-3 pt-10 text-white">{post.preview_media?.media_type==='video'&&<span className="rounded-full bg-black/45 px-2 py-1 text-[11px] font-medium">Video</span>}</span></Link></article>)}
     </div>}
   </div>
 }

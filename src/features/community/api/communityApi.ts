@@ -757,7 +757,9 @@ export async function fetchManagedPosts(userId: string, section: 'posts' | 'like
       [section==='deleted'?'eq':'neq']('moderation_status', 'removed')
       .order('created_at', { ascending: false })
     if (error) throw error
-    return (data ?? []).map((row) => ({ id: row.id, title: row.title, body: row.content, status: row.moderation_status === 'visible' ? 'published' : row.moderation_status === 'removed' ? 'deleted' : 'hidden', topic: 'general_dentistry', post_type: row.post_kind === 'video' ? 'video' : row.post_kind === 'image' ? 'image' : 'text', created_at: row.created_at })) as CommunityManagedPost[]
+    const posts=(data ?? []).map((row) => ({ id: row.id, title: row.title, body: row.content, status: row.moderation_status === 'visible' ? 'published' : row.moderation_status === 'removed' ? 'deleted' : 'hidden', topic: 'general_dentistry', post_type: row.post_kind === 'video' ? 'video' : row.post_kind === 'image' ? 'image' : 'text', created_at: row.created_at })) as CommunityManagedPost[]
+    await hydrateManagedPostPreviews(posts)
+    return posts
   }
 
   const table = section === 'likes' ? COMMUNITY_TABLES.postLikes : section==='reposts'?COMMUNITY_TABLES.postReposts:section==='bookmarks'?COMMUNITY_TABLES.postBookmarks:COMMUNITY_TABLES.videoInteractions
@@ -775,7 +777,9 @@ export async function fetchManagedPosts(userId: string, section: 'posts' | 'like
     .in('id', ids)
   if (error) throw error
   const order = new Map(ids.map((id, index) => [id, index]))
-  return (data ?? []).map((row) => ({ id: row.id, title: row.title, body: row.content, status: row.moderation_status === 'visible' ? 'published' : row.moderation_status === 'removed' ? 'deleted' : 'hidden', topic: 'general_dentistry', post_type: row.post_kind === 'video' ? 'video' : row.post_kind === 'image' ? 'image' : 'text', created_at: row.created_at } as CommunityManagedPost)).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+  const posts=(data ?? []).map((row) => ({ id: row.id, title: row.title, body: row.content, status: row.moderation_status === 'visible' ? 'published' : row.moderation_status === 'removed' ? 'deleted' : 'hidden', topic: 'general_dentistry', post_type: row.post_kind === 'video' ? 'video' : row.post_kind === 'image' ? 'image' : 'text', created_at: row.created_at } as CommunityManagedPost)).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+  await hydrateManagedPostPreviews(posts)
+  return posts
 }
 
 async function fetchPeopleProfiles(userIds: string[]) {
@@ -868,7 +872,7 @@ export async function fetchCommunityProfileAccess(targetUserId:string):Promise<C
 
 export async function fetchCommunityProfilePosts(viewerId:string|undefined,authorId:string){
   const posts=await fetchCommunityPosts(undefined,viewerId,'home','','all','newest',undefined,authorId)
-  return posts.map(post=>({id:post.id,title:post.title,body:post.body,status:post.status,topic:post.topic,post_type:post.post_type,created_at:post.created_at} as CommunityManagedPost))
+  return posts.map(post=>({id:post.id,title:post.title,body:post.body,status:post.status,topic:post.topic,post_type:post.post_type,created_at:post.created_at,preview_media:post.media[0]??null} as CommunityManagedPost))
 }
 
 export type CommunityActivityVisibility = {
@@ -886,7 +890,7 @@ export async function fetchCommunityActivityVisibility(targetUserId:string):Prom
 export async function fetchVisibleCommunityProfileActivity(targetUserId:string,section:'likes'|'reposts'){
   const{data,error}=await supabase.rpc('community_get_visible_profile_activity',{target_user_id:targetUserId,activity_type:section})
   if(error)throw error
-  return (data??[]).map((row:{id:string;title:string|null;content:string|null;moderation_status:string;post_kind:string;created_at:string})=>({
+  const posts=(data??[]).map((row:{id:string;title:string|null;content:string|null;moderation_status:string;post_kind:string;created_at:string})=>({
     id:row.id,
     title:row.title,
     body:row.content,
@@ -895,6 +899,32 @@ export async function fetchVisibleCommunityProfileActivity(targetUserId:string,s
     post_type:row.post_kind==='video'?'video':row.post_kind==='image'?'image':'text',
     created_at:row.created_at,
   } as CommunityManagedPost))
+  await hydrateManagedPostPreviews(posts)
+  return posts
+}
+
+async function hydrateManagedPostPreviews(posts:CommunityManagedPost[]){
+  if(!posts.length)return
+  const ids=posts.map(post=>post.id)
+  const{data,error}=await supabase.from(COMMUNITY_TABLES.postMedia).select('id,post_id,media_type,storage_bucket,storage_path,external_url,alt_text,sort_order').in('post_id',ids).order('sort_order')
+  if(error)throw error
+  const firstRows=new Map<string,(typeof data)[number]>()
+  for(const row of data??[])if(!firstRows.has(row.post_id))firstRows.set(row.post_id,row)
+  const stored=[...firstRows.values()].filter(row=>!row.external_url&&row.storage_bucket&&row.storage_path)
+  const signedUrls=new Map<string,string>()
+  const buckets=[...new Set(stored.map(row=>row.storage_bucket!))]
+  for(const bucket of buckets){
+    const rows=stored.filter(row=>row.storage_bucket===bucket)
+    const signed=await supabase.storage.from(bucket).createSignedUrls(rows.map(row=>row.storage_path!),3600)
+    if(signed.error)throw signed.error
+    for(const item of signed.data??[])if(item.signedUrl)signedUrls.set(`${bucket}:${item.path}`,item.signedUrl)
+  }
+  for(const post of posts){
+    const row=firstRows.get(post.id)
+    if(!row)continue
+    const url=row.external_url||(row.storage_bucket&&row.storage_path?signedUrls.get(`${row.storage_bucket}:${row.storage_path}`):undefined)
+    if(url)post.preview_media={media_type:row.media_type as 'image'|'video',public_url:url,alt_text:row.alt_text}
+  }
 }
 
 export async function fetchFriends(userId: string) {
