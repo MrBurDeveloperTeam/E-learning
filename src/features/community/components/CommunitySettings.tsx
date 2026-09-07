@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Bookmark, BellRing, FileText, Flag, GraduationCap, Heart, History, Repeat2, RotateCcw, Settings2, Tags, Trash2, UserMinus, UserRoundCheck, UsersRound, UserX } from 'lucide-react'
+import { Bookmark, BellRing, FilePenLine, FileText, Flag, GraduationCap, Heart, History, Repeat2, RotateCcw, Settings2, Tags, Trash2, UserMinus, UserRoundCheck, UsersRound, UserX } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -20,11 +20,13 @@ import { CommunityFriendRequests } from '@/features/community/components/Communi
 import { CommunityAppealHistory, CommunityNotificationSettings, CommunityTopicSettings } from '@/features/community/components/CommunityReleaseSettings'
 import { CommunityAppealDialog } from '@/features/community/components/CommunityAppealDialog'
 import { CommunityRestrictionAppeals } from '@/features/community/components/CommunityRestrictionAppeals'
+import { CommunityDrafts } from '@/features/community/components/CommunityDrafts'
 
-type SettingsView = CommunitySettingsSection | 'verification' | 'reports' | 'blocked' | 'privacy' | 'requests' | 'notifications' | 'topics' | 'appeals' | 'restrictions'
+type SettingsView = CommunitySettingsSection | 'drafts' | 'verification' | 'reports' | 'blocked' | 'privacy' | 'requests' | 'notifications' | 'topics' | 'appeals' | 'restrictions'
 const sections: Array<{ id: SettingsView; label: string; icon: typeof FileText }> = [
   { id: 'history', label: 'Watch history', icon: History },
   { id: 'bookmarks', label: 'Saved', icon: Bookmark },
+  { id: 'drafts', label: 'Drafts', icon: FilePenLine },
   { id: 'deleted', label: 'Deleted posts', icon: Trash2 },
   { id: 'requests', label: 'Friend requests', icon: UserRoundCheck },
   { id: 'topics', label: 'Topics', icon: Tags },
@@ -49,12 +51,12 @@ const postStatusHelp:Record<CommunityManagedPost['status'],string>={
 export function CommunitySettings({ userId }: { userId: string }) {
   const [section, setSection] = useState<SettingsView>('history')
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; label: string } | null>(null)
-  const dataSection: CommunitySettingsSection = section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'requests' || section === 'notifications' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
+  const dataSection: CommunitySettingsSection = section === 'drafts' || section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'requests' || section === 'notifications' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
   const query = useCommunitySettings(userId, dataSection)
   const removeMutation = useRemoveCommunitySettingRelation(userId, dataSection)
   const restoreMutation=useRestoreOwnCommunityPost(userId)
   const isPeopleSection = section === 'following' || section === 'friends'
-  const showsActivity = section !== 'verification' && section !== 'reports' && section !== 'blocked' && section !== 'privacy' && section !== 'requests' && section !== 'notifications' && section !== 'topics' && section !== 'appeals' && section !== 'restrictions'
+  const showsActivity = section !== 'drafts' && section !== 'verification' && section !== 'reports' && section !== 'blocked' && section !== 'privacy' && section !== 'requests' && section !== 'notifications' && section !== 'topics' && section !== 'appeals' && section !== 'restrictions'
   const items = query.data ?? []
 
   const remove = async () => {
@@ -82,6 +84,7 @@ export function CommunitySettings({ userId }: { userId: string }) {
       {section === 'notifications' && <CommunityNotificationSettings userId={userId} />}
       {section === 'appeals' && <CommunityAppealHistory userId={userId} />}
       {section === 'restrictions' && <CommunityRestrictionAppeals userId={userId} />}
+      {section === 'drafts' && <CommunityDrafts userId={userId} />}
 
       {showsActivity && query.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
       {showsActivity && query.isError && <div className="mt-6"><RetryCard onRetry={() => void query.refetch()} /></div>}

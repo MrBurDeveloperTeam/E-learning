@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { recordCommunityPostShare, recordCommunityPostView, setCommunityPostNotInterested, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
 import { fetchCommunityPost } from '@/features/community/api/communityApi'
 import { recordCommunityOperationalEvent } from '@/features/community/api/communityReleaseApi'
+import { deleteCommunityDraft, fetchCommunityDrafts, migrateLocalCommunityDrafts, saveCommunityDraft, type CommunityDraftInput } from '@/features/community/api/communityDraftApi'
 
 export function useCommunityPosts(userId?: string, mode: CommunityFeedMode = 'home', search = '', topic = 'all', sort: 'relevant'|'newest'|'popular'='relevant', communityId?: string) {
   const queryClient = useQueryClient()
@@ -197,6 +198,33 @@ export function useDirectConversations(userId?: string) {
     enabled: Boolean(userId),
     refetchInterval: 5000,
     refetchIntervalInBackground: false,
+  })
+}
+
+export function useCommunityDrafts(userId: string) {
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!userId) return
+    void migrateLocalCommunityDrafts(userId).then(count => {
+      if (count) void client.invalidateQueries({ queryKey: ['community-drafts', userId] })
+    })
+  }, [client, userId])
+  return useQuery({ queryKey: ['community-drafts', userId], queryFn: () => fetchCommunityDrafts(userId), enabled: Boolean(userId) })
+}
+
+export function useSaveCommunityDraft(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Omit<CommunityDraftInput, 'authorId'>) => saveCommunityDraft({ ...input, authorId: userId }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['community-drafts', userId] }),
+  })
+}
+
+export function useDeleteCommunityDraft(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteCommunityDraft(id, userId),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['community-drafts', userId] }),
   })
 }
 
