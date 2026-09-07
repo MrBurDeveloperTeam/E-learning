@@ -391,9 +391,7 @@ export function CommunityComments({
                   size="sm"
                   onClick={() => {
                     setReplying(comment);
-                    setBody(
-                      `@${comment.profiles?.username ?? ""} `.trimStart(),
-                    );
+                    setBody(comment.profiles?.username ? `@${comment.profiles.username} ` : "");
                     window.setTimeout(() => {
                       replyComposerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
                       replyComposerRef.current?.querySelector("textarea")?.focus();
@@ -467,6 +465,49 @@ export function CommunityComments({
             )}
           </div>
         </article>
+        {replying?.id === comment.id && userId && (
+          <form
+            ref={replyComposerRef}
+            noValidate
+            className="ml-5 mt-2 space-y-2 rounded-xl border border-primary/25 bg-primary/5 p-3 sm:ml-12"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit();
+            }}
+          >
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Replying to <strong className="font-medium text-foreground">{name}</strong></span>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Cancel reply" onClick={() => { setReplying(null); setBody(""); }}>
+                <X />
+              </Button>
+            </div>
+            <Textarea
+              value={body}
+              onChange={(event) => {
+                setBody(event.target.value);
+                setWarnConfirmedBody(null);
+              }}
+              maxLength={5000}
+              placeholder={`Reply to ${name}…`}
+              className="min-h-20 resize-none bg-background"
+            />
+            {mentionQuery && mentions.data && mentions.data.length > 0 && (
+              <div className="rounded-lg border bg-popover p-1">
+                {mentions.data.map((person) => (
+                  <Button key={person.user_id} type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setBody((current) => current.replace(/@([a-zA-Z0-9_.-]*)$/, `@${person.username} `))}>
+                    @{person.username} · {person.full_name || person.name}
+                  </Button>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => { setReplying(null); setBody(""); }}>Cancel</Button>
+              <Button type="submit" size="sm" disabled={!body.trim() || createMutation.isPending}>
+                {createMutation.isPending ? "Replying…" : "Reply"}
+              </Button>
+            </div>
+          </form>
+        )}
         {(comments.children.get(comment.id) ?? []).map((child) =>
           renderComment(child, depth + 1),
         )}
@@ -479,7 +520,7 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {(expanded || replying) && (userId ? (
+      {expanded && !replying && (userId ? (
         <form
           ref={replyComposerRef}
           noValidate
@@ -489,21 +530,6 @@ export function CommunityComments({
             void submit();
           }}
         >
-          {replying && (
-            <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
-              Replying to{" "}
-              {replying.profiles?.full_name || replying.profiles?.name}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Cancel reply"
-                onClick={() => setReplying(null)}
-              >
-                <X />
-              </Button>
-            </div>
-          )}
           <Textarea
             value={body}
             onChange={(e) => {
