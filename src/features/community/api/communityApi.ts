@@ -306,9 +306,9 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
 
   let hiddenCommentIds = new Set<string>()
   if (userId) {
-    const hidden = await supabase.from(COMMUNITY_TABLES.userHiddenContent)
+    const hidden = await supabase.from(COMMUNITY_TABLES.reports)
       .select('comment_id')
-      .eq('user_id', userId)
+      .eq('reporter_id', userId)
       .not('comment_id', 'is', null)
     if (hidden.error) throw hidden.error
     hiddenCommentIds = new Set((hidden.data ?? []).flatMap((row) => row.comment_id ? [row.comment_id] : []))

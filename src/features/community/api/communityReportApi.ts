@@ -45,14 +45,6 @@ export async function createCommunityReport(input: { reporterId: string; postId?
     })
     if (hidden.error) throw new Error('Your report was sent, but this post could not be hidden from your feed.')
   }
-  if (input.commentId) {
-    const hidden = await supabase.from(COMMUNITY_TABLES.userHiddenContent).upsert({
-      comment_id: input.commentId,
-      user_id: input.reporterId,
-      hide_reason: 'reported',
-    })
-    if (hidden.error) throw new Error('Your report was sent, but this comment could not be hidden from you.')
-  }
 }
 
 export async function fetchCommunityReports() {
