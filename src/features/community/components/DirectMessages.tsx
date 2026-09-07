@@ -12,6 +12,14 @@ import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/d
 import { Textarea } from '@/components/ui/textarea'
 import type { CommunityPerson, DirectMessage } from '@/features/community/types'
 
+function getMessageError(error: unknown) {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message
+  }
+  return 'Message could not be confirmed. Retry uses the same message ID to prevent duplicates.'
+}
+
 export function DirectMessages({ userId }: { userId: string }) {
   const conversations = useDirectConversations(userId)
   const [selectedId, setSelectedId] = useState<string>()
@@ -73,7 +81,7 @@ export function DirectMessages({ userId }: { userId: string }) {
       setFailedNonce(null)
     } catch (error) {
       setFailedNonce(clientNonce)
-      setSendError(!navigator.onLine?'You appear to be offline. Reconnect, then retry this message.':error instanceof Error?error.message:'Message could not be confirmed. Retry uses the same message ID to prevent duplicates.')
+      setSendError(!navigator.onLine?'You appear to be offline. Reconnect, then retry this message.':getMessageError(error))
     }
   }
 
