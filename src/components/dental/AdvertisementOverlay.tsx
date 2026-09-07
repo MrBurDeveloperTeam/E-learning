@@ -138,7 +138,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
 
           {advertisement.media_type === 'video' ? (
             <video
-              className="pointer-events-none max-h-[72dvh] min-h-52 w-full bg-black object-contain"
+              className={`pointer-events-none w-full bg-black object-contain ${embedded ? 'h-full min-h-0' : 'max-h-[72dvh] min-h-52'}`}
               src={advertisement.media_url}
               aria-label={advertisement.alt_text}
               autoPlay
@@ -155,7 +155,11 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
               onError={onComplete}
             />
           ) : (
-            <img className="pointer-events-none max-h-[72dvh] min-h-52 w-full bg-muted/35 object-contain" src={advertisement.media_url} alt={advertisement.alt_text} />
+            <img
+              className={`pointer-events-none w-full bg-muted/35 object-contain ${embedded ? 'h-full min-h-0' : 'max-h-[72dvh] min-h-52'}`}
+              src={advertisement.media_url}
+              alt={advertisement.alt_text}
+            />
           )}
 
           {advertisement.media_type === 'video' ? (

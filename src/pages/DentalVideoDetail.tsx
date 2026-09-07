@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
@@ -122,6 +122,7 @@ export function DentalVideoDetail() {
   const [isEntryAdvertisementPlaying, setIsEntryAdvertisementPlaying] = useState(false)
   const [isAdvertisementPlaying, setIsAdvertisementPlaying] = useState(false)
   const [midrollMarkerPercent, setMidrollMarkerPercent] = useState<number | null>(null)
+  const [isMidrollMarkerVisible, setIsMidrollMarkerVisible] = useState(false)
   const [isAdvertisementResolving, setIsAdvertisementResolving] = useState(true)
   const playerHostRef = useRef<HTMLDivElement | null>(null)
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null)
@@ -132,6 +133,18 @@ export function DentalVideoDetail() {
   const entryAdvertisementPlayingRef = useRef(false)
   const advertisementPlayingRef = useRef(false)
   const resumeSecondRef = useRef(0)
+  const midrollMarkerTimerRef = useRef<number | null>(null)
+
+  const revealMidrollMarker = useCallback(() => {
+    setIsMidrollMarkerVisible(true)
+    if (midrollMarkerTimerRef.current !== null) {
+      window.clearTimeout(midrollMarkerTimerRef.current)
+    }
+    midrollMarkerTimerRef.current = window.setTimeout(() => {
+      setIsMidrollMarkerVisible(false)
+      midrollMarkerTimerRef.current = null
+    }, 2500)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -142,6 +155,11 @@ export function DentalVideoDetail() {
     setIsEntryAdvertisementPlaying(false)
     setIsAdvertisementPlaying(false)
     setMidrollMarkerPercent(null)
+    setIsMidrollMarkerVisible(false)
+    if (midrollMarkerTimerRef.current !== null) {
+      window.clearTimeout(midrollMarkerTimerRef.current)
+      midrollMarkerTimerRef.current = null
+    }
     entryAdvertisementPlayingRef.current = false
     advertisementPlayingRef.current = false
     midrollSecondRef.current = null
@@ -232,6 +250,34 @@ export function DentalVideoDetail() {
       }
     }
 
+    const triggerMidrollIfDue = (target: YouTubePlayer) => {
+      if (
+        !advertisement ||
+        advertisementPlayingRef.current ||
+        midrollShownForVideoRef.current === video.id
+      ) {
+        return false
+      }
+
+      if (midrollSecondRef.current === null) {
+        const duration = target.getDuration()
+        midrollSecondRef.current = getRandomMidrollSecond(duration)
+        if (midrollSecondRef.current === null) return false
+        setMidrollMarkerPercent((midrollSecondRef.current / duration) * 100)
+        revealMidrollMarker()
+      }
+
+      const currentSecond = target.getCurrentTime()
+      if (currentSecond < midrollSecondRef.current) return false
+
+      resumeSecondRef.current = currentSecond
+      midrollShownForVideoRef.current = video.id
+      advertisementPlayingRef.current = true
+      target.pauseVideo()
+      setIsAdvertisementPlaying(true)
+      return true
+    }
+
     loadYouTubeApi()
       .then((YT) => {
         if (cancelled) return
@@ -250,33 +296,13 @@ export function DentalVideoDetail() {
               if (entryAdvertisementPlayingRef.current) target.pauseVideo()
               else target.playVideo()
               midrollTimer = window.setInterval(() => {
-                if (
-                  !advertisement ||
-                  advertisementPlayingRef.current ||
-                  midrollShownForVideoRef.current === video.id
-                ) {
-                  return
-                }
-
-                if (midrollSecondRef.current === null) {
-                  const duration = target.getDuration()
-                  midrollSecondRef.current = getRandomMidrollSecond(duration)
-                  if (midrollSecondRef.current === null) return
-                  setMidrollMarkerPercent((midrollSecondRef.current / duration) * 100)
-                }
-
-                const currentSecond = target.getCurrentTime()
-                if (currentSecond < midrollSecondRef.current) return
-
-                resumeSecondRef.current = currentSecond
-                midrollShownForVideoRef.current = video.id
-                advertisementPlayingRef.current = true
-                target.pauseVideo()
-                setIsAdvertisementPlaying(true)
-              }, 500)
+                triggerMidrollIfDue(target)
+              }, 100)
             },
             onStateChange: ({ data }) => {
-              if (data === YT.PlayerState.ENDED) continuePlayback()
+              if (data === YT.PlayerState.ENDED && player && !triggerMidrollIfDue(player)) {
+                continuePlayback()
+              }
             },
             onError: continuePlayback,
           },
@@ -297,7 +323,7 @@ export function DentalVideoDetail() {
       }
       playerHost.replaceChildren()
     }
-  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, video])
+  }, [advertisement, adjacent.next, isAdvertisementResolving, navigate, revealMidrollMarker, video])
 
   const completeEntryAdvertisement = () => {
     setIsEntryAdvertisementPlaying(false)
@@ -458,6 +484,10 @@ export function DentalVideoDetail() {
             <div
               className="relative w-full overflow-hidden rounded-xl bg-black"
               style={{ paddingBottom: '56.25%' }}
+              onMouseEnter={revealMidrollMarker}
+              onMouseMove={revealMidrollMarker}
+              onFocusCapture={revealMidrollMarker}
+              onTouchStart={revealMidrollMarker}
             >
               <div
                 ref={playerHostRef}
@@ -471,9 +501,9 @@ export function DentalVideoDetail() {
                   onComplete={completeAdvertisement}
                 />
               ) : null}
-              {midrollMarkerPercent !== null && midrollShownForVideoRef.current !== video.id ? (
+              {midrollMarkerPercent !== null && isMidrollMarkerVisible && midrollShownForVideoRef.current !== video.id ? (
                 <span
-                  className="pointer-events-none absolute bottom-[47px] z-20 h-3 w-1 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_0_7px_rgba(250,204,21,0.8)]"
+                  className="pointer-events-none absolute bottom-[14.5%] z-20 h-4 w-1 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_0_7px_rgba(250,204,21,0.8)]"
                   style={{ left: `${midrollMarkerPercent}%` }}
                   aria-hidden="true"
                 />
