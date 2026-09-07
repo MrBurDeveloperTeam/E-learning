@@ -32,6 +32,7 @@ export const COMMUNITY_TABLES = {
   conversationParticipants: 'community_conversation_participants',
   messages: 'community_messages',
   messageAttachments: 'community_message_attachments',
+  messageHiddenUsers: 'community_message_hidden_users',
   notifications: 'community_notifications',
   videoInteractions: 'community_video_interactions',
   topics: 'community_topics',
@@ -216,5 +217,6 @@ export function mapDirectMessage(row: DbCommunityMessage): DirectMessage {
     body: row.content ?? '',
     created_at: row.created_at,
     edited_at: row.edited_at,
+    status: row.message_status,
   }
 }

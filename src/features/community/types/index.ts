@@ -113,6 +113,7 @@ export interface DirectMessage {
   body: string
   created_at: string
   edited_at: string | null
+  status: 'sent' | 'edited' | 'deleted' | 'admin_hidden'
 }
 
 export interface CommunityManagedPost {

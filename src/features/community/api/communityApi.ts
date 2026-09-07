@@ -592,15 +592,20 @@ export async function fetchDirectConversations(userId: string) {
 }
 
 export async function fetchDirectMessages(conversationId: string) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in before viewing messages.')
+  const hiddenResult = await supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id)
+  if (hiddenResult.error) throw hiddenResult.error
+  const hiddenIds = new Set((hiddenResult.data ?? []).map((row) => row.message_id))
   const { data, error } = await supabase
     .from(COMMUNITY_TABLES.messages)
     .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at')
     .eq('conversation_id', conversationId)
-    .neq('message_status', 'deleted')
     .order('created_at', { ascending: true })
     .limit(200)
   if (error) throw error
-  return (data ?? []).map((row) => mapDirectMessage(row as DbCommunityMessage))
+  return (data ?? []).filter((row) => !hiddenIds.has(row.id)).map((row) => mapDirectMessage(row as DbCommunityMessage))
 }
 
 export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string): Promise<DirectMessage> {
@@ -680,6 +685,17 @@ export async function deleteCommunityMessage(messageId: string): Promise<void> {
 
   if (error) throw error
   if (!data) throw new Error('This message could not be withdrawn. It may already be deleted or you may not have permission.')
+}
+
+export async function hideCommunityMessageForCurrentUser(messageId: string): Promise<void> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in before deleting a message.')
+  const { error } = await supabase.from(COMMUNITY_TABLES.messageHiddenUsers).upsert(
+    { message_id: messageId, user_id: user.id },
+    { onConflict: 'message_id,user_id' },
+  )
+  if (error) throw error
 }
 
 export type CommunitySettingsSection = 'posts' | 'likes' | 'reposts' | 'bookmarks' | 'history' | 'deleted' | 'following' | 'friends'
