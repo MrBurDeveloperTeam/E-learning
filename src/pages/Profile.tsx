@@ -2,12 +2,10 @@ import { Link, useParams } from '@tanstack/react-router'
 import { useProfileImage } from '@/hooks/useProfileImage'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Check, CheckCircle2, LockKeyhole, UserPlus } from 'lucide-react'
+import { Check, CheckCircle2, FileText, Heart, LockKeyhole, Repeat2, UserPlus } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { VideoGrid } from '@/components/video/VideoGrid'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useProfile, usePublicProfile } from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabase'
 import { submitCreatorApplication } from '@/lib/creatorApplications'
@@ -17,8 +15,12 @@ import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import type { CreatorApplication } from '@/types'
 import { Button } from '@/components/ui/button'
-import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
-import { fetchCommunityProfileAccess, fetchCommunityProfilePosts, followCommunityPerson, unfollowCommunityPerson } from '@/features/community/api/communityApi'
+import { fetchCommunityActivityVisibility, fetchCommunityProfileAccess, fetchCommunityProfilePosts, fetchVisibleCommunityProfileActivity, followCommunityPerson, unfollowCommunityPerson } from '@/features/community/api/communityApi'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { cn } from '@/lib/utils'
+import type { CommunityManagedPost } from '@/features/community/types'
 
 
 function BuildingIcon() {
@@ -58,7 +60,7 @@ function CardIcon() {
 
 export function Profile() {
   const { userId } = useParams({ from: '/profile/$userId' })
-  const [tab, setTab] = useState<'posts' | 'videos' | 'about'>('posts')
+  const [tab, setTab] = useState<'posts' | 'likes' | 'reposts'>('posts')
   const [isRequestingVerification, setIsRequestingVerification] = useState(false)
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
@@ -82,10 +84,16 @@ export function Profile() {
     enabled: !!user?.id,
   })
   const canViewCommunityDetails = isOwnProfile || communityAccessQuery.data?.can_view_details === true
-  const communityPostsQuery = useQuery({
-    queryKey: ['community-profile-posts', user?.id, userId],
-    queryFn: () => fetchCommunityProfilePosts(user?.id, userId),
-    enabled: canViewCommunityDetails,
+  const activityVisibilityQuery = useQuery({
+    queryKey: ['community-profile-activity-visibility', user?.id, userId],
+    queryFn: () => fetchCommunityActivityVisibility(userId),
+    enabled: !!user?.id && canViewCommunityDetails,
+  })
+  const selectedActivityIsVisible = isOwnProfile || tab === 'posts' || activityVisibilityQuery.data?.[tab === 'likes' ? 'likes_visibility' : 'reposts_visibility'] === 'public'
+  const profileActivityQuery = useQuery({
+    queryKey: ['community-profile-activity', user?.id, userId, tab],
+    queryFn: () => tab === 'posts' ? fetchCommunityProfilePosts(user?.id, userId) : fetchVisibleCommunityProfileActivity(userId, tab),
+    enabled: canViewCommunityDetails && selectedActivityIsVisible,
   })
   const communityFollowMutation = useMutation({
     mutationFn: async () => {
@@ -326,57 +334,22 @@ export function Profile() {
             <p className="mt-2 max-w-md text-sm text-muted-foreground">Follow this member to see their Community posts and profile details.</p>
           </div>
         ) : (
-          <Tabs value={tab} onValueChange={(value) => setTab(value as 'posts' | 'videos' | 'about')}>
-            <TabsList>
-              <TabsTrigger value="posts">Posts</TabsTrigger>
-              {profile.is_creator && <TabsTrigger value="videos">Videos</TabsTrigger>}
-              <TabsTrigger value="about">About</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="posts" className="mt-6 space-y-4">
-              {communityPostsQuery.isLoading ? <Skeleton className="h-48 w-full rounded-xl" /> : communityPostsQuery.isError ? (
-                <div className="card p-6 text-center text-sm text-destructive">Could not load this member's posts.</div>
-              ) : communityPostsQuery.data?.length ? communityPostsQuery.data.map((post) => (
-                <CommunityPostCard key={post.id} post={post} userId={user?.id} />
-              )) : <div className="card p-8 text-center text-sm text-muted-foreground">This member has not published any Community posts yet.</div>}
-            </TabsContent>
-
-            {profile.is_creator && <TabsContent value="videos" className="mt-6">
-              <VideoGrid
-                videos={creatorVideos}
-                columns={3}
-                isLoading={videosQuery.isLoading}
-                emptyTitle="No videos yet"
-                emptyDescription="This creator hasn't uploaded any videos"
-              />
-            </TabsContent>}
-
-            <TabsContent value="about" className="mt-6">
-              <div className="card p-6 space-y-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">
-                    Professional details
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Specialty: {profile.specialty ?? 'Not specified'}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Institution: {profile.institution ?? 'Not specified'}
-                  </p>
-
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">
-                    Bio
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {profile.bio ?? 'No bio provided yet.'}
-                  </p>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <section aria-label="Profile activity">
+            <div className="flex border-b border-border" role="tablist" aria-label="Profile activity">
+              {([
+                {id:'posts',label:'Posts',icon:FileText},
+                {id:'likes',label:'Likes',icon:Heart},
+                {id:'reposts',label:'Reposts',icon:Repeat2},
+              ] as const).map(item=><button key={item.id} type="button" role="tab" aria-selected={tab===item.id} onClick={()=>setTab(item.id)} className={cn('flex flex-1 cursor-pointer items-center justify-center gap-2 border-b-2 px-3 py-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',tab===item.id?'border-primary text-foreground':'border-transparent text-muted-foreground hover:text-foreground')}><item.icon className="size-4"/>{item.label}</button>)}
+            </div>
+            {activityVisibilityQuery.isLoading && tab!=='posts' && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg"/></div>}
+            {!activityVisibilityQuery.isLoading && !selectedActivityIsVisible ? <div className="mt-5"><EmptyState icon={tab==='likes'?<Heart/>:<Repeat2/>} title={`${tab==='likes'?'Likes':'Reposts'} are private`} description="This member has chosen not to share this activity." /></div> : <>
+              {profileActivityQuery.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg"/></div>}
+              {profileActivityQuery.isError && <div className="card mt-5 p-6 text-center text-sm text-destructive">Could not load this member's activity.</div>}
+              {!profileActivityQuery.isLoading&&!profileActivityQuery.isError&&(profileActivityQuery.data??[]).length===0&&<div className="mt-5"><EmptyState icon={tab==='likes'?<Heart/>:tab==='reposts'?<Repeat2/>:<FileText/>} title={`No ${tab} yet`} description="This member's Community activity will appear here."/></div>}
+              {!profileActivityQuery.isLoading&&!profileActivityQuery.isError&&(profileActivityQuery.data??[]).length>0&&<div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(profileActivityQuery.data as CommunityManagedPost[]).map(post=><article key={post.id} className="flex min-h-44 flex-col rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-sm"><div className="flex flex-wrap gap-2"><Badge variant="secondary">{post.post_type}</Badge></div><h4 className="mt-4 line-clamp-2 font-semibold">{post.title||'Untitled post'}</h4>{post.body&&<p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{post.body}</p>}<time className="mt-auto pt-4 text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</time></article>)}</div>}
+            </>}
+          </section>
         )}
       </div>
       </div>

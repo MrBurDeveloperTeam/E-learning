@@ -867,7 +867,34 @@ export async function fetchCommunityProfileAccess(targetUserId:string):Promise<C
 }
 
 export async function fetchCommunityProfilePosts(viewerId:string|undefined,authorId:string){
-  return fetchCommunityPosts(undefined,viewerId,'home','','all','newest',undefined,authorId)
+  const posts=await fetchCommunityPosts(undefined,viewerId,'home','','all','newest',undefined,authorId)
+  return posts.map(post=>({id:post.id,title:post.title,body:post.body,status:post.status,topic:post.topic,post_type:post.post_type,created_at:post.created_at} as CommunityManagedPost))
+}
+
+export type CommunityActivityVisibility = {
+  likes_visibility: 'public' | 'private'
+  reposts_visibility: 'public' | 'private'
+}
+
+export async function fetchCommunityActivityVisibility(targetUserId:string):Promise<CommunityActivityVisibility>{
+  const{data,error}=await supabase.rpc('community_get_profile_activity_visibility',{target_user_id:targetUserId})
+  if(error)throw error
+  const row=Array.isArray(data)?data[0]:data
+  return (row??{likes_visibility:'private',reposts_visibility:'private'}) as CommunityActivityVisibility
+}
+
+export async function fetchVisibleCommunityProfileActivity(targetUserId:string,section:'likes'|'reposts'){
+  const{data,error}=await supabase.rpc('community_get_visible_profile_activity',{target_user_id:targetUserId,activity_type:section})
+  if(error)throw error
+  return (data??[]).map((row:{id:string;title:string|null;content:string|null;moderation_status:string;post_kind:string;created_at:string})=>({
+    id:row.id,
+    title:row.title,
+    body:row.content,
+    status:row.moderation_status==='visible'?'published':row.moderation_status==='removed'?'deleted':'hidden',
+    topic:'general_dentistry',
+    post_type:row.post_kind==='video'?'video':row.post_kind==='image'?'image':'text',
+    created_at:row.created_at,
+  } as CommunityManagedPost))
 }
 
 export async function fetchFriends(userId: string) {
@@ -910,5 +937,5 @@ export async function removeCommunitySettingRelation(section: Exclude<CommunityS
 
 export async function restoreOwnCommunityPost(_id:string): Promise<void>{throw new CommunityBackendUnavailableError('Community post restoration')}
 export type CommunityMessagePermission='everyone'|'following'|'friends'|'nobody'
-export async function fetchCommunityPreferences(userId:string){const{data,error}=await supabase.from(COMMUNITY_TABLES.userSettings).select('allow_friend_requests,message_permission,show_likes_to_friends,show_reposts_to_friends,autoplay_videos').eq('user_id',userId).maybeSingle();if(error)throw error;const permission=data?.message_permission;return data?{allow_friend_requests:data.allow_friend_requests,message_permission:(permission==='followers'?'following':permission==='friends'||permission==='nobody'?permission:'everyone') as CommunityMessagePermission,show_friend_activity:data.show_likes_to_friends||data.show_reposts_to_friends,autoplay_videos:data.autoplay_videos}:{allow_friend_requests:true,message_permission:'everyone' as CommunityMessagePermission,show_friend_activity:true,autoplay_videos:true}}
-export async function saveCommunityPreferences(userId:string,values:{allow_friend_requests:boolean;message_permission:CommunityMessagePermission;show_friend_activity:boolean;autoplay_videos:boolean}){const databasePermission=values.message_permission==='following'?'followers':values.message_permission;const{error}=await supabase.from(COMMUNITY_TABLES.userSettings).upsert({user_id:userId,allow_friend_requests:values.allow_friend_requests,message_permission:databasePermission,show_likes_to_friends:values.show_friend_activity,show_reposts_to_friends:values.show_friend_activity,autoplay_videos:values.autoplay_videos});if(error)throw error}
+export async function fetchCommunityPreferences(userId:string){const{data,error}=await supabase.from(COMMUNITY_TABLES.userSettings).select('allow_friend_requests,message_permission,show_likes_to_friends,show_reposts_to_friends,likes_visibility,reposts_visibility,autoplay_videos').eq('user_id',userId).maybeSingle();if(error)throw error;const permission=data?.message_permission;return data?{allow_friend_requests:data.allow_friend_requests,message_permission:(permission==='followers'?'following':permission==='friends'||permission==='nobody'?permission:'everyone') as CommunityMessagePermission,show_friend_activity:data.show_likes_to_friends||data.show_reposts_to_friends,likes_visibility:(data.likes_visibility==='public'?'public':'private') as 'public'|'private',reposts_visibility:(data.reposts_visibility==='public'?'public':'private') as 'public'|'private',autoplay_videos:data.autoplay_videos}:{allow_friend_requests:true,message_permission:'everyone' as CommunityMessagePermission,show_friend_activity:true,likes_visibility:'private' as const,reposts_visibility:'private' as const,autoplay_videos:true}}
+export async function saveCommunityPreferences(userId:string,values:{allow_friend_requests:boolean;message_permission:CommunityMessagePermission;show_friend_activity:boolean;likes_visibility:'public'|'private';reposts_visibility:'public'|'private';autoplay_videos:boolean}){const databasePermission=values.message_permission==='following'?'followers':values.message_permission;const{error}=await supabase.from(COMMUNITY_TABLES.userSettings).upsert({user_id:userId,allow_friend_requests:values.allow_friend_requests,message_permission:databasePermission,show_likes_to_friends:values.show_friend_activity,show_reposts_to_friends:values.show_friend_activity,likes_visibility:values.likes_visibility,reposts_visibility:values.reposts_visibility,autoplay_videos:values.autoplay_videos});if(error)throw error}
