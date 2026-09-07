@@ -1,9 +1,8 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { useProfileImage } from '@/hooks/useProfileImage'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { CheckCircle2 } from 'lucide-react'
-import { FollowButton } from '@/components/creator/FollowButton'
+import { Check, CheckCircle2, LockKeyhole, UserPlus } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VideoGrid } from '@/components/video/VideoGrid'
@@ -17,6 +16,9 @@ import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import type { CreatorApplication } from '@/types'
+import { Button } from '@/components/ui/button'
+import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
+import { fetchCommunityProfileAccess, fetchCommunityProfilePosts, followCommunityPerson, unfollowCommunityPerson } from '@/features/community/api/communityApi'
 
 
 function BuildingIcon() {
@@ -56,7 +58,7 @@ function CardIcon() {
 
 export function Profile() {
   const { userId } = useParams({ from: '/profile/$userId' })
-  const [tab, setTab] = useState<'videos' | 'about'>('videos')
+  const [tab, setTab] = useState<'posts' | 'videos' | 'about'>('posts')
   const [isRequestingVerification, setIsRequestingVerification] = useState(false)
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
@@ -74,6 +76,33 @@ export function Profile() {
   const videosQuery = useCreatorVideos(profile?.is_creator ? userId : '')
   const creatorVideos = videosQuery.data ?? []
   const videoCount = creatorVideos.length
+  const communityAccessQuery = useQuery({
+    queryKey: ['community-profile-access', user?.id, userId],
+    queryFn: () => fetchCommunityProfileAccess(userId),
+    enabled: !!user?.id,
+  })
+  const canViewCommunityDetails = isOwnProfile || communityAccessQuery.data?.can_view_details === true
+  const communityPostsQuery = useQuery({
+    queryKey: ['community-profile-posts', user?.id, userId],
+    queryFn: () => fetchCommunityProfilePosts(user?.id, userId),
+    enabled: canViewCommunityDetails,
+  })
+  const communityFollowMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Sign in to follow this member.')
+      if (communityAccessQuery.data?.viewer_is_following) await unfollowCommunityPerson(user.id, userId)
+      else await followCommunityPerson(user.id, userId)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['community-profile-access', user?.id, userId] }),
+        queryClient.invalidateQueries({ queryKey: ['community-people-search', user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ['community-settings', user?.id, 'following'] }),
+        queryClient.invalidateQueries({ queryKey: ['community-posts'] }),
+      ])
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update follow status.'),
+  })
   const creatorApplicationQuery = useQuery({
     queryKey: ['creator-application', currentProfile?.user_id],
     queryFn: async () => {
@@ -214,7 +243,14 @@ export function Profile() {
                   )}
                 </div>
               ) : currentProfile ? (
-                <FollowButton userId={userId} />
+                <Button
+                  type="button"
+                  variant={communityAccessQuery.data?.viewer_is_following ? 'outline' : 'default'}
+                  disabled={communityAccessQuery.isLoading || communityFollowMutation.isPending}
+                  onClick={() => communityFollowMutation.mutate()}
+                >
+                  {communityAccessQuery.data?.viewer_is_following ? <><Check className="size-4" />Following</> : <><UserPlus className="size-4" />Follow</>}
+                </Button>
               ) : null}
             </div>
 
@@ -228,7 +264,7 @@ export function Profile() {
 
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <p className="text-sm text-muted-foreground">
-                {profile.specialty ?? 'Dental professional'}
+                {canViewCommunityDetails ? profile.specialty ?? 'Dental professional' : 'Private account'}
               </p>
               {profile.is_verified && (
                 <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium border border-primary/20">
@@ -249,26 +285,26 @@ export function Profile() {
               )}
               <div className="text-center md:text-left">
                 <p className="text-base font-medium text-foreground">
-                  {formatViewCount(profile.follower_count)}
+                  {formatViewCount(communityAccessQuery.data?.follower_count ?? profile.follower_count)}
                 </p>
                 <p className="text-xs text-muted-foreground/60">Followers</p>
               </div>
               <div className="text-center md:text-left">
                 <p className="text-base font-medium text-foreground">
-                  {formatViewCount(profile.following_count)}
+                  {formatViewCount(communityAccessQuery.data?.following_count ?? profile.following_count)}
                 </p>
                 <p className="text-xs text-muted-foreground/60">Following</p>
               </div>
             </div>
 
-            {profile.bio && (
+            {canViewCommunityDetails && profile.bio && (
               <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-lg">
                 {profile.bio}
               </p>
             )}
 
             <div className="flex flex-wrap gap-3 mt-3">
-              {profile.institution && (
+              {canViewCommunityDetails && profile.institution && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <BuildingIcon />
                   {profile.institution}
@@ -279,14 +315,33 @@ export function Profile() {
           </div>
         </div>
 
-        {profile.is_creator ? (
-          <Tabs value={tab} onValueChange={(value) => setTab(value as 'videos' | 'about')}>
+        {communityAccessQuery.isLoading && !isOwnProfile ? (
+          <Skeleton className="h-64 w-full rounded-xl" />
+        ) : communityAccessQuery.isError && !isOwnProfile ? (
+          <div className="card p-8 text-center text-sm text-destructive">Could not determine this profile's privacy settings.</div>
+        ) : !canViewCommunityDetails && !isOwnProfile ? (
+          <div className="card flex min-h-64 flex-col items-center justify-center p-8 text-center">
+            <span className="mb-4 grid size-14 place-items-center rounded-full bg-muted"><LockKeyhole className="size-6 text-muted-foreground" /></span>
+            <h2 className="text-lg font-semibold">This account is private</h2>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">Follow this member to see their Community posts and profile details.</p>
+          </div>
+        ) : (
+          <Tabs value={tab} onValueChange={(value) => setTab(value as 'posts' | 'videos' | 'about')}>
             <TabsList>
-              <TabsTrigger value="videos">Videos</TabsTrigger>
+              <TabsTrigger value="posts">Posts</TabsTrigger>
+              {profile.is_creator && <TabsTrigger value="videos">Videos</TabsTrigger>}
               <TabsTrigger value="about">About</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="videos" className="mt-6">
+            <TabsContent value="posts" className="mt-6 space-y-4">
+              {communityPostsQuery.isLoading ? <Skeleton className="h-48 w-full rounded-xl" /> : communityPostsQuery.isError ? (
+                <div className="card p-6 text-center text-sm text-destructive">Could not load this member's posts.</div>
+              ) : communityPostsQuery.data?.length ? communityPostsQuery.data.map((post) => (
+                <CommunityPostCard key={post.id} post={post} userId={user?.id} />
+              )) : <div className="card p-8 text-center text-sm text-muted-foreground">This member has not published any Community posts yet.</div>}
+            </TabsContent>
+
+            {profile.is_creator && <TabsContent value="videos" className="mt-6">
               <VideoGrid
                 videos={creatorVideos}
                 columns={3}
@@ -294,7 +349,7 @@ export function Profile() {
                 emptyTitle="No videos yet"
                 emptyDescription="This creator hasn't uploaded any videos"
               />
-            </TabsContent>
+            </TabsContent>}
 
             <TabsContent value="about" className="mt-6">
               <div className="card p-6 space-y-4">
@@ -322,43 +377,6 @@ export function Profile() {
               </div>
             </TabsContent>
           </Tabs>
-        ) : (
-          <div className="card p-5 bg-card border-border">
-            <p className="text-sm text-muted-foreground">
-              This member is not a verified creator.
-            </p>
-            {isOwnProfile && !profile.is_verified && (
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {creatorApplicationStatus === 'pending'
-                    ? 'Your verification request is pending admin review.'
-                    : creatorApplicationStatus === 'rejected'
-                      ? 'Your previous verification request was rejected. You can request verification again.'
-                      : creatorApplicationStatus === 'revoked'
-                        ? 'Your verification was revoked. You can request verification again.'
-                        : 'Request verification to be reviewed by the admin team.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleRequestVerification}
-                  disabled={
-                    isRequestingVerification ||
-                    creatorApplicationQuery.isLoading ||
-                    creatorApplicationStatus === 'pending'
-                  }
-                  className="btn-primary text-sm px-4 py-2 w-full sm:w-auto disabled:opacity-60"
-                >
-                  {creatorApplicationStatus === 'pending'
-                    ? 'Verification pending'
-                    : creatorApplicationStatus === 'rejected' || creatorApplicationStatus === 'revoked'
-                      ? 'Request verification again'
-                      : isRequestingVerification
-                        ? 'Requesting...'
-                        : 'Request verification'}
-                </button>
-              </div>
-            )}
-          </div>
         )}
       </div>
       </div>

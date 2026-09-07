@@ -46,7 +46,7 @@ export type CommunityFeedCursor = {
 
 export type CommunityPostPage = CommunityPost[] & { nextCursor?: CommunityFeedCursor }
 
-export async function fetchCommunityPosts(cursor: CommunityFeedCursor | undefined, userId?: string, mode: CommunityFeedMode = 'home', search = '', topic = 'all', sort: 'relevant'|'newest'|'popular' = 'relevant', communityId?: string): Promise<CommunityPostPage> {
+export async function fetchCommunityPosts(cursor: CommunityFeedCursor | undefined, userId?: string, mode: CommunityFeedMode = 'home', search = '', topic = 'all', sort: 'relevant'|'newest'|'popular' = 'relevant', communityId?: string, authorId?: string): Promise<CommunityPostPage> {
   let authorIds: string[] | null = null
   let activityPostIds: string[] | null = null
   let hiddenPostIds: string[] = []
@@ -113,6 +113,7 @@ export async function fetchCommunityPosts(cursor: CommunityFeedCursor | undefine
   if (cursor) query = query.lt('published_at', cursor.publishedAt)
   if (mode === 'video') query = query.eq('post_kind', 'video')
   if (communityId) query = query.eq('community_id', communityId)
+  if (authorId) query = query.eq('author_id', authorId)
   if (authorIds) query = query.in('author_id', authorIds)
   if (activityPostIds) query = query.in('id', activityPostIds)
   if (topicPostIds) query = query.in('id', topicPostIds)
@@ -842,6 +843,31 @@ export async function followCommunityPerson(userId:string,followingId:string){
   if(userId===followingId)throw new Error('You cannot follow your own profile.')
   const{error}=await supabase.from(COMMUNITY_TABLES.follows).upsert({follower_id:userId,following_id:followingId},{onConflict:'follower_id,following_id',ignoreDuplicates:true})
   if(error)throw error
+}
+
+export async function unfollowCommunityPerson(userId:string,followingId:string){
+  const{error}=await supabase.from(COMMUNITY_TABLES.follows).delete().eq('follower_id',userId).eq('following_id',followingId)
+  if(error)throw error
+}
+
+export type CommunityProfileAccess = {
+  profile_visibility: 'public' | 'followers' | 'friends'
+  viewer_is_following: boolean
+  can_view_details: boolean
+  follower_count: number
+  following_count: number
+}
+
+export async function fetchCommunityProfileAccess(targetUserId:string):Promise<CommunityProfileAccess>{
+  const{data,error}=await supabase.rpc('community_get_profile_access',{target_user_id:targetUserId})
+  if(error)throw error
+  const row=Array.isArray(data)?data[0]:data
+  if(!row)throw new Error('Community profile access could not be determined.')
+  return row as CommunityProfileAccess
+}
+
+export async function fetchCommunityProfilePosts(viewerId:string|undefined,authorId:string){
+  return fetchCommunityPosts(undefined,viewerId,'home','','all','newest',undefined,authorId)
 }
 
 export async function fetchFriends(userId: string) {
