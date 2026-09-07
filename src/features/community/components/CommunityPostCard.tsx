@@ -376,6 +376,7 @@ export function CommunityPostCard({
                 userId={userId}
                 postAuthorId={post.author_id}
                 expanded={commentsExpanded}
+                onRequestExpand={() => setCommentsExpanded(true)}
               />
             </Suspense>
         </div>

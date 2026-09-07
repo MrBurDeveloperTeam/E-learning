@@ -70,15 +70,17 @@ export function CommunityComments({
   userId,
   postAuthorId,
   expanded = false,
+  onRequestExpand,
 }: {
   postId: string;
   userId?: string;
   postAuthorId?: string;
   expanded?: boolean;
+  onRequestExpand?: () => void;
 }) {
   const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
-  const query = useCommunityComments(postId, userId, true, expanded ? -1 : 0, expanded ? search : "");
+  const query = useCommunityComments(postId, userId, true, -1, expanded ? search : "");
   const createMutation = useCreateCommunityComment(postId, userId),
     updateMutation = useUpdateCommunityComment(postId, userId),
     deleteMutation = useDeleteCommunityComment(postId, userId);
@@ -96,6 +98,7 @@ export function CommunityComments({
       "relevant",
     ),
     [revealed, setRevealed] = useState(() => new Set<string>()),
+    [expandedReplyThreads, setExpandedReplyThreads] = useState(() => new Set<string>()),
     [warnConfirmedBody, setWarnConfirmedBody] = useState<string | null>(null);
   const mentionQuery = mentionTail(body),
     mentions = useCommunityMentionUsers(mentionQuery);
@@ -104,20 +107,21 @@ export function CommunityComments({
     const rows = [...(query.data ?? [])].filter((comment) => expanded || comment.status === "visible");
     const score = (item: CommunityComment) =>
       (item.is_pinned ? 100000 : 0) +
-      (item.is_best_answer ? 50000 : 0) +
       item.like_count * 4 +
       (item.profiles?.is_verified ? 2 : 0) -
       ((Date.now() - Date.parse(item.created_at)) / 86_400_000) * 0.05;
     const relationshipPriority = (a: CommunityComment, b: CommunityComment) =>
       Number(Boolean(b.viewer_is_followed_or_friend)) - Number(Boolean(a.viewer_is_followed_or_friend));
+    const bestAnswerPriority = (a: CommunityComment, b: CommunityComment) =>
+      Number(b.is_best_answer) - Number(a.is_best_answer);
     if (sort === "newest")
-      rows.sort((a, b) => relationshipPriority(a,b) || Date.parse(b.created_at) - Date.parse(a.created_at));
+      rows.sort((a, b) => bestAnswerPriority(a,b) || relationshipPriority(a,b) || Date.parse(b.created_at) - Date.parse(a.created_at));
     else if (sort === "oldest")
-      rows.sort((a, b) => relationshipPriority(a,b) || Date.parse(a.created_at) - Date.parse(b.created_at));
-    else rows.sort((a, b) => relationshipPriority(a,b) || score(b) - score(a));
+      rows.sort((a, b) => bestAnswerPriority(a,b) || relationshipPriority(a,b) || Date.parse(a.created_at) - Date.parse(b.created_at));
+    else rows.sort((a, b) => bestAnswerPriority(a,b) || relationshipPriority(a,b) || score(b) - score(a));
     const children = new Map<string, CommunityComment[]>();
     for (const row of rows)
-      if (row.parent_comment_id)
+      if (row.parent_comment_id && !row.is_best_answer)
         children.set(row.parent_comment_id, [
           ...(children.get(row.parent_comment_id) ?? []),
           row,
@@ -125,12 +129,16 @@ export function CommunityComments({
     return {
       roots: rows.filter(
         (row) =>
+          row.is_best_answer ||
           !row.parent_comment_id ||
           !rows.some((candidate) => candidate.id === row.parent_comment_id),
       ),
       children,
     };
   }, [expanded, query.data, sort]);
+
+  const visibleRoots = expanded ? comments.roots : comments.roots.slice(0, 6);
+  const hasMoreComments = !expanded && comments.roots.length > 6;
 
   const chooseFiles = (selected: FileList | null) => {
     const next = [...(selected ?? [])].slice(0, 3);
@@ -259,6 +267,18 @@ export function CommunityComments({
         "Community member",
       isOwner = comment.author_id === userId,
       canCurate = userId === postAuthorId;
+    const parentComment = comment.parent_comment_id
+      ? (query.data ?? []).find((item) => item.id === comment.parent_comment_id)
+      : null;
+    const parentName = parentComment
+      ? parentComment.profiles?.full_name ||
+        parentComment.profiles?.name ||
+        parentComment.profiles?.username ||
+        "Community member"
+      : null;
+    const childComments = comments.children.get(comment.id) ?? [];
+    const repliesExpanded = expandedReplyThreads.has(comment.id);
+    const visibleChildren = repliesExpanded ? childComments : childComments.slice(0, 2);
     return (
       <div
         key={comment.id}
@@ -481,6 +501,11 @@ export function CommunityComments({
                 <X />
               </Button>
             </div>
+            {parentName && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Replying to <span className="font-medium text-foreground">{parentName}</span>
+              </p>
+            )}
             <Textarea
               value={body}
               onChange={(event) => {
@@ -508,8 +533,23 @@ export function CommunityComments({
             </div>
           </form>
         )}
-        {(comments.children.get(comment.id) ?? []).map((child) =>
-          renderComment(child, depth + 1),
+        {visibleChildren.map((child) => renderComment(child, depth + 1))}
+        {!repliesExpanded && childComments.length > 2 && (
+          <div className="ml-5 mt-2 sm:ml-12">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setExpandedReplyThreads((current) => {
+                  const next = new Set(current);
+                  next.add(comment.id);
+                  return next;
+                })
+              }
+            >
+              View all {childComments.length} replies
+            </Button>
+          </div>
         )}
       </div>
     );
@@ -651,8 +691,15 @@ export function CommunityComments({
         />
       )}
       <div className="mt-4 space-y-3">
-        {comments.roots.map((comment) => renderComment(comment))}
+        {visibleRoots.map((comment) => renderComment(comment))}
       </div>
+      {hasMoreComments && (
+        <div className="mt-4 flex justify-center border-t border-border/70 pt-4">
+          <Button variant="outline" onClick={onRequestExpand}>
+            View all comments
+          </Button>
+        </div>
+      )}
       <Dialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => {

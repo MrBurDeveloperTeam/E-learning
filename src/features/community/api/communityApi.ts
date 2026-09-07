@@ -276,7 +276,7 @@ export async function updateCommunityPost(input:{id:string;authorId:string;title
   const addTopic=await supabase.from(COMMUNITY_TABLES.postTopics).insert({post_id:input.id,topic_id:topic.data.id,assignment_source:'author',assigned_by:input.authorId})
   if(addTopic.error)throw addTopic.error
 }
-export async function softDeleteCommunityPost(id:string,authorId:string): Promise<void>{const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).update({moderation_status:'removed',updated_at:new Date().toISOString()}).eq('id',id).eq('author_id',authorId).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('This post could not be deleted because it is no longer available or you do not have permission.')}
+export async function softDeleteCommunityPost(id:string,authorId:string): Promise<void>{void authorId;const{error}=await supabase.rpc('community_delete_own_post',{p_post_id:id});if(error)throw error}
 // Sharing is performed by the Clipboard API. There is no share-event table or
 // RPC in the current production contract, so missing analytics must not block it.
 export async function recordCommunityPostShare(_id:string): Promise<void>{}
