@@ -323,7 +323,7 @@ export function DentalVideoDetail() {
         ) : video ? (
           <div className="space-y-5">
             <nav
-              className="grid grid-cols-2 gap-6 sm:gap-12"
+              className="grid grid-cols-2 gap-8 sm:gap-16"
               aria-label="Video navigation"
             >
               {adjacent.previous ? (
@@ -335,7 +335,7 @@ export function DentalVideoDetail() {
                 >
                   <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                   <span className="flex min-w-0 items-center gap-2 border-b border-border pb-1 transition-colors group-hover:border-primary sm:gap-3">
-                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Previous</span>
+                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/45 group-hover:bg-primary/10 group-hover:text-primary">Previous</span>
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">
                       {adjacent.previous.title}
                     </span>
@@ -354,7 +354,7 @@ export function DentalVideoDetail() {
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">
                       {adjacent.next.title}
                     </span>
-                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Next</span>
+                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/45 group-hover:bg-primary/10 group-hover:text-primary">Next</span>
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                 </Link>

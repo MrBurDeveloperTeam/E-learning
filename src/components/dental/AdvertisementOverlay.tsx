@@ -10,6 +10,7 @@ type AdvertisementOverlayProps = {
 
 export function AdvertisementOverlay({ advertisement, onComplete }: AdvertisementOverlayProps) {
   const [secondsRemaining, setSecondsRemaining] = useState(Math.max(0, advertisement.skip_after_seconds))
+  const [videoProgress, setVideoProgress] = useState(0)
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const canSkip = secondsRemaining === 0
 
@@ -30,6 +31,10 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
     const timer = window.setTimeout(() => setSecondsRemaining((current) => Math.max(0, current - 1)), 1000)
     return () => window.clearTimeout(timer)
   }, [secondsRemaining])
+
+  useEffect(() => {
+    setVideoProgress(0)
+  }, [advertisement.media_url])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -88,7 +93,7 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
             <Button
               type="button"
               variant="outline"
-              className="absolute left-3 top-3 z-10 h-9 rounded-xl border-white/30 bg-black/45 px-3 text-sm font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:left-4 sm:top-4"
+              className="absolute right-3 top-3 z-10 h-9 rounded-xl border-white/30 bg-black/45 px-3 text-sm font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:top-4"
               onClick={(event) => {
                 event.stopPropagation()
                 openDestination()
@@ -115,10 +120,32 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
           </Button>
 
           {advertisement.media_type === 'video' ? (
-            <video className="pointer-events-none max-h-[72dvh] min-h-52 w-full bg-black object-contain" src={advertisement.media_url} aria-label={advertisement.alt_text} autoPlay muted playsInline controls={false} disablePictureInPicture controlsList="nodownload noplaybackrate noremoteplayback" onEnded={onComplete} onError={onComplete} />
+            <video
+              className="pointer-events-none max-h-[72dvh] min-h-52 w-full bg-black object-contain"
+              src={advertisement.media_url}
+              aria-label={advertisement.alt_text}
+              autoPlay
+              muted
+              playsInline
+              controls={false}
+              disablePictureInPicture
+              controlsList="nodownload noplaybackrate noremoteplayback"
+              onTimeUpdate={(event) => {
+                const { currentTime, duration } = event.currentTarget
+                setVideoProgress(Number.isFinite(duration) && duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0)
+              }}
+              onEnded={onComplete}
+              onError={onComplete}
+            />
           ) : (
             <img className="pointer-events-none max-h-[72dvh] min-h-52 w-full bg-muted/35 object-contain" src={advertisement.media_url} alt={advertisement.alt_text} />
           )}
+
+          {advertisement.media_type === 'video' ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[3px] bg-black/20" aria-hidden="true">
+              <div className="h-full bg-yellow-400 transition-[width] duration-150 ease-linear" style={{ width: `${videoProgress}%` }} />
+            </div>
+          ) : null}
         </div>
 
         <div className="border-t border-border bg-card p-4 sm:px-5">
