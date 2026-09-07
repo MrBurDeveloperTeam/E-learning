@@ -331,14 +331,12 @@ export function DentalVideoDetail() {
                   to="/dental-videos/$id"
                   params={{ id: adjacent.previous.id }}
                   title={`Previous: ${adjacent.previous.title}`}
-                  className="group flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+                  className="group flex min-w-0 items-center gap-2 border-b border-border px-1 py-3 text-left transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
                 >
                   <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-xs font-medium text-muted-foreground">Previous</span>
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {adjacent.previous.title}
-                    </span>
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">Previous</span>
+                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {adjacent.previous.title}
                   </span>
                 </Link>
               ) : null}
@@ -348,7 +346,7 @@ export function DentalVideoDetail() {
                   to="/dental-videos/$id"
                   params={{ id: adjacent.next.id }}
                   title={`Next: ${adjacent.next.title}`}
-                  className="group col-start-2 flex min-w-0 items-center justify-end gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-right transition-colors hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+                  className="group col-start-2 flex min-w-0 items-center justify-end gap-2 border-b border-border px-1 py-3 text-right transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-2"
                 >
                   <span className="min-w-0 truncate text-sm font-medium text-foreground">
                     {adjacent.next.title}

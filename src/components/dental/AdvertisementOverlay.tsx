@@ -104,7 +104,7 @@ export function AdvertisementOverlay({ advertisement, onComplete }: Advertisemen
             data-ad-skip
             type="button"
             variant="outline"
-            className="absolute bottom-3 right-3 z-10 min-w-32 rounded-xl border-white/30 bg-black/45 px-4 text-base font-semibold text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/20 disabled:bg-black/30 disabled:text-white/70 disabled:opacity-100 sm:bottom-4 sm:right-4"
+            className="absolute bottom-4 right-4 z-10 h-14 min-w-44 rounded-2xl border-white/35 bg-black/45 px-6 text-lg font-bold text-white shadow-xl backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/25 disabled:bg-black/35 disabled:text-white/75 disabled:opacity-100 sm:bottom-5 sm:right-5 sm:h-16 sm:min-w-48 sm:px-7 sm:text-xl"
             disabled={!canSkip}
             onClick={(event) => {
               event.stopPropagation()
