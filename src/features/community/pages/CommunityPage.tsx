@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Check, CircleUserRound, Compass, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, UserPlus, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { Check, CircleUserRound, Compass, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, UserPlus, UserRoundCheck, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
 import { Navbar } from '@/components/layout/Navbar'
@@ -28,7 +28,6 @@ function CommunityPanelFallback() {
 const navigation = [
   { id: 'home', label: 'Home', icon: Home, available: true },
   { id: 'following', label: 'Following', icon: UserRoundCheck, available: true },
-  { id: 'friends', label: 'Friends', icon: UsersRound, available: true },
   { id: 'communities', label: 'Communities', icon: MessageCircleMore, available: true },
   { id: 'video', label: 'Video', icon: PlaySquare, available: true },
   { id: 'chat', label: 'Chat', icon: MessagesSquare, available: true },
@@ -40,7 +39,7 @@ export function CommunityPage() {
   const search = useSearch({ strict: false }) as { tab?: string;q?:string;topic?:string;sort?:'relevant'|'newest'|'popular' }
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
-  const activeTab = search.tab === 'following' || search.tab === 'friends' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'chat' || search.tab === 'me' || search.tab === 'settings' ? (search.tab === 'settings' ? 'me' : search.tab) : 'home'
+  const activeTab = search.tab === 'following' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'chat' || search.tab === 'me' || search.tab === 'settings' ? (search.tab === 'settings' ? 'me' : search.tab) : 'home'
   const feedMode = activeTab === 'communities' || activeTab === 'chat' || activeTab === 'me' ? 'home' : activeTab
   const [postSearch,setPostSearch]=useState(search.q??'')
   const [peopleSearch,setPeopleSearch]=useState('')
@@ -101,17 +100,15 @@ export function CommunityPage() {
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                {activeTab === 'following' ? 'Following feed' : activeTab === 'friends' ? 'Friends feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'chat' ? 'Messages' : activeTab === 'me' ? 'My profile' : 'Home feed'}
+                {activeTab === 'following' ? 'Following feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'chat' ? 'Messages' : activeTab === 'me' ? 'My profile' : 'Home feed'}
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
-                {activeTab === 'following' ? 'From people you follow' : activeTab === 'friends' ? 'What your friends found useful' : activeTab === 'communities' ? 'Find your clinical circle' : activeTab === 'video' ? 'Video, tuned to your interests' : activeTab === 'chat' ? 'Your conversations' : activeTab === 'me' ? 'Your Community profile' : 'What dentistry is discussing'}
+                {activeTab === 'following' ? 'From people you follow' : activeTab === 'communities' ? 'Find your clinical circle' : activeTab === 'video' ? 'Video, tuned to your interests' : activeTab === 'chat' ? 'Your conversations' : activeTab === 'me' ? 'Your Community profile' : 'What dentistry is discussing'}
               </h2>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
                 {activeTab === 'following'
                   ? 'Posts from the professionals and peers you follow.'
-                  : activeTab === 'friends'
-                    ? 'Posts your accepted friends liked or reposted.'
-                    : activeTab === 'communities'
+                  : activeTab === 'communities'
                       ? 'Browse public communities and revisit the spaces you have joined.'
                       : activeTab === 'video'
                         ? 'Topics you engage with appear more often, while other clinical areas stay in the mix.'
@@ -144,13 +141,11 @@ export function CommunityPage() {
             {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (
               <EmptyState
-                icon={activeTab === 'following' ? <UserRoundCheck /> : activeTab === 'friends' ? <UsersRound /> : activeTab === 'video' ? <PlaySquare /> : <Compass />}
-                title={activeTab === 'following' ? 'No posts from followed users yet' : activeTab === 'friends' ? 'No friend activity yet' : activeTab === 'video' ? 'No community videos yet' : 'No posts yet'}
+                icon={activeTab === 'following' ? <UserRoundCheck /> : activeTab === 'video' ? <PlaySquare /> : <Compass />}
+                title={activeTab === 'following' ? 'No posts from followed users yet' : activeTab === 'video' ? 'No community videos yet' : 'No posts yet'}
                 description={activeTab === 'following'
                   ? 'Follow more people or return later when they publish a post.'
-                  : activeTab === 'friends'
-                    ? 'Accepted friends’ likes and reposts will appear here.'
-                    : activeTab === 'video'
+                  : activeTab === 'video'
                       ? 'Community videos will appear here.'
                   : 'Create the first post to start the conversation.'}
               />

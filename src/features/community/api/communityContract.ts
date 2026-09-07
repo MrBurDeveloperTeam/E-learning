@@ -25,6 +25,7 @@ export const COMMUNITY_TABLES = {
   comments: 'community_comments',
   commentLikes: 'community_comment_likes',
   follows: 'community_follows',
+  closeFriends: 'community_close_friends',
   friendships: 'community_friendships',
   reports: 'community_reports',
   professionalBadges: 'community_professional_badges',

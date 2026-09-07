@@ -136,4 +136,6 @@ export interface CommunityPerson {
   avatar_url: string | null
   is_verified: boolean
   relation_id?: string
+  is_mutual?: boolean
+  is_close_friend?: boolean
 }

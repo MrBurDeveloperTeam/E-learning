@@ -795,11 +795,33 @@ export async function fetchFollowingPeople(userId: string) {
     .eq('follower_id', userId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  const profiles = await fetchPeopleProfiles((data ?? []).map((row) => row.following_id))
+  const ids = (data ?? []).map((row) => row.following_id)
+  const profiles = await fetchPeopleProfiles(ids)
+  const [incoming, closeFriends] = ids.length ? await Promise.all([
+    supabase.from(COMMUNITY_TABLES.follows).select('follower_id').eq('following_id', userId).in('follower_id', ids),
+    supabase.from(COMMUNITY_TABLES.closeFriends).select('close_friend_id').eq('owner_id', userId).in('close_friend_id', ids),
+  ]) : [{ data: [], error: null }, { data: [], error: null }]
+  if (incoming.error) throw incoming.error
+  if (closeFriends.error) throw closeFriends.error
+  const mutualIds = new Set((incoming.data ?? []).map(row => row.follower_id))
+  const closeFriendIds = new Set((closeFriends.data ?? []).map(row => row.close_friend_id))
   return (data ?? []).flatMap((row) => {
     const profile = profiles.get(row.following_id)
-    return profile ? [{ ...profile, relation_id: row.following_id }] : []
+    return profile ? [{ ...profile, relation_id: row.following_id, is_mutual: mutualIds.has(row.following_id), is_close_friend: closeFriendIds.has(row.following_id) }] : []
   })
+}
+
+export async function fetchCloseFriends(userId: string) {
+  const following = await fetchFollowingPeople(userId)
+  return following.filter(person => person.is_mutual && person.is_close_friend)
+}
+
+export async function setCloseFriend(userId: string, closeFriendId: string, active: boolean) {
+  const request = active
+    ? supabase.from(COMMUNITY_TABLES.closeFriends).insert({ owner_id: userId, close_friend_id: closeFriendId })
+    : supabase.from(COMMUNITY_TABLES.closeFriends).delete().eq('owner_id', userId).eq('close_friend_id', closeFriendId)
+  const { error } = await request
+  if (error) throw error
 }
 
 export async function searchCommunityPeople(userId:string,search:string){
