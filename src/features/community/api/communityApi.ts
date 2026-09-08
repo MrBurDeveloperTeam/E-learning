@@ -19,15 +19,16 @@ import {
 const PAGE_SIZE = 10
 
 async function findCommunityTopic(topic: CommunityPostTopic) {
-  const slugs = [...new Set([topic, topic.replaceAll('_', '-')])]
+  const normalize = (value: string) => value
+    .trim()
+    .toLocaleLowerCase()
+    .replace('paediatric', 'pediatric')
+    .replace(/[^a-z0-9]+/g, '')
   const result = await supabase
     .from(COMMUNITY_TABLES.topics)
     .select('id,slug')
-    .in('slug', slugs)
-    .limit(1)
-    .maybeSingle()
   if (result.error) throw result.error
-  return result.data
+  return (result.data ?? []).find((row) => normalize(row.slug) === normalize(topic)) ?? null
 }
 
 async function addCommunityVerification<T extends { user_id: string; is_verified?: boolean | null }>(profiles: T[]): Promise<T[]> {
