@@ -91,11 +91,11 @@ export function FindPeopleDialog({ userId }: { userId: string }) {
                     </Link>
                     <Button
                       size="sm"
-                      variant={person.viewer_is_following ? 'outline' : 'default'}
-                      disabled={person.viewer_is_following || followMutation.isPending}
-                      onClick={() => void followMutation.mutateAsync(person.user_id).then(() => toast.success('Following.')).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not follow this member.'))}
+                      variant={person.viewer_is_following || person.viewer_request_pending ? 'outline' : 'default'}
+                      disabled={person.viewer_is_following || person.viewer_request_pending || followMutation.isPending}
+                      onClick={() => void followMutation.mutateAsync(person.user_id).then((status) => toast.success(status === 'request_pending' ? 'Follow request sent.' : 'Following.')).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not follow this member.'))}
                     >
-                      {person.viewer_is_following ? <><Check className="size-4" />Following</> : <><UserPlus className="size-4" />Follow</>}
+                      {person.viewer_is_following ? <><Check className="size-4" />Following</> : person.viewer_request_pending ? <><Check className="size-4" />Requested</> : <><UserPlus className="size-4" />{person.profile_visibility === 'private' ? 'Request' : 'Follow'}</>}
                     </Button>
                   </div>
                 )

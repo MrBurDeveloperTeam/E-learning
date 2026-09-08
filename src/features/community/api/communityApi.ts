@@ -1054,16 +1054,26 @@ export async function searchCommunityPeople(userId:string,search:string){
   if(error)throw error
   const profiles=await addCommunityVerification(data??[])
   if(profiles.length===0)return []
-  const follows=await supabase.from(COMMUNITY_TABLES.follows).select('following_id').eq('follower_id',userId).in('following_id',profiles.map(profile=>profile.user_id))
+  const profileIds=profiles.map(profile=>profile.user_id)
+  const [follows,settings,requests]=await Promise.all([
+    supabase.from(COMMUNITY_TABLES.follows).select('following_id').eq('follower_id',userId).in('following_id',profileIds),
+    supabase.from(COMMUNITY_TABLES.userSettings).select('user_id,profile_visibility').in('user_id',profileIds),
+    supabase.from(COMMUNITY_TABLES.friendships).select('addressee_id').eq('requester_id',userId).eq('friendship_status','pending').in('addressee_id',profileIds),
+  ])
   if(follows.error)throw follows.error
+  if(settings.error)throw settings.error
+  if(requests.error)throw requests.error
   const followed=new Set((follows.data??[]).map(row=>row.following_id))
-  return profiles.map(profile=>({...profile,viewer_is_following:followed.has(profile.user_id)}))
+  const visibility=new Map((settings.data??[]).map(row=>[row.user_id,row.profile_visibility==='private'?'private':'public']))
+  const pending=new Set((requests.data??[]).map(row=>row.addressee_id))
+  return profiles.map(profile=>({...profile,profile_visibility:visibility.get(profile.user_id)??'public',viewer_is_following:followed.has(profile.user_id),viewer_request_pending:pending.has(profile.user_id)}))
 }
 
 export async function followCommunityPerson(userId:string,followingId:string){
   if(userId===followingId)throw new Error('You cannot follow your own profile.')
-  const{error}=await supabase.from(COMMUNITY_TABLES.follows).upsert({follower_id:userId,following_id:followingId},{onConflict:'follower_id,following_id',ignoreDuplicates:true})
+  const{data,error}=await supabase.rpc('community_follow_or_request',{target_user_id:followingId})
   if(error)throw error
+  return data as 'following'|'request_pending'
 }
 
 export async function unfollowCommunityPerson(userId:string,followingId:string){
@@ -1074,6 +1084,7 @@ export async function unfollowCommunityPerson(userId:string,followingId:string){
 export type CommunityProfileAccess = {
   profile_visibility: 'public' | 'private'
   viewer_is_following: boolean
+  viewer_request_pending: boolean
   can_view_details: boolean
   follower_count: number
   following_count: number

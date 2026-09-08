@@ -98,15 +98,16 @@ export function Profile() {
     mutationFn: async () => {
       if (!user?.id) throw new Error('Sign in to follow this member.')
       if (communityAccessQuery.data?.viewer_is_following) await unfollowCommunityPerson(user.id, userId)
-      else await followCommunityPerson(user.id, userId)
+      return await followCommunityPerson(user.id, userId)
     },
-    onSuccess: async () => {
+    onSuccess: async (status) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['community-profile-access', user?.id, userId] }),
         queryClient.invalidateQueries({ queryKey: ['community-people-search', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['community-settings', user?.id, 'following'] }),
         queryClient.invalidateQueries({ queryKey: ['community-posts'] }),
       ])
+      if (status === 'request_pending') toast.success('Follow request sent.')
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update follow status.'),
   })
@@ -253,10 +254,10 @@ export function Profile() {
                 <Button
                   type="button"
                   variant={communityAccessQuery.data?.viewer_is_following ? 'outline' : 'default'}
-                  disabled={communityAccessQuery.isLoading || communityFollowMutation.isPending}
+                  disabled={communityAccessQuery.isLoading || communityFollowMutation.isPending || communityAccessQuery.data?.viewer_request_pending}
                   onClick={() => communityFollowMutation.mutate()}
                 >
-                  {communityAccessQuery.data?.viewer_is_following ? <><Check className="size-4" />Following</> : <><UserPlus className="size-4" />Follow</>}
+                  {communityAccessQuery.data?.viewer_is_following ? <><Check className="size-4" />Following</> : communityAccessQuery.data?.viewer_request_pending ? <><Check className="size-4" />Request sent</> : <><UserPlus className="size-4" />{communityAccessQuery.data?.profile_visibility === 'private' ? 'Request to follow' : 'Follow'}</>}
                 </Button>
               ) : null}
             </div>
@@ -330,7 +331,7 @@ export function Profile() {
           <div className="card flex min-h-64 flex-col items-center justify-center p-8 text-center">
             <span className="mb-4 grid size-14 place-items-center rounded-full bg-muted"><LockKeyhole className="size-6 text-muted-foreground" /></span>
             <h2 className="text-lg font-semibold">This account is private</h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">Follow this member to see their Community posts and profile details.</p>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">Send a follow request. You can see this member's Community posts and profile details after they approve it.</p>
           </div>
         ) : (
           <section aria-label="Profile activity">
