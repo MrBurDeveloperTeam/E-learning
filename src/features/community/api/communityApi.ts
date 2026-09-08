@@ -508,9 +508,10 @@ export async function joinPublicCommunity(communityId: string, userId: string) {
 
 export async function createCommunity(input: { ownerId: string; name: string; description: string; visibility: 'public' | 'private' }) {
   const base = input.name.trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 54) || 'community'
-  const { data, error } = await supabase.from(COMMUNITY_TABLES.communities).insert({ owner_id: input.ownerId, name: input.name.trim(), slug: `${base}-${crypto.randomUUID().slice(0, 6)}`, description: input.description.trim() || null, visibility: input.visibility, moderation_status: 'pending' }).select('id').single()
+  const id = crypto.randomUUID()
+  const { error } = await supabase.from(COMMUNITY_TABLES.communities).insert({ id, owner_id: input.ownerId, name: input.name.trim(), slug: `${base}-${crypto.randomUUID().slice(0, 6)}`, description: input.description.trim() || null, visibility: input.visibility, moderation_status: 'pending' })
   if (error) throw error
-  return data
+  return { id }
 }
 
 export async function leaveCommunity(communityId: string, _userId: string) {
