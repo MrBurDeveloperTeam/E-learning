@@ -226,14 +226,16 @@ export function CommunityComments({
     }
     setFiles(next);
   };
-  const submit = async () => {
+  const submit = async (confirmWarning = false) => {
     const value = body.trim();
     if (!value) return;
     try {
       const safety = await safetyMutation.mutateAsync(value);
-      if (safety === "warn" && warnConfirmedBody !== value) {
+      if (safety === "block") {
+        throw new Error("This comment contains blocked words or phrases and cannot be published. Please revise it and try again.");
+      }
+      if (safety === "warn" && !confirmWarning) {
         setWarnConfirmedBody(value);
-        toast.warning("Review this language, then submit again to continue.");
         return;
       }
       const result = await createMutation.mutateAsync({
@@ -741,6 +743,29 @@ export function CommunityComments({
           </Button>
         </div>
       )}
+      <Dialog
+        open={Boolean(warnConfirmedBody)}
+        onOpenChange={(open) => {
+          if (!open && !createMutation.isPending) setWarnConfirmedBody(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish this comment anyway?</DialogTitle>
+            <DialogDescription>
+              This comment may contain language that could be inappropriate or sensitive. Review it before choosing to publish.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" disabled={createMutation.isPending} />}>
+              Edit comment
+            </DialogClose>
+            <Button disabled={createMutation.isPending || body.trim() !== warnConfirmedBody} onClick={() => void submit(true)}>
+              {createMutation.isPending ? "Publishing…" : "Publish anyway"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => {

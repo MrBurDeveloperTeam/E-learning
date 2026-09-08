@@ -491,7 +491,10 @@ export async function checkCommunityCommentSafety(body: string): Promise<'safe' 
 export async function createCommunityComment(input: { postId: string; authorId: string; body: string; parentCommentId?: string | null; files?: File[] }) {
   const commentId=crypto.randomUUID()
   const safety = await checkCommunityCommentSafety(input.body)
-  const autoHidden = safety === 'review' || safety === 'block'
+  if (safety === 'block') {
+    throw new Error('This comment contains blocked words or phrases and cannot be published. Please revise it and try again.')
+  }
+  const autoHidden = safety === 'review'
   const { error } = await supabase.from(COMMUNITY_TABLES.comments).insert({
     id:commentId,
     post_id: input.postId,
@@ -529,7 +532,7 @@ export async function createCommunityComment(input: { postId: string; authorId: 
     await supabase.rpc('community_delete_own_comment', { p_comment_id: commentId })
     throw cause
   }
-  return { id:commentId, status:'visible' as CommunityComment['status'] }
+  return { id:commentId, status:(autoHidden ? 'hidden' : 'visible') as CommunityComment['status'] }
 }
 
 export async function updateCommunityComment(commentId: string, authorId: string, body: string) {
