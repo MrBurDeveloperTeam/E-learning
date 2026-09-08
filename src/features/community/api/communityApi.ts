@@ -788,8 +788,12 @@ export async function fetchDirectMessages(conversationId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('Sign in before viewing messages.')
-  const hiddenResult = await supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id)
+  const [hiddenResult, recipientResult] = await Promise.all([
+    supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id),
+    supabase.from(COMMUNITY_TABLES.conversationParticipants).select('last_read_at').eq('conversation_id', conversationId).neq('user_id', user.id).maybeSingle(),
+  ])
   if (hiddenResult.error) throw hiddenResult.error
+  if (recipientResult.error) throw recipientResult.error
   const hiddenIds = new Set((hiddenResult.data ?? []).map((row) => row.message_id))
   const { data, error } = await supabase
     .from(COMMUNITY_TABLES.messages)
@@ -823,6 +827,9 @@ export async function fetchDirectMessages(conversationId: string) {
       body: replyRow.content ?? '',
       status: replyRow.message_status,
     } : null
+    if (message.sender_id === user.id) {
+      message.delivery_status = recipientResult.data?.last_read_at && recipientResult.data.last_read_at >= message.created_at ? 'read' : 'sent'
+    }
     return message
   })
 }

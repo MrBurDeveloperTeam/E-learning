@@ -119,6 +119,7 @@ export interface DirectMessage {
   reply_to_message_id: string | null
   reply_to: { id: string; sender_id: string; body: string; status: 'sent' | 'edited' | 'deleted' | 'admin_hidden' } | null
   reactions: Array<{ emoji: string; count: number; viewer_reacted: boolean }>
+  delivery_status?: 'sending' | 'sent' | 'read' | 'failed'
 }
 
 export interface CommunityManagedPost {

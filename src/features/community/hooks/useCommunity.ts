@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addCommunityRule, archiveCommunity, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, fetchCloseFriends, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, followCommunityPerson, hideCommunityMessageForCurrentUser, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAbout, saveCommunityAnnouncement, saveCommunityPreferences, searchCommunityPeople, sendDirectMessage, setCloseFriend, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, toggleCommunityMessageReaction, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
-import type { CommunityComment, CommunityManagedPost, CommunityPerson, DirectMessage } from '@/features/community/types'
+import type { CommunityComment, CommunityManagedPost, CommunityPerson, DirectConversation, DirectMessage } from '@/features/community/types'
 import { supabase } from '@/lib/supabase'
 import { recordCommunityPostShare, recordCommunityPostView, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
 import { fetchCommunityPost } from '@/features/community/api/communityApi'
@@ -242,21 +242,33 @@ export function useDeleteCommunityDraft(userId: string) {
   })
 }
 
-export function useDirectMessages(conversationId?: string) {
+export function useDirectMessages(conversationId?: string, userId?: string) {
   const client = useQueryClient()
   useEffect(() => {
     if (!conversationId) return
-    void markConversationRead(conversationId)
+    const conversationKey = ['community-direct-conversations', userId]
+    const markRead = async () => {
+      client.setQueryData<DirectConversation[]>(conversationKey, current => current?.map(conversation => conversation.id === conversationId ? { ...conversation, unread_count: 0 } : conversation))
+      try {
+        await markConversationRead(conversationId)
+        await client.invalidateQueries({ queryKey: conversationKey })
+      } catch {
+        await client.invalidateQueries({ queryKey: conversationKey })
+      }
+    }
+    void markRead()
     const refresh = () => {
       void client.invalidateQueries({ queryKey: ['community-direct-messages', conversationId] })
+      void markRead()
     }
     const channel = supabase
       .channel(`community-messages:${conversationId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_reactions' }, refresh)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_conversation_participants', filter: `conversation_id=eq.${conversationId}` }, refresh)
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
-  }, [client, conversationId])
+  }, [client, conversationId, userId])
   return useQuery({
     queryKey: ['community-direct-messages', conversationId],
     queryFn: () => fetchDirectMessages(conversationId!),
@@ -321,9 +333,26 @@ export function useSendDirectMessage(userId: string, conversationId?: string) {
       if(!resolvedConversationId)throw new Error('Choose a member before sending a message.')
       return sendDirectMessage(resolvedConversationId, body, clientNonce, replyToMessageId)
     },
+    onMutate: async ({ body, clientNonce, conversationId: targetConversationId, replyToMessageId }) => {
+      const resolvedConversationId = targetConversationId ?? conversationId
+      if (!resolvedConversationId) return
+      const queryKey = ['community-direct-messages', resolvedConversationId]
+      await queryClient.cancelQueries({ queryKey })
+      const optimistic: DirectMessage = { id: clientNonce, conversation_id: resolvedConversationId, sender_id: userId, body: body.trim(), created_at: new Date().toISOString(), edited_at: null, status: 'sent', reply_to_message_id: replyToMessageId ?? null, reply_to: null, reactions: [], delivery_status: 'sending' }
+      queryClient.setQueryData<DirectMessage[]>(queryKey, current => {
+        const rows = current ?? []
+        return rows.some(message => message.id === clientNonce) ? rows.map(message => message.id === clientNonce ? { ...message, ...optimistic } : message) : [...rows, optimistic]
+      })
+    },
     onSuccess: (message) => {
+      queryClient.setQueryData<DirectMessage[]>(['community-direct-messages', message.conversation_id], current => current?.map(row => row.id === message.id ? { ...message, delivery_status: 'sent' } : row))
       queryClient.invalidateQueries({ queryKey: ['community-direct-messages', message.conversation_id] })
       queryClient.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
+    },
+    onError: (_error, variables) => {
+      const resolvedConversationId = variables.conversationId ?? conversationId
+      if (!resolvedConversationId) return
+      queryClient.setQueryData<DirectMessage[]>(['community-direct-messages', resolvedConversationId], current => current?.map(message => message.id === variables.clientNonce ? { ...message, delivery_status: 'failed' } : message))
     },
   })
 }
