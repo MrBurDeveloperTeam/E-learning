@@ -137,7 +137,7 @@ function CommunityTile({
             <span className="text-xs capitalize text-muted-foreground">
               {community.visibility}
             </span>
-            {community.viewer_is_member ? (
+            {community.status !== "archived" && (community.viewer_is_member ? (
               community.viewer_membership_role !== "owner" ? (
                 <CommunityConfirmAction
                   trigger={
@@ -164,12 +164,13 @@ function CommunityTile({
               >
                 {join.isPending ? "Joining…" : "Join"}
               </Button>
-            ) : null}
-            {community.viewer_is_member && community.status === "active" && (
+            ) : null)}
+            {community.viewer_is_member && (community.status === "active" || community.status === "archived") && (
               <Button size="sm" variant="secondary" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>
-                Open community
+                {community.status === "archived" ? "View history" : "Open community"}
               </Button>
             )}
+            {community.status === "archived" && <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">Deleted · read-only</span>}
             {community.status === "pending_review" && (
               <span className="ml-auto rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700">
                 Pending admin review
@@ -184,7 +185,7 @@ function CommunityTile({
                   targetLabel={community.name}
                 />
               )}
-            {community.owner_id !== userId && (
+            {community.status !== "archived" && community.owner_id !== userId && (
               <CommunityReportDialog
                 userId={userId}
                 communityId={community.id}

@@ -71,12 +71,14 @@ export function CommunityComments({
   postAuthorId,
   expanded = false,
   onRequestExpand,
+  readOnly = false,
 }: {
   postId: string;
   userId?: string;
   postAuthorId?: string;
   expanded?: boolean;
   onRequestExpand?: () => void;
+  readOnly?: boolean;
 }) {
   const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
@@ -387,7 +389,8 @@ export function CommunityComments({
                 )}
               </div>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            {readOnly && <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground"><Heart className="size-4" />{comment.like_count}</div>}
+            <div className={`mt-2 flex flex-wrap items-center gap-1 ${readOnly ? "hidden" : ""}`}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -453,7 +456,7 @@ export function CommunityComments({
             </div>
           </div>
           <div className="flex shrink-0 flex-col gap-1">
-            {isOwner && editing?.id !== comment.id && (
+            {!readOnly && isOwner && editing?.id !== comment.id && (
               <>
                 <Button
                   variant="ghost"
@@ -476,7 +479,7 @@ export function CommunityComments({
                 </Button>
               </>
             )}
-            {userId && !isOwner && (
+            {!readOnly && userId && !isOwner && (
               <CommunityReportDialog
                 userId={userId}
                 commentId={comment.id}
@@ -485,7 +488,7 @@ export function CommunityComments({
             )}
           </div>
         </article>
-        {replying?.id === comment.id && userId && (
+        {!readOnly && replying?.id === comment.id && userId && (
           <form
             ref={replyComposerRef}
             noValidate
@@ -560,7 +563,7 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {expanded && !replying && (userId ? (
+      {expanded && !readOnly && !replying && (userId ? (
         <form
           ref={replyComposerRef}
           noValidate

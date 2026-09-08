@@ -1,5 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Globe2, LockKeyhole, Megaphone, UsersRound } from 'lucide-react'
+import { Archive, ArrowLeft, Globe2, LockKeyhole, Megaphone, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ export function CommunitySpacePage() {
   const postsQuery = useCommunityPosts(user?.id, 'home', '', 'all', 'newest', community?.id ?? '__loading__')
   const posts = postsQuery.data?.pages.flat() ?? []
   const join = useJoinPublicCommunity(user?.id)
+  const isArchived = community?.status === 'archived'
 
   if (!user) return null
 
@@ -53,14 +54,16 @@ export function CommunitySpacePage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  {community.viewer_is_member ? <CreateCommunityPostDialog userId={user.id} communityId={community.id} communityName={community.name} /> : community.visibility === 'public' ? (
+                  {!isArchived && (community.viewer_is_member ? <CreateCommunityPostDialog userId={user.id} communityId={community.id} communityName={community.name} /> : community.visibility === 'public' ? (
                     <Button disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not join this community.'))}>{join.isPending ? 'Joining…' : 'Join community'}</Button>
-                  ) : null}
-                  {community.viewer_membership_role === 'owner' ? <CommunityManagementDialog communityId={community.id} userId={user.id} /> : <CommunitySpaceSettingsDialog community={community} />}
+                  ) : null)}
+                  {!isArchived && community.viewer_membership_role === 'owner' ? <CommunityManagementDialog communityId={community.id} userId={user.id} /> : <CommunitySpaceSettingsDialog community={community} />}
                 </div>
               </div>
             </div>
           </header>
+
+          {isArchived && <div className="border-b border-amber-300/60 bg-amber-50 text-amber-950"><div className="mx-auto flex max-w-[1240px] items-start gap-3 px-4 py-4 sm:px-6"><Archive className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">This Community was deleted by its owner.</p><p className="mt-1 text-sm leading-6 text-amber-900/80">Existing posts and comments remain available for reference. This Community is read-only and no actions can be performed.</p></div></div></div>}
 
           <main className="mx-auto grid max-w-[1240px] gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,760px)_minmax(240px,1fr)]">
             <section aria-labelledby="community-feed-title">
@@ -71,7 +74,7 @@ export function CommunitySpacePage() {
                 {postsQuery.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
                 {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
                 {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && <EmptyState icon={<UsersRound />} title="No posts here yet" description={community.viewer_is_member ? 'Start the first discussion by sharing text, images, or a video.' : 'Join this community to take part in the discussion.'} />}
-                {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user.id} />)}
+                {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user.id} readOnly={isArchived} />)}
               </div>
               {postsQuery.hasNextPage && <div className="mt-6 flex justify-center"><Button variant="outline" disabled={postsQuery.isFetchingNextPage} onClick={() => void postsQuery.fetchNextPage()}>{postsQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}</Button></div>}
             </section>

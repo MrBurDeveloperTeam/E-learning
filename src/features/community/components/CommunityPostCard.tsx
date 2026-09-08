@@ -52,17 +52,20 @@ export function CommunityPostCard({
   userId,
   autoplayVideos = false,
   showCommunityBadge = false,
+  readOnly = false,
 }: {
   post: CommunityPost;
   userId?: string;
   autoplayVideos?: boolean;
   showCommunityBadge?: boolean;
+  readOnly?: boolean;
 }) {
   const [repostOpen, setRepostOpen] = useState(false),
     [repostComment, setRepostComment] = useState("");
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const interaction = useCommunityPostInteraction(userId);
   const actions = useCommunityPostActions(userId);
+  const isReadOnly = readOnly || post.communities?.moderation_status === "archived";
   const authorName =
     post.profiles?.full_name || post.profiles?.name || post.profiles?.username || "Community member";
 
@@ -206,10 +209,10 @@ export function CommunityPostCard({
             postTitle={post.title}
             autoplayVideos={autoplayVideos}
             viewerProgress={post.viewer_progress}
-            onVideoPlay={() =>
+            onVideoPlay={isReadOnly ? undefined : () =>
               void actions.mutateAsync({ action: "view", postId: post.id })
             }
-            onVideoPause={(currentTime, duration) => {
+            onVideoPause={isReadOnly ? undefined : (currentTime, duration) => {
               if (duration)
                 void actions.mutateAsync({
                   action: "view",
@@ -218,7 +221,7 @@ export function CommunityPostCard({
                   progress: currentTime / duration,
                 });
             }}
-            onVideoEnded={(duration) =>
+            onVideoEnded={isReadOnly ? undefined : (duration) =>
               void actions.mutateAsync({
                 action: "view",
                 postId: post.id,
@@ -230,6 +233,12 @@ export function CommunityPostCard({
         )}
 
         <footer className="mt-4 flex items-center gap-1 border-t border-border/70 pt-3">
+          {isReadOnly ? <>
+            <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground"><Heart className="size-4" />{post.like_count}</span>
+            <Button variant="ghost" size="sm" aria-expanded={commentsExpanded} aria-controls={`comments-${post.id}`} onClick={() => setCommentsExpanded(current => !current)}><MessageCircle />{post.comment_count}</Button>
+            <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground"><Repeat2 className="size-4" />{post.repost_count}</span>
+            <span className="ml-auto text-xs font-medium text-muted-foreground">Read-only</span>
+          </> : <>
           <Button
             variant="ghost"
             size="sm"
@@ -335,6 +344,7 @@ export function CommunityPostCard({
               targetName={post.title || "this post"}
             />
           )}
+          </>}
         </footer>
         {(post.title || post.body) && (
           <div className="mt-3 border-b border-border/70 pb-4">
@@ -374,6 +384,7 @@ export function CommunityPostCard({
                 postAuthorId={post.author_id}
                 expanded={commentsExpanded}
                 onRequestExpand={() => setCommentsExpanded(true)}
+                readOnly={isReadOnly}
               />
             </Suspense>
         </div>

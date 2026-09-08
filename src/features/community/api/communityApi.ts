@@ -116,7 +116,7 @@ export async function fetchCommunityPosts(cursor: CommunityFeedCursor | undefine
 
   let query = supabase
     .from(COMMUNITY_TABLES.posts)
-    .select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug)`)
+    .select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug,moderation_status)`)
     .eq('moderation_status', 'visible')
     .order('published_at', { ascending: false })
     .order('id', { ascending: false })
@@ -368,7 +368,7 @@ export async function recordCommunityPostShare(_id:string): Promise<void>{}
 export async function recordCommunityPostView(_postId:string,_watchSeconds=0,_progress=0): Promise<void>{throw new CommunityBackendUnavailableError('Community post view tracking')}
 
 export async function fetchCommunityPost(postId:string,userId?:string){
-  const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug)`).eq('id',postId).single()
+  const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug,moderation_status)`).eq('id',postId).single()
   if(error)throw error
   const post = mapCommunityPost(data as unknown as DbCommunityPost)
   await hydrateCommunityPosts([post], userId)
@@ -579,7 +579,7 @@ export async function fetchCommunityDirectory(userId: string) {
     supabase
       .from(COMMUNITY_TABLES.communities)
       .select('id,owner_id,name,slug,description,visibility,moderation_status,avatar_url,announcement,created_at')
-      .or(`moderation_status.eq.active,owner_id.eq.${userId}`)
+      .or(`moderation_status.in.(active,archived),owner_id.eq.${userId}`)
       .order('created_at', { ascending: false }),
     supabase
       .from(COMMUNITY_TABLES.members)
@@ -700,6 +700,7 @@ export async function removeCommunityMember(memberId: string) {
 }
 
 export async function saveCommunityAbout(communityId:string,description:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({description:description.trim()||null,updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
+export async function archiveCommunity(communityId:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({moderation_status:'archived',updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
 export async function saveCommunityAnnouncement(communityId:string,announcement:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({announcement:announcement.trim()||null,updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
 export async function addCommunityRule(communityId:string,title:string,description:string,position:number){const result=await supabase.from('community_rules').insert({community_id:communityId,title:title.trim(),description:description.trim()||null,position,created_by:(await supabase.auth.getUser()).data.user?.id}).select('id').single();if(result.error)throw result.error}
 export async function updateCommunityRule(ruleId:string,title:string,description:string){const result=await supabase.from('community_rules').update({title:title.trim(),description:description.trim()||null,updated_at:new Date().toISOString()}).eq('id',ruleId).select('id').single();if(result.error)throw result.error}
