@@ -18,6 +18,18 @@ import {
 
 const PAGE_SIZE = 10
 
+async function findCommunityTopic(topic: CommunityPostTopic) {
+  const slugs = [...new Set([topic, topic.replaceAll('_', '-')])]
+  const result = await supabase
+    .from(COMMUNITY_TABLES.topics)
+    .select('id,slug')
+    .in('slug', slugs)
+    .limit(1)
+    .maybeSingle()
+  if (result.error) throw result.error
+  return result.data
+}
+
 async function addCommunityVerification<T extends { user_id: string; is_verified?: boolean | null }>(profiles: T[]): Promise<T[]> {
   if (profiles.length === 0) return profiles
   const userIds = [...new Set(profiles.map((profile) => profile.user_id))]
@@ -93,10 +105,9 @@ export async function fetchCommunityPosts(cursor: CommunityFeedCursor | undefine
 
   let topicPostIds: string[] | null = null
   if (topic !== 'all') {
-    const topicRow = await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug', topic.replaceAll('_', '-')).maybeSingle()
-    if (topicRow.error) throw topicRow.error
-    if (!topicRow.data) return []
-    const links = await supabase.from(COMMUNITY_TABLES.postTopics).select('post_id').eq('topic_id', topicRow.data.id)
+    const topicRow = await findCommunityTopic(topic as CommunityPostTopic)
+    if (!topicRow) return []
+    const links = await supabase.from(COMMUNITY_TABLES.postTopics).select('post_id').eq('topic_id', topicRow.id)
     if (links.error) throw links.error
     topicPostIds = (links.data ?? []).map((row) => row.post_id)
     if (!topicPostIds.length) return []
@@ -239,10 +250,9 @@ export async function createCommunityPost(input: { authorId: string; communityId
   const ensureActive=()=>{if(input.signal?.aborted)throw new DOMException('Upload cancelled.','AbortError')}
   try{for(const [position,original] of files.entries()){ensureActive();input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'preparing'});const file=await prepareCommunityMedia(original);ensureActive();const path=`${input.authorId}/${postId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'uploading'});const upload=await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).upload(path,file,{contentType:file.type});if(upload.error)throw upload.error;uploaded.push(path);ensureActive();input.onProgress?.({completed:position,total:files.length,currentFile:original.name,stage:'saving'});const row=await supabase.from(COMMUNITY_TABLES.postMedia).insert({post_id:postId,media_type:file.type.startsWith('video/')?'video':'image',storage_bucket:COMMUNITY_BUCKETS.postMedia,storage_path:path,mime_type:file.type,file_size_bytes:file.size,sort_order:position});if(row.error)throw row.error;input.onProgress?.({completed:position+1,total:files.length,currentFile:original.name,stage:'saving'})}ensureActive()}catch(cause){if(uploaded.length)await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).remove(uploaded);await supabase.from(COMMUNITY_TABLES.posts).delete().eq('id',postId);throw cause}
   if (input.topic) {
-    const topic = await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug', input.topic.replaceAll('_', '-')).maybeSingle()
-    if (topic.error) throw topic.error
-    if (topic.data) {
-      const link = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: postId, topic_id: topic.data.id, assigned_by: input.authorId })
+    const topic = await findCommunityTopic(input.topic)
+    if (topic) {
+      const link = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: postId, topic_id: topic.id, assigned_by: input.authorId })
       if (link.error) throw link.error
     }
   }
@@ -324,13 +334,16 @@ export async function updateCommunityPost(input: CommunityPostUpdateInput): Prom
     }).eq('id', input.id).eq('author_id', input.authorId).select('id').single()
     if (update.error) throw update.error
 
-    const topic = await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug', input.topic.replaceAll('_', '-')).maybeSingle()
-    if (topic.error) throw topic.error
-    if (!topic.data) throw new Error('The selected topic is no longer available.')
-    const removeTopic = await supabase.from(COMMUNITY_TABLES.postTopics).delete().eq('post_id', input.id)
-    if (removeTopic.error) throw removeTopic.error
-    const addTopic = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: input.id, topic_id: topic.data.id, assigned_by: input.authorId })
-    if (addTopic.error) throw addTopic.error
+    const topic = await findCommunityTopic(input.topic)
+    if (!topic) throw new Error('This topic is unavailable. Choose another topic and try again.')
+    const currentTopics = await supabase.from(COMMUNITY_TABLES.postTopics).select('topic_id').eq('post_id', input.id)
+    if (currentTopics.error) throw currentTopics.error
+    if (!(currentTopics.data ?? []).some((row) => row.topic_id === topic.id)) {
+      const addTopic = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: input.id, topic_id: topic.id, assigned_by: input.authorId })
+      if (addTopic.error) throw addTopic.error
+    }
+    const removeOtherTopics = await supabase.from(COMMUNITY_TABLES.postTopics).delete().eq('post_id', input.id).neq('topic_id', topic.id)
+    if (removeOtherTopics.error) throw removeOtherTopics.error
 
     if (removed.length) {
       const removeRows = await supabase.from(COMMUNITY_TABLES.postMedia).delete().in('id', removed.map((media) => media.id)).eq('post_id', input.id)
