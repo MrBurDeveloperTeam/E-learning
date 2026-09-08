@@ -28,7 +28,7 @@ export function useNotifications() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: `recipient_id=eq.${profile.user_id}`,
@@ -40,7 +40,7 @@ export function useNotifications() {
     const communityChannel = supabase
       .channel(`community-notifications:${profile.user_id}`)
       .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'community_notifications',
+        event: '*', schema: 'public', table: 'community_notifications',
         filter: `recipient_id=eq.${profile.user_id}`,
       }, invalidate)
       .subscribe()

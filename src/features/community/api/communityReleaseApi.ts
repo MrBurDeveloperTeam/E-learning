@@ -13,13 +13,13 @@ const defaultNotificationPreferences: CommunityNotificationPreferences = {
 }
 
 export async function fetchCommunityNotificationPreferences(userId: string) {
-  const { data, error } = await supabase.from(COMMUNITY_TABLES.userSettings).select('notify_post_likes,notify_comments,notify_follows,notify_friend_requests,notify_community_activity,notify_messages').eq('user_id', userId).maybeSingle()
+  const { data, error } = await supabase.from(COMMUNITY_TABLES.userSettings).select('notify_post_likes,notify_replies,notify_mentions,notify_follows,notify_friend_requests,notify_community_updates,notify_moderation_updates,notify_messages').eq('user_id', userId).maybeSingle()
   if (error) throw error
-  return data ? { likes: data.notify_post_likes, replies: data.notify_comments, mentions: data.notify_comments, follows: data.notify_follows, friend_requests: data.notify_friend_requests, community_updates: data.notify_community_activity, moderation_updates: data.notify_community_activity, direct_messages: data.notify_messages } : defaultNotificationPreferences
+  return data ? { likes: data.notify_post_likes, replies: data.notify_replies, mentions: data.notify_mentions, follows: data.notify_follows, friend_requests: data.notify_friend_requests, community_updates: data.notify_community_updates, moderation_updates: data.notify_moderation_updates, direct_messages: data.notify_messages } : defaultNotificationPreferences
 }
 
 export async function saveCommunityNotificationPreferences(userId: string, preferences: CommunityNotificationPreferences) {
-  const { error } = await supabase.from(COMMUNITY_TABLES.userSettings).upsert({ user_id: userId, notify_post_likes: preferences.likes, notify_comments: preferences.replies || preferences.mentions, notify_follows: preferences.follows, notify_friend_requests: preferences.friend_requests, notify_community_activity: preferences.community_updates || preferences.moderation_updates, notify_messages: preferences.direct_messages })
+  const { error } = await supabase.from(COMMUNITY_TABLES.userSettings).upsert({ user_id: userId, notify_post_likes: preferences.likes, notify_replies: preferences.replies, notify_mentions: preferences.mentions, notify_follows: preferences.follows, notify_friend_requests: preferences.friend_requests, notify_community_updates: preferences.community_updates, notify_moderation_updates: preferences.moderation_updates, notify_messages: preferences.direct_messages })
   if (error) throw error
 }
 

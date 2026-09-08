@@ -7,6 +7,8 @@ const communityNotificationTypeMap: Record<string, NotificationWithActor['type']
   post_comment: 'community_comment',
   comment_reply: 'community_reply',
   comment_like: 'community_comment_like',
+  mention: 'community_mention',
+  community_update: 'community_announcement',
   community_join_request: 'community_join_request',
   community_join_approved: 'community_join_decision',
   community_join_rejected: 'community_join_decision',
@@ -14,6 +16,8 @@ const communityNotificationTypeMap: Record<string, NotificationWithActor['type']
   verification_approved: 'community_verification_result',
   verification_rejected: 'community_verification_result',
   moderation_action: 'community_post_review',
+  report_resolved: 'community_report_resolved',
+  appeal_decided: 'community_appeal_decided',
   friend_request: 'community_friend_request',
   friend_accepted: 'community_friend_accepted',
 }
