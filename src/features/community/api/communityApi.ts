@@ -578,7 +578,7 @@ export async function fetchCommunityDirectory(userId: string) {
   const [communitiesResult, membershipsResult, memberCountsResult] = await Promise.all([
     supabase
       .from(COMMUNITY_TABLES.communities)
-      .select('id,owner_id,name,slug,description,visibility,moderation_status,avatar_url,created_at')
+      .select('id,owner_id,name,slug,description,visibility,moderation_status,avatar_url,announcement,created_at')
       .or(`moderation_status.eq.active,owner_id.eq.${userId}`)
       .order('created_at', { ascending: false }),
     supabase
@@ -594,21 +594,13 @@ export async function fetchCommunityDirectory(userId: string) {
 
   const memberships = new Set((membershipsResult.data ?? []).map((membership) => membership.community_id))
   const memberCounts = (memberCountsResult.data ?? []).reduce((counts, row) => counts.set(row.community_id, (counts.get(row.community_id) ?? 0) + 1), new Map<string, number>())
-  const isLocalSupabase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/)/.test(import.meta.env.VITE_SUPABASE_URL ?? '')
-  const localAnnouncements = new Map<string, string|null>()
   const localRules = new Map<string, CommunitySummary['rules']>()
-  if (isLocalSupabase) {
-    const [announcements, rules] = await Promise.all([
-      supabase.from(COMMUNITY_TABLES.communities).select('id,announcement'),
-      supabase.from('community_rules').select('id,community_id,title,description,position').order('position'),
-    ])
-    if (!announcements.error) for (const row of announcements.data ?? []) localAnnouncements.set(row.id, row.announcement)
-    if (!rules.error) for (const row of rules.data ?? []) localRules.set(row.community_id, [...(localRules.get(row.community_id) ?? []), { id: row.id, title: row.title, description: row.description, position: row.position }])
-  }
+  const rules = await supabase.from('community_rules').select('id,community_id,title,description,position').order('position')
+  if (rules.error) throw rules.error
+  for (const row of rules.data ?? []) localRules.set(row.community_id, [...(localRules.get(row.community_id) ?? []), { id: row.id, title: row.title, description: row.description, position: row.position }])
 
   return (communitiesResult.data ?? []).map((row) => {
     const community = mapCommunity(row as DbCommunity, memberCounts.get(row.id) ?? 0)
-    community.announcement = localAnnouncements.get(row.id) ?? null
     community.rules = localRules.get(row.id) ?? []
     community.viewer_is_member = memberships.has(row.id) || row.owner_id === userId
     community.viewer_membership_role = row.owner_id === userId ? 'owner' : memberships.has(row.id) ? 'member' : null
@@ -649,21 +641,26 @@ export async function leaveCommunity(communityId: string, _userId: string) {
 }
 
 export async function fetchCommunityManagement(communityId: string) {
-  const [members, requests] = await Promise.all([
-    supabase.from(COMMUNITY_TABLES.members).select('community_id,user_id,membership_status,joined_at').eq('community_id', communityId).eq('membership_status', 'active').order('joined_at'),
+  const [community, members, requests, rules] = await Promise.all([
+    supabase.from(COMMUNITY_TABLES.communities).select('id,owner_id,description,announcement').eq('id', communityId).single(),
+    supabase.from(COMMUNITY_TABLES.members).select('community_id,user_id,membership_status,membership_role,muted_until,mute_reason,joined_at').eq('community_id', communityId).eq('membership_status', 'active').order('joined_at'),
     supabase.from(COMMUNITY_TABLES.joinRequests).select('id,requester_id,request_message,request_status,created_at').eq('community_id', communityId).eq('request_status', 'pending').order('created_at'),
+    supabase.from('community_rules').select('id,community_id,title,description,position').eq('community_id', communityId).order('position'),
   ])
+  if (community.error) throw community.error
   if (members.error) throw members.error
   if (requests.error) throw requests.error
+  if (rules.error) throw rules.error
   const ids = [...new Set([...(members.data ?? []).map(row => row.user_id), ...(requests.data ?? []).map(row => row.requester_id)])]
   const profiles = ids.length ? await supabase.from('public_profiles').select('user_id,full_name,name,avatar_url').in('user_id', ids) : { data: [], error: null }
   if (profiles.error) throw profiles.error
   const names = new Map((profiles.data ?? []).map(profile => [profile.user_id, profile]))
   return {
-    members: (members.data ?? []).map(row => ({ ...row, id: `${row.community_id}:${row.user_id}`, membership_role: 'member', status: row.membership_status, muted_until: null, mute_reason: null, profile: names.get(row.user_id) ?? null })),
+    members: (members.data ?? []).map(row => ({ ...row, id: `${row.community_id}:${row.user_id}`, membership_role: row.user_id === community.data.owner_id ? 'owner' : row.membership_role, status: row.membership_status, profile: names.get(row.user_id) ?? null })),
     requests: (requests.data ?? []).map(row => ({ ...row, message: row.request_message, status: row.request_status, profile: names.get(row.requester_id) ?? null })),
-    announcement: null as string|null,
-    rules: [],
+    description: community.data.description as string|null,
+    announcement: community.data.announcement as string|null,
+    rules: rules.data ?? [],
   }
 }
 
@@ -695,16 +692,25 @@ export async function decideCommunityJoinRequest(requestId: string, decision: 'a
   if (error) throw error
 }
 
-export async function removeCommunityMember(_memberId: string) {
-  throw new CommunityBackendUnavailableError('Community member removal')
+export async function removeCommunityMember(memberId: string) {
+  const [communityId, userId] = memberId.split(':')
+  if (!communityId || !userId) throw new Error('The selected member is invalid.')
+  const result = await supabase.from(COMMUNITY_TABLES.members).delete().eq('community_id', communityId).eq('user_id', userId).select('user_id').single()
+  if (result.error) throw result.error
 }
 
-export async function saveCommunityAnnouncement(_communityId:string,_announcement:string){throw new CommunityBackendUnavailableError('Community announcements')}
-export async function addCommunityRule(_communityId:string,_title:string,_description:string,_position:number){throw new CommunityBackendUnavailableError('Community rules')}
-export async function updateCommunityRule(_ruleId:string,_title:string,_description:string){throw new CommunityBackendUnavailableError('Community rules')}
-export async function moveCommunityRule(_ruleId:string,_direction:'up'|'down'){throw new CommunityBackendUnavailableError('Community rule ordering')}
-export async function deleteCommunityRule(_ruleId:string){throw new CommunityBackendUnavailableError('Community rules')}
-export async function setCommunityMemberMute(_memberId:string,_until:string|null,_reason:string|null){throw new CommunityBackendUnavailableError('Community member mute controls')}
+export async function saveCommunityAbout(communityId:string,description:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({description:description.trim()||null,updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
+export async function saveCommunityAnnouncement(communityId:string,announcement:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({announcement:announcement.trim()||null,updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
+export async function addCommunityRule(communityId:string,title:string,description:string,position:number){const result=await supabase.from('community_rules').insert({community_id:communityId,title:title.trim(),description:description.trim()||null,position,created_by:(await supabase.auth.getUser()).data.user?.id}).select('id').single();if(result.error)throw result.error}
+export async function updateCommunityRule(ruleId:string,title:string,description:string){const result=await supabase.from('community_rules').update({title:title.trim(),description:description.trim()||null,updated_at:new Date().toISOString()}).eq('id',ruleId).select('id').single();if(result.error)throw result.error}
+export async function moveCommunityRule(ruleId:string,direction:'up'|'down'){
+  const current=await supabase.from('community_rules').select('id,community_id,position').eq('id',ruleId).single();if(current.error)throw current.error
+  const neighbour=await supabase.from('community_rules').select('id,position').eq('community_id',current.data.community_id).order('position',{ascending:direction==='down'}).filter('position',direction==='up'?'lt':'gt',current.data.position).limit(1).maybeSingle();if(neighbour.error)throw neighbour.error;if(!neighbour.data)return
+  const first=await supabase.from('community_rules').update({position:neighbour.data.position,updated_at:new Date().toISOString()}).eq('id',current.data.id);if(first.error)throw first.error
+  const second=await supabase.from('community_rules').update({position:current.data.position,updated_at:new Date().toISOString()}).eq('id',neighbour.data.id);if(second.error)throw second.error
+}
+export async function deleteCommunityRule(ruleId:string){const result=await supabase.from('community_rules').delete().eq('id',ruleId).select('id').single();if(result.error)throw result.error}
+export async function setCommunityMemberMute(memberId:string,until:string|null,reason:string|null){const[communityId,userId]=memberId.split(':');if(!communityId||!userId)throw new Error('The selected member is invalid.');const result=await supabase.from(COMMUNITY_TABLES.members).update({muted_until:until,mute_reason:until?reason?.trim()||null:null,updated_at:new Date().toISOString()}).eq('community_id',communityId).eq('user_id',userId).select('user_id').single();if(result.error)throw result.error}
 
 export async function requestPrivateCommunityJoin(_slug: string, _message: string): Promise<void> {
   throw new CommunityBackendUnavailableError('Private Community join requests')

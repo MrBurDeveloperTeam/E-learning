@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
+import { CommunityManagementDialog } from '@/features/community/components/CommunityManagementDialog'
 import { CommunitySpaceSettingsDialog } from '@/features/community/components/CommunitySpaceSettingsDialog'
 import { CreateCommunityPostDialog } from '@/features/community/components/CreateCommunityPostDialog'
 import { useCommunityDirectory, useCommunityPosts, useJoinPublicCommunity } from '@/features/community/hooks/useCommunity'
@@ -55,7 +56,7 @@ export function CommunitySpacePage() {
                   {community.viewer_is_member ? <CreateCommunityPostDialog userId={user.id} communityId={community.id} communityName={community.name} /> : community.visibility === 'public' ? (
                     <Button disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not join this community.'))}>{join.isPending ? 'Joining…' : 'Join community'}</Button>
                   ) : null}
-                  <CommunitySpaceSettingsDialog community={community} />
+                  {community.viewer_membership_role === 'owner' ? <CommunityManagementDialog communityId={community.id} userId={user.id} /> : <CommunitySpaceSettingsDialog community={community} />}
                 </div>
               </div>
             </div>

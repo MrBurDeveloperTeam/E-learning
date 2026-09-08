@@ -73,6 +73,7 @@ export type DbCommunity = {
   visibility: 'public' | 'private'
   moderation_status: 'pending' | 'active' | 'rejected' | 'hidden' | 'archived'
   avatar_url: string | null
+  announcement?: string | null
   created_at: string
 }
 
@@ -154,7 +155,7 @@ export function mapCommunity(row: DbCommunity, memberCount = 0): CommunitySummar
     status: row.moderation_status === 'pending' ? 'pending_review' : row.moderation_status,
     avatar_url: row.avatar_url,
     member_count: memberCount,
-    announcement: null,
+    announcement: row.announcement ?? null,
     rules: [],
     created_at: row.created_at,
     viewer_is_member: false,

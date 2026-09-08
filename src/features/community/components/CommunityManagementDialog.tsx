@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Megaphone, Settings2, X } from 'lucide-react'
+import { Check, Info, Loader2, Megaphone, Settings2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -14,19 +14,26 @@ export function CommunityManagementDialog({ communityId, userId }: { communityId
   const query = useCommunityManagement(communityId)
   const decide = useDecideCommunityJoinRequest(communityId, userId)
   const ownerActions = useCommunityOwnerActions(communityId)
+  const [description, setDescription] = useState('')
   const [announcement, setAnnouncement] = useState('')
+  useEffect(() => setDescription(query.data?.description ?? ''), [query.data?.description])
   useEffect(() => setAnnouncement(query.data?.announcement ?? ''), [query.data?.announcement])
   const name = (profile: { full_name: string | null; name: string | null } | null) => profile?.full_name || profile?.name || 'Community member'
 
   return <Dialog>
-    <DialogTrigger render={<Button size="sm" variant="outline" />}><Settings2 />Manage</DialogTrigger>
-    <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-xl">
+    <DialogTrigger render={<Button variant="outline" />}><Settings2 />Community settings</DialogTrigger>
+    <DialogContent className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-w-2xl">
       <DialogHeader><DialogTitle>Manage community</DialogTitle><DialogDescription>Publish announcements, maintain rules, review requests, and manage active members.</DialogDescription></DialogHeader>
       {query.isLoading ? <LoadingSpinner /> : query.isError ? <p className="text-sm text-destructive">Community management could not be loaded.</p> : <div className="space-y-6">
         <section>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><Info className="size-4" />About</h3>
+          <Textarea value={description} maxLength={1000} className="mt-3 min-h-24 resize-none" placeholder="Describe the purpose of this community…" onChange={event => setDescription(event.target.value)} />
+          <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground">{description.length}/1,000</span><Button size="sm" disabled={ownerActions.isPending} onClick={() => void ownerActions.mutateAsync({ action: 'about', description }).then(() => toast.success('About updated.')).catch(error => toast.error(error instanceof Error ? error.message : 'About could not be updated.'))}>Save about</Button></div>
+        </section>
+        <section>
           <h3 className="flex items-center gap-2 text-sm font-semibold"><Megaphone className="size-4" />Announcement</h3>
           <Textarea value={announcement} maxLength={1000} className="mt-3 min-h-20 resize-none" placeholder="Share an update with community members…" onChange={event => setAnnouncement(event.target.value)} />
-          <Button className="mt-2" size="sm" disabled={ownerActions.isPending} onClick={() => void ownerActions.mutateAsync({ action: 'announcement', announcement }).then(() => toast.success('Announcement saved.'))}>Save announcement</Button>
+          <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground">{announcement.length}/1,000</span><Button size="sm" disabled={ownerActions.isPending} onClick={() => void ownerActions.mutateAsync({ action: 'announcement', announcement }).then(() => toast.success(announcement.trim() ? 'Announcement saved.' : 'Announcement cleared.')).catch(error => toast.error(error instanceof Error ? error.message : 'Announcement could not be saved.'))}>{announcement.trim() ? 'Save announcement' : 'Clear announcement'}</Button></div>
         </section>
         <CommunityRuleManager communityId={communityId} rules={query.data?.rules ?? []} />
         <section>
