@@ -50,16 +50,22 @@ export type CommunityAppeal = {
   created_at: string; reviewed_at: string | null
 }
 
-export async function fetchCommunityAppeals(_userId: string): Promise<CommunityAppeal[]> {
-  throw new CommunityBackendUnavailableError('Community appeals')
+export async function fetchCommunityAppeals(userId: string): Promise<CommunityAppeal[]> {
+  const { data, error } = await supabase.from('community_appeals').select('id,post_id,comment_id,community_id,moderation_action_id,target_label,reason,status,decision_note,created_at,reviewed_at').eq('appellant_id', userId).order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as CommunityAppeal[]
 }
 
-export async function createCommunityAppeal(_input: { userId: string; postId?: string; commentId?: string; communityId?:string;moderationActionId?:string;targetLabel?:string;reason: string }): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community appeals')
+export async function createCommunityAppeal(input: { userId: string; postId?: string; commentId?: string; communityId?:string;moderationActionId?:string;targetLabel?:string;reason: string }): Promise<void> {
+  void input.userId
+  if (!input.communityId) throw new CommunityBackendUnavailableError('This appeal type')
+  const { error } = await supabase.rpc('community_submit_appeal', { target_community_id: input.communityId, appeal_reason: input.reason, appeal_target_label: input.targetLabel ?? null })
+  if (error) throw error
 }
 
-export async function withdrawCommunityAppeal(_id: string): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community appeals')
+export async function withdrawCommunityAppeal(id: string): Promise<void> {
+  const { error } = await supabase.rpc('community_withdraw_appeal', { target_appeal_id: id })
+  if (error) throw error
 }
 
 export async function recordCommunityOperationalEvent(_input: { userId: string; eventName: string; severity?: 'info'|'warning'|'error'; targetType?: string; targetId?: string; metadata?: Record<string, unknown> }) {

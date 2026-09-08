@@ -675,9 +675,9 @@ export async function fetchCommunityMembers(communityId: string) {
 }
 
 export async function decideCommunityJoinRequest(requestId: string, decision: 'approved' | 'rejected', _userId: string) {
-  const { error } = await supabase.rpc('community_decide_join_request', {
+  const { error } = await supabase.rpc('community_review_join_request', {
     target_request_id: requestId,
-    decision: decision === 'approved' ? 'approve' : 'reject',
+    target_decision: decision,
   })
   if (error) throw error
 }
@@ -706,6 +706,30 @@ export async function setCommunityMemberMute(memberId:string,until:string|null,r
 export async function requestPrivateCommunityJoin(slug: string, message: string): Promise<void> {
   const { error } = await supabase.rpc('community_request_join_by_slug', { target_slug: slug.trim().toLowerCase(), request_message: message.trim() || null })
   if (error) throw error
+}
+
+export async function fetchCommunityInvitePreview(slug: string): Promise<{ name: string; slug: string; visibility: 'public' | 'private' }> {
+  const { data, error } = await supabase.rpc('community_invite_preview', { target_slug: slug.trim().toLowerCase() })
+  if (error) throw error
+  const preview = Array.isArray(data) ? data[0] : data
+  if (!preview) throw new Error('This Community invitation is unavailable.')
+  return { name: preview.community_name, slug: preview.community_slug, visibility: preview.community_visibility as 'public' | 'private' }
+}
+
+export type CommunitySearchResult = { id: string; name: string; slug: string; description: string | null; visibility: 'public' | 'private'; memberCount: number; viewerIsMember: boolean }
+
+export async function searchJoinableCommunities(searchText: string): Promise<CommunitySearchResult[]> {
+  const query = searchText.trim()
+  if (query.length < 2) return []
+  const { data, error } = await supabase.rpc('community_search_joinable', { search_text: query })
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({ id: row.community_id, name: row.community_name, slug: row.community_slug, description: row.community_description, visibility: row.community_visibility, memberCount: Number(row.member_count ?? 0), viewerIsMember: Boolean(row.viewer_is_member) }))
+}
+
+export async function browseCommunities(visibility: 'public' | 'private'): Promise<CommunitySearchResult[]> {
+  const { data, error } = await supabase.rpc('community_browse', { target_visibility: visibility })
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({ id: row.community_id, name: row.community_name, slug: row.community_slug, description: row.community_description, visibility: row.community_visibility, memberCount: Number(row.member_count ?? 0), viewerIsMember: Boolean(row.viewer_is_member) }))
 }
 
 export async function fetchDirectConversations(userId: string) {
