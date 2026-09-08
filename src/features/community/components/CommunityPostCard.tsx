@@ -8,7 +8,6 @@ import {
   Repeat2,
   Share2,
   Trash2,
-  Pencil,
   Pin,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,10 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CommunityMediaCarousel } from "@/features/community/components/CommunityMediaCarousel";
+import { EditCommunityPostDialog } from "@/features/community/components/EditCommunityPostDialog";
+import { CommunityConfirmAction } from "@/features/community/components/CommunityConfirmAction";
 
 const CommunityComments = lazy(() =>
   import("@/features/community/components/CommunityComments").then((module) => ({
@@ -58,9 +58,6 @@ export function CommunityPostCard({
   autoplayVideos?: boolean;
   showCommunityBadge?: boolean;
 }) {
-  const [editOpen, setEditOpen] = useState(false),
-    [editTitle, setEditTitle] = useState(post.title ?? ""),
-    [editBody, setEditBody] = useState(post.body ?? "");
   const [repostOpen, setRepostOpen] = useState(false),
     [repostComment, setRepostComment] = useState("");
   const [commentsExpanded, setCommentsExpanded] = useState(false);
@@ -263,29 +260,22 @@ export function CommunityPostCard({
           </Button>
           {userId === post.author_id && (
             <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Edit post"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Delete post"
-                disabled={actions.isPending}
-                onClick={() => {
-                  if (!window.confirm("Delete this post? It will no longer be visible in the Community feed.")) return;
-                  void actions
-                    .mutateAsync({ action: "delete", postId: post.id })
-                    .then(() => toast.success("Post deleted."))
-                    .catch((error) => toast.error(error instanceof Error ? error.message : "Could not delete post."));
+              <EditCommunityPostDialog post={post} userId={userId} />
+              <CommunityConfirmAction
+                trigger={<Button type="button" variant="ghost" size="icon-sm" aria-label="Delete post"><Trash2 /></Button>}
+                title="Delete post?"
+                description="This post will no longer be visible in the Community feed."
+                label="Delete"
+                onConfirm={async () => {
+                  try {
+                    await actions.mutateAsync({ action: "delete", postId: post.id })
+                    toast.success("Post deleted.")
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not delete post.")
+                    throw error
+                  }
                 }}
-              >
-                <Trash2 />
-              </Button>
+              />
             </>
           )}
           <Button
@@ -388,51 +378,6 @@ export function CommunityPostCard({
             </Suspense>
         </div>
       </div>
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit post</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={editTitle}
-            onChange={(event) => setEditTitle(event.target.value)}
-            maxLength={200}
-            placeholder="Title"
-          />
-          <Textarea
-            value={editBody}
-            onChange={(event) => setEditBody(event.target.value)}
-            maxLength={20000}
-            className="min-h-40 resize-none"
-          />
-          <Button
-            disabled={!editBody.trim() || actions.isPending}
-            onClick={() =>
-              void actions
-                .mutateAsync({
-                  action: "edit",
-                  postId: post.id,
-                  title: editTitle,
-                  body: editBody,
-                  topic: post.topic,
-                })
-                .then(() => {
-                  setEditOpen(false);
-                  toast.success("Post updated.");
-                })
-                .catch((error) =>
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not update post.",
-                  ),
-                )
-            }
-          >
-            Save changes
-          </Button>
-        </DialogContent>
-      </Dialog>
       <Dialog open={repostOpen} onOpenChange={setRepostOpen}>
         <DialogContent>
           <DialogHeader>

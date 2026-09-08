@@ -263,18 +263,89 @@ export async function setCommunityPostInteraction(
   if (error) throw error
 }
 
-export async function updateCommunityPost(input:{id:string;authorId:string;title:string;body:string;topic:CommunityPostTopic}): Promise<void>{
-  const update=await supabase.from(COMMUNITY_TABLES.posts).update({title:input.title.trim()||null,content:input.body.trim(),updated_at:new Date().toISOString()}).eq('id',input.id).eq('author_id',input.authorId)
-  if(update.error)throw update.error
-  const topic=await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug',input.topic.replaceAll('_','-')).eq('is_active',true).maybeSingle()
-  if(topic.error)throw topic.error
-  // Older posts can have no matching topic row. Their text must still remain
-  // editable; only synchronize the topic link when the selected topic exists.
-  if(!topic.data)return
-  const removeTopic=await supabase.from(COMMUNITY_TABLES.postTopics).delete().eq('post_id',input.id).eq('assignment_source','author')
-  if(removeTopic.error)throw removeTopic.error
-  const addTopic=await supabase.from(COMMUNITY_TABLES.postTopics).insert({post_id:input.id,topic_id:topic.data.id,assignment_source:'author',assigned_by:input.authorId})
-  if(addTopic.error)throw addTopic.error
+export type CommunityPostUpdateInput = {
+  id: string
+  authorId: string
+  title: string
+  body: string
+  topic: CommunityPostTopic
+  retainedMediaIds: string[]
+  files?: File[]
+}
+
+export async function updateCommunityPost(input: CommunityPostUpdateInput): Promise<void> {
+  const currentMedia = await supabase
+    .from(COMMUNITY_TABLES.postMedia)
+    .select('id,media_type,storage_bucket,storage_path,sort_order')
+    .eq('post_id', input.id)
+    .order('sort_order')
+  if (currentMedia.error) throw currentMedia.error
+
+  const retainedIds = new Set(input.retainedMediaIds)
+  const retained = (currentMedia.data ?? []).filter((media) => retainedIds.has(media.id))
+  const removed = (currentMedia.data ?? []).filter((media) => !retainedIds.has(media.id))
+  const files = input.files ?? []
+  if (retained.length + files.length > 20) throw new Error('A post can contain up to 20 images or videos.')
+
+  const uploadedPaths: string[] = []
+  const insertedMediaIds: string[] = []
+  try {
+    for (const [offset, original] of files.entries()) {
+      const file = await prepareCommunityMedia(original)
+      const storagePath = `${input.authorId}/${input.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const upload = await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).upload(storagePath, file, { contentType: file.type, upsert: false })
+      if (upload.error) throw upload.error
+      uploadedPaths.push(storagePath)
+      const mediaId = crypto.randomUUID()
+      const media = await supabase.from(COMMUNITY_TABLES.postMedia).insert({
+        id: mediaId,
+        post_id: input.id,
+        media_type: file.type.startsWith('video/') ? 'video' : 'image',
+        storage_bucket: COMMUNITY_BUCKETS.postMedia,
+        storage_path: storagePath,
+        mime_type: file.type,
+        file_size_bytes: file.size,
+        sort_order: retained.length + offset,
+      })
+      if (media.error) throw media.error
+      insertedMediaIds.push(mediaId)
+    }
+
+    const finalTypes = [
+      ...retained.map((media) => media.media_type),
+      ...files.map((file) => file.type.startsWith('video/') ? 'video' : 'image'),
+    ]
+    const postKind = finalTypes.includes('video') ? 'video' : finalTypes.includes('image') ? 'image' : 'text'
+    const update = await supabase.from(COMMUNITY_TABLES.posts).update({
+      title: input.title.trim() || null,
+      content: input.body.trim(),
+      post_kind: postKind,
+      edited_at: new Date().toISOString(),
+    }).eq('id', input.id).eq('author_id', input.authorId).select('id').single()
+    if (update.error) throw update.error
+
+    const topic = await supabase.from(COMMUNITY_TABLES.topics).select('id').eq('slug', input.topic.replaceAll('_', '-')).maybeSingle()
+    if (topic.error) throw topic.error
+    if (!topic.data) throw new Error('The selected topic is no longer available.')
+    const removeTopic = await supabase.from(COMMUNITY_TABLES.postTopics).delete().eq('post_id', input.id)
+    if (removeTopic.error) throw removeTopic.error
+    const addTopic = await supabase.from(COMMUNITY_TABLES.postTopics).insert({ post_id: input.id, topic_id: topic.data.id, assigned_by: input.authorId })
+    if (addTopic.error) throw addTopic.error
+
+    if (removed.length) {
+      const removeRows = await supabase.from(COMMUNITY_TABLES.postMedia).delete().in('id', removed.map((media) => media.id)).eq('post_id', input.id)
+      if (removeRows.error) throw removeRows.error
+      const storedPaths = removed.filter((media) => media.storage_bucket === COMMUNITY_BUCKETS.postMedia && media.storage_path).map((media) => media.storage_path!)
+      if (storedPaths.length) {
+        const removeObjects = await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).remove(storedPaths)
+        if (removeObjects.error) throw removeObjects.error
+      }
+    }
+  } catch (cause) {
+    if (insertedMediaIds.length) await supabase.from(COMMUNITY_TABLES.postMedia).delete().in('id', insertedMediaIds)
+    if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.postMedia).remove(uploadedPaths)
+    throw cause
+  }
 }
 export async function softDeleteCommunityPost(id:string,authorId:string): Promise<void>{void authorId;const{error}=await supabase.rpc('community_delete_own_post',{p_post_id:id});if(error)throw error}
 // Sharing is performed by the Clipboard API. There is no share-event table or
