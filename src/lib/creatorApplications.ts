@@ -9,7 +9,7 @@ export async function submitCreatorApplication(
   const submittedAt = new Date().toISOString()
 
   if (existingApplication?.status === 'pending') {
-    throw new Error('Your verification request is already pending review.')
+    throw new Error('Your creator request is already pending admin review.')
   }
 
   if (existingApplication?.status === 'approved') {

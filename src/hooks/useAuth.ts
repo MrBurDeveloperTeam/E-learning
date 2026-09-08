@@ -41,6 +41,10 @@ function getApiUrl(path: string) {
   return baseUrl ? `${baseUrl}${path}` : path
 }
 
+function isCloudflarePagesPreview() {
+  return window.location.hostname.endsWith('.pages.dev')
+}
+
 async function fetchSsoExchange(token?: string | null) {
   try {
     const exchangePath = token

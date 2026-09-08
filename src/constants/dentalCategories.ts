@@ -12,6 +12,4 @@ export const dentalCategories = [
   { id: 'handpieces', label: 'Handpieces' },
   { id: 'clinic-management', label: 'Clinic Management' },
   { id: 'radiology', label: 'Radiology' },
-  { id: 'others', label: 'Others' },
-
 ];

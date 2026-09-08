@@ -8,6 +8,8 @@ export interface DentalVideo {
   channel_name: string;
   published_at: string; // ISO timestamp string
   category: string | null;
+  language: string | null;
+  video_type: "short_video" | "video" | null;
   confidence_score: number | null;
   tags: string[] | null;
   needs_review: boolean;
@@ -23,6 +25,12 @@ export interface DentalVideosResponse {
   totalPages: number;
 }
 
+/** The videos immediately before and after a video in the public library. */
+export interface AdjacentDentalVideos {
+  previous: Pick<DentalVideo, "id" | "title"> | null;
+  next: Pick<DentalVideo, "id" | "title"> | null;
+}
+
 /** A category with its associated video count. */
 export interface DentalCategory {
   category: string;
@@ -32,6 +40,8 @@ export interface DentalCategory {
 /** Query parameters for fetching paginated dental videos. */
 export interface DentalVideosParams {
   category?: string;
+  language?: string;
+  videoType?: "short_video" | "video";
   q?: string;
   page?: number;
   limit?: number;
