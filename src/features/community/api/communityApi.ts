@@ -612,21 +612,8 @@ export async function fetchCommunityDirectory(userId: string) {
 }
 
 export async function joinPublicCommunity(communityId: string, userId: string) {
-  const { data: existing, error: readError } = await supabase
-    .from(COMMUNITY_TABLES.members)
-    .select('community_id,membership_status')
-    .eq('community_id', communityId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (readError) throw readError
-
-  if (existing?.membership_status === 'active') return
-  if (existing) throw new CommunityBackendUnavailableError('Community rejoining')
-  const { error } = await supabase.from(COMMUNITY_TABLES.members).insert({
-    community_id: communityId,
-    user_id: userId,
-    membership_status: 'active',
-  })
+  void userId
+  const { error } = await supabase.rpc('community_join_public', { target_community_id: communityId })
   if (error) throw error
 }
 
