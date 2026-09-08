@@ -1,14 +1,11 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { useProfileImage } from '@/hooks/useProfileImage'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { CheckCircle2 } from 'lucide-react'
-import { FollowButton } from '@/components/creator/FollowButton'
+import { Check, CheckCircle2, FileText, Heart, LockKeyhole, Repeat2, UserPlus } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { VideoGrid } from '@/components/video/VideoGrid'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useProfile, usePublicProfile } from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabase'
 import { submitCreatorApplication } from '@/lib/creatorApplications'
@@ -17,6 +14,12 @@ import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import type { CreatorApplication } from '@/types'
+import { Button } from '@/components/ui/button'
+import { fetchCommunityActivityVisibility, fetchCommunityProfileAccess, fetchCommunityProfilePosts, fetchVisibleCommunityProfileActivity, followCommunityPerson, unfollowCommunityPerson } from '@/features/community/api/communityApi'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { cn } from '@/lib/utils'
+import type { CommunityManagedPost } from '@/features/community/types'
 
 
 function BuildingIcon() {
@@ -56,7 +59,7 @@ function CardIcon() {
 
 export function Profile() {
   const { userId } = useParams({ from: '/profile/$userId' })
-  const [tab, setTab] = useState<'videos' | 'about'>('videos')
+  const [tab, setTab] = useState<'posts' | 'likes' | 'reposts'>('posts')
   const [isRequestingVerification, setIsRequestingVerification] = useState(false)
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
@@ -74,6 +77,39 @@ export function Profile() {
   const videosQuery = useCreatorVideos(profile?.is_creator ? userId : '')
   const creatorVideos = videosQuery.data ?? []
   const videoCount = creatorVideos.length
+  const communityAccessQuery = useQuery({
+    queryKey: ['community-profile-access', user?.id, userId],
+    queryFn: () => fetchCommunityProfileAccess(userId),
+    enabled: !!user?.id,
+  })
+  const canViewCommunityDetails = isOwnProfile || communityAccessQuery.data?.can_view_details === true
+  const activityVisibilityQuery = useQuery({
+    queryKey: ['community-profile-activity-visibility', user?.id, userId],
+    queryFn: () => fetchCommunityActivityVisibility(userId),
+    enabled: !!user?.id && canViewCommunityDetails,
+  })
+  const selectedActivityIsVisible = isOwnProfile || tab === 'posts' || activityVisibilityQuery.data?.[tab === 'likes' ? 'likes_visibility' : 'reposts_visibility'] === 'public'
+  const profileActivityQuery = useQuery({
+    queryKey: ['community-profile-activity', user?.id, userId, tab],
+    queryFn: () => tab === 'posts' ? fetchCommunityProfilePosts(user?.id, userId) : fetchVisibleCommunityProfileActivity(userId, tab),
+    enabled: canViewCommunityDetails && selectedActivityIsVisible,
+  })
+  const communityFollowMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Sign in to follow this member.')
+      if (communityAccessQuery.data?.viewer_is_following) await unfollowCommunityPerson(user.id, userId)
+      else await followCommunityPerson(user.id, userId)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['community-profile-access', user?.id, userId] }),
+        queryClient.invalidateQueries({ queryKey: ['community-people-search', user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ['community-settings', user?.id, 'following'] }),
+        queryClient.invalidateQueries({ queryKey: ['community-posts'] }),
+      ])
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update follow status.'),
+  })
   const creatorApplicationQuery = useQuery({
     queryKey: ['creator-application', currentProfile?.user_id],
     queryFn: async () => {
@@ -214,7 +250,14 @@ export function Profile() {
                   )}
                 </div>
               ) : currentProfile ? (
-                <FollowButton userId={userId} />
+                <Button
+                  type="button"
+                  variant={communityAccessQuery.data?.viewer_is_following ? 'outline' : 'default'}
+                  disabled={communityAccessQuery.isLoading || communityFollowMutation.isPending}
+                  onClick={() => communityFollowMutation.mutate()}
+                >
+                  {communityAccessQuery.data?.viewer_is_following ? <><Check className="size-4" />Following</> : <><UserPlus className="size-4" />Follow</>}
+                </Button>
               ) : null}
             </div>
 
@@ -228,7 +271,7 @@ export function Profile() {
 
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <p className="text-sm text-muted-foreground">
-                {profile.specialty ?? 'Dental professional'}
+                {canViewCommunityDetails ? profile.specialty ?? 'Dental professional' : 'Private account'}
               </p>
               {profile.is_verified && (
                 <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium border border-primary/20">
@@ -249,26 +292,26 @@ export function Profile() {
               )}
               <div className="text-center md:text-left">
                 <p className="text-base font-medium text-foreground">
-                  {formatViewCount(profile.follower_count)}
+                  {formatViewCount(communityAccessQuery.data?.follower_count ?? profile.follower_count)}
                 </p>
                 <p className="text-xs text-muted-foreground/60">Followers</p>
               </div>
               <div className="text-center md:text-left">
                 <p className="text-base font-medium text-foreground">
-                  {formatViewCount(profile.following_count)}
+                  {formatViewCount(communityAccessQuery.data?.following_count ?? profile.following_count)}
                 </p>
                 <p className="text-xs text-muted-foreground/60">Following</p>
               </div>
             </div>
 
-            {profile.bio && (
+            {canViewCommunityDetails && profile.bio && (
               <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-lg">
                 {profile.bio}
               </p>
             )}
 
             <div className="flex flex-wrap gap-3 mt-3">
-              {profile.institution && (
+              {canViewCommunityDetails && profile.institution && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <BuildingIcon />
                   {profile.institution}
@@ -279,86 +322,33 @@ export function Profile() {
           </div>
         </div>
 
-        {profile.is_creator ? (
-          <Tabs value={tab} onValueChange={(value) => setTab(value as 'videos' | 'about')}>
-            <TabsList>
-              <TabsTrigger value="videos">Videos</TabsTrigger>
-              <TabsTrigger value="about">About</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="videos" className="mt-6">
-              <VideoGrid
-                videos={creatorVideos}
-                columns={3}
-                isLoading={videosQuery.isLoading}
-                emptyTitle="No videos yet"
-                emptyDescription="This creator hasn't uploaded any videos"
-              />
-            </TabsContent>
-
-            <TabsContent value="about" className="mt-6">
-              <div className="card p-6 space-y-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">
-                    Professional details
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Specialty: {profile.specialty ?? 'Not specified'}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Institution: {profile.institution ?? 'Not specified'}
-                  </p>
-
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">
-                    Bio
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {profile.bio ?? 'No bio provided yet.'}
-                  </p>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="card p-5 bg-card border-border">
-            <p className="text-sm text-muted-foreground">
-              This member is not a verified creator.
-            </p>
-            {isOwnProfile && !profile.is_verified && (
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {creatorApplicationStatus === 'pending'
-                    ? 'Your verification request is pending admin review.'
-                    : creatorApplicationStatus === 'rejected'
-                      ? 'Your previous verification request was rejected. You can request verification again.'
-                      : creatorApplicationStatus === 'revoked'
-                        ? 'Your verification was revoked. You can request verification again.'
-                        : 'Request verification to be reviewed by the admin team.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleRequestVerification}
-                  disabled={
-                    isRequestingVerification ||
-                    creatorApplicationQuery.isLoading ||
-                    creatorApplicationStatus === 'pending'
-                  }
-                  className="btn-primary text-sm px-4 py-2 w-full sm:w-auto disabled:opacity-60"
-                >
-                  {creatorApplicationStatus === 'pending'
-                    ? 'Verification pending'
-                    : creatorApplicationStatus === 'rejected' || creatorApplicationStatus === 'revoked'
-                      ? 'Request verification again'
-                      : isRequestingVerification
-                        ? 'Requesting...'
-                        : 'Request verification'}
-                </button>
-              </div>
-            )}
+        {communityAccessQuery.isLoading && !isOwnProfile ? (
+          <Skeleton className="h-64 w-full rounded-xl" />
+        ) : communityAccessQuery.isError && !isOwnProfile ? (
+          <div className="card p-8 text-center text-sm text-destructive">Could not determine this profile's privacy settings.</div>
+        ) : !canViewCommunityDetails && !isOwnProfile ? (
+          <div className="card flex min-h-64 flex-col items-center justify-center p-8 text-center">
+            <span className="mb-4 grid size-14 place-items-center rounded-full bg-muted"><LockKeyhole className="size-6 text-muted-foreground" /></span>
+            <h2 className="text-lg font-semibold">This account is private</h2>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">Follow this member to see their Community posts and profile details.</p>
           </div>
+        ) : (
+          <section aria-label="Profile activity">
+            <div className="flex border-b border-border" role="tablist" aria-label="Profile activity">
+              {([
+                {id:'posts',label:'Posts',icon:FileText},
+                {id:'likes',label:'Likes',icon:Heart},
+                {id:'reposts',label:'Reposts',icon:Repeat2},
+              ] as const).map(item=><button key={item.id} type="button" role="tab" aria-selected={tab===item.id} onClick={()=>setTab(item.id)} className={cn('flex flex-1 cursor-pointer items-center justify-center gap-2 border-b-2 px-3 py-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',tab===item.id?'border-primary text-foreground':'border-transparent text-muted-foreground hover:text-foreground')}><item.icon className="size-4"/>{item.label}</button>)}
+            </div>
+            {activityVisibilityQuery.isLoading && tab!=='posts' && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg"/></div>}
+            {!activityVisibilityQuery.isLoading && !selectedActivityIsVisible ? <div className="mt-5"><EmptyState icon={tab==='likes'?<Heart/>:<Repeat2/>} title={`${tab==='likes'?'Likes':'Reposts'} are private`} description="This member has chosen not to share this activity." /></div> : <>
+              {profileActivityQuery.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg"/></div>}
+              {profileActivityQuery.isError && <div className="card mt-5 p-6 text-center text-sm text-destructive">Could not load this member's activity.</div>}
+              {!profileActivityQuery.isLoading&&!profileActivityQuery.isError&&(profileActivityQuery.data??[]).length===0&&<div className="mt-5"><EmptyState icon={tab==='likes'?<Heart/>:tab==='reposts'?<Repeat2/>:<FileText/>} title={`No ${tab} yet`} description="This member's Community activity will appear here."/></div>}
+              {!profileActivityQuery.isLoading&&!profileActivityQuery.isError&&(profileActivityQuery.data??[]).length>0&&<div className="mt-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{(profileActivityQuery.data as CommunityManagedPost[]).map(post=><article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card"><Link to="/community/post/$postId" params={{postId:post.id}} aria-label={`Open ${post.post_type} post`} className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">{post.preview_media?.media_type==='image'?<img src={post.preview_media.public_url} alt={post.preview_media.alt_text||''} loading="lazy" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"/>:post.preview_media?.media_type==='video'?<video src={post.preview_media.public_url} muted playsInline preload="metadata" aria-label={post.preview_media.alt_text||'Video post preview'} className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"/>:<span className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground"><FileText className="size-8"/><span className="text-xs">Text post</span></span>}<span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end bg-gradient-to-t from-black/35 to-transparent p-3 pt-10 text-white">{post.preview_media?.media_type==='video'&&<span className="rounded-full bg-black/45 px-2 py-1 text-[11px] font-medium">Video</span>}</span></Link></article>)}</div>}
+            </>}
+          </section>
         )}
       </div>
       </div>

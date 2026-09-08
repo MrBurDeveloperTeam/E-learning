@@ -27,7 +27,7 @@ export interface CommunityPost {
   is_pinned: boolean
   published_at: string | null
   created_at: string
-  profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'avatar_url' | 'is_verified'> | null
+  profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'username' | 'avatar_url' | 'is_verified'> | null
   communities: { name: string; slug: string } | null
   viewer_has_liked: boolean
   viewer_has_reposted: boolean
@@ -58,6 +58,7 @@ export interface CommunityComment {
   is_pinned: boolean
   is_best_answer: boolean
   deleted_at: string | null
+  viewer_is_followed_or_friend?: boolean
   viewer_has_liked: boolean
   profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'username' | 'avatar_url' | 'is_verified'> | null
   media: Array<{ id: string; file_name: string; mime_type: string; public_url: string }>
@@ -112,6 +113,10 @@ export interface DirectMessage {
   body: string
   created_at: string
   edited_at: string | null
+  status: 'sent' | 'edited' | 'deleted' | 'admin_hidden'
+  reply_to_message_id: string | null
+  reply_to: { id: string; sender_id: string; body: string; status: 'sent' | 'edited' | 'deleted' | 'admin_hidden' } | null
+  reactions: Array<{ emoji: string; count: number; viewer_reacted: boolean }>
 }
 
 export interface CommunityManagedPost {
@@ -122,6 +127,7 @@ export interface CommunityManagedPost {
   topic: CommunityPostTopic
   post_type: 'text' | 'image' | 'video'
   created_at: string
+  preview_media?: { media_type: 'image' | 'video'; public_url: string; alt_text: string | null } | null
 }
 
 export interface CommunityPerson {
@@ -131,4 +137,6 @@ export interface CommunityPerson {
   avatar_url: string | null
   is_verified: boolean
   relation_id?: string
+  is_mutual?: boolean
+  is_close_friend?: boolean
 }

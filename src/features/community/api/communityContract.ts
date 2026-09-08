@@ -23,8 +23,10 @@ export const COMMUNITY_TABLES = {
   postBookmarks: 'community_post_bookmarks',
   postReposts: 'community_post_reposts',
   comments: 'community_comments',
+  commentMedia: 'community_comment_media',
   commentLikes: 'community_comment_likes',
   follows: 'community_follows',
+  closeFriends: 'community_close_friends',
   friendships: 'community_friendships',
   reports: 'community_reports',
   professionalBadges: 'community_professional_badges',
@@ -32,6 +34,8 @@ export const COMMUNITY_TABLES = {
   conversationParticipants: 'community_conversation_participants',
   messages: 'community_messages',
   messageAttachments: 'community_message_attachments',
+  messageHiddenUsers: 'community_message_hidden_users',
+  messageReactions: 'community_message_reactions',
   notifications: 'community_notifications',
   videoInteractions: 'community_video_interactions',
   topics: 'community_topics',
@@ -44,6 +48,7 @@ export const COMMUNITY_TABLES = {
 
 export const COMMUNITY_BUCKETS = {
   postMedia: 'community-post-media',
+  draftMedia: 'community-draft-media',
   commentMedia: 'community-comment-media',
   messageAttachments: 'community-message-attachments',
   verificationEvidence: 'community-verification-evidence',
@@ -93,6 +98,8 @@ export type DbCommunityComment = {
   content: string
   moderation_status: 'visible' | 'auto_hidden' | 'admin_hidden' | 'removed'
   moderation_reason: string | null
+  is_pinned?: boolean | null
+  is_best_answer?: boolean | null
   created_at: string
   updated_at: string
   profiles?: CommunityComment['profiles']
@@ -106,6 +113,7 @@ export type DbCommunityMessage = {
   message_status: 'sent' | 'edited' | 'deleted' | 'admin_hidden'
   created_at: string
   edited_at: string | null
+  reply_to_message_id: string | null
 }
 
 const postStatusMap: Record<DbCommunityPost['moderation_status'], CommunityPostStatus> = {
@@ -199,8 +207,8 @@ export function mapCommunityComment(row: DbCommunityComment): CommunityComment {
     like_count: 0,
     risk_score: 0,
     moderation_source: row.moderation_reason ? 'admin' : null,
-    is_pinned: false,
-    is_best_answer: false,
+    is_pinned: row.is_pinned ?? false,
+    is_best_answer: row.is_best_answer ?? false,
     deleted_at: row.moderation_status === 'removed' ? row.updated_at : null,
     viewer_has_liked: false,
     profiles: row.profiles ?? null,
@@ -216,5 +224,9 @@ export function mapDirectMessage(row: DbCommunityMessage): DirectMessage {
     body: row.content ?? '',
     created_at: row.created_at,
     edited_at: row.edited_at,
+    status: row.message_status,
+    reply_to_message_id: row.reply_to_message_id,
+    reply_to: null,
+    reactions: [],
   }
 }

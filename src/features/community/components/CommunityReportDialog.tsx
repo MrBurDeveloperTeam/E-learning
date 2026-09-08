@@ -27,7 +27,7 @@ export function CommunityReportDialog({ userId, postId, communityId, commentId, 
     event.preventDefault()
     try {
       await mutation.mutateAsync({ reporterId: userId, postId, communityId, commentId, reason, details })
-      toast.success('Report sent to the admin team.')
+      toast.success(postId && !commentId ? 'Report sent. This post is now hidden from you.' : commentId ? 'Report sent. This comment is now hidden from you.' : 'Report sent to the admin team.')
       setOpen(false); setDetails(''); setReason('patient_privacy')
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Report could not be sent.') }
   }
@@ -36,7 +36,7 @@ export function CommunityReportDialog({ userId, postId, communityId, commentId, 
     <DialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Report ${targetName}`} />}><Flag /></DialogTrigger>
     <DialogContent className="sm:max-w-md">
       <form noValidate onSubmit={submit}>
-        <DialogHeader><DialogTitle>Report {targetName}</DialogTitle><DialogDescription>Your report is private and will be reviewed by a platform administrator.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Report {targetName}</DialogTitle><DialogDescription>{postId && !commentId ? 'Your report is private. The post will be hidden from you while an administrator reviews it, but remains visible to other members unless an administrator removes it.' : commentId ? 'Your report is private. The comment will be hidden from you while an administrator reviews it, but remains visible to other members unless an administrator removes it.' : 'Your report is private and will be reviewed by a platform administrator.'}</DialogDescription></DialogHeader>
         <div className="my-5 space-y-4">
           <fieldset className="space-y-2"><legend className="text-sm font-medium">Reason</legend><div className="grid gap-2 sm:grid-cols-2">{reasons.map((item) => <label key={item.value} className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"><input type="radio" name="community-report-reason" value={item.value} checked={reason === item.value} onChange={() => setReason(item.value)} className="mt-0.5 accent-primary" /><span>{item.label}</span></label>)}</div></fieldset>
           <div className="space-y-2"><Label htmlFor="community-report-details">Additional details</Label><Textarea id="community-report-details" value={details} onChange={(event) => setDetails(event.target.value)} maxLength={1000} placeholder="Explain what the admin should review…" className="min-h-28 resize-none" /><p className="text-right text-xs text-muted-foreground">{details.length}/1000</p></div>

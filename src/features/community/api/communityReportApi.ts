@@ -37,6 +37,14 @@ export async function createCommunityReport(input: { reporterId: string; postId?
     if (error.code === '23505') throw new Error('You already have an open report for this item.')
     throw error
   }
+  if (input.postId && !input.commentId) {
+    const hidden = await supabase.from(COMMUNITY_TABLES.userHiddenContent).upsert({
+      post_id: input.postId,
+      user_id: input.reporterId,
+      hide_reason: 'reported',
+    })
+    if (hidden.error) throw new Error('Your report was sent, but this post could not be hidden from your feed.')
+  }
 }
 
 export async function fetchCommunityReports() {

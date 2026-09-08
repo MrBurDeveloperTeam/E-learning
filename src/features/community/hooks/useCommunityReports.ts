@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createCommunityReport, fetchCommunityReports, fetchMyCommunityReports, resolveCommunityReport } from '@/features/community/api/communityReportApi'
 
 export function useCreateCommunityReport() {
-  return useMutation({ mutationFn: createCommunityReport })
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createCommunityReport,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community-posts'] })
+      queryClient.invalidateQueries({ queryKey: ['community-comments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-community-reports'] })
+    },
+  })
 }
 
 export function useCommunityReports() {

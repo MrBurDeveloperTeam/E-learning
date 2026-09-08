@@ -1,9 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Award,
   Check,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   GraduationCap,
   Heart,
@@ -15,7 +13,6 @@ import {
   Search,
   ShieldAlert,
   Trash2,
-  UserX,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,14 +33,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RetryCard } from "@/components/shared/RetryCard";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { COMMENT_PAGE_SIZE } from "@/features/community/api/communityApi";
 import {
   useCheckCommunityCommentSafety,
   useCommunityCommentFeature,
   useCommunityCommentLike,
   useCommunityComments,
   useCommunityMentionUsers,
-  useCommunityUserBlock,
   useCreateCommunityComment,
   useDeleteCommunityComment,
   useUpdateCommunityComment,
@@ -74,25 +69,28 @@ export function CommunityComments({
   postId,
   userId,
   postAuthorId,
+  expanded = false,
+  onRequestExpand,
 }: {
   postId: string;
   userId?: string;
   postAuthorId?: string;
+  expanded?: boolean;
+  onRequestExpand?: () => void;
 }) {
-  const [page, setPage] = useState(0),
-    [search, setSearch] = useState(""),
+  const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
-  const query = useCommunityComments(postId, userId, true, page, search);
+  const query = useCommunityComments(postId, userId, true, -1, expanded ? search : "");
   const createMutation = useCreateCommunityComment(postId, userId),
     updateMutation = useUpdateCommunityComment(postId, userId),
     deleteMutation = useDeleteCommunityComment(postId, userId);
   const likeMutation = useCommunityCommentLike(postId, userId),
     featureMutation = useCommunityCommentFeature(postId),
-    blockMutation = useCommunityUserBlock(postId, userId),
     safetyMutation = useCheckCommunityCommentSafety();
   const [body, setBody] = useState(""),
     [files, setFiles] = useState<File[]>([]),
     [replying, setReplying] = useState<CommunityComment | null>(null);
+  const replyComposerRef = useRef<HTMLFormElement>(null);
   const [editing, setEditing] = useState<CommunityComment | null>(null),
     [editBody, setEditBody] = useState(""),
     [pendingDelete, setPendingDelete] = useState<CommunityComment | null>(null);
@@ -100,26 +98,30 @@ export function CommunityComments({
       "relevant",
     ),
     [revealed, setRevealed] = useState(() => new Set<string>()),
+    [expandedReplyThreads, setExpandedReplyThreads] = useState(() => new Set<string>()),
     [warnConfirmedBody, setWarnConfirmedBody] = useState<string | null>(null);
   const mentionQuery = mentionTail(body),
     mentions = useCommunityMentionUsers(mentionQuery);
 
   const comments = useMemo(() => {
-    const rows = [...(query.data ?? [])];
+    const rows = [...(query.data ?? [])].filter((comment) => expanded || comment.status === "visible");
     const score = (item: CommunityComment) =>
       (item.is_pinned ? 100000 : 0) +
-      (item.is_best_answer ? 50000 : 0) +
       item.like_count * 4 +
       (item.profiles?.is_verified ? 2 : 0) -
       ((Date.now() - Date.parse(item.created_at)) / 86_400_000) * 0.05;
+    const relationshipPriority = (a: CommunityComment, b: CommunityComment) =>
+      Number(Boolean(b.viewer_is_followed_or_friend)) - Number(Boolean(a.viewer_is_followed_or_friend));
+    const bestAnswerPriority = (a: CommunityComment, b: CommunityComment) =>
+      Number(b.is_best_answer) - Number(a.is_best_answer);
     if (sort === "newest")
-      rows.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+      rows.sort((a, b) => bestAnswerPriority(a,b) || relationshipPriority(a,b) || Date.parse(b.created_at) - Date.parse(a.created_at));
     else if (sort === "oldest")
-      rows.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
-    else rows.sort((a, b) => score(b) - score(a));
+      rows.sort((a, b) => bestAnswerPriority(a,b) || relationshipPriority(a,b) || Date.parse(a.created_at) - Date.parse(b.created_at));
+    else rows.sort((a, b) => bestAnswerPriority(a,b) || relationshipPriority(a,b) || score(b) - score(a));
     const children = new Map<string, CommunityComment[]>();
     for (const row of rows)
-      if (row.parent_comment_id)
+      if (row.parent_comment_id && !row.is_best_answer)
         children.set(row.parent_comment_id, [
           ...(children.get(row.parent_comment_id) ?? []),
           row,
@@ -127,12 +129,16 @@ export function CommunityComments({
     return {
       roots: rows.filter(
         (row) =>
+          row.is_best_answer ||
           !row.parent_comment_id ||
           !rows.some((candidate) => candidate.id === row.parent_comment_id),
       ),
       children,
     };
-  }, [query.data, sort]);
+  }, [expanded, query.data, sort]);
+
+  const visibleRoots = expanded ? comments.roots : comments.roots.slice(0, 6);
+  const hasMoreComments = !expanded && comments.roots.length > 6;
 
   const chooseFiles = (selected: FileList | null) => {
     const next = [...(selected ?? [])].slice(0, 3);
@@ -261,10 +267,22 @@ export function CommunityComments({
         "Community member",
       isOwner = comment.author_id === userId,
       canCurate = userId === postAuthorId;
+    const parentComment = comment.parent_comment_id
+      ? (query.data ?? []).find((item) => item.id === comment.parent_comment_id)
+      : null;
+    const parentName = parentComment
+      ? parentComment.profiles?.full_name ||
+        parentComment.profiles?.name ||
+        parentComment.profiles?.username ||
+        "Community member"
+      : null;
+    const childComments = comments.children.get(comment.id) ?? [];
+    const repliesExpanded = expandedReplyThreads.has(comment.id);
+    const visibleChildren = repliesExpanded ? childComments : childComments.slice(0, 2);
     return (
       <div
         key={comment.id}
-        className={depth ? "ml-5 border-l border-border pl-4 sm:ml-10" : ""}
+        className={depth === 1 ? "ml-5 border-l border-border pl-4 sm:ml-10" : ""}
       >
         <article className="flex gap-3 rounded-xl bg-muted/45 p-4">
           <UserAvatar
@@ -376,10 +394,8 @@ export function CommunityComments({
                 aria-pressed={comment.viewer_has_liked}
                 disabled={!userId || likeMutation.isPending}
                 onClick={() =>
-                  void likeMutation.mutateAsync({
-                    commentId: comment.id,
-                    active: !comment.viewer_has_liked,
-                  })
+                  void likeMutation.mutateAsync({ commentId: comment.id, active: !comment.viewer_has_liked })
+                    .catch((error) => toast.error(error instanceof Error ? error.message : "Could not update this like."))
                 }
               >
                 <Heart
@@ -395,9 +411,11 @@ export function CommunityComments({
                   size="sm"
                   onClick={() => {
                     setReplying(comment);
-                    setBody(
-                      `@${comment.profiles?.username ?? ""} `.trimStart(),
-                    );
+                    setBody(comment.profiles?.username ? `@${comment.profiles.username} ` : "");
+                    window.setTimeout(() => {
+                      replyComposerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      replyComposerRef.current?.querySelector("textarea")?.focus();
+                    }, 0);
                   }}
                 >
                   <Reply />
@@ -459,41 +477,79 @@ export function CommunityComments({
               </>
             )}
             {userId && !isOwner && (
-              <>
-                <CommunityReportDialog
-                  userId={userId}
-                  commentId={comment.id}
-                  targetName="comment"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Block ${name}`}
-                  disabled={blockMutation.isPending}
-                  onClick={() =>
-                    void blockMutation
-                      .mutateAsync({
-                        blockedUserId: comment.author_id,
-                        active: true,
-                      })
-                      .then(() => toast.success(`${name} blocked.`))
-                      .catch((error) =>
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Could not block user.",
-                        ),
-                      )
-                  }
-                >
-                  <UserX />
-                </Button>
-              </>
+              <CommunityReportDialog
+                userId={userId}
+                commentId={comment.id}
+                targetName="comment"
+              />
             )}
           </div>
         </article>
-        {(comments.children.get(comment.id) ?? []).map((child) =>
-          renderComment(child, depth + 1),
+        {replying?.id === comment.id && userId && (
+          <form
+            ref={replyComposerRef}
+            noValidate
+            className="ml-5 mt-2 space-y-2 rounded-xl border border-primary/25 bg-primary/5 p-3 sm:ml-12"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit();
+            }}
+          >
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Replying to <strong className="font-medium text-foreground">{name}</strong></span>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Cancel reply" onClick={() => { setReplying(null); setBody(""); }}>
+                <X />
+              </Button>
+            </div>
+            {parentName && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Replying to <span className="font-medium text-foreground">{parentName}</span>
+              </p>
+            )}
+            <Textarea
+              value={body}
+              onChange={(event) => {
+                setBody(event.target.value);
+                setWarnConfirmedBody(null);
+              }}
+              maxLength={5000}
+              placeholder={`Reply to ${name}…`}
+              className="min-h-20 resize-none bg-background"
+            />
+            {mentionQuery && mentions.data && mentions.data.length > 0 && (
+              <div className="rounded-lg border bg-popover p-1">
+                {mentions.data.map((person) => (
+                  <Button key={person.user_id} type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setBody((current) => current.replace(/@([a-zA-Z0-9_.-]*)$/, `@${person.username} `))}>
+                    @{person.username} · {person.full_name || person.name}
+                  </Button>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => { setReplying(null); setBody(""); }}>Cancel</Button>
+              <Button type="submit" size="sm" disabled={!body.trim() || createMutation.isPending}>
+                {createMutation.isPending ? "Replying…" : "Reply"}
+              </Button>
+            </div>
+          </form>
+        )}
+        {visibleChildren.map((child) => renderComment(child, depth + 1))}
+        {!repliesExpanded && childComments.length > 2 && (
+          <div className="ml-5 mt-2 sm:ml-12">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setExpandedReplyThreads((current) => {
+                  const next = new Set(current);
+                  next.add(comment.id);
+                  return next;
+                })
+              }
+            >
+              View all {childComments.length} replies
+            </Button>
+          </div>
         )}
       </div>
     );
@@ -504,8 +560,9 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {userId ? (
+      {expanded && !replying && (userId ? (
         <form
+          ref={replyComposerRef}
           noValidate
           className="space-y-2"
           onSubmit={(e) => {
@@ -513,21 +570,6 @@ export function CommunityComments({
             void submit();
           }}
         >
-          {replying && (
-            <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
-              Replying to{" "}
-              {replying.profiles?.full_name || replying.profiles?.name}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Cancel reply"
-                onClick={() => setReplying(null)}
-              >
-                <X />
-              </Button>
-            </div>
-          )}
           <Textarea
             value={body}
             onChange={(e) => {
@@ -600,14 +642,13 @@ export function CommunityComments({
         <p className="text-sm text-muted-foreground">
           Sign in to join the discussion.
         </p>
-      )}
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+      ))}
+      {expanded && <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <form
           noValidate
           className="relative flex-1"
           onSubmit={(e) => {
             e.preventDefault();
-            setPage(0);
             setSearch(searchInput);
           }}
         >
@@ -632,14 +673,14 @@ export function CommunityComments({
             <SelectItem value="oldest">Oldest</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div>}
       {query.isLoading && (
         <div className="flex min-h-32 items-center justify-center">
           <LoadingSpinner />
         </div>
       )}
       {query.isError && <RetryCard onRetry={() => void query.refetch()} />}{" "}
-      {!query.isLoading && !query.isError && comments.roots.length === 0 && (
+      {expanded && !query.isLoading && !query.isError && comments.roots.length === 0 && (
         <EmptyState
           title="No comments found"
           description={
@@ -650,28 +691,12 @@ export function CommunityComments({
         />
       )}
       <div className="mt-4 space-y-3">
-        {comments.roots.map((comment) => renderComment(comment))}
+        {visibleRoots.map((comment) => renderComment(comment))}
       </div>
-      {!query.isLoading && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setPage((value) => value - 1)}
-          >
-            <ChevronLeft />
-            Previous
-          </Button>
-          <span className="text-xs text-muted-foreground">Page {page + 1}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={(query.data?.length ?? 0) < COMMENT_PAGE_SIZE}
-            onClick={() => setPage((value) => value + 1)}
-          >
-            Next
-            <ChevronRight />
+      {hasMoreComments && (
+        <div className="mt-4 flex justify-center border-t border-border/70 pt-4">
+          <Button variant="outline" onClick={onRequestExpand}>
+            View all comments
           </Button>
         </div>
       )}

@@ -1,6 +1,23 @@
 import { supabase } from '../supabase'
 import type { NotificationWithActor } from '../../types'
 
+const communityNotificationTypeMap: Record<string, NotificationWithActor['type']> = {
+  new_follower: 'new_follower',
+  post_like: 'community_post_like',
+  post_comment: 'community_comment',
+  comment_reply: 'community_reply',
+  comment_like: 'community_comment_like',
+  community_join_request: 'community_join_request',
+  community_join_approved: 'community_join_decision',
+  community_join_rejected: 'community_join_decision',
+  new_message: 'community_message',
+  verification_approved: 'community_verification_result',
+  verification_rejected: 'community_verification_result',
+  moderation_action: 'community_post_review',
+  friend_request: 'community_friend_request',
+  friend_accepted: 'community_friend_accepted',
+}
+
 export async function fetchNotifications(
   userId: string,
   limit = 30,
@@ -39,10 +56,22 @@ export async function fetchNotifications(
   const communityMissing = communityResult.error?.code === '42P01' || communityResult.error?.code === 'PGRST205'
   if (communityResult.error && !communityMissing) throw communityResult.error
 
+  const communityRows = communityResult.data ?? []
+  const actorIds = [...new Set(communityRows.map(item => item.actor_id).filter((id): id is string => Boolean(id)))]
+  const publicProfiles = actorIds.length
+    ? await supabase.from('public_profiles').select('user_id,name,full_name,username,avatar_url').in('user_id', actorIds)
+    : { data: [], error: null }
+  if (publicProfiles.error) throw publicProfiles.error
+  const actorProfiles = new Map((publicProfiles.data ?? []).map(profile => [profile.user_id, profile]))
+
   const platform = (platformResult.data ?? []).map((item) => ({ ...item, source: 'platform' as const }))
-  const community = (communityResult.data ?? []).map((item) => ({
+  const community = communityRows.map((item) => ({
     ...item,
+    type: communityNotificationTypeMap[item.notification_type] ?? item.notification_type,
+    profiles: actorProfiles.get(item.actor_id) ?? item.profiles ?? null,
     video_id: null,
+    community_post_id: item.post_id ?? null,
+    community_comment_id: item.comment_id ?? null,
     comment_id: null,
     videos: null,
     source: 'community' as const,

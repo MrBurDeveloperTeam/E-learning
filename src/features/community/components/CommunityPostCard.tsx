@@ -8,8 +8,6 @@ import {
   Repeat2,
   Share2,
   Trash2,
-  EyeOff,
-  Pencil,
   Pin,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,10 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CommunityMediaCarousel } from "@/features/community/components/CommunityMediaCarousel";
+import { EditCommunityPostDialog } from "@/features/community/components/EditCommunityPostDialog";
+import { CommunityConfirmAction } from "@/features/community/components/CommunityConfirmAction";
 
 const CommunityComments = lazy(() =>
   import("@/features/community/components/CommunityComments").then((module) => ({
@@ -52,28 +51,20 @@ export function CommunityPostCard({
   post,
   userId,
   autoplayVideos = false,
+  showCommunityBadge = false,
 }: {
   post: CommunityPost;
   userId?: string;
   autoplayVideos?: boolean;
+  showCommunityBadge?: boolean;
 }) {
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false),
-    [editTitle, setEditTitle] = useState(post.title ?? ""),
-    [editBody, setEditBody] = useState(post.body ?? "");
   const [repostOpen, setRepostOpen] = useState(false),
     [repostComment, setRepostComment] = useState("");
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
   const interaction = useCommunityPostInteraction(userId);
   const actions = useCommunityPostActions(userId);
   const authorName =
-    post.profiles?.full_name || post.profiles?.name || "Community member";
-  const heat = Math.min(
-    100,
-    14 +
-      post.like_count * 12 +
-      post.comment_count * 18 +
-      post.repost_count * 22,
-  );
+    post.profiles?.full_name || post.profiles?.name || post.profiles?.username || "Community member";
 
   async function toggle(
     table:
@@ -136,16 +127,7 @@ export function CommunityPostCard({
 
   return (
     <article className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-      <div
-        className="absolute inset-y-0 left-0 w-1 bg-muted"
-        aria-hidden="true"
-      >
-        <div
-          className="absolute bottom-0 w-full bg-primary transition-[height]"
-          style={{ height: `${heat}%` }}
-        />
-      </div>
-      <div className="p-5 pl-6 sm:p-6 sm:pl-7">
+      <div className="p-5 sm:p-6">
         {post.friend_activity && post.friend_activity.length > 0 && (
           <p className="mb-4 text-xs font-medium text-primary">
             {post.friend_activity_names?.join(", ") || "A friend"}{" "}
@@ -188,6 +170,11 @@ export function CommunityPostCard({
               <p className="truncate text-sm font-semibold text-foreground">
                 {authorName}
               </p>
+              {showCommunityBadge && post.community_id && post.communities?.name && (
+                <span className="inline-flex max-w-48 items-center rounded-full border border-primary/20 bg-primary/8 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+                  <span className="truncate">{post.communities.name}</span>
+                </span>
+              )}
               {post.is_pinned && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
                   <Pin className="size-3" />
@@ -202,7 +189,7 @@ export function CommunityPostCard({
               )}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {post.communities?.name ?? "Dental community"} ·{" "}
+              {!showCommunityBadge && <>{post.communities?.name ?? "Dental community"} ·{" "}</>}
               {formatPostDate(post.published_at)}
             </p>
           </div>
@@ -271,54 +258,35 @@ export function CommunityPostCard({
           >
             <Share2 />
           </Button>
-          {userId && userId !== post.author_id && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Not interested"
-              disabled={actions.isPending}
-              onClick={() =>
-                void actions
-                  .mutateAsync({ action: "not_interested", postId: post.id })
-                  .then(() =>
-                    toast.success("We will show fewer posts like this."),
-                  )
-              }
-            >
-              <EyeOff />
-            </Button>
-          )}
           {userId === post.author_id && (
             <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Edit post"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Delete post"
-                disabled={actions.isPending}
-                onClick={() =>
-                  void actions
-                    .mutateAsync({ action: "delete", postId: post.id })
-                    .then(() => toast.success("Post moved to deleted items."))
-                }
-              >
-                <Trash2 />
-              </Button>
+              <EditCommunityPostDialog post={post} userId={userId} />
+              <CommunityConfirmAction
+                trigger={<Button type="button" variant="ghost" size="icon-sm" aria-label="Delete post"><Trash2 /></Button>}
+                title="Delete post?"
+                description="This post will no longer be visible in the Community feed."
+                label="Delete"
+                onConfirm={async () => {
+                  try {
+                    await actions.mutateAsync({ action: "delete", postId: post.id })
+                    toast.success("Post deleted.")
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not delete post.")
+                    throw error
+                  }
+                }}
+              />
             </>
           )}
           <Button
             variant="ghost"
             size="sm"
-            aria-expanded={commentsOpen}
+            aria-expanded={commentsExpanded}
             aria-controls={`comments-${post.id}`}
-            onClick={() => setCommentsOpen((open) => !open)}
+            onClick={() => {
+              setCommentsExpanded((current) => !current);
+              if (!commentsExpanded) window.setTimeout(() => document.getElementById(`comments-${post.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 0);
+            }}
           >
             <MessageCircle /> {post.comment_count}
           </Button>
@@ -388,8 +356,7 @@ export function CommunityPostCard({
             )}
           </div>
         )}
-        {commentsOpen && (
-          <div id={`comments-${post.id}`}>
+        <div id={`comments-${post.id}`}>
             <Suspense
               fallback={
                 <div
@@ -405,56 +372,12 @@ export function CommunityPostCard({
                 postId={post.id}
                 userId={userId}
                 postAuthorId={post.author_id}
+                expanded={commentsExpanded}
+                onRequestExpand={() => setCommentsExpanded(true)}
               />
             </Suspense>
-          </div>
-        )}
+        </div>
       </div>
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit post</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={editTitle}
-            onChange={(event) => setEditTitle(event.target.value)}
-            maxLength={200}
-            placeholder="Title"
-          />
-          <Textarea
-            value={editBody}
-            onChange={(event) => setEditBody(event.target.value)}
-            maxLength={20000}
-            className="min-h-40 resize-none"
-          />
-          <Button
-            disabled={!editBody.trim() || actions.isPending}
-            onClick={() =>
-              void actions
-                .mutateAsync({
-                  action: "edit",
-                  postId: post.id,
-                  title: editTitle,
-                  body: editBody,
-                  topic: post.topic,
-                })
-                .then(() => {
-                  setEditOpen(false);
-                  toast.success("Post updated and returned to review.");
-                })
-                .catch((error) =>
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not update post.",
-                  ),
-                )
-            }
-          >
-            Save and submit for review
-          </Button>
-        </DialogContent>
-      </Dialog>
       <Dialog open={repostOpen} onOpenChange={setRepostOpen}>
         <DialogContent>
           <DialogHeader>

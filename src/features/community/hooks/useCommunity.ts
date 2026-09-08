@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addCommunityRule, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAnnouncement, saveCommunityPreferences, sendDirectMessage, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
-import type { CommunityManagedPost, CommunityPerson } from '@/features/community/types'
+import { addCommunityRule, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, fetchCloseFriends, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, followCommunityPerson, hideCommunityMessageForCurrentUser, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAnnouncement, saveCommunityPreferences, searchCommunityPeople, sendDirectMessage, setCloseFriend, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, toggleCommunityMessageReaction, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
+import type { CommunityComment, CommunityManagedPost, CommunityPerson, DirectMessage } from '@/features/community/types'
 import { supabase } from '@/lib/supabase'
-import { recordCommunityPostShare, recordCommunityPostView, setCommunityPostNotInterested, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
+import { recordCommunityPostShare, recordCommunityPostView, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
 import { fetchCommunityPost } from '@/features/community/api/communityApi'
 import { recordCommunityOperationalEvent } from '@/features/community/api/communityReleaseApi'
+import { deleteCommunityDraft, fetchCommunityDrafts, migrateLocalCommunityDrafts, saveCommunityDraft, type CommunityDraftInput } from '@/features/community/api/communityDraftApi'
 
 export function useCommunityPosts(userId?: string, mode: CommunityFeedMode = 'home', search = '', topic = 'all', sort: 'relevant'|'newest'|'popular'='relevant', communityId?: string) {
   const queryClient = useQueryClient()
@@ -51,7 +52,7 @@ export function useCommunityPostInteraction(userId?: string) {
 
 export function useCommunityPost(postId:string,userId?:string){return useQuery({queryKey:['community-post',postId,userId],queryFn:()=>fetchCommunityPost(postId,userId),enabled:Boolean(postId)})}
 
-export function useCommunityPostActions(userId?:string){const client=useQueryClient();return useMutation({mutationFn:async(input:{action:'edit'|'delete'|'share'|'not_interested'|'view';postId:string;title?:string;body?:string;topic?:import('@/features/community/types').CommunityPostTopic;watchSeconds?:number;progress?:number})=>{if(!userId)throw new Error('Sign in to manage posts.');if(input.action==='edit')return updateCommunityPost({id:input.postId,title:input.title??'',body:input.body??'',topic:input.topic??'general_dentistry'});if(input.action==='delete')return softDeleteCommunityPost(input.postId);if(input.action==='share')return recordCommunityPostShare(input.postId);if(input.action==='not_interested')return setCommunityPostNotInterested(input.postId,userId);return recordCommunityPostView(input.postId,input.watchSeconds,input.progress)},onSuccess:()=>client.invalidateQueries({queryKey:['community-posts']})})}
+export function useCommunityPostActions(userId?:string){const client=useQueryClient();return useMutation({mutationFn:async(input:{action:'edit'|'delete'|'share'|'view';postId:string;title?:string;body?:string;topic?:import('@/features/community/types').CommunityPostTopic;retainedMediaIds?:string[];files?:File[];watchSeconds?:number;progress?:number})=>{if(!userId)throw new Error('Sign in to manage posts.');if(input.action==='edit')return updateCommunityPost({id:input.postId,authorId:userId,title:input.title??'',body:input.body??'',topic:input.topic??'general_dentistry',retainedMediaIds:input.retainedMediaIds??[],files:input.files});if(input.action==='delete')return softDeleteCommunityPost(input.postId,userId);if(input.action==='share')return recordCommunityPostShare(input.postId);return recordCommunityPostView(input.postId,input.watchSeconds,input.progress)},onSuccess:()=>client.invalidateQueries({queryKey:['community-posts']})})}
 
 export function useCommunityComments(postId: string, userId: string | undefined, enabled: boolean, page = 0, search = '') {
   const client = useQueryClient()
@@ -87,6 +88,7 @@ export function useCreateCommunityComment(postId: string, userId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['community-comments', postId] })
+      queryClient.invalidateQueries({ queryKey: ['community-posts'] })
       queryClient.invalidateQueries({ queryKey: ['admin-community-comments'] })
     },
   })
@@ -146,7 +148,20 @@ export function useCommunityCommentLike(postId: string, userId?: string) {
       if (!userId) throw new Error('Sign in to like comments.')
       return setCommunityCommentLike(commentId, userId, active)
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['community-comments', postId] }),
+    onMutate: async ({ commentId, active }) => {
+      await queryClient.cancelQueries({ queryKey: ['community-comments', postId] })
+      const previous = queryClient.getQueriesData<CommunityComment[]>({ queryKey: ['community-comments', postId] })
+      queryClient.setQueriesData<CommunityComment[]>({ queryKey: ['community-comments', postId] }, (comments) => comments?.map((comment) => comment.id === commentId ? {
+        ...comment,
+        viewer_has_liked: active,
+        like_count: Math.max(0, comment.like_count + (active ? 1 : -1)),
+      } : comment))
+      return { previous }
+    },
+    onError: (_error, _input, context) => {
+      for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['community-comments', postId] }),
   })
 }
 
@@ -179,33 +194,134 @@ export function useCommunityOwnerActions(communityId:string){const client=useQue
 export function useRequestPrivateCommunityJoin(){return useMutation({mutationFn:({slug,message}:{slug:string;message:string})=>requestPrivateCommunityJoin(slug,message)})}
 
 export function useDirectConversations(userId?: string) {
-  const client=useQueryClient();useEffect(()=>{if(!userId)return;const channel=supabase.channel(`community-conversation-list:${userId}`).on('postgres_changes',{event:'*',schema:'public',table:'community_messages'},()=>void client.invalidateQueries({queryKey:['community-direct-conversations',userId]})).subscribe();return()=>{void supabase.removeChannel(channel)}},[client,userId])
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!userId) return
+    const refresh = () => void client.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
+    const channel = supabase
+      .channel(`community-conversation-list:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_conversation_participants', filter: `user_id=eq.${userId}` }, refresh)
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [client, userId])
   return useQuery({
     queryKey: ['community-direct-conversations', userId],
     queryFn: () => fetchDirectConversations(userId!),
     enabled: Boolean(userId),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
+  })
+}
+
+export function useCommunityDrafts(userId: string) {
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!userId) return
+    void migrateLocalCommunityDrafts(userId).then(count => {
+      if (count) void client.invalidateQueries({ queryKey: ['community-drafts', userId] })
+    })
+  }, [client, userId])
+  return useQuery({ queryKey: ['community-drafts', userId], queryFn: () => fetchCommunityDrafts(userId), enabled: Boolean(userId) })
+}
+
+export function useSaveCommunityDraft(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Omit<CommunityDraftInput, 'authorId'>) => saveCommunityDraft({ ...input, authorId: userId }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['community-drafts', userId] }),
+  })
+}
+
+export function useDeleteCommunityDraft(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteCommunityDraft(id, userId),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['community-drafts', userId] }),
   })
 }
 
 export function useDirectMessages(conversationId?: string) {
-  const client=useQueryClient();useEffect(()=>{if(!conversationId)return;void markConversationRead(conversationId);const channel=supabase.channel(`community-messages:${conversationId}`).on('postgres_changes',{event:'*',schema:'public',table:'community_messages',filter:`conversation_id=eq.${conversationId}`},()=>void client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})).subscribe();return()=>{void supabase.removeChannel(channel)}},[client,conversationId])
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!conversationId) return
+    void markConversationRead(conversationId)
+    const refresh = () => {
+      void client.invalidateQueries({ queryKey: ['community-direct-messages', conversationId] })
+    }
+    const channel = supabase
+      .channel(`community-messages:${conversationId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_reactions' }, refresh)
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [client, conversationId])
   return useQuery({
     queryKey: ['community-direct-messages', conversationId],
     queryFn: () => fetchDirectMessages(conversationId!),
     enabled: Boolean(conversationId),
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
   })
 }
 
-export function useOpenDirectConversation(userId:string){const client=useQueryClient();return useMutation({mutationFn:openDirectConversation,onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-conversations',userId]})})}
+export function useOpenDirectConversation(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: openDirectConversation,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
+    },
+  })
+}
 export function useOpenCommunityConversation(){return useMutation({mutationFn:openCommunityConversation})}
-export function useCommunityMessageActions(conversationId?:string){const client=useQueryClient();return useMutation({mutationFn:({id,action,body}:{id:string;action:'edit'|'delete';body?:string})=>action==='edit'?updateCommunityMessage(id,body??''):deleteCommunityMessage(id),onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})})}
+export function useCommunityMessageActions(conversationId?:string){const client=useQueryClient();return useMutation({mutationFn:({id,action,body}:{id:string;action:'edit'|'withdraw'|'hide';body?:string})=>action==='edit'?updateCommunityMessage(id,body??''):action==='withdraw'?deleteCommunityMessage(id):hideCommunityMessageForCurrentUser(id),onSuccess:()=>client.invalidateQueries({queryKey:['community-direct-messages',conversationId]})})}
+export function useCommunityMessageReaction(conversationId?: string) {
+  const client = useQueryClient()
+  const queryKey = ['community-direct-messages', conversationId]
+  return useMutation({
+    mutationFn: ({ id, emoji, reacted }: { id: string; emoji: string; reacted: boolean }) =>
+      toggleCommunityMessageReaction(id, emoji, reacted),
+    onMutate: async ({ id, emoji, reacted }) => {
+      await client.cancelQueries({ queryKey })
+      const previous = client.getQueryData<DirectMessage[]>(queryKey)
+      client.setQueryData<DirectMessage[]>(queryKey, (messages = []) => messages.map((message) => {
+        if (message.id !== id) return message
+        const reactions = message.reactions
+          .map((reaction) => reaction.viewer_reacted
+            ? { ...reaction, count: reaction.count - 1, viewer_reacted: false }
+            : reaction)
+          .filter((reaction) => reaction.count > 0)
+        if (!reacted) {
+          const selected = reactions.find((reaction) => reaction.emoji === emoji)
+          if (selected) {
+            selected.count += 1
+            selected.viewer_reacted = true
+          } else {
+            reactions.push({ emoji, count: 1, viewer_reacted: true })
+          }
+        }
+        return { ...message, reactions }
+      }))
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) client.setQueryData(queryKey, context.previous)
+    },
+    onSettled: () => client.invalidateQueries({ queryKey }),
+  })
+}
 
 export function useSendDirectMessage(userId: string, conversationId?: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({body,clientNonce}:{body:string;clientNonce:string}) => sendDirectMessage(conversationId!, body, clientNonce),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-direct-messages', conversationId] })
+    mutationFn: ({body,clientNonce,conversationId:targetConversationId,replyToMessageId}:{body:string;clientNonce:string;conversationId?:string;replyToMessageId?:string}) => {
+      const resolvedConversationId=targetConversationId??conversationId
+      if(!resolvedConversationId)throw new Error('Choose a member before sending a message.')
+      return sendDirectMessage(resolvedConversationId, body, clientNonce, replyToMessageId)
+    },
+    onSuccess: (message) => {
+      queryClient.invalidateQueries({ queryKey: ['community-direct-messages', message.conversation_id] })
       queryClient.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
     },
   })
@@ -223,6 +339,10 @@ export function useCommunitySettings(userId: string, section: CommunitySettingsS
 }
 
 export function useFriends(userId:string){return useQuery({queryKey:['community-friends',userId],queryFn:()=>fetchFriends(userId)})}
+export function useCloseFriends(userId:string){return useQuery({queryKey:['community-close-friends',userId],queryFn:()=>fetchCloseFriends(userId),enabled:Boolean(userId)})}
+export function useCloseFriendAction(userId:string){const client=useQueryClient();return useMutation({mutationFn:({targetUserId,active}:{targetUserId:string;active:boolean})=>setCloseFriend(userId,targetUserId,active),onSuccess:()=>{client.invalidateQueries({queryKey:['community-settings',userId,'following']});client.invalidateQueries({queryKey:['community-close-friends',userId]})}})}
+export function useCommunityPeopleSearch(userId:string,search:string){return useQuery({queryKey:['community-people-search',userId,search.trim()],queryFn:()=>searchCommunityPeople(userId,search),enabled:Boolean(userId)&&search.trim().length>=2})}
+export function useFollowCommunityPerson(userId:string){const client=useQueryClient();return useMutation({mutationFn:(followingId:string)=>followCommunityPerson(userId,followingId),onSuccess:()=>{client.invalidateQueries({queryKey:['community-settings',userId,'following']});client.invalidateQueries({queryKey:['community-people-search',userId]});client.invalidateQueries({queryKey:['community-posts']})}})}
 export function useFriendRequests(userId:string){return useQuery({queryKey:['community-friend-requests',userId],queryFn:()=>fetchFriendRequests(userId)})}
 export function useFriendRequestAction(userId:string){const client=useQueryClient();return useMutation({mutationFn:({id,action}:{id:string;action:'accept'|'reject'|'cancel'})=>action==='cancel'?cancelFriendRequest(id):respondFriendRequest(id,action==='accept'?'accepted':'rejected'),onSuccess:()=>{client.invalidateQueries({queryKey:['community-friend-requests',userId]});client.invalidateQueries({queryKey:['community-settings',userId,'friends']})}})}
 
