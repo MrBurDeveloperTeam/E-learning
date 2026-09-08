@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
-import { useCommunityPosts, useCommunityPreferences } from '@/features/community/hooks/useCommunity'
+import { useCommunityPosts, useCommunityPreferences, useDirectConversations } from '@/features/community/hooks/useCommunity'
 import { useAuthStore } from '@/store/authStore'
 import { isAdminProfile } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -46,6 +46,8 @@ export function CommunityPage() {
   useEffect(()=>{if(postSearch===(search.q??''))return;const timer=window.setTimeout(()=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:postSearch.trim(),topic,sort},replace:true}),300);return()=>window.clearTimeout(timer)},[activeTab,navigate,postSearch,search.q,sort,topic])
   const postsQuery = useCommunityPosts(user?.id, feedMode, search.q??'',topic,sort)
   const preferences=useCommunityPreferences(user?.id??'')
+  const directConversations = useDirectConversations(user?.id)
+  const unreadMessageCount = (directConversations.data ?? []).reduce((total, conversation) => total + conversation.unread_count, 0)
   const posts = postsQuery.data?.pages.flat() ?? []
   const isAdmin = isAdminProfile(profile)
   useEffect(()=>{if(activeTab!=='chat')return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[activeTab])
@@ -79,8 +81,12 @@ export function CommunityPage() {
                       : 'cursor-not-allowed text-muted-foreground/55',
                 )}
               >
-                <item.icon className="size-4" />
+                <span className="relative shrink-0">
+                  <item.icon className="size-4" />
+                  {item.id === 'chat' && unreadMessageCount > 0 && <span className="absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-background bg-destructive" aria-hidden="true" />}
+                </span>
                 <span>{item.label}</span>
+                {item.id === 'chat' && unreadMessageCount > 0 && <span className="sr-only">{unreadMessageCount} unread messages</span>}
                 {!item.available && <span className="ml-auto text-[9px] uppercase tracking-wide">Soon</span>}
               </button>
             ))}
@@ -122,7 +128,7 @@ export function CommunityPage() {
 
           {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'me' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
 
-          {activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <div className="min-h-0 flex-1"><Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} /></Suspense></div> : activeTab === 'me' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityMe userId={user.id} profile={profile} /></Suspense> : <div className="mt-7 space-y-4" aria-live="polite">
+          {activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <div className="min-h-0 flex-1"><Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} conversations={directConversations.data} conversationsLoading={directConversations.isLoading} /></Suspense></div> : activeTab === 'me' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityMe userId={user.id} profile={profile} /></Suspense> : <div className="mt-7 space-y-4" aria-live="polite">
             {postsQuery.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
             {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (

@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDirectConversations, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
+import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
 import { cn } from '@/lib/utils'
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import type { CommunityPerson, DirectMessage } from '@/features/community/types'
+import type { CommunityPerson, DirectConversation, DirectMessage } from '@/features/community/types'
 
 function getMessageError(error: unknown) {
   if (error instanceof Error && error.message) return error.message
@@ -20,8 +20,7 @@ function getMessageError(error: unknown) {
   return 'Message could not be confirmed. Retry uses the same message ID to prevent duplicates.'
 }
 
-export function DirectMessages({ userId }: { userId: string }) {
-  const conversations = useDirectConversations(userId)
+export function DirectMessages({ userId, conversations, conversationsLoading = false }: { userId: string; conversations?: DirectConversation[]; conversationsLoading?: boolean }) {
   const [selectedId, setSelectedId] = useState<string>()
   const [draftRecipient,setDraftRecipient]=useState<CommunityPerson|null>(null)
   const [body, setBody] = useState('')
@@ -39,7 +38,7 @@ export function DirectMessages({ userId }: { userId: string }) {
 
   useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update)}},[])
 
-  const selected = conversations.data?.find((conversation) => conversation.id === selectedId)
+  const selected = conversations?.find((conversation) => conversation.id === selectedId)
   const activeRecipient=selected?.other_user??draftRecipient
   const messages = useDirectMessages(selectedId, userId)
   const send = useSendDirectMessage(userId, selectedId)
@@ -60,15 +59,15 @@ export function DirectMessages({ userId }: { userId: string }) {
   }, [draftRecipient?.user_id, selected])
 
   const suggestions=useMemo(()=>{
-    const conversationRows=conversations.data??[]
+    const conversationRows=conversations??[]
     const remaining=Math.max(0,15-conversationRows.length)
     if(!remaining)return [] as CommunityPerson[]
     const existing=new Set(conversationRows.map(conversation=>conversation.other_user.user_id))
     return ([...((following.data??[]) as CommunityPerson[])]).filter(person=>!existing.has(person.user_id)).sort(()=>Math.random()-.5).slice(0,remaining)
-  },[conversations.data,following.data])
+  },[conversations,following.data])
 
   function startConversation(person:CommunityPerson){
-    const existing=conversations.data?.find(conversation=>conversation.other_user.user_id===person.user_id)
+    const existing=conversations?.find(conversation=>conversation.other_user.user_id===person.user_id)
     setSelectedId(existing?.id)
     setDraftRecipient(existing?null:person)
     setPeopleSearch('')
@@ -108,13 +107,13 @@ export function DirectMessages({ userId }: { userId: string }) {
     }
   }
 
-  if (conversations.isLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
+  if (conversationsLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
   return (
     <div className="mt-4 grid h-[calc(100%-1rem)] min-h-0 overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col overflow-hidden border-b border-border md:border-b-0 md:border-r">
             <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/>{peopleSearch.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">{people.data?.map(person=><button type="button" key={person.user_id} onClick={()=>startConversation(person)} className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-muted"><UserAvatar name={person.full_name||person.name||'Community member'} avatarUrl={person.avatar_url} size={30}/><span className="truncate text-xs font-medium">{person.full_name||person.name||person.username||'Community member'}</span></button>)}</div>}</div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
-          {(conversations.data??[]).map((conversation) => {
+          {(conversations??[]).map((conversation) => {
             const name = conversation.other_user.full_name || conversation.other_user.name || 'Friend'
             return (
               <button
@@ -127,7 +126,13 @@ export function DirectMessages({ userId }: { userId: string }) {
                 )}
               >
                 <UserAvatar name={name} avatarUrl={conversation.other_user.avatar_url} size={36} />
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">Direct message</p></div>{conversation.unread_count>0&&<span className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{conversation.unread_count}</span>}
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-semibold">{name}</p>
+                    {conversation.unread_count > 0 && <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground" aria-label={`${conversation.unread_count} unread messages`}>{conversation.unread_count > 99 ? '99+' : conversation.unread_count}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Direct message</p>
+                </div>
               </button>
             )
           })}

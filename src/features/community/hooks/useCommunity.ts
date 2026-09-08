@@ -273,6 +273,20 @@ export function useDirectMessages(conversationId?: string, userId?: string) {
     const refreshMessages = () => {
       void client.invalidateQueries({ queryKey: messageKey })
     }
+    const receiveReadReceipt = (payload: { new: Record<string, unknown> }) => {
+      const receipt = payload.new as { conversation_id?: string; user_id?: string; last_read_at?: string | null }
+      if (receipt.conversation_id !== conversationId || receipt.user_id === userId || !receipt.last_read_at) return
+
+      const readAt = Date.parse(receipt.last_read_at)
+      client.setQueryData<DirectMessage[]>(messageKey, current => current?.map(message => (
+        message.sender_id === userId
+        && message.delivery_status !== 'failed'
+        && Date.parse(message.created_at) <= readAt
+          ? { ...message, delivery_status: 'read' }
+          : message
+      )))
+      refreshMessages()
+    }
     const receiveMessage = () => {
       refreshMessages()
       void client.invalidateQueries({ queryKey: conversationKey })
@@ -288,9 +302,10 @@ export function useDirectMessages(conversationId?: string, userId?: string) {
       .channel(`community-messages:${conversationId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, receiveMessage)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_reactions' }, refreshMessages)
-      // Receipt updates only refresh message status. Calling markRead here would
-      // write last_read_at again and create a self-sustaining UPDATE loop.
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_conversation_participants', filter: `conversation_id=eq.${conversationId}` }, refreshMessages)
+      // Listen to participant receipt updates allowed by RLS, then scope the
+      // event client-side. This avoids a filtered UPDATE being missed and keeps
+      // the sender's Read label instant without writing another receipt.
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_conversation_participants' }, receiveReadReceipt)
       .subscribe(status => {
         if (status === 'SUBSCRIBED') refreshWhenActive()
       })
