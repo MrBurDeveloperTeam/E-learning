@@ -9,9 +9,12 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { CommunityMemberManager } from '@/features/community/components/CommunityMemberManager'
 import { CommunityRuleManager } from '@/features/community/components/CommunityRuleManager'
 import { CommunityConfirmAction } from '@/features/community/components/CommunityConfirmAction'
+import { CommunityShareLink } from '@/features/community/components/CommunityShareLink'
+import type { CommunitySummary } from '@/features/community/types'
 import { useArchiveCommunity, useCommunityManagement, useCommunityOwnerActions, useDecideCommunityJoinRequest } from '@/features/community/hooks/useCommunity'
 
-export function CommunityManagementDialog({ communityId, userId }: { communityId: string; userId: string }) {
+export function CommunityManagementDialog({ community, userId }: { community: CommunitySummary; userId: string }) {
+  const communityId = community.id
   const query = useCommunityManagement(communityId)
   const decide = useDecideCommunityJoinRequest(communityId, userId)
   const ownerActions = useCommunityOwnerActions(communityId)
@@ -29,6 +32,7 @@ export function CommunityManagementDialog({ communityId, userId }: { communityId
       <DialogHeader className="border-b px-4 py-4 pr-12 sm:px-6"><DialogTitle>Manage community</DialogTitle><DialogDescription>Publish announcements, maintain rules, review requests, and manage active members.</DialogDescription></DialogHeader>
       <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
       {query.isLoading ? <div className="flex min-h-40 items-center justify-center"><LoadingSpinner /></div> : query.isError ? <p className="text-sm text-destructive">Community management could not be loaded.</p> : <div className="space-y-6">
+        <CommunityShareLink community={community} />
         <section>
           <h3 className="flex items-center gap-2 text-sm font-semibold"><Info className="size-4" />About</h3>
           <Textarea value={description} maxLength={1000} className="mt-3 min-h-24 resize-none" placeholder="Describe the purpose of this community…" onChange={event => setDescription(event.target.value)} />

@@ -60,14 +60,14 @@ export function CommunitySpacePage() {
                   {!isArchived && !isMuted && (community.viewer_is_member ? <CreateCommunityPostDialog userId={user.id} communityId={community.id} communityName={community.name} /> : community.visibility === 'public' ? (
                     <Button disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not join this community.'))}>{join.isPending ? 'Joining…' : 'Join community'}</Button>
                   ) : null)}
-                  {!isArchived && community.viewer_membership_role === 'owner' ? <CommunityManagementDialog communityId={community.id} userId={user.id} /> : <CommunitySpaceSettingsDialog community={community} />}
+                  {!isArchived && community.viewer_membership_role === 'owner' ? <CommunityManagementDialog community={community} userId={user.id} /> : <CommunitySpaceSettingsDialog community={community} />}
                 </div>
               </div>
             </div>
           </header>
 
           {isArchived && <div className="border-b border-amber-300/60 bg-amber-50 text-amber-950"><div className="mx-auto flex max-w-[1240px] items-start gap-3 px-4 py-4 sm:px-6"><Archive className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">This Community was deleted by its owner.</p><p className="mt-1 text-sm leading-6 text-amber-900/80">Existing posts and comments remain available for reference. This Community is read-only and no actions can be performed.</p></div></div></div>}
-          {!isArchived && isMuted && <div className="border-b border-amber-300/60 bg-amber-50 text-amber-950"><div className="mx-auto flex max-w-[1240px] items-start gap-3 px-4 py-4 sm:px-6"><VolumeX className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">You are currently muted in this Community.</p><p className="mt-1 text-sm leading-6 text-amber-900/80">{muteMessage}</p></div></div></div>}
+          {!isArchived && isMuted && <div className="border-b border-red-200 bg-red-50/80 text-red-700"><div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 sm:px-6"><VolumeX className="size-4 shrink-0" /><p className="text-sm font-semibold">You are currently muted.</p><p className="text-xs sm:text-sm">You cannot post or comment{mutedUntil ? ` until ${mutedUntil}` : ''}{community.viewer_mute_reason ? ` · Reason: ${community.viewer_mute_reason}` : ''}.</p></div></div>}
 
           <main className="mx-auto grid max-w-[1240px] gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,760px)_minmax(240px,1fr)]">
             <section aria-labelledby="community-feed-title">

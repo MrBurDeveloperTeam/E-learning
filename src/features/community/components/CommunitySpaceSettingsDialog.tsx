@@ -5,6 +5,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useCommunityMembers } from '@/features/community/hooks/useCommunity'
 import type { CommunitySummary } from '@/features/community/types'
+import { CommunityShareLink } from '@/features/community/components/CommunityShareLink'
 
 export function CommunitySpaceSettingsDialog({ community }: { community: CommunitySummary }) {
   const members = useCommunityMembers(community.id)
@@ -20,6 +21,7 @@ export function CommunitySpaceSettingsDialog({ community }: { community: Communi
         </DialogHeader>
 
         <div className="mt-5 space-y-6">
+          {community.status !== 'archived' && <CommunityShareLink community={community} />}
           <section className="rounded-2xl border bg-card p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold"><Info className="size-4 text-primary" />About</h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{community.description || 'A dental community for professional discussion and shared learning.'}</p>

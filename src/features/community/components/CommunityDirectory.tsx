@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Globe2,
@@ -203,6 +203,7 @@ export function CommunityDirectory({ userId }: { userId: string }) {
   const [tab, setTab] = useState<DirectoryTab>("public");
   const directory = useCommunityDirectory(userId);
   const create = useCreateCommunity(userId);
+  const inviteJoin = useJoinPublicCommunity(userId);
   const requestPrivate = useRequestPrivateCommunityJoin();
   const [createOpen, setCreateOpen] = useState(false),
     [name, setName] = useState(""),
@@ -213,6 +214,32 @@ export function CommunityDirectory({ userId }: { userId: string }) {
     [joinMessage, setJoinMessage] = useState("");
   const [directorySearch, setDirectorySearch] = useState("");
   const communities = directory.data ?? [];
+  const processedInvite = useRef<string | null>(null);
+  useEffect(() => {
+    if (directory.isLoading || directory.isError) return
+    const invite = new URLSearchParams(window.location.search).get('invite')?.trim().toLowerCase()
+    if (!invite || processedInvite.current === invite) return
+    processedInvite.current = invite
+    const publicCommunity = communities.find(community => community.slug === invite && community.visibility === 'public' && community.status === 'active')
+    if (!publicCommunity) {
+      setPrivateSlug(invite)
+      setJoinOpen(true)
+      return
+    }
+    if (publicCommunity.viewer_is_member) {
+      window.location.assign(`/community/${encodeURIComponent(publicCommunity.slug)}`)
+      return
+    }
+    void inviteJoin.mutateAsync(publicCommunity.id)
+      .then(() => {
+        toast.success(`Joined ${publicCommunity.name}.`)
+        window.location.assign(`/community/${encodeURIComponent(publicCommunity.slug)}`)
+      })
+      .catch((error: unknown) => {
+        processedInvite.current = null
+        toast.error(error instanceof Error ? error.message : 'Could not join this Community.')
+      })
+  }, [communities, directory.isError, directory.isLoading, inviteJoin])
   const visibleCommunities = (
     tab === "public"
       ? communities.filter((community) => community.visibility === "public")
@@ -235,8 +262,8 @@ export function CommunityDirectory({ userId }: { userId: string }) {
             <DialogHeader>
               <DialogTitle>Request to join a private community</DialogTitle>
               <DialogDescription>
-                Enter the community slug shared by its owner. The owner must
-                approve your request.
+                This is a private Community. Send a request and wait for the
+                owner to approve it.
               </DialogDescription>
             </DialogHeader>
             <Input

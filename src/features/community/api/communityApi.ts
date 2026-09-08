@@ -716,8 +716,9 @@ export async function moveCommunityRule(ruleId:string,direction:'up'|'down'){
 export async function deleteCommunityRule(ruleId:string){const result=await supabase.from('community_rules').delete().eq('id',ruleId).select('id').single();if(result.error)throw result.error}
 export async function setCommunityMemberMute(memberId:string,until:string|null,reason:string|null){const[communityId,userId]=memberId.split(':');if(!communityId||!userId)throw new Error('The selected member is invalid.');const result=await supabase.from(COMMUNITY_TABLES.members).update({muted_until:until,mute_reason:until?reason?.trim()||null:null,updated_at:new Date().toISOString()}).eq('community_id',communityId).eq('user_id',userId).select('user_id').single();if(result.error)throw result.error}
 
-export async function requestPrivateCommunityJoin(_slug: string, _message: string): Promise<void> {
-  throw new CommunityBackendUnavailableError('Private Community join requests')
+export async function requestPrivateCommunityJoin(slug: string, message: string): Promise<void> {
+  const { error } = await supabase.rpc('community_request_join_by_slug', { target_slug: slug.trim().toLowerCase(), request_message: message.trim() || null })
+  if (error) throw error
 }
 
 export async function fetchDirectConversations(userId: string) {
