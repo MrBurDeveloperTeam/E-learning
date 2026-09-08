@@ -91,7 +91,7 @@ export function CommunityPage() {
               </button>
             ))}
             {isAdmin && (
-              <Link to="/admin/content" className="mt-4 flex w-full items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2.5 text-left text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-300">
+              <Link to="/admin/community" className="mt-4 flex w-full items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2.5 text-left text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-300">
                 <ShieldCheck className="size-4" /> Management
               </Link>
             )}

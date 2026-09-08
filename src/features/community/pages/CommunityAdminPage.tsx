@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { Check, Clock3, Flag, GraduationCap, History, MessageSquareText, Paperclip, Pin, Search, UsersRound, X } from 'lucide-react'
+import { Check, Clock3, Flag, GraduationCap, History, MessageSquareText, Paperclip, Search, UsersRound, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { AdminFilterTabs, AdminStatCard, AdminStatusBadge, AdminTableShell } from '@/components/admin/AdminPrimitives'
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
-import { useCommunityAuditActions, useCommunityPostPin, useCommunityReviewComments, useCommunityReviewGroups, useCommunityReviewPosts, useReviewCommunityComment, useReviewCommunityGroup, useReviewCommunityPost } from '@/features/community/hooks/useCommunityAdmin'
+import { useCommunityAuditActions, useCommunityReviewComments, useCommunityReviewGroups, useReviewCommunityComment, useReviewCommunityGroup } from '@/features/community/hooks/useCommunityAdmin'
 import { useAuthStore } from '@/store/authStore'
 import { useCommunityReports, useResolveCommunityReport } from '@/features/community/hooks/useCommunityReports'
 import { useReviewVerification, useVerificationQueue } from '@/features/community/hooks/useCommunityVerification'
@@ -21,7 +21,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 const CommunityBlockedWordsAdmin = lazy(() => import('@/features/community/components/CommunityBlockedWordsAdmin').then(module => ({ default: module.CommunityBlockedWordsAdmin })))
 const CommunityAppealsAdmin = lazy(() => import('@/features/community/components/CommunityAppealsAdmin').then(module => ({ default: module.CommunityAppealsAdmin })))
 
-type ReviewTab = 'posts' | 'comments' | 'communities' | 'reports' | 'verification' | 'audit'
+type ReviewTab = 'comments' | 'communities' | 'reports' | 'verification' | 'audit'
 type StatusFilter = 'pending' | 'all'
 type ReportSort = 'newest' | 'volume' | 'risk'
 
@@ -34,18 +34,15 @@ function tone(status: string) {
 
 export function CommunityAdminPage() {
   const adminId = useAuthStore((state) => state.user?.id) ?? ''
-  const [tab, setTab] = useState<ReviewTab>('posts')
+  const [tab, setTab] = useState<ReviewTab>('reports')
   const [filter, setFilter] = useState<StatusFilter>('pending')
   const [search, setSearch] = useState('')
   const [selectedReports, setSelectedReports] = useState(() => new Set<string>())
   const [reportReason, setReportReason] = useState<'all' | CommunityReportReason>('all')
   const [reportSort, setReportSort] = useState<ReportSort>('newest')
   const [dangerAction,setDangerAction]=useState<{title:string;description:string;label:string;run:()=>Promise<void>}|null>(null)
-  const postsQuery = useCommunityReviewPosts()
   const groupsQuery = useCommunityReviewGroups()
   const commentsQuery = useCommunityReviewComments()
-  const postMutation = useReviewCommunityPost(adminId)
-  const postPinMutation=useCommunityPostPin()
   const groupMutation = useReviewCommunityGroup()
   const commentMutation = useReviewCommunityComment(adminId)
   const reportsQuery = useCommunityReports()
@@ -53,8 +50,8 @@ export function CommunityAdminPage() {
   const verificationQuery = useVerificationQueue()
   const auditQuery=useCommunityAuditActions()
   const verificationMutation = useReviewVerification()
-  const query = tab === 'posts' ? postsQuery : tab === 'comments' ? commentsQuery : tab === 'communities' ? groupsQuery : tab === 'reports' ? reportsQuery : tab==='verification'?verificationQuery:auditQuery
-  const source = tab === 'posts' ? postsQuery.data ?? [] : tab === 'comments' ? commentsQuery.data ?? [] : tab === 'communities' ? groupsQuery.data ?? [] : tab === 'reports' ? reportsQuery.data ?? [] : tab==='verification'?verificationQuery.data ?? []:auditQuery.data??[]
+  const query = tab === 'comments' ? commentsQuery : tab === 'communities' ? groupsQuery : tab === 'reports' ? reportsQuery : tab==='verification'?verificationQuery:auditQuery
+  const source = tab === 'comments' ? commentsQuery.data ?? [] : tab === 'communities' ? groupsQuery.data ?? [] : tab === 'reports' ? reportsQuery.data ?? [] : tab==='verification'?verificationQuery.data ?? []:auditQuery.data??[]
   const rows = useMemo(() => {
     const filtered = filter === 'all' || tab==='audit' ? source : source.filter((row) => {const status=(row as {status:string}).status;return tab === 'reports' ? status === 'open' || status === 'reviewing' : tab === 'comments' ? status === 'hidden' : status === 'pending_review'})
     const needle = search.trim().toLowerCase()
@@ -75,22 +72,17 @@ export function CommunityAdminPage() {
     const row = raw as NonNullable<typeof reportsQuery.data>[number]
     return row.status === 'open' || row.status === 'reviewing' ? [row.id] : []
   }) : []
-  const pendingPosts = (postsQuery.data ?? []).filter((row) => row.status === 'pending_review').length
-  const pendingComments = (commentsQuery.data ?? []).filter((row) => row.status === 'hidden').length
   const pendingGroups = (groupsQuery.data ?? []).filter((row) => row.status === 'pending_review').length
+  const pendingComments = (commentsQuery.data ?? []).filter((row) => row.status === 'hidden').length
   const openReports = (reportsQuery.data ?? []).filter((row) => row.status === 'open' || row.status === 'reviewing').length
   const pendingVerification = (verificationQuery.data ?? []).filter((row) => row.status === 'pending_review').length
 
-  const reviewPost = async (id: string, decision: 'publish' | 'reject' | 'restore') => {
-    try { await postMutation.mutateAsync({ id, decision }); toast.success(decision === 'publish' ? 'Post published' : decision === 'restore' ? 'Post restored to review queue' : 'Post rejected') }
-    catch (error) { toast.error(error instanceof Error ? error.message : 'Review failed') }
-  }
   const reviewGroup = async (id: string, decision: 'approve' | 'reject') => {
     try { await groupMutation.mutateAsync({ id, decision }); toast.success(decision === 'approve' ? 'Community approved' : 'Community rejected') }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Review failed') }
   }
-  const reviewComment = async (id: string, decision: 'publish' | 'reject' | 'hide' | 'restore') => {
-    try { await commentMutation.mutateAsync({ id, decision }); toast.success(decision === 'publish' ? 'Comment published' : decision === 'reject' ? 'Comment rejected' : decision === 'restore' ? 'Comment restored' : 'Comment hidden') }
+  const reviewComment = async (id: string, decision: 'publish' | 'reject') => {
+    try { await commentMutation.mutateAsync({ id, decision }); toast.success(decision === 'publish' ? 'Comment restored.' : 'Comment rejected.') }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Comment review failed') }
   }
   const resolveReport = async (id: string, action: 'dismiss' | 'resolve' | 'hide') => {
@@ -107,31 +99,26 @@ export function CommunityAdminPage() {
   const openEvidence = async (path?: string) => { if (!path) return; try { window.open(await getVerificationEvidenceUrl(path), '_blank', 'noopener,noreferrer') } catch (error) { toast.error(error instanceof Error ? error.message : 'Evidence could not be opened') } }
 
   return <AdminLayout title="Community review" subtitle="Review reported or automatically hidden content, manage reports, and review new communities.">
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <AdminStatCard label="Posts needing review" value={pendingPosts} icon={MessageSquareText} accent="warning" />
+    <div className="grid gap-4 sm:grid-cols-3">
       <AdminStatCard label="Auto-hidden comments" value={pendingComments} icon={MessageSquareText} accent="warning" />
       <AdminStatCard label="Pending communities" value={pendingGroups} icon={UsersRound} accent="warning" />
-      <AdminStatCard label="Open reports" value={openReports} icon={Flag} accent={openReports > 0 ? 'danger' : 'default'} />
+      <AdminStatCard label="Unresolved reports" value={openReports} icon={Flag} accent={openReports > 0 ? 'danger' : 'default'} />
     </div>
     <Suspense fallback={<div className="flex min-h-24 items-center justify-center"><LoadingSpinner /></div>}><CommunityAppealsAdmin /></Suspense>
-    <AdminTableShell title="Moderation queue" description="Newest submissions appear first." action={<AdminFilterTabs value={tab} onChange={(value) => { setTab(value); setFilter(value==='audit'?'all':'pending') }} options={[{ value: 'posts', label: 'Posts', count: pendingPosts }, { value: 'comments', label: 'Comments', count: pendingComments }, { value: 'communities', label: 'Communities', count: pendingGroups }, { value: 'reports', label: 'Reports', count: openReports }, { value: 'verification', label: 'Verification', count: pendingVerification },{value:'audit',label:'Audit log'}]} />}>
-      {tab === 'posts' && (postsQuery.data ?? []).some((post) => post.status === 'deleted') && <div className="border-b border-border bg-muted/30 p-5"><h3 className="text-sm font-semibold">Recently deleted posts</h3><div className="mt-3 space-y-2">{(postsQuery.data ?? []).filter((post) => post.status === 'deleted').map((post) => <div key={post.id} className="flex items-center gap-3 rounded-xl border bg-card p-3"><p className="min-w-0 flex-1 truncate text-sm">{post.author_name}: {post.title || post.body}</p><Button size="sm" disabled={postMutation.isPending} onClick={() => void reviewPost(post.id, 'restore')}><Check className="size-4" />Restore</Button></div>)}</div></div>}
+    <AdminTableShell title="Moderation queue" description="Review reports, automatically hidden comments, and pending Community administration." action={<AdminFilterTabs value={tab} onChange={(value) => { setTab(value); setFilter(value==='audit'?'all':'pending') }} options={[{ value: 'reports', label: 'Reports', count: openReports }, { value: 'comments', label: 'Auto-hidden comments', count: pendingComments }, { value: 'communities', label: 'Communities', count: pendingGroups }, { value: 'verification', label: 'Verification', count: pendingVerification },{value:'audit',label:'Audit log'}]} />}>
       {tab === 'comments' && <Suspense fallback={<div className="flex min-h-24 items-center justify-center"><LoadingSpinner /></div>}><CommunityBlockedWordsAdmin adminId={adminId} /></Suspense>}
-      {tab === 'comments' && (commentsQuery.data ?? []).some((comment) => comment.status === 'deleted') && <div className="border-b border-border bg-muted/30 p-5"><h3 className="text-sm font-semibold">Recently deleted comments</h3><div className="mt-3 space-y-2">{(commentsQuery.data ?? []).filter((comment) => comment.status === 'deleted').map((comment) => <div key={comment.id} className="flex items-center gap-3 rounded-xl border bg-card p-3"><p className="min-w-0 flex-1 truncate text-sm">{comment.author_name}: {comment.body}</p><Button size="sm" disabled={commentMutation.isPending} onClick={() => void reviewComment(comment.id, 'restore')}><Check className="size-4" />Restore</Button></div>)}</div></div>}
       <div className="flex flex-col gap-3 border-b border-border px-5 py-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${tab}…`} className="pl-9 pr-9" />{search && <Button type="button" variant="ghost" size="icon-sm" aria-label="Clear search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={() => setSearch('')}><X className="size-4" /></Button>}</div>
         {tab === 'reports' && <><Select value={reportReason} onValueChange={(value) => setReportReason(value as typeof reportReason)}><SelectTrigger className="w-full sm:w-44" aria-label="Filter reports by reason"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All reasons</SelectItem><SelectItem value="patient_privacy">Patient privacy</SelectItem><SelectItem value="misinformation">Misinformation</SelectItem><SelectItem value="harassment">Harassment</SelectItem><SelectItem value="spam">Spam</SelectItem><SelectItem value="copyright">Copyright</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select><Select value={reportSort} onValueChange={(value) => setReportSort(value as ReportSort)}><SelectTrigger className="w-full sm:w-40" aria-label="Sort reports"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="newest">Newest</SelectItem><SelectItem value="volume">Most reports</SelectItem><SelectItem value="risk">Highest risk</SelectItem></SelectContent></Select>{visibleOpenReportIds.length > 0 && <Button size="sm" variant="outline" onClick={() => setSelectedReports(selectedReports.size === visibleOpenReportIds.length ? new Set() : new Set(visibleOpenReportIds))}>{selectedReports.size === visibleOpenReportIds.length ? 'Clear selection' : 'Select all'}</Button>}</>}
         {tab === 'reports' && selectedReports.size > 0 && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={reportMutation.isPending} onClick={() => void resolveSelectedReports('dismiss')}>Dismiss {selectedReports.size}</Button><Button size="sm" variant="destructive" disabled={reportMutation.isPending} onClick={() => setDangerAction({title:'Hide reported content?',description:`This will hide content for ${selectedReports.size} selected report groups and resolve those reports.`,label:`Hide ${selectedReports.size} items`,run:()=>resolveSelectedReports('hide')})}>Hide {selectedReports.size}</Button></div>}
       </div>
-      {tab!=='audit'&&<div className="border-b border-border px-5 py-3"><AdminFilterTabs value={filter} onChange={setFilter} options={[{ value: 'pending', label: tab === 'reports' ? 'Open reports' : tab === 'comments' ? 'Auto-hidden' : 'Needs review' }, { value: 'all', label: 'All recent' }]} /></div>}
+      {tab!=='audit'&&<div className="border-b border-border px-5 py-3"><AdminFilterTabs value={filter} onChange={setFilter} options={[{ value: 'pending', label: tab === 'reports' ? 'Unresolved reports' : 'Needs review' }, { value: 'all', label: 'All recent' }]} /></div>}
       {query.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
       {query.isError && <div className="p-6"><RetryCard onRetry={() => void query.refetch()} /></div>}
       {!query.isLoading && !query.isError && rows.length === 0 && <div className="p-6"><EmptyState icon={<Clock3 />} title="Review queue is clear" description="Reported, automatically hidden, or otherwise flagged content will appear here." /></div>}
       {!query.isLoading && !query.isError && rows.length > 0 && <div className="divide-y divide-border">
-        {tab === 'posts' ? rows.map((raw) => { const row = raw as NonNullable<typeof postsQuery.data>[number]; return <article key={row.id} className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AdminStatusBadge label={row.status.replaceAll('_', ' ')} tone={tone(row.status)} dot />{row.is_pinned && <AdminStatusBadge label="Pinned" tone="success" />}<span className="text-xs text-muted-foreground">{row.post_type} · {row.topic.replaceAll('_', ' ')}</span></div><h3 className="mt-3 font-semibold text-foreground">{row.title || 'Untitled post'}</h3><p className="mt-1 text-sm text-muted-foreground">By {row.author_name} · {new Date(row.created_at).toLocaleDateString()}</p>{row.body && <p className="mt-3 max-w-3xl text-sm leading-6 text-foreground/80">{row.body}</p>}</div><div className="flex shrink-0 flex-wrap gap-2"><Button size="sm" variant="outline" disabled={postPinMutation.isPending} onClick={() => void postPinMutation.mutateAsync({ id: row.id, enabled: !row.is_pinned }).then(() => toast.success(row.is_pinned ? 'Post unpinned.' : 'Post pinned.')).catch((error) => toast.error(error instanceof Error ? error.message : 'Pin could not be updated.'))}><Pin className="size-4" />{row.is_pinned ? 'Unpin' : 'Pin'}</Button>{row.status === 'pending_review' && <><Button size="sm" variant="outline" disabled={postMutation.isPending} onClick={() => void reviewPost(row.id, 'reject')}><X className="size-4" />Reject</Button><Button size="sm" disabled={postMutation.isPending} onClick={() => void reviewPost(row.id, 'publish')}><Check className="size-4" />Publish</Button></>}</div></div>
-        </article> }) : tab === 'comments' ? rows.map((raw) => { const row = raw as NonNullable<typeof commentsQuery.data>[number]; return <article key={row.id} className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AdminStatusBadge label={row.status.replaceAll('_', ' ')} tone={row.status === 'visible' ? 'success' : row.status === 'pending_review' ? 'warning' : 'danger'} dot /><span className="text-xs text-muted-foreground">Comment</span></div><p className="mt-3 max-w-3xl whitespace-pre-wrap text-sm leading-6 text-foreground/85">{row.body}</p><p className="mt-2 text-xs text-muted-foreground">By {row.author_name} · {new Date(row.created_at).toLocaleDateString()}</p></div><div className="flex shrink-0 flex-wrap gap-2"><CommunityUserSafetyDialog userId={row.author_id} userName={row.author_name} />{(row.status === 'pending_review' || row.status === 'hidden') && <Button size="sm" disabled={commentMutation.isPending} onClick={() => void reviewComment(row.id, 'publish')}><Check className="size-4" />Publish</Button>}{row.status === 'pending_review' && <Button size="sm" variant="outline" disabled={commentMutation.isPending} onClick={() => void reviewComment(row.id, 'reject')}><X className="size-4" />Reject</Button>}{row.status === 'visible' && <Button size="sm" variant="destructive" disabled={commentMutation.isPending} onClick={() => setDangerAction({title:'Hide this comment?',description:'Members will no longer see this comment. The author can appeal the decision.',label:'Hide comment',run:()=>reviewComment(row.id,'hide')})}><X className="size-4" />Hide</Button>}</div></div>
+        {tab === 'comments' ? rows.map((raw) => { const row = raw as NonNullable<typeof commentsQuery.data>[number]; return <article key={row.id} className="p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AdminStatusBadge label="Auto-hidden" tone="danger" dot /><span className="text-xs text-muted-foreground">Automatic moderation</span></div><p className="mt-3 max-w-3xl whitespace-pre-wrap text-sm leading-6 text-foreground/85">{row.body}</p><p className="mt-2 text-xs text-muted-foreground">By {row.author_name} · {new Date(row.created_at).toLocaleDateString()}</p></div><div className="flex shrink-0 flex-wrap gap-2"><CommunityUserSafetyDialog userId={row.author_id} userName={row.author_name} /><Button size="sm" variant="outline" disabled={commentMutation.isPending} onClick={() => void reviewComment(row.id, 'reject')}><X className="size-4" />Reject</Button><Button size="sm" disabled={commentMutation.isPending} onClick={() => void reviewComment(row.id, 'publish')}><Check className="size-4" />Restore</Button></div></div>
         </article> }) : tab === 'communities' ? rows.map((raw) => { const row = raw as NonNullable<typeof groupsQuery.data>[number]; return <article key={row.id} className="p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AdminStatusBadge label={row.status.replaceAll('_', ' ')} tone={tone(row.status)} dot /><span className="text-xs text-muted-foreground">{row.visibility} community</span></div><h3 className="mt-3 font-semibold text-foreground">{row.name}</h3><p className="mt-1 text-sm text-muted-foreground">Owned by {row.owner_name} · {new Date(row.created_at).toLocaleDateString()}</p>{row.description && <p className="mt-3 max-w-3xl text-sm leading-6 text-foreground/80">{row.description}</p>}</div>{row.status === 'pending_review' && <div className="flex shrink-0 gap-2"><Button size="sm" variant="outline" disabled={groupMutation.isPending} onClick={() => void reviewGroup(row.id, 'reject')}><X className="size-4" />Reject</Button><Button size="sm" disabled={groupMutation.isPending} onClick={() => void reviewGroup(row.id, 'approve')}><Check className="size-4" />Approve</Button></div>}</div>
         </article> }) : tab === 'verification' ? rows.map((raw) => { const row = raw as NonNullable<typeof verificationQuery.data>[number]; return <article key={row.id} className="p-5 sm:p-6">
@@ -141,6 +128,6 @@ export function CommunityAdminPage() {
         </article> })}
       </div>}
     </AdminTableShell>
-    <Dialog open={Boolean(dangerAction)} onOpenChange={open=>{if(!open&&!reportMutation.isPending&&!commentMutation.isPending)setDangerAction(null)}}><DialogContent><DialogHeader><DialogTitle>{dangerAction?.title}</DialogTitle><DialogDescription>{dangerAction?.description}</DialogDescription></DialogHeader><DialogFooter><DialogClose render={<Button variant="outline"/>}>Cancel</DialogClose><Button variant="destructive" disabled={reportMutation.isPending||commentMutation.isPending} onClick={()=>dangerAction&&void dangerAction.run().then(()=>setDangerAction(null))}>{dangerAction?.label}</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={Boolean(dangerAction)} onOpenChange={open=>{if(!open&&!reportMutation.isPending)setDangerAction(null)}}><DialogContent><DialogHeader><DialogTitle>{dangerAction?.title}</DialogTitle><DialogDescription>{dangerAction?.description}</DialogDescription></DialogHeader><DialogFooter><DialogClose render={<Button variant="outline"/>}>Cancel</DialogClose><Button variant="destructive" disabled={reportMutation.isPending} onClick={()=>dangerAction&&void dangerAction.run().then(()=>setDangerAction(null))}>{dangerAction?.label}</Button></DialogFooter></DialogContent></Dialog>
   </AdminLayout>
 }
