@@ -557,8 +557,16 @@ export async function setCommunityUserBlock(blockedUserId: string, userId: strin
 }
 
 export async function fetchCommunityMentionUsers(query: string) {
-  if (query.length < 1) return []
-  const { data, error } = await supabase.from('public_profiles').select('user_id,username,full_name,name,avatar_url').ilike('username', `${query.replaceAll('%', '')}%`).not('username', 'is', null).limit(6)
+  const cleaned = query.trim().replace(/[^a-zA-Z0-9_. -]/g, '')
+  if (cleaned.length < 1) return []
+  const pattern = `%${cleaned}%`
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('user_id,username,full_name,name,avatar_url')
+    .not('username', 'is', null)
+    .or(`username.ilike.${pattern},full_name.ilike.${pattern},name.ilike.${pattern}`)
+    .order('username')
+    .limit(6)
   if (error) throw error
   return data ?? []
 }

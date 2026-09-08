@@ -11,10 +11,18 @@ import { deleteCommunityDraft, fetchCommunityDrafts, migrateLocalCommunityDrafts
 export function useCommunityPosts(userId?: string, mode: CommunityFeedMode = 'home', search = '', topic = 'all', sort: 'relevant'|'newest'|'popular'='relevant', communityId?: string) {
   const queryClient = useQueryClient()
   useEffect(() => {
-    const refresh = () => void queryClient.invalidateQueries({ queryKey: ['community-posts'] })
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: ['community-posts'] })
+      void queryClient.invalidateQueries({ queryKey: ['community-post'] })
+    }
     const channel = supabase.channel(`community-feed:${mode}:${userId ?? 'guest'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_posts' }, refresh)
-      .subscribe()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_post_likes' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_post_reposts' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments' }, refresh)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') refresh()
+      })
     return () => { void supabase.removeChannel(channel) }
   }, [mode, queryClient, userId])
   return useInfiniteQuery({
@@ -58,10 +66,17 @@ export function useCommunityComments(postId: string, userId: string | undefined,
   const client = useQueryClient()
   useEffect(() => {
     if (!enabled) return
+    const refresh = () => {
+      void client.invalidateQueries({ queryKey: ['community-comments', postId] })
+      void client.invalidateQueries({ queryKey: ['community-posts'] })
+      void client.invalidateQueries({ queryKey: ['community-post', postId] })
+    }
     const channel = supabase.channel(`community-comments:${postId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, () => void client.invalidateQueries({ queryKey: ['community-comments', postId] }))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comment_likes' }, () => void client.invalidateQueries({ queryKey: ['community-comments', postId] }))
-      .subscribe()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comment_likes' }, refresh)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') refresh()
+      })
     return () => { void supabase.removeChannel(channel) }
   }, [client, enabled, postId])
   return useQuery({
