@@ -483,19 +483,23 @@ export async function checkCommunityCommentSafety(body: string): Promise<'safe' 
   const value=body.trim()
   if(!value)throw new Error('Write something before publishing your comment.')
   if(value.length>5000)throw new Error('Comments must be 5,000 characters or fewer.')
-  return 'safe'
+  const { data, error } = await supabase.rpc('community_check_comment_safety', { input_body: value })
+  if(error)throw error
+  return data as 'safe' | 'warn' | 'review' | 'block'
 }
 
 export async function createCommunityComment(input: { postId: string; authorId: string; body: string; parentCommentId?: string | null; files?: File[] }) {
   const commentId=crypto.randomUUID()
+  const safety = await checkCommunityCommentSafety(input.body)
+  const autoHidden = safety === 'review' || safety === 'block'
   const { error } = await supabase.from(COMMUNITY_TABLES.comments).insert({
     id:commentId,
     post_id: input.postId,
     author_id: input.authorId,
     content: input.body.trim(),
     parent_comment_id: input.parentCommentId ?? null,
-    moderation_status: 'visible',
-    moderation_reason:null,
+    moderation_status: autoHidden ? 'auto_hidden' : 'visible',
+    moderation_reason: autoHidden ? `blocked_word:${safety}` : null,
   })
   if (error) throw error
   const files = input.files ?? []
