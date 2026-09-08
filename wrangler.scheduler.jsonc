@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dental-youtube-scheduler",
+  "main": "workers/youtube-scheduler/index.ts",
+  "compatibility_date": "2026-09-03",
+  "workers_dev": true,
+  "vars": {
+    "TARGET_ORIGIN": "https://e-learning.snabbb.com"
+  },
+  "triggers": {
+    "crons": ["0 */3 * * *"]
+  }
+}

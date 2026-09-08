@@ -12,6 +12,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut, LifeBuoy } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import { submitCreatorApplication } from '@/lib/creatorApplications'
+import type { CreatorApplication } from '@/types'
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -38,15 +42,63 @@ export function Navbar() {
   const [creditLoading, setCreditLoading] = useState(false)
   const [creditError, setCreditError] = useState<string | null>(null)
   const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false)
+  const [isRequestingCreatorAccess, setIsRequestingCreatorAccess] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
   const badgeLabel = profile?.position || profile?.company_name
   const canAccessCreatorTools = isCreatorProfile(profile)
   const canAccessAdmin = isAdminProfile(profile)
+  const hasCreatorAccount = profile?.is_creator === true || profile?.role === 'creator'
+  const shouldShowCreatorRequest = !hasCreatorAccount && !canAccessAdmin
   const navLinks = canAccessAdmin
     ? [...baseNavLinks, { label: 'Admin', path: '/admin' }]
     : baseNavLinks
   const { mutateAsync: getAppLink } = useAppLink()
+  const queryClient = useQueryClient()
+  const creatorApplicationQuery = useQuery({
+    queryKey: ['creator-application', profile?.user_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('creator_applications')
+        .select('*')
+        .eq('user_id', profile!.user_id)
+        .maybeSingle()
+
+      if (error) throw error
+      return (data ?? null) as CreatorApplication | null
+    },
+    enabled: Boolean(profile?.user_id && shouldShowCreatorRequest),
+  })
+  const creatorApplication = creatorApplicationQuery.data ?? null
+  const creatorApplicationStatus = creatorApplication?.status ?? null
+  const creatorRequestPending = creatorApplicationStatus === 'pending'
+  const canRequestCreatorAccess =
+    creatorApplicationStatus === null ||
+    creatorApplicationStatus === 'rejected' ||
+    creatorApplicationStatus === 'revoked'
+
+  async function handleRequestCreatorAccess() {
+    if (!profile?.user_id || isRequestingCreatorAccess) return
+    if (creatorRequestPending) {
+      toast.info('Your creator request is awaiting admin approval.')
+      return
+    }
+    if (!canRequestCreatorAccess) return
+
+    try {
+      setIsRequestingCreatorAccess(true)
+      const application = await submitCreatorApplication(profile.user_id, creatorApplication)
+      queryClient.setQueryData(['creator-application', profile.user_id], application)
+      await queryClient.invalidateQueries({ queryKey: ['creator-application', profile.user_id] })
+      toast.success('Creator request submitted', {
+        description: 'An administrator must approve your request before you can become a creator.',
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Creator request could not be submitted.')
+    } finally {
+      setIsRequestingCreatorAccess(false)
+    }
+  }
 
   // Opens another Snabbb app (e.g. the rewards app) via an SSO handoff so
   // the destination recognizes the session instead of bouncing to its own
@@ -261,6 +313,22 @@ export function Navbar() {
                   </Link>
                 )}
 
+                {shouldShowCreatorRequest && (
+                  <button
+                    type="button"
+                    onClick={() => void handleRequestCreatorAccess()}
+                    disabled={creatorApplicationQuery.isLoading || creatorRequestPending || isRequestingCreatorAccess}
+                    className="btn-primary hidden items-center gap-1.5 px-4 py-2 text-sm md:inline-flex"
+                  >
+                    {isRequestingCreatorAccess
+                      ? 'Sending request…'
+                      : creatorRequestPending
+                        ? 'Creator request pending'
+                        : creatorApplicationStatus === 'rejected' || creatorApplicationStatus === 'revoked'
+                          ? 'Request creator access again'
+                          : 'Become a creator'}
+                  </button>
+                )}
                 <NotificationBell />
                 <ThemeToggle />
 

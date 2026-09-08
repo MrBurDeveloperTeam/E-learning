@@ -61,21 +61,26 @@ function sanitiseSearchQuery(raw: string): string {
     .join(" & ");
 }
 
-function isOthersCategory(category: string | null): boolean {
-  return category?.trim().toLowerCase() === "others";
+function isGeneralCategory(category: string | null): boolean {
+  const normalized = category?.trim().toLowerCase();
+  return normalized === "general dentistry" || normalized === "others" || normalized === "other";
 }
 
 function applyCategoryFilter(query: any, category: string | null) {
   if (!category) return query;
 
-  if (isOthersCategory(category)) {
-    return query.or("category.is.null,category.eq.Others");
+  if (isGeneralCategory(category)) {
+    return query.or("category.is.null,category.eq.General Dentistry,category.eq.Others,category.eq.Restorative");
   }
 
   return query.eq("category", category);
 }
 
 function normalizeVideoCategory(video: any) {
+  const category = video?.category?.trim();
+  if (!category || ["others", "other", "restorative"].includes(category.toLowerCase())) {
+    return { ...video, category: "General Dentistry" };
+  }
   return video;
 }
 
@@ -87,8 +92,8 @@ export async function onRequestOptions() {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/dental-videos          → paginated list
-// GET /api/dental-videos?id=<id>  → single video by id
+// GET /dental-api/dental-videos          → paginated list
+// GET /dental-api/dental-videos?id=<id>  → single video by id
 // ---------------------------------------------------------------------------
 export async function onRequestGet(context: {
   env: Env;
@@ -128,6 +133,88 @@ export async function onRequestGet(context: {
     // --- Parse query params ---
     const url = new URL(context.request.url);
     const idParam = url.searchParams.get("id");
+    const adjacentToParam = url.searchParams.get("adjacentTo");
+    const excludedVideoIds = (url.searchParams.get("excludeIds") || "")
+      .split(",")
+      .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+
+    // -----------------------------------------------------------------------
+    // Adjacent public videos in the default newest-first library order
+    // -----------------------------------------------------------------------
+    if (adjacentToParam) {
+      const { data: current, error: currentError } = await supabase
+        .from("dental_videos")
+        .select("id,video_type")
+        .eq("id", adjacentToParam)
+        .eq("needs_review", false)
+        .maybeSingle();
+
+      if (currentError) {
+        console.error("dental-videos adjacent lookup error:", currentError);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      if (!current) {
+        return jsonResponse({ error: "Video not found" }, 404);
+      }
+
+      const applyQueueFilters = (query: any) => {
+        let filtered = query
+          .eq("needs_review", false)
+          .neq("id", current.id);
+        if (current.video_type === "video" || current.video_type === "short_video") {
+          filtered = filtered.eq("video_type", current.video_type);
+        }
+        if (excludedVideoIds.length > 0) {
+          filtered = filtered.not("id", "in", `(${excludedVideoIds.join(",")})`);
+        }
+        return filtered;
+      };
+
+      const countResult = await applyQueueFilters(
+        supabase.from("dental_videos").select("id", { count: "exact", head: true })
+      );
+      if (countResult.error) {
+        console.error("dental-videos random queue count error:", countResult.error);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      const candidateCount = countResult.count || 0;
+      if (candidateCount === 0) {
+        return jsonResponse({ previous: null, next: null });
+      }
+
+      const previousOffset = Math.floor(Math.random() * candidateCount);
+      let nextOffset = Math.floor(Math.random() * candidateCount);
+      if (candidateCount > 1 && nextOffset === previousOffset) {
+        nextOffset = (nextOffset + 1 + Math.floor(Math.random() * (candidateCount - 1))) % candidateCount;
+      }
+
+      const fetchAtOffset = (offset: number) => applyQueueFilters(
+        supabase
+          .from("dental_videos")
+          .select("id,title")
+          .order("id", { ascending: true })
+          .range(offset, offset)
+      );
+      const [previousResult, nextResult] = await Promise.all([
+        fetchAtOffset(previousOffset),
+        fetchAtOffset(nextOffset),
+      ]);
+      const randomQueueError = previousResult.error || nextResult.error;
+      if (randomQueueError) {
+        console.error("dental-videos random queue error:", randomQueueError);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      const previous = previousResult.data?.[0] || null;
+      const next = nextResult.data?.[0] || null;
+
+      return jsonResponse({
+        previous,
+        next,
+      });
+    }
 
     // -----------------------------------------------------------------------
     // Single video by id
@@ -156,6 +243,16 @@ export async function onRequestGet(context: {
     // -----------------------------------------------------------------------
     const category = url.searchParams.get("category");
     const q = url.searchParams.get("q");
+    const languageParam = url.searchParams.get("language");
+    const language = languageParam?.trim().toLowerCase() || null;
+    if (language && !/^[a-z]{2,3}$/.test(language)) {
+      return jsonResponse({ error: "Invalid language filter" }, 400);
+    }
+    const videoTypeParam = url.searchParams.get("videoType");
+    const videoType = videoTypeParam?.trim().toLowerCase() || null;
+    if (videoType && videoType !== "short_video" && videoType !== "video") {
+      return jsonResponse({ error: "Invalid video type filter" }, 400);
+    }
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
     const limit = Math.min(
       50,
@@ -177,10 +274,46 @@ export async function onRequestGet(context: {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
+    // Language filtering uses the standard query builder so it works together
+    // with search without requiring a separate language-aware search RPC.
+    if (q && language) {
+      const escapedQuery = q.trim().replace(/[%_,]/g, "");
+      if (!escapedQuery) {
+        return jsonResponse({ data: [], total: 0, page, limit, totalPages: 0 });
+      }
+      let languageSearchQuery = supabase
+        .from("dental_videos")
+        .select("*", { count: "exact" })
+        .eq("needs_review", false)
+        .eq("language", language)
+        .or(`title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`);
+
+      languageSearchQuery = applyCategoryFilter(languageSearchQuery, category);
+      if (videoType) languageSearchQuery = languageSearchQuery.eq("video_type", videoType);
+      languageSearchQuery = languageSearchQuery
+        .order(sortColumn, { ascending })
+        .range(from, to);
+
+      const { data, error, count } = await languageSearchQuery;
+      if (error) {
+        console.error("dental-videos language search error:", error);
+        return jsonResponse({ error: "Database error" }, 500);
+      }
+
+      const total = count ?? 0;
+      return jsonResponse({
+        data: (data || []).map(normalizeVideoCategory),
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    }
+
     // If full-text search is requested, use an RPC call for the tsquery.
     // Otherwise use the standard query builder.
     if (q) {
-      if (isOthersCategory(category)) {
+      if (isGeneralCategory(category) || videoType) {
         const escapedQuery = q.trim().replace(/[%_,]/g, "");
 
         let othersQuery = supabase
@@ -189,12 +322,11 @@ export async function onRequestGet(context: {
           .eq("needs_review", false)
           .or(
             `title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`
-          )
-          .or(
-            "category.is.null,category.eq.Others"
-          )
-          .order(sortColumn, { ascending })
-          .range(from, to);
+          );
+
+        othersQuery = applyCategoryFilter(othersQuery, category);
+        if (videoType) othersQuery = othersQuery.eq("video_type", videoType);
+        othersQuery = othersQuery.order(sortColumn, { ascending }).range(from, to);
 
         const {
           data: othersData,
@@ -204,7 +336,7 @@ export async function onRequestGet(context: {
 
         if (othersError) {
           console.error(
-            "dental-videos Others search error:",
+            "dental-videos General Dentistry search error:",
             othersError
           );
 
@@ -306,6 +438,14 @@ export async function onRequestGet(context: {
 
     if (category) {
       query = applyCategoryFilter(query, category);
+    }
+
+    if (language) {
+      query = query.eq("language", language);
+    }
+
+    if (videoType) {
+      query = query.eq("video_type", videoType);
     }
 
     query = query.order(sortColumn, { ascending }).range(from, to);

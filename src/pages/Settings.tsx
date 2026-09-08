@@ -23,6 +23,7 @@ import { submitCreatorApplication } from '../lib/creatorApplications'
 import { cn, getInitials } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
+import { DENTAL_POSITIONS } from '../constants/signupOptions'
 import {
   useUpdateProfile,
   useUploadAvatar,
@@ -45,10 +46,20 @@ interface ProfileFormValues {
   full_name: string
   phone: string
   position: string
+  customPosition: string
   company_name: string
   specialty: string
   institution: string
   bio: string
+}
+
+const DENTAL_POSITION_SET: readonly string[] = DENTAL_POSITIONS
+
+function resolvePositionFields(position: string | null | undefined): { position: string; customPosition: string } {
+  const trimmed = (position ?? '').trim()
+  if (!trimmed) return { position: '', customPosition: '' }
+  if (DENTAL_POSITION_SET.includes(trimmed)) return { position: trimmed, customPosition: '' }
+  return { position: 'OTHER', customPosition: trimmed }
 }
 
 const SPECIALTY_OPTIONS = [
@@ -213,7 +224,7 @@ export function Settings() {
     defaultValues: {
       full_name: profile?.full_name ?? '',
       phone: profile?.phone ?? '',
-      position: profile?.position ?? '',
+      ...resolvePositionFields(profile?.position),
       company_name: profile?.company_name ?? '',
       specialty: profile?.specialty ?? '',
       institution: profile?.institution ?? '',
@@ -223,12 +234,13 @@ export function Settings() {
 
   const watchedFullName = watch('full_name')
   const watchedBio = watch('bio') ?? ''
+  const watchedPosition = watch('position')
 
   useEffect(() => {
     reset({
       full_name: profile?.full_name ?? '',
       phone: profile?.phone ?? '',
-      position: profile?.position ?? '',
+      ...resolvePositionFields(profile?.position),
       company_name: profile?.company_name ?? '',
       specialty: profile?.specialty ?? '',
       institution: profile?.institution ?? '',
@@ -242,13 +254,14 @@ export function Settings() {
 
   async function onSubmit(values: ProfileFormValues) {
     if (!profile) return
+    const effectivePosition = values.position === 'OTHER' ? values.customPosition.trim() : values.position
     try {
       await updateProfile.mutateAsync({
         userId: profile.user_id,
         payload: {
           full_name: values.full_name,
           phone: values.phone || null,
-          position: values.position || null,
+          position: effectivePosition || null,
           company_name: values.company_name || null,
           specialty: values.specialty || null,
           institution: values.institution || null,
@@ -297,7 +310,7 @@ export function Settings() {
     reset({
       full_name: profile?.full_name ?? '',
       phone: profile?.phone ?? '',
-      position: profile?.position ?? '',
+      ...resolvePositionFields(profile?.position),
       company_name: profile?.company_name ?? '',
       specialty: profile?.specialty ?? '',
       institution: profile?.institution ?? '',
@@ -339,7 +352,7 @@ export function Settings() {
         queryKey: ['creator-application', profile.user_id],
       })
       toast.success(
-        'Application submitted! We will review your application within 1–2 business days.'
+        'Creator request submitted! An administrator will review it within 1–2 business days.'
       )
     } catch (error) {
       console.error('[verification-request][settings] creator_applications upsert failed', error)
@@ -358,7 +371,7 @@ export function Settings() {
 
     return (
       <div className="border-b border-border py-6">
-        <SectionLabel>Verification</SectionLabel>
+        <SectionLabel>Creator access</SectionLabel>
 
         {creatorApplicationQuery.isLoading ? (
           <p className="text-xs text-muted-foreground">
@@ -378,11 +391,11 @@ export function Settings() {
           <div className="flex flex-col gap-4 rounded-2xl border border-destructive/15 bg-destructive/5 p-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">
-                Verification was rejected
+                Creator request was rejected
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
                 {creatorApplication?.rejection_reason ||
-                  'Your last creator application was rejected. You can update your profile and request verification again.'}
+                  'Your last creator application was rejected. You can update your profile and request creator access again.'}
               </p>
             </div>
             <button
@@ -391,17 +404,17 @@ export function Settings() {
               disabled={isApplyingForCreator}
               className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
             >
-              {isApplyingForCreator ? 'Requesting...' : 'Request verification again'}
+              {isApplyingForCreator ? 'Sending request...' : 'Request creator access again'}
             </button>
           </div>
         ) : creatorApplicationStatus === 'revoked' ? (
           <div className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">
-                Verification was revoked
+                Creator access was revoked
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-                Your account is back on member access. You can request verification again when ready.
+                Your account is back on member access. You can request creator access again when ready.
               </p>
             </div>
             <button
@@ -410,17 +423,17 @@ export function Settings() {
               disabled={isApplyingForCreator}
               className="btn-primary text-sm px-4 py-2 md:flex-shrink-0"
             >
-              {isApplyingForCreator ? 'Requesting...' : 'Request verification again'}
+              {isApplyingForCreator ? 'Sending request...' : 'Request creator access again'}
             </button>
           </div>
         ) : canApplyForCreator ? (
           <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">
-                Request verification
+                Become a creator
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-                Request a review for your professional profile. Our team will verify your application within 1-2 business days.
+                Apply for creator access. An administrator will review your request within 1-2 business days before you can upload videos.
               </p>
             </div>
             <button
@@ -429,7 +442,7 @@ export function Settings() {
               disabled={isApplyingForCreator}
               className="btn-primary text-white text-sm px-4 py-2 md:flex-shrink-0"
             >
-              {isApplyingForCreator ? 'Requesting...' : 'Request verification'}
+              {isApplyingForCreator ? 'Sending request...' : 'Request to become a creator'}
             </button>
           </div>
         ) : (
@@ -633,8 +646,21 @@ export function Settings() {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="position" className="text-xs font-medium text-foreground/70">Position / title</label>
-                <input id="position" className="input-field" placeholder="Consultant, lecturer, clinic lead" {...register('position')} />
+                <div className="relative">
+                  <select id="position" className="input-field appearance-none pr-9 bg-transparent" {...register('position')}>
+                    <option value="">Select position</option>
+                    {DENTAL_POSITIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+                    <option value="OTHER">Other</option>
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><ChevronDown size={12} /></div>
+                </div>
               </div>
+              {watchedPosition === 'OTHER' && (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="customPosition" className="text-xs font-medium text-foreground/70">Specify position</label>
+                  <input id="customPosition" className="input-field" placeholder="e.g. Clinic Manager" {...register('customPosition')} />
+                </div>
+              )}
               <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">Account overview</p>
                 <div className="mt-3 flex items-center gap-2 text-sm text-foreground/80">

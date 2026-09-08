@@ -110,3 +110,76 @@ npm run deploy
 ### Supabase Functions / Other Services
 
 Configure production secrets in the target platform instead of committing them to `.env`.
+
+### Scheduled YouTube imports
+
+The dedicated `dental-youtube-scheduler` Cloudflare Worker runs every three
+hours. Each run imports up to 10 videos for exactly one category/language pair.
+Both the category and language change on every run. Because the 13-category and
+7-language cycles are coprime, all 91 combinations are covered exactly once
+every 11.375 days while the seven languages remain evenly distributed through
+the schedule. The rotation is calculated from UTC time and does not restart
+when the site or Worker is redeployed.
+
+The schedule intentionally limits each invocation to one combination. This
+prevents an exhausted YouTube search quota from repeatedly favoring the first
+categories. Failed slots do not block later combinations; they are attempted
+again during the next full rotation.
+
+Setup:
+
+1. Generate a new random secret containing at least 32 characters. Do not reuse
+   the Supabase service-role key or expose the value as a `VITE_*` variable.
+2. Add that value as the encrypted `YOUTUBE_SCHEDULER_SECRET` secret in both the
+   Cloudflare Pages **Production** environment and the
+   `dental-youtube-scheduler` Worker.
+3. Redeploy the Pages project so its Functions receive the new secret.
+4. Deploy the scheduler Worker:
+
+```bash
+npm run deploy:scheduler
+npx wrangler secret put YOUTUBE_SCHEDULER_SECRET --config wrangler.scheduler.jsonc
+```
+
+The Worker calls only the scheduled video-import endpoint using the shared
+secret. The YouTube API key and Supabase service-role key remain inside the Pages
+environment and are not copied into the scheduler Worker. The schedule is
+defined in `wrangler.scheduler.jsonc` as `0 */3 * * *` (UTC).
+
+## Video orientation classifier
+
+The Fetch videos admin screen can issue a 2-hour access code and download a
+Windows launcher for the local orientation classifier. The classifier uses
+`yt-dlp` metadata without downloading video files. Portrait videos are saved as
+`short_video`; landscape and square videos are saved as `video`. Duration is
+not part of the decision.
+
+Before deploying, add `CLASSIFIER_SIGNING_SECRET` to both the Cloudflare Pages
+Preview and Production environments. Use an independently generated random
+secret of at least 32 characters; never expose it as a `VITE_*` variable or
+commit its value.
+
+The server endpoint is `/dental-api/orientation-videos`. It verifies the signed-in
+administrator before issuing a code, returns only unclassified video IDs to the
+local tool, and accepts updates to `dental_videos.video_type` only. Supabase's
+service-role key remains server-side.
+
+Admin workflow:
+
+1. Open **Admin → Fetch videos**.
+2. Select **Download for Windows** and run the downloaded `.cmd` file, or select
+   **Download for macOS** and open the downloaded `.command` file. On macOS,
+   right-click the file and choose **Open** if the first launch is blocked.
+3. Select **Copy temporary code** and paste the code into the classifier.
+4. Enter the maximum number to classify. Start with the default batch of 10.
+5. Keep the Admin page open, then keep the computer online until the completion
+   summary appears. The current Admin page watches the pending videos and shows
+   each result below the classifier controls without opening another tab.
+6. After a run finishes, paste another temporary code into the same classifier
+   window to start the next batch. Press Enter without a code only when you want
+   to close it.
+
+If a code expires, copy a new one and run the classifier again. Successfully
+classified rows are skipped automatically on the next run. The live report is
+kept only in the current browser page and is not stored in a new table or column.
+Refreshing or closing the page clears it.

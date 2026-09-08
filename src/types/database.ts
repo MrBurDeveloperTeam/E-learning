@@ -729,6 +729,8 @@ export interface Database {
           channel_name: string
           published_at: string
           category: string | null
+          language: string | null
+          video_type: 'short_video' | 'video' | null
           confidence_score: number | null
           tags: string[] | null
           fetched_at: string
@@ -742,6 +744,8 @@ export interface Database {
           channel_name: string
           published_at: string
           category?: string | null
+          language?: string | null
+          video_type?: 'short_video' | 'video' | null
           confidence_score?: number | null
           tags?: string[] | null
           fetched_at?: string
@@ -755,6 +759,8 @@ export interface Database {
           channel_name?: string
           published_at?: string
           category?: string | null
+          language?: string | null
+          video_type?: 'short_video' | 'video' | null
           confidence_score?: number | null
           tags?: string[] | null
           fetched_at?: string

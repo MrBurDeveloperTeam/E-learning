@@ -6,7 +6,7 @@ import {
   buildClearCookie,
   getCookieOptions,
 } from './_shared/auth'
-
+ 
 function json(body: unknown, status: number, headers: Record<string, string>, cookie?: string) {
   const responseHeaders = new Headers({ 'Content-Type': 'application/json', ...headers })
   if (cookie) responseHeaders.append('Set-Cookie', cookie)

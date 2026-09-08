@@ -3,6 +3,7 @@ import type {
   DentalVideosResponse,
   DentalCategory,
   DentalVideosParams,
+  AdjacentDentalVideos,
 } from "@/types/dentalVideo";
 import { ApiError } from "@/types/dentalVideo";
 
@@ -79,13 +80,15 @@ export async function getVideos(
   const searchParams = new URLSearchParams();
 
   if (params?.category) searchParams.set("category", params.category);
+  if (params?.language) searchParams.set("language", params.language);
+  if (params?.videoType) searchParams.set("videoType", params.videoType);
   if (params?.q) searchParams.set("q", params.q);
   if (params?.page) searchParams.set("page", String(params.page));
   if (params?.limit) searchParams.set("limit", String(params.limit));
   if (params?.sort) searchParams.set("sort", params.sort);
 
   const qs = searchParams.toString();
-  const path = `/api/dental-videos${qs ? `?${qs}` : ""}`;
+  const path = `/dental-api/dental-videos${qs ? `?${qs}` : ""}`;
 
   return apiFetch<DentalVideosResponse>(path);
 }
@@ -104,7 +107,16 @@ export async function getVideos(
  * ```
  */
 export async function getVideoById(id: string): Promise<DentalVideo> {
-  return apiFetch<DentalVideo>(`/api/dental-videos?id=${encodeURIComponent(id)}`);
+  return apiFetch<DentalVideo>(`/dental-api/dental-videos?id=${encodeURIComponent(id)}`);
+}
+
+/** Fetch the neighbouring videos in the library's newest-first order. */
+export async function getAdjacentVideos(id: string, excludeIds: string[] = []): Promise<AdjacentDentalVideos> {
+  const searchParams = new URLSearchParams({ adjacentTo: id });
+  if (excludeIds.length) searchParams.set("excludeIds", excludeIds.join(","));
+  return apiFetch<AdjacentDentalVideos>(
+    `/dental-api/dental-videos?${searchParams.toString()}`
+  );
 }
 
 /**
