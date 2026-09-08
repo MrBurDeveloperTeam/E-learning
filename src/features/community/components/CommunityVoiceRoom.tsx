@@ -97,7 +97,9 @@ export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, dis
       reservedRef.current = true
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Voice chat is not supported by this browser.')
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })
-      await supabase.realtime.setAuth()
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !sessionData.session?.access_token) throw sessionError ?? new Error('Your session expired. Please sign in again.')
+      await supabase.realtime.setAuth(sessionData.session.access_token)
       const channel = supabase.channel(`community-voice:${communityId}`, { config: { private: true, presence: { key: userId }, broadcast: { self: false } } })
       channelRef.current = channel
       channel.on('presence', { event: 'sync' }, () => {
@@ -121,13 +123,13 @@ export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, dis
           else if (signal.kind === 'ice' && signal.payload) await peer.addIceCandidate(signal.payload as RTCIceCandidateInit)
         } catch { closePeer(signal.from) }
       })
-      await new Promise<void>((resolve, reject) => channel.subscribe(async (status) => {
+      await new Promise<void>((resolve, reject) => channel.subscribe(async (status, connectionError) => {
         if (status === 'SUBSCRIBED') {
           joinedRef.current = true
           await channel.track({ userId, name: userName, muted: false, joinedAt: new Date().toISOString() })
           await channel.send({ type: 'broadcast', event: 'voice-signal', payload: { from: userId, to: '*', kind: 'ready' } })
           resolve()
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error('Could not connect to the voice room.'))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(connectionError?.message || `Could not connect to the secure voice room (${status.toLowerCase().replace('_', ' ')}).`))
       }))
       setJoined(true)
       heartbeatRef.current = window.setInterval(() => {

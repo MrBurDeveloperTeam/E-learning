@@ -85,32 +85,38 @@ grant execute on function public.community_join_voice_room(uuid) to authenticate
 grant execute on function public.community_voice_heartbeat(uuid) to authenticated;
 grant execute on function public.community_leave_voice_room(uuid) to authenticated;
 
+create or replace function public.community_can_access_voice_topic(input_topic text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select input_topic like 'community-voice:%'
+    and exists (
+      select 1 from public.community_voice_participants participant
+      where participant.user_id = auth.uid()
+        and participant.community_id::text = replace(input_topic, 'community-voice:', '')
+        and participant.last_seen_at >= now() - interval '90 seconds'
+        and participant.joined_at >= now() - interval '60 minutes'
+    );
+$$;
+
+revoke all on function public.community_can_access_voice_topic(text) from public, anon;
+grant execute on function public.community_can_access_voice_topic(text) to authenticated;
+
 drop policy if exists community_voice_realtime_read on realtime.messages;
 create policy community_voice_realtime_read on realtime.messages
 for select to authenticated using (
   realtime.messages.extension in ('broadcast', 'presence')
-  and (select realtime.topic()) like 'community-voice:%'
-  and exists (
-    select 1 from public.community_voice_participants participant
-    where participant.user_id = (select auth.uid())
-      and participant.community_id::text = replace((select realtime.topic()), 'community-voice:', '')
-      and participant.last_seen_at >= now() - interval '90 seconds'
-      and participant.joined_at >= now() - interval '60 minutes'
-  )
+  and public.community_can_access_voice_topic((select realtime.topic()))
 );
 
 drop policy if exists community_voice_realtime_write on realtime.messages;
 create policy community_voice_realtime_write on realtime.messages
 for insert to authenticated with check (
   realtime.messages.extension in ('broadcast', 'presence')
-  and (select realtime.topic()) like 'community-voice:%'
-  and exists (
-    select 1 from public.community_voice_participants participant
-    where participant.user_id = (select auth.uid())
-      and participant.community_id::text = replace((select realtime.topic()), 'community-voice:', '')
-      and participant.last_seen_at >= now() - interval '90 seconds'
-      and participant.joined_at >= now() - interval '60 minutes'
-  )
+  and public.community_can_access_voice_topic((select realtime.topic()))
 );
 
 commit;
