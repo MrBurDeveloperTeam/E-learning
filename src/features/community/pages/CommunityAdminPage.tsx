@@ -20,7 +20,6 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 
 const CommunityBlockedWordsAdmin = lazy(() => import('@/features/community/components/CommunityBlockedWordsAdmin').then(module => ({ default: module.CommunityBlockedWordsAdmin })))
 const CommunityAppealsAdmin = lazy(() => import('@/features/community/components/CommunityAppealsAdmin').then(module => ({ default: module.CommunityAppealsAdmin })))
-const CommunityOperationsAdmin = lazy(() => import('@/features/community/components/CommunityOperationsAdmin').then(module => ({ default: module.CommunityOperationsAdmin })))
 
 type ReviewTab = 'posts' | 'comments' | 'communities' | 'reports' | 'verification' | 'audit'
 type StatusFilter = 'pending' | 'all'
@@ -115,7 +114,6 @@ export function CommunityAdminPage() {
       <AdminStatCard label="Open reports" value={openReports} icon={Flag} accent={openReports > 0 ? 'danger' : 'default'} />
     </div>
     <Suspense fallback={<div className="flex min-h-24 items-center justify-center"><LoadingSpinner /></div>}><CommunityAppealsAdmin /></Suspense>
-    <Suspense fallback={<div className="flex min-h-24 items-center justify-center"><LoadingSpinner /></div>}><CommunityOperationsAdmin /></Suspense>
     <AdminTableShell title="Moderation queue" description="Newest submissions appear first." action={<AdminFilterTabs value={tab} onChange={(value) => { setTab(value); setFilter(value==='audit'?'all':'pending') }} options={[{ value: 'posts', label: 'Posts', count: pendingPosts }, { value: 'comments', label: 'Comments', count: pendingComments }, { value: 'communities', label: 'Communities', count: pendingGroups }, { value: 'reports', label: 'Reports', count: openReports }, { value: 'verification', label: 'Verification', count: pendingVerification },{value:'audit',label:'Audit log'}]} />}>
       {tab === 'posts' && (postsQuery.data ?? []).some((post) => post.status === 'deleted') && <div className="border-b border-border bg-muted/30 p-5"><h3 className="text-sm font-semibold">Recently deleted posts</h3><div className="mt-3 space-y-2">{(postsQuery.data ?? []).filter((post) => post.status === 'deleted').map((post) => <div key={post.id} className="flex items-center gap-3 rounded-xl border bg-card p-3"><p className="min-w-0 flex-1 truncate text-sm">{post.author_name}: {post.title || post.body}</p><Button size="sm" disabled={postMutation.isPending} onClick={() => void reviewPost(post.id, 'restore')}><Check className="size-4" />Restore</Button></div>)}</div></div>}
       {tab === 'comments' && <Suspense fallback={<div className="flex min-h-24 items-center justify-center"><LoadingSpinner /></div>}><CommunityBlockedWordsAdmin adminId={adminId} /></Suspense>}
