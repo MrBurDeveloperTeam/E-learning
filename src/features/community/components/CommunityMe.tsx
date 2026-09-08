@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, FileText, Heart, Pencil, Repeat2, Settings2, Star, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,11 +9,14 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { CommunitySettings } from '@/features/community/components/CommunitySettings'
-import { useCloseFriendAction, useCloseFriends, useCommunitySettings, useRemoveCommunitySettingRelation } from '@/features/community/hooks/useCommunity'
+import { CommunityFriendRequests } from '@/features/community/components/CommunityFriendRequests'
+import { useCloseFriendAction, useCloseFriends, useCommunitySettings, useFriendRequests, useRemoveCommunitySettingRelation } from '@/features/community/hooks/useCommunity'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { CommunityManagedPost, CommunityPerson } from '@/features/community/types'
 import type { Profile } from '@/types'
 import { cn } from '@/lib/utils'
 import { useProfileImage } from '@/hooks/useProfileImage'
+import { supabase } from '@/lib/supabase'
 
 type ProfileSection = 'posts' | 'likes' | 'reposts'
 
@@ -22,14 +26,17 @@ const profileSections = [
   { id: 'reposts', label: 'Reposts', icon: Repeat2 },
 ] as const
 
-export function CommunityMe({ userId, profile }: { userId: string; profile: Profile | null }) {
+export function CommunityMe({ userId, profile, openFollowRequests = false }: { userId: string; profile: Profile | null; openFollowRequests?: boolean }) {
+  const queryClient = useQueryClient()
   const [showSettings, setShowSettings] = useState(false)
+  const [followRequestsOpen, setFollowRequestsOpen] = useState(openFollowRequests)
   const [connectionsView, setConnectionsView] = useState<'following' | 'close_friends' | null>(null)
   const [section, setSection] = useState<ProfileSection>('posts')
   const activityQuery = useCommunitySettings(userId, section)
   const ownPostsQuery = useCommunitySettings(userId, 'posts')
   const followingQuery = useCommunitySettings(userId, 'following')
   const closeFriendsQuery = useCloseFriends(userId)
+  const followRequestsQuery = useFriendRequests(userId)
   const unfollowMutation = useRemoveCommunitySettingRelation(userId, 'following')
   const closeFriendAction = useCloseFriendAction(userId)
   const { profileImageUrl } = useProfileImage(true)
@@ -37,6 +44,21 @@ export function CommunityMe({ userId, profile }: { userId: string; profile: Prof
   const displayName = profile?.full_name || profile?.name || profile?.username || 'Community member'
   const username = profile?.username || profile?.email?.split('@')[0] || 'member'
   const avatarUrl = profile?.avatar_url || profileImageUrl
+  const incomingFollowRequestCount = (followRequestsQuery.data ?? []).filter(request => request.direction === 'incoming').length
+
+  useEffect(() => {
+    if (openFollowRequests) setFollowRequestsOpen(true)
+  }, [openFollowRequests])
+
+  useEffect(() => {
+    const refreshRequests = () => void queryClient.invalidateQueries({ queryKey: ['community-friend-requests', userId] })
+    const channel = supabase
+      .channel(`community-profile-follow-requests-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_friendships' }, refreshRequests)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_follows' }, refreshRequests)
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [queryClient, userId])
 
   if (connectionsView) {
     const query = connectionsView === 'following' ? followingQuery : closeFriendsQuery
@@ -83,6 +105,7 @@ export function CommunityMe({ userId, profile }: { userId: string; profile: Prof
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link to="/settings" />}><Pencil className="size-4" /> Edit profile</Button>
+            <Button variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4" /> Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
             <Button variant="outline" onClick={() => setShowSettings(true)}><Settings2 className="size-4" /> Settings</Button>
           </div>
         </div>
@@ -104,5 +127,11 @@ export function CommunityMe({ userId, profile }: { userId: string; profile: Prof
     {!activityQuery.isLoading && !activityQuery.isError && posts.length > 0 && <div className="mt-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {posts.map((post) => <article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card"><Link to="/community/post/$postId" params={{postId:post.id}} aria-label={`Open ${post.post_type} post`} className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">{post.preview_media?.media_type==='image'?<img src={post.preview_media.public_url} alt={post.preview_media.alt_text||''} loading="lazy" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"/>:post.preview_media?.media_type==='video'?<video src={post.preview_media.public_url} muted playsInline preload="metadata" aria-label={post.preview_media.alt_text||'Video post preview'} className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"/>:<span className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground"><FileText className="size-8"/><span className="text-xs">Text post</span></span>}<span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end bg-gradient-to-t from-black/35 to-transparent p-3 pt-10 text-white">{post.preview_media?.media_type==='video'&&<span className="rounded-full bg-black/45 px-2 py-1 text-[11px] font-medium">Video</span>}</span></Link></article>)}
     </div>}
+    <Dialog open={followRequestsOpen} onOpenChange={setFollowRequestsOpen}>
+      <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] overflow-y-auto sm:max-w-xl">
+        <DialogHeader><DialogTitle>Follow requests</DialogTitle><DialogDescription>Approve or reject people who want to follow your private account.</DialogDescription></DialogHeader>
+        <CommunityFriendRequests userId={userId} incomingOnly />
+      </DialogContent>
+    </Dialog>
   </div>
 }

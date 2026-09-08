@@ -78,7 +78,7 @@ export async function fetchNotifications(
     community_comment_id: item.comment_id ?? null,
     comment_id: null,
     videos: null,
-    action_url: item.notification_type === 'friend_request' ? `/profile/${userId}?requests=1` : item.action_url,
+    action_url: item.notification_type === 'friend_request' ? '/community?tab=me&requests=1' : item.action_url,
     source: 'community' as const,
   }))
 

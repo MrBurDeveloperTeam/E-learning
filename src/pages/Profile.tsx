@@ -2,7 +2,7 @@ import { Link, useParams } from '@tanstack/react-router'
 import { useProfileImage } from '@/hooks/useProfileImage'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Check, CheckCircle2, FileText, Heart, LockKeyhole, Repeat2, UserPlus, UserRoundCheck } from 'lucide-react'
+import { Check, CheckCircle2, FileText, Heart, LockKeyhole, Repeat2, UserPlus } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,9 +20,6 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { cn } from '@/lib/utils'
 import type { CommunityManagedPost } from '@/features/community/types'
-import { CommunityFriendRequests } from '@/features/community/components/CommunityFriendRequests'
-import { useFriendRequests } from '@/features/community/hooks/useCommunity'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 
 function BuildingIcon() {
@@ -64,14 +61,11 @@ export function Profile() {
   const { userId } = useParams({ from: '/profile/$userId' })
   const [tab, setTab] = useState<'posts' | 'likes' | 'reposts'>('posts')
   const [isRequestingVerification, setIsRequestingVerification] = useState(false)
-  const [followRequestsOpen, setFollowRequestsOpen] = useState(() => new URLSearchParams(window.location.search).get('requests') === '1')
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const queryClient = useQueryClient()
   const isOwnProfile = currentProfile?.user_id === userId || user?.id === userId
-  const followRequestsQuery = useFriendRequests(isOwnProfile ? userId : '')
-  const incomingFollowRequestCount = (followRequestsQuery.data ?? []).filter(request => request.direction === 'incoming').length
   const { profileImageUrl } = useProfileImage(Boolean(user))
   const ownProfileQuery = useProfile(userId, isOwnProfile)
   const publicProfileQuery = usePublicProfile(userId)
@@ -241,10 +235,7 @@ export function Profile() {
 
               {isOwnProfile ? (
                 <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
-                  <div className="flex w-full flex-wrap justify-end gap-2">
-                    <Link to="/settings"><button className="btn-outline text-sm px-4 py-2 w-full md:w-auto [html.light_&]:text-[#6F9693]">Edit profile</button></Link>
-                    <Button type="button" variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4"/>Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
-                  </div>
+                  <Link to="/settings"><button className="btn-outline text-sm px-4 py-2 w-full md:w-auto [html.light_&]:text-[#6F9693]">Edit profile</button></Link>
                   {isVerificationApproved ? (
                     <div className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 w-full md:w-auto">
                       <CheckCircle2 className="h-4 w-4" />
@@ -374,7 +365,6 @@ export function Profile() {
         )}
       </div>
       </div>
-      {isOwnProfile && <Dialog open={followRequestsOpen} onOpenChange={setFollowRequestsOpen}><DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>Follow requests</DialogTitle><DialogDescription>Approve or reject people who want to follow your private account.</DialogDescription></DialogHeader><CommunityFriendRequests userId={userId} incomingOnly/></DialogContent></Dialog>}
     </>
   )
 }
