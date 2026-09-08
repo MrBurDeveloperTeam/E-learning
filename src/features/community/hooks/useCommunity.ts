@@ -203,8 +203,21 @@ export function useDirectConversations(userId?: string) {
       .channel(`community-conversation-list:${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_conversation_participants', filter: `user_id=eq.${userId}` }, refresh)
-      .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') refresh()
+      })
+    const refreshWhenActive = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('focus', refreshWhenActive)
+    window.addEventListener('online', refreshWhenActive)
+    document.addEventListener('visibilitychange', refreshWhenActive)
+    return () => {
+      window.removeEventListener('focus', refreshWhenActive)
+      window.removeEventListener('online', refreshWhenActive)
+      document.removeEventListener('visibilitychange', refreshWhenActive)
+      void supabase.removeChannel(channel)
+    }
   }, [client, userId])
   return useQuery({
     queryKey: ['community-direct-conversations', userId],
@@ -247,6 +260,7 @@ export function useDirectMessages(conversationId?: string, userId?: string) {
   useEffect(() => {
     if (!conversationId) return
     const conversationKey = ['community-direct-conversations', userId]
+    const messageKey = ['community-direct-messages', conversationId]
     const markRead = async () => {
       client.setQueryData<DirectConversation[]>(conversationKey, current => current?.map(conversation => conversation.id === conversationId ? { ...conversation, unread_count: 0 } : conversation))
       try {
@@ -256,18 +270,39 @@ export function useDirectMessages(conversationId?: string, userId?: string) {
         await client.invalidateQueries({ queryKey: conversationKey })
       }
     }
-    void markRead()
-    const refresh = () => {
-      void client.invalidateQueries({ queryKey: ['community-direct-messages', conversationId] })
+    const refreshMessages = () => {
+      void client.invalidateQueries({ queryKey: messageKey })
+    }
+    const receiveMessage = () => {
+      refreshMessages()
+      void client.invalidateQueries({ queryKey: conversationKey })
+      if (document.visibilityState === 'visible') void markRead()
+    }
+    const refreshWhenActive = () => {
+      if (document.visibilityState !== 'visible') return
+      refreshMessages()
       void markRead()
     }
+    void markRead()
     const channel = supabase
       .channel(`community-messages:${conversationId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, refresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_reactions' }, refresh)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_conversation_participants', filter: `conversation_id=eq.${conversationId}` }, refresh)
-      .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, receiveMessage)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_reactions' }, refreshMessages)
+      // Receipt updates only refresh message status. Calling markRead here would
+      // write last_read_at again and create a self-sustaining UPDATE loop.
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_conversation_participants', filter: `conversation_id=eq.${conversationId}` }, refreshMessages)
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') refreshWhenActive()
+      })
+    window.addEventListener('focus', refreshWhenActive)
+    window.addEventListener('online', refreshWhenActive)
+    document.addEventListener('visibilitychange', refreshWhenActive)
+    return () => {
+      window.removeEventListener('focus', refreshWhenActive)
+      window.removeEventListener('online', refreshWhenActive)
+      document.removeEventListener('visibilitychange', refreshWhenActive)
+      void supabase.removeChannel(channel)
+    }
   }, [client, conversationId, userId])
   return useQuery({
     queryKey: ['community-direct-messages', conversationId],

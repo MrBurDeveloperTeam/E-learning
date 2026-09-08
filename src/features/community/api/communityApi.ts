@@ -828,7 +828,7 @@ export async function fetchDirectMessages(conversationId: string) {
       status: replyRow.message_status,
     } : null
     if (message.sender_id === user.id) {
-      message.delivery_status = recipientResult.data?.last_read_at && recipientResult.data.last_read_at >= message.created_at ? 'read' : 'sent'
+      message.delivery_status = recipientResult.data?.last_read_at && Date.parse(recipientResult.data.last_read_at) >= Date.parse(message.created_at) ? 'read' : 'sent'
     }
     return message
   })
