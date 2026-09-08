@@ -160,6 +160,8 @@ export function mapCommunity(row: DbCommunity, memberCount = 0): CommunitySummar
     created_at: row.created_at,
     viewer_is_member: false,
     viewer_membership_role: null,
+    viewer_muted_until: null,
+    viewer_mute_reason: null,
   }
 }
 

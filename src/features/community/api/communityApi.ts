@@ -583,7 +583,7 @@ export async function fetchCommunityDirectory(userId: string) {
       .order('created_at', { ascending: false }),
     supabase
       .from(COMMUNITY_TABLES.members)
-      .select('community_id,membership_status')
+      .select('community_id,membership_status,muted_until,mute_reason')
       .eq('user_id', userId)
       .eq('membership_status', 'active'),
     supabase.from(COMMUNITY_TABLES.members).select('community_id').eq('membership_status', 'active'),
@@ -592,7 +592,7 @@ export async function fetchCommunityDirectory(userId: string) {
   if (membershipsResult.error) throw membershipsResult.error
   if (memberCountsResult.error) throw memberCountsResult.error
 
-  const memberships = new Set((membershipsResult.data ?? []).map((membership) => membership.community_id))
+  const memberships = new Map((membershipsResult.data ?? []).map((membership) => [membership.community_id, membership]))
   const memberCounts = (memberCountsResult.data ?? []).reduce((counts, row) => counts.set(row.community_id, (counts.get(row.community_id) ?? 0) + 1), new Map<string, number>())
   const localRules = new Map<string, CommunitySummary['rules']>()
   const rules = await supabase.from('community_rules').select('id,community_id,title,description,position').order('position')
@@ -602,8 +602,11 @@ export async function fetchCommunityDirectory(userId: string) {
   return (communitiesResult.data ?? []).map((row) => {
     const community = mapCommunity(row as DbCommunity, memberCounts.get(row.id) ?? 0)
     community.rules = localRules.get(row.id) ?? []
-    community.viewer_is_member = memberships.has(row.id) || row.owner_id === userId
-    community.viewer_membership_role = row.owner_id === userId ? 'owner' : memberships.has(row.id) ? 'member' : null
+    const membership = memberships.get(row.id)
+    community.viewer_is_member = Boolean(membership) || row.owner_id === userId
+    community.viewer_membership_role = row.owner_id === userId ? 'owner' : membership ? 'member' : null
+    community.viewer_muted_until = membership?.muted_until ?? null
+    community.viewer_mute_reason = membership?.mute_reason ?? null
     return community
   }).sort((a, b) => b.member_count - a.member_count)
 }

@@ -25,7 +25,7 @@ export function CommunityManagementDialog({ communityId, userId }: { communityId
 
   return <Dialog open={open} onOpenChange={value => { if (!archive.isPending) setOpen(value) }}>
     <DialogTrigger render={<Button variant="outline" />}><Settings2 />Community settings</DialogTrigger>
-    <DialogContent className="h-[calc(100dvh-1rem)] max-h-[52rem] max-w-[calc(100vw-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[calc(100dvh-2rem)] sm:max-w-2xl">
+    <DialogContent overlayClassName="z-[120]" className="z-[121] h-[calc(100dvh-1rem)] max-h-[52rem] max-w-[calc(100vw-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-[calc(100dvh-2rem)] sm:max-w-2xl">
       <DialogHeader className="border-b px-4 py-4 pr-12 sm:px-6"><DialogTitle>Manage community</DialogTitle><DialogDescription>Publish announcements, maintain rules, review requests, and manage active members.</DialogDescription></DialogHeader>
       <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
       {query.isLoading ? <div className="flex min-h-40 items-center justify-center"><LoadingSpinner /></div> : query.isError ? <p className="text-sm text-destructive">Community management could not be loaded.</p> : <div className="space-y-6">

@@ -72,6 +72,7 @@ export function CommunityComments({
   expanded = false,
   onRequestExpand,
   readOnly = false,
+  commentsDisabledReason,
 }: {
   postId: string;
   userId?: string;
@@ -79,6 +80,7 @@ export function CommunityComments({
   expanded?: boolean;
   onRequestExpand?: () => void;
   readOnly?: boolean;
+  commentsDisabledReason?: string;
 }) {
   const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
@@ -408,7 +410,7 @@ export function CommunityComments({
                 />
                 {comment.like_count}
               </Button>
-              {userId && (
+              {userId && !commentsDisabledReason && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -488,7 +490,7 @@ export function CommunityComments({
             )}
           </div>
         </article>
-        {!readOnly && replying?.id === comment.id && userId && (
+        {!readOnly && !commentsDisabledReason && replying?.id === comment.id && userId && (
           <form
             ref={replyComposerRef}
             noValidate
@@ -563,7 +565,8 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {expanded && !readOnly && !replying && (userId ? (
+      {expanded && commentsDisabledReason && <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950" role="status">{commentsDisabledReason}</div>}
+      {expanded && !readOnly && !commentsDisabledReason && !replying && (userId ? (
         <form
           ref={replyComposerRef}
           noValidate

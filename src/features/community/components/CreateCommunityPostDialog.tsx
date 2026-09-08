@@ -17,6 +17,15 @@ const maxFileSize = 25 * 1024 * 1024
 const maxFiles = 20
 const formatSize = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`
 const normalizeTags = (value: string) => [...new Set(value.split(/[;,\s]+/).map(tag => tag.replace(/^#/, '').trim().toLowerCase()).filter(Boolean))].slice(0, 8)
+const postSubmissionError = (cause: unknown) => {
+  if (cause instanceof DOMException && cause.name === 'AbortError') return 'Upload cancelled. Your text and selected files are still here so you can retry.'
+  const message = cause instanceof Error ? cause.message : typeof cause === 'object' && cause !== null && 'message' in cause && typeof cause.message === 'string' ? cause.message : ''
+  if (/muted in this community/i.test(message)) {
+    const until = message.match(/until\s+(.+?)\.?$/i)?.[1]
+    return `You cannot publish because you are currently muted.${until ? ` Mute ends ${until}.` : ''} Your selected files were kept for retry.`
+  }
+  return message || 'The post could not be submitted. Your files were kept for retry.'
+}
 
 export function CreateCommunityPostDialog({ userId, communityId, communityName, draft, trigger }: { userId: string; communityId?: string; communityName?: string; draft?: CommunityPostDraft; trigger?: ReactElement }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -102,7 +111,7 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
       setDraftId(undefined);setTitle('');setBody('');setTags('');setFiles([]);setPersistedMedia([]);setTopic('general_dentistry');setProgress(null);setOpen(false)
       toast.success('Published successfully. Your post is now visible.')
     } catch (cause) {
-      setError(cause instanceof DOMException&&cause.name==='AbortError'?'Upload cancelled. Your text and selected files are still here so you can retry.':cause instanceof Error?cause.message:'The post could not be submitted. Your files were kept for retry.')
+      setError(postSubmissionError(cause))
       setProgress(null)
     } finally { abortRef.current=null;setPreparingDraftMedia(false) }
   }

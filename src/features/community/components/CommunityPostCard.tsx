@@ -53,12 +53,14 @@ export function CommunityPostCard({
   autoplayVideos = false,
   showCommunityBadge = false,
   readOnly = false,
+  commentsDisabledReason,
 }: {
   post: CommunityPost;
   userId?: string;
   autoplayVideos?: boolean;
   showCommunityBadge?: boolean;
   readOnly?: boolean;
+  commentsDisabledReason?: string;
 }) {
   const [repostOpen, setRepostOpen] = useState(false),
     [repostComment, setRepostComment] = useState("");
@@ -385,6 +387,7 @@ export function CommunityPostCard({
                 expanded={commentsExpanded}
                 onRequestExpand={() => setCommentsExpanded(true)}
                 readOnly={isReadOnly}
+                commentsDisabledReason={commentsDisabledReason}
               />
             </Suspense>
         </div>

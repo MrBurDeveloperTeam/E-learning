@@ -91,6 +91,8 @@ export interface CommunitySummary {
   created_at: string
   viewer_is_member: boolean
   viewer_membership_role: 'owner' | 'member' | null
+  viewer_muted_until: string | null
+  viewer_mute_reason: string | null
 }
 
 export interface DirectConversation {
