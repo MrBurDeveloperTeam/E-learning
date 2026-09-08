@@ -586,21 +586,27 @@ export async function fetchCommunityDirectory(userId: string) {
       .select('community_id,membership_status,muted_until,mute_reason')
       .eq('user_id', userId)
       .eq('membership_status', 'active'),
-    supabase.from(COMMUNITY_TABLES.members).select('community_id').eq('membership_status', 'active'),
+    supabase.from(COMMUNITY_TABLES.members).select('community_id,user_id').eq('membership_status', 'active'),
   ])
   if (communitiesResult.error) throw communitiesResult.error
   if (membershipsResult.error) throw membershipsResult.error
   if (memberCountsResult.error) throw memberCountsResult.error
 
   const memberships = new Map((membershipsResult.data ?? []).map((membership) => [membership.community_id, membership]))
-  const memberCounts = (memberCountsResult.data ?? []).reduce((counts, row) => counts.set(row.community_id, (counts.get(row.community_id) ?? 0) + 1), new Map<string, number>())
+  const membersByCommunity = (memberCountsResult.data ?? []).reduce((members, row) => {
+    const users = members.get(row.community_id) ?? new Set<string>()
+    users.add(row.user_id)
+    members.set(row.community_id, users)
+    return members
+  }, new Map<string, Set<string>>())
   const localRules = new Map<string, CommunitySummary['rules']>()
   const rules = await supabase.from('community_rules').select('id,community_id,title,description,position').order('position')
   if (rules.error) throw rules.error
   for (const row of rules.data ?? []) localRules.set(row.community_id, [...(localRules.get(row.community_id) ?? []), { id: row.id, title: row.title, description: row.description, position: row.position }])
 
   return (communitiesResult.data ?? []).map((row) => {
-    const community = mapCommunity(row as DbCommunity, memberCounts.get(row.id) ?? 0)
+    const memberIds = membersByCommunity.get(row.id) ?? new Set<string>()
+    const community = mapCommunity(row as DbCommunity, memberIds.size + (memberIds.has(row.owner_id) ? 0 : 1))
     community.rules = localRules.get(row.id) ?? []
     const membership = memberships.get(row.id)
     community.viewer_is_member = Boolean(membership) || row.owner_id === userId

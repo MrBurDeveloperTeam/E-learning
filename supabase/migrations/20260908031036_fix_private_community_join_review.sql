@@ -130,7 +130,7 @@ as $$
     c.slug,
     c.description,
     c.visibility,
-    (select count(*) from public.community_members m where m.community_id = c.id and m.membership_status = 'active'),
+    (select count(*) from public.community_members m where m.community_id = c.id and m.membership_status = 'active') + case when exists (select 1 from public.community_members owner_member where owner_member.community_id = c.id and owner_member.user_id = c.owner_id and owner_member.membership_status = 'active') then 0 else 1 end,
     c.owner_id = auth.uid() or exists (
       select 1 from public.community_members own_membership
       where own_membership.community_id = c.id
@@ -172,7 +172,7 @@ as $$
     c.slug,
     c.description,
     c.visibility,
-    (select count(*) from public.community_members m where m.community_id = c.id and m.membership_status = 'active'),
+    (select count(*) from public.community_members m where m.community_id = c.id and m.membership_status = 'active') + case when exists (select 1 from public.community_members owner_member where owner_member.community_id = c.id and owner_member.user_id = c.owner_id and owner_member.membership_status = 'active') then 0 else 1 end,
     c.owner_id = auth.uid() or exists (
       select 1 from public.community_members own_membership
       where own_membership.community_id = c.id
