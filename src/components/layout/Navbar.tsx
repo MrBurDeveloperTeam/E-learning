@@ -683,13 +683,13 @@ export function Navbar() {
               >
                 Settings
               </Link>
-              <Link
+              {/* <Link
                 to="/billing"
                 onClick={closeMobileMenu}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
               >
                 Billing
-              </Link>
+              </Link> */}
 
               <div className="my-2 h-px bg-border" />
 
