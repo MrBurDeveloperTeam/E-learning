@@ -23,6 +23,7 @@ export const COMMUNITY_TABLES = {
   postBookmarks: 'community_post_bookmarks',
   postReposts: 'community_post_reposts',
   comments: 'community_comments',
+  commentMedia: 'community_comment_media',
   commentLikes: 'community_comment_likes',
   follows: 'community_follows',
   closeFriends: 'community_close_friends',

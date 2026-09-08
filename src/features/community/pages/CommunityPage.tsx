@@ -136,7 +136,7 @@ export function CommunityPage() {
                   : 'Create the first post to start the conversation.'}
               />
             )}
-            {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user?.id} autoplayVideos={activeTab==='video'&&preferences.data?.autoplay_videos} />)}
+            {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user?.id} autoplayVideos={activeTab==='video'&&preferences.data?.autoplay_videos} showCommunityBadge={activeTab==='home'} />)}
           </div>}
 
           {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'me' && postsQuery.hasNextPage && (

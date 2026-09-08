@@ -357,14 +357,32 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
 
   let liked = new Set<string>()
   let likeCounts = new Map<string, number>()
+  const mediaByComment = new Map<string, CommunityComment['media']>()
   if (comments.length > 0) {
-    const result = await supabase.from(COMMUNITY_TABLES.commentLikes).select('comment_id,user_id').in('comment_id', comments.map((comment) => comment.id))
+    const commentIds = comments.map((comment) => comment.id)
+    const [result, mediaResult] = await Promise.all([
+      supabase.from(COMMUNITY_TABLES.commentLikes).select('comment_id,user_id').in('comment_id', commentIds),
+      supabase.from(COMMUNITY_TABLES.commentMedia).select('id,comment_id,storage_bucket,storage_path,file_name,mime_type,sort_order').in('comment_id', commentIds).order('sort_order'),
+    ])
     if (result.error) throw result.error
+    if (mediaResult.error && !['42P01', 'PGRST205'].includes(mediaResult.error.code ?? '')) throw mediaResult.error
     const rows = result.data ?? []
     liked = new Set(rows.filter((row) => row.user_id === userId).map((row) => row.comment_id))
     likeCounts = rows.reduce((counts, row) => counts.set(row.comment_id, (counts.get(row.comment_id) ?? 0) + 1), new Map<string, number>())
+    const mediaRows = mediaResult.error ? [] : (mediaResult.data ?? [])
+    const bucketGroups = new Map<string, typeof mediaRows>()
+    for (const row of mediaRows) bucketGroups.set(row.storage_bucket, [...(bucketGroups.get(row.storage_bucket) ?? []), row])
+    for (const [bucket, bucketRows] of bucketGroups) {
+      const signed = await supabase.storage.from(bucket).createSignedUrls(bucketRows.map((row) => row.storage_path), 3600)
+      if (signed.error) throw signed.error
+      const urls = new Map((signed.data ?? []).map((item) => [item.path, item.signedUrl]))
+      for (const row of bucketRows) {
+        const publicUrl = urls.get(row.storage_path)
+        if (publicUrl) mediaByComment.set(row.comment_id, [...(mediaByComment.get(row.comment_id) ?? []), { id: row.id, file_name: row.file_name, mime_type: row.mime_type, public_url: publicUrl }])
+      }
+    }
   }
-  return comments.map((comment) => ({ ...comment, profiles: profiles.get(comment.author_id) ?? null, like_count: likeCounts.get(comment.id) ?? 0, viewer_has_liked: liked.has(comment.id) }))
+  return comments.map((comment) => ({ ...comment, profiles: profiles.get(comment.author_id) ?? null, like_count: likeCounts.get(comment.id) ?? 0, viewer_has_liked: liked.has(comment.id), media: mediaByComment.get(comment.id) ?? [] }))
 }
 
 export async function checkCommunityCommentSafety(body: string): Promise<'safe' | 'warn' | 'review' | 'block'> {
@@ -375,7 +393,6 @@ export async function checkCommunityCommentSafety(body: string): Promise<'safe' 
 }
 
 export async function createCommunityComment(input: { postId: string; authorId: string; body: string; parentCommentId?: string | null; files?: File[] }) {
-  if (input.files?.length) throw new CommunityBackendUnavailableError('Comment attachments')
   const commentId=crypto.randomUUID()
   const { error } = await supabase.from(COMMUNITY_TABLES.comments).insert({
     id:commentId,
@@ -387,6 +404,33 @@ export async function createCommunityComment(input: { postId: string; authorId: 
     moderation_reason:null,
   })
   if (error) throw error
+  const files = input.files ?? []
+  const uploadedPaths: string[] = []
+  try {
+    for (const [sortOrder, file] of files.entries()) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const storagePath = `${input.authorId}/${commentId}/${crypto.randomUUID()}-${safeName}`
+      const upload = await supabase.storage.from(COMMUNITY_BUCKETS.commentMedia).upload(storagePath, file, { contentType: file.type, upsert: false })
+      if (upload.error) throw upload.error
+      uploadedPaths.push(storagePath)
+      const media = await supabase.from(COMMUNITY_TABLES.commentMedia).insert({
+        comment_id: commentId,
+        uploader_id: input.authorId,
+        storage_bucket: COMMUNITY_BUCKETS.commentMedia,
+        storage_path: storagePath,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size_bytes: file.size,
+        sort_order: sortOrder,
+      })
+      if (media.error) throw media.error
+    }
+  } catch (cause) {
+    await supabase.from(COMMUNITY_TABLES.commentMedia).delete().eq('comment_id', commentId).eq('uploader_id', input.authorId)
+    if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.commentMedia).remove(uploadedPaths)
+    await supabase.rpc('community_delete_own_comment', { p_comment_id: commentId })
+    throw cause
+  }
   return { id:commentId, status:'visible' as CommunityComment['status'] }
 }
 

@@ -51,10 +51,12 @@ export function CommunityPostCard({
   post,
   userId,
   autoplayVideos = false,
+  showCommunityBadge = false,
 }: {
   post: CommunityPost;
   userId?: string;
   autoplayVideos?: boolean;
+  showCommunityBadge?: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false),
     [editTitle, setEditTitle] = useState(post.title ?? ""),
@@ -171,6 +173,11 @@ export function CommunityPostCard({
               <p className="truncate text-sm font-semibold text-foreground">
                 {authorName}
               </p>
+              {showCommunityBadge && post.community_id && post.communities?.name && (
+                <span className="inline-flex max-w-48 items-center rounded-full border border-primary/20 bg-primary/8 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+                  <span className="truncate">{post.communities.name}</span>
+                </span>
+              )}
               {post.is_pinned && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
                   <Pin className="size-3" />
@@ -185,7 +192,7 @@ export function CommunityPostCard({
               )}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {post.communities?.name ?? "Dental community"} ·{" "}
+              {!showCommunityBadge && <>{post.communities?.name ?? "Dental community"} ·{" "}</>}
               {formatPostDate(post.published_at)}
             </p>
           </div>
