@@ -200,11 +200,12 @@ export function CommunityComments({
             : "Comment published.",
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Comment could not be submitted.",
-      );
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === "object" && error && "message" in error
+          ? String(error.message)
+          : "Comment could not be submitted.";
+      toast.error(message);
     }
   };
   const saveEdit = async () => {

@@ -130,11 +130,12 @@ export function CommunityPostCard({
       });
       toast.success(success);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "The action could not be completed.",
-      );
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === "object" && error && "message" in error
+          ? String(error.message)
+          : "The action could not be completed.";
+      toast.error(message);
     }
   }
   async function share() {
