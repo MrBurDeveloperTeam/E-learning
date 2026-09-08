@@ -38,6 +38,7 @@ export const COMMUNITY_TABLES = {
   messageReactions: 'community_message_reactions',
   notifications: 'community_notifications',
   videoInteractions: 'community_video_interactions',
+  postViews: 'community_post_views',
   topics: 'community_topics',
   postTopics: 'community_post_topics',
   userTopicPreferences: 'community_user_topic_preferences',

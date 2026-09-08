@@ -365,7 +365,16 @@ export async function softDeleteCommunityPost(id:string,authorId:string): Promis
 // Sharing is performed by the Clipboard API. There is no share-event table or
 // RPC in the current production contract, so missing analytics must not block it.
 export async function recordCommunityPostShare(_id:string): Promise<void>{}
-export async function recordCommunityPostView(_postId:string,_watchSeconds=0,_progress=0): Promise<void>{throw new CommunityBackendUnavailableError('Community post view tracking')}
+export async function recordCommunityPostView(postId:string,_watchSeconds=0,_progress=0): Promise<void>{
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in to save your watch history.')
+  const { error } = await supabase.from(COMMUNITY_TABLES.postViews).upsert(
+    { user_id: user.id, post_id: postId, viewed_at: new Date().toISOString() },
+    { onConflict: 'user_id,post_id' },
+  )
+  if (error) throw error
+}
 
 export async function fetchCommunityPost(postId:string,userId?:string){
   const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug,moderation_status)`).eq('id',postId).single()
@@ -961,12 +970,13 @@ export async function fetchManagedPosts(userId: string, section: 'posts' | 'like
     return posts
   }
 
-  const table = section === 'likes' ? COMMUNITY_TABLES.postLikes : section==='reposts'?COMMUNITY_TABLES.postReposts:section==='bookmarks'?COMMUNITY_TABLES.postBookmarks:COMMUNITY_TABLES.videoInteractions
+  const table = section === 'likes' ? COMMUNITY_TABLES.postLikes : section==='reposts'?COMMUNITY_TABLES.postReposts:section==='bookmarks'?COMMUNITY_TABLES.postBookmarks:COMMUNITY_TABLES.postViews
+  const orderColumn = section === 'history' ? 'viewed_at' : 'created_at'
   const { data: relations, error: relationError } = await supabase
     .from(table)
     .select('post_id')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .order(orderColumn, { ascending: false })
   if (relationError) throw relationError
   const ids = (relations ?? []).map((row) => row.post_id)
   if (ids.length === 0) return [] as CommunityManagedPost[]
@@ -1156,7 +1166,7 @@ export async function removeCommunitySettingRelation(section: Exclude<CommunityS
       : section === 'bookmarks'
         ? supabase.from(COMMUNITY_TABLES.postBookmarks).delete().eq('post_id',id).eq('user_id',userId)
       : section === 'history'
-        ? supabase.from(COMMUNITY_TABLES.videoInteractions).delete().eq('post_id',id).eq('user_id',userId)
+        ? supabase.from(COMMUNITY_TABLES.postViews).delete().eq('post_id',id).eq('user_id',userId)
       : section === 'following'
         ? supabase.from(COMMUNITY_TABLES.follows).delete().eq('following_id', id).eq('follower_id', userId)
         : supabase.from(COMMUNITY_TABLES.friendships).delete().eq('id', id)

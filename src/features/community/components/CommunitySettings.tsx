@@ -105,7 +105,10 @@ export function CommunitySettings({ userId }: { userId: string }) {
                   <p className="mt-3 text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p>
                   {section==='posts'&&<p className="mt-2 max-w-xl rounded-lg bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">{postStatusHelp[post.status]}</p>}
                 </div>
-                {section === 'deleted'?<Button size="sm" variant="outline" disabled={restoreMutation.isPending} onClick={()=>void restoreMutation.mutateAsync(post.id)}>Restore</Button>:section === 'posts' && (post.status==='hidden'||post.status==='rejected')?<CommunityAppealDialog userId={userId} postId={post.id}/>:section !== 'posts' && <Button size="sm" variant="outline" onClick={() => setPendingRemoval({ id: post.id, label: post.title || 'this post' })}>Remove</Button>}
+                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  {section === 'history' && <Button size="sm" variant="ghost" render={<Link to="/community/post/$postId" params={{postId:post.id}} />}>View post</Button>}
+                  {section === 'deleted'?<Button size="sm" variant="outline" disabled={restoreMutation.isPending} onClick={()=>void restoreMutation.mutateAsync(post.id)}>Restore</Button>:section === 'posts' && (post.status==='hidden'||post.status==='rejected')?<CommunityAppealDialog userId={userId} postId={post.id}/>:section !== 'posts' && <Button size="sm" variant="outline" onClick={() => setPendingRemoval({ id: post.id, label: post.title || 'this post' })}>Remove</Button>}
+                </div>
               </div>
             </article>
           ))}

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -67,9 +67,48 @@ export function CommunityPostCard({
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const interaction = useCommunityPostInteraction(userId);
   const actions = useCommunityPostActions(userId);
+  const cardRef = useRef<HTMLElement>(null);
+  const viewRecordedRef = useRef(false);
   const isReadOnly = readOnly || post.communities?.moderation_status === "archived";
   const authorName =
     post.profiles?.full_name || post.profiles?.name || post.profiles?.username || "Community member";
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || !userId || viewRecordedRef.current) return;
+    let viewTimer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (viewRecordedRef.current) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          if (!viewTimer) {
+            viewTimer = setTimeout(() => {
+              viewRecordedRef.current = true;
+              viewTimer = undefined;
+              actions.mutate(
+                { action: "view", postId: post.id },
+                {
+                  onSuccess: () => observer.disconnect(),
+                  onError: () => {
+                    viewRecordedRef.current = false;
+                  },
+                },
+              );
+            }, 1200);
+          }
+        } else if (viewTimer) {
+          clearTimeout(viewTimer);
+          viewTimer = undefined;
+        }
+      },
+      { threshold: [0.6] },
+    );
+    observer.observe(card);
+    return () => {
+      observer.disconnect();
+      if (viewTimer) clearTimeout(viewTimer);
+    };
+  }, [post.id, userId]);
 
   async function toggle(
     table:
@@ -131,7 +170,7 @@ export function CommunityPostCard({
   }
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+    <article ref={cardRef} className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-card">
       <div className="p-5 sm:p-6">
         {post.friend_activity && post.friend_activity.length > 0 && (
           <p className="mb-4 text-xs font-medium text-primary">
