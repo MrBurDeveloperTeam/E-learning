@@ -498,7 +498,7 @@ export function Navbar() {
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </Link>
 
-                          <Link
+                          {/* <Link
                             to="/billing"
                             onClick={() => setMenuOpen(false)}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
@@ -511,7 +511,7 @@ export function Navbar() {
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">Plans & payment history</p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
-                          </Link>
+                          </Link> */}
                         </div>
 
                         {/* Log Out */}
