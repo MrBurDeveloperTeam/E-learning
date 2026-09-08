@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreateCommunityPost, useDeleteCommunityDraft, useSaveCommunityDraft } from '@/features/community/hooks/useCommunity'
 import type { CommunityUploadProgress } from '@/features/community/api/communityApi'
 import type { CommunityPostTopic } from '@/features/community/types'
-import type { CommunityPostDraft } from '@/features/community/api/communityDraftApi'
+import { downloadCommunityDraftMedia, type CommunityDraftMedia, type CommunityPostDraft } from '@/features/community/api/communityDraftApi'
 
 const acceptedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'])
 const maxFileSize = 25 * 1024 * 1024
@@ -28,6 +28,8 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
   const [topic, setTopic] = useState<CommunityPostTopic>('general_dentistry')
   const [tags, setTags] = useState('')
   const [files, setFiles] = useState<File[]>([])
+  const [persistedMedia, setPersistedMedia] = useState<CommunityDraftMedia[]>([])
+  const [preparingDraftMedia, setPreparingDraftMedia] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [progress, setProgress] = useState<CommunityUploadProgress | null>(null)
   const [draftId, setDraftId] = useState(draft?.id)
@@ -42,6 +44,8 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
     setBody(draft.content)
     setTags(draft.tags.join(', '))
     setTopic(draft.topic ?? 'general_dentistry')
+    setPersistedMedia(draft.media ?? [])
+    setFiles([])
     setError(null)
   }, [draft?.id, open])
 
@@ -55,7 +59,7 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
 
   const chooseFiles = (incoming: File[]) => {
     const combined = [...files, ...incoming]
-    if (combined.length > maxFiles) { setError(`You can attach up to ${maxFiles} files.`); return }
+    if (persistedMedia.length + combined.length > maxFiles) { setError(`You can attach up to ${maxFiles} files.`); return }
     const invalid = incoming.find(file => !acceptedTypes.has(file.type) || file.size === 0 || file.size > maxFileSize)
     if (invalid) { setError(!acceptedTypes.has(invalid.type) ? `${invalid.name} is not a supported image or video.` : invalid.size === 0 ? `${invalid.name} is empty.` : `${invalid.name} is larger than 25 MB.`); return }
     const unique = combined.filter((file, index, all) => all.findIndex(item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified) === index)
@@ -68,7 +72,9 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
     const isDraft = submitter?.value === 'draft'
     if (isDraft) {
       try {
-        const saved = await saveDraft.mutateAsync({ id: draftId, communityId: communityId ?? draft?.community_id ?? undefined, title, body, tags: normalizeTags(tags), topic })
+        const saved = await saveDraft.mutateAsync({ id: draftId, communityId: communityId ?? draft?.community_id ?? undefined, title, body, tags: normalizeTags(tags), topic, files, retainedMediaIds: persistedMedia.map(media => media.id) })
+        setPersistedMedia(saved.media)
+        setFiles([])
         setDraftId(draft ? saved.id : undefined)
         setOpen(false)
         if (!draft) { setTitle('');setBody('');setTags('');setFiles([]);setTopic('general_dentistry') }
@@ -81,27 +87,29 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
     if (!title.trim()) { setError('Add a title before publishing.');return }
     if (!tags.trim()) { setError('Add at least one tag before publishing.');return }
     if (!body.trim()) { setError('Write your post before publishing.');return }
-    if (!files.length) { setError('Attach at least one image or video before publishing.');return }
+    if (!files.length && !persistedMedia.length) { setError('Attach at least one image or video before publishing.');return }
     const controller = new AbortController();abortRef.current=controller
     try {
+      setPreparingDraftMedia(true)
+      const restoredFiles = persistedMedia.length ? await downloadCommunityDraftMedia(persistedMedia) : []
       const normalizedTags = normalizeTags(tags).map(tag=>`#${tag.replace(/[^a-z0-9_]/g,'')}`).filter(tag=>tag.length>1)
       const taggedBody = normalizedTags.length ? `${body.trim()}\n\n${normalizedTags.join(' ')}` : body
-      await createPost.mutateAsync({authorId:userId,communityId,title,body:taggedBody,topic,files,draft:false,signal:controller.signal,onProgress:setProgress})
+      await createPost.mutateAsync({authorId:userId,communityId,title,body:taggedBody,topic,files:[...restoredFiles, ...files],draft:false,signal:controller.signal,onProgress:setProgress})
       if (draftId) {
         try { await deleteDraft.mutateAsync(draftId) }
         catch { toast.warning('Post published, but its draft could not be removed. You can delete it from Drafts.') }
       }
-      setDraftId(undefined);setTitle('');setBody('');setTags('');setFiles([]);setTopic('general_dentistry');setProgress(null);setOpen(false)
+      setDraftId(undefined);setTitle('');setBody('');setTags('');setFiles([]);setPersistedMedia([]);setTopic('general_dentistry');setProgress(null);setOpen(false)
       toast.success('Published successfully. Your post is now visible.')
     } catch (cause) {
       setError(cause instanceof DOMException&&cause.name==='AbortError'?'Upload cancelled. Your text and selected files are still here so you can retry.':cause instanceof Error?cause.message:'The post could not be submitted. Your files were kept for retry.')
       setProgress(null)
-    } finally { abortRef.current=null }
+    } finally { abortRef.current=null;setPreparingDraftMedia(false) }
   }
 
   const progressPercent = progress?.total ? Math.round(progress.completed / progress.total * 100) : 0
 
-  const busy = createPost.isPending || saveDraft.isPending
+  const busy = createPost.isPending || saveDraft.isPending || preparingDraftMedia
 
   return <Dialog open={open} onOpenChange={next=>{if(!busy)setOpen(next)}}>
     {trigger ? <DialogTrigger render={trigger} /> : <DialogTrigger render={<Button size="lg" />}><FileText />Create post</DialogTrigger>}
@@ -121,9 +129,10 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
 
             <aside className="space-y-5">
               <div className="rounded-2xl border bg-muted/25 p-4"><Label>Topic</Label><Select value={topic} onValueChange={value=>setTopic(value as CommunityPostTopic)}><SelectTrigger className="mt-2 w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select></div>
-              <div><div className="mb-2 flex items-center gap-2"><ImagePlus className="size-4 text-primary"/><Label>Media</Label><span className="ml-auto text-[11px] text-muted-foreground">{files.length}/{maxFiles}</span></div><div role="button" tabIndex={createPost.isPending?-1:0} aria-label="Add images or videos" className={`flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all sm:min-h-40 sm:p-5 ${dragging?'scale-[1.01] border-primary bg-primary/10':'border-border bg-muted/20 hover:border-primary/50 hover:bg-primary/5'}`} onClick={()=>!createPost.isPending&&inputRef.current?.click()} onKeyDown={event=>{if((event.key==='Enter'||event.key===' ')&&!createPost.isPending)inputRef.current?.click()}} onDragOver={event=>{event.preventDefault();if(!createPost.isPending)setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);if(!createPost.isPending)chooseFiles([...event.dataTransfer.files])}}><span className="grid size-11 place-items-center rounded-full bg-primary/10"><UploadCloud className="size-5 text-primary"/></span><span className="mt-3 text-sm font-semibold">Add photos or videos</span><span className="mt-1 text-xs leading-5 text-muted-foreground">Drop files or browse<br/>25 MB each · up to {maxFiles}</span><input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" className="hidden" onChange={event=>{chooseFiles([...(event.target.files??[])]);event.target.value=''}} /></div></div>
+              <div><div className="mb-2 flex items-center gap-2"><ImagePlus className="size-4 text-primary"/><Label>Media</Label><span className="ml-auto text-[11px] text-muted-foreground">{persistedMedia.length + files.length}/{maxFiles}</span></div><div role="button" tabIndex={busy?-1:0} aria-label="Add images or videos" className={`flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all sm:min-h-40 sm:p-5 ${dragging?'scale-[1.01] border-primary bg-primary/10':'border-border bg-muted/20 hover:border-primary/50 hover:bg-primary/5'}`} onClick={()=>!busy&&inputRef.current?.click()} onKeyDown={event=>{if((event.key==='Enter'||event.key===' ')&&!busy)inputRef.current?.click()}} onDragOver={event=>{event.preventDefault();if(!busy)setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);if(!busy)chooseFiles([...event.dataTransfer.files])}}><span className="grid size-11 place-items-center rounded-full bg-primary/10"><UploadCloud className="size-5 text-primary"/></span><span className="mt-3 text-sm font-semibold">Add photos or videos</span><span className="mt-1 text-xs leading-5 text-muted-foreground">Drop files or browse<br/>25 MB each · up to {maxFiles}</span><input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" className="hidden" onChange={event=>{chooseFiles([...(event.target.files??[])]);event.target.value=''}} /></div></div>
+              {persistedMedia.length>0&&<div className="max-h-44 space-y-2 overflow-y-auto pr-1" aria-live="polite">{persistedMedia.map(media=><div key={media.id} className="flex items-center gap-2 rounded-xl border bg-primary/5 px-3 py-2 text-sm"><Save className="size-4 shrink-0 text-primary"/><span className="min-w-0 flex-1 truncate font-medium">{media.file_name}</span><span className="text-[11px] tabular-nums text-muted-foreground">Saved · {formatSize(media.file_size_bytes)}</span><Button type="button" size="icon-sm" variant="ghost" disabled={busy} aria-label={`Remove ${media.file_name}`} onClick={()=>setPersistedMedia(current=>current.filter(item=>item.id!==media.id))}><X/></Button></div>)}</div>}
               {files.length>0&&<div className="max-h-44 space-y-2 overflow-y-auto pr-1" aria-live="polite">{files.map((file,index)=><div key={`${file.name}-${file.lastModified}`} className="flex items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm"><Paperclip className="size-4 shrink-0 text-primary"/><span className="min-w-0 flex-1 truncate font-medium">{file.name}</span><span className="text-[11px] tabular-nums text-muted-foreground">{formatSize(file.size)}</span><Button type="button" size="icon-sm" variant="ghost" disabled={createPost.isPending} aria-label={`Remove ${file.name}`} onClick={()=>setFiles(current=>current.filter((_,itemIndex)=>itemIndex!==index))}><X/></Button></div>)}</div>}
-              <div className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground"><Save className="mr-2 inline size-4 text-primary"/>Text drafts sync with your account across devices. Draft media is not uploaded yet and must be selected again.</div>
+              <div className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground"><Save className="mr-2 inline size-4 text-primary"/>Draft text and media are saved privately and sync across your devices.</div>
             </aside>
           </div>
           {progress&&<div className="mt-5 rounded-xl bg-muted p-3" role="status" aria-live="polite"><div className="flex justify-between gap-3 text-xs font-medium"><span className="truncate capitalize">{progress.stage} {progress.currentFile}</span><span>{progress.completed}/{progress.total} files</span></div><progress className="mt-2 h-2 w-full accent-primary" value={progress.completed} max={progress.total}>{progressPercent}%</progress></div>}

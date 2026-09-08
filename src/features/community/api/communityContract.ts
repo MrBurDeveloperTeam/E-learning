@@ -47,6 +47,7 @@ export const COMMUNITY_TABLES = {
 
 export const COMMUNITY_BUCKETS = {
   postMedia: 'community-post-media',
+  draftMedia: 'community-draft-media',
   commentMedia: 'community-comment-media',
   messageAttachments: 'community-message-attachments',
   verificationEvidence: 'community-verification-evidence',
