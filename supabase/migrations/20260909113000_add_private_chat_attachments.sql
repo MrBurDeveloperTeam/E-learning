@@ -14,6 +14,23 @@ create table if not exists public.community_message_attachments (
   unique (storage_bucket, storage_path)
 );
 
+-- Some deployed projects already have an earlier version of this table.
+-- CREATE TABLE IF NOT EXISTS does not add new columns, so reconcile it with
+-- the shape used by the current client without removing any existing data.
+alter table public.community_message_attachments
+  add column if not exists uploaded_by uuid references auth.users(id) on delete cascade,
+  add column if not exists storage_bucket text default 'community-message-attachments',
+  add column if not exists storage_path text,
+  add column if not exists file_name text,
+  add column if not exists mime_type text,
+  add column if not exists file_size_bytes bigint,
+  add column if not exists sort_order smallint default 0,
+  add column if not exists created_at timestamptz default now();
+
+create unique index if not exists community_message_attachments_storage_path_idx
+  on public.community_message_attachments (storage_bucket, storage_path)
+  where storage_path is not null;
+
 alter table public.community_message_attachments enable row level security;
 grant select, insert, delete on public.community_message_attachments to authenticated;
 
@@ -117,5 +134,7 @@ begin
   end if;
 end
 $$;
+
+notify pgrst, 'reload schema';
 
 commit;

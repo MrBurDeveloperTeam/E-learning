@@ -905,6 +905,16 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
     message_status:'sent' as const,
     reply_to_message_id:replyToMessageId??null,
   }
+  const attachmentRows = files.map((file, index) => ({
+    message_id: clientNonce,
+    uploaded_by: user.id,
+    storage_bucket: COMMUNITY_BUCKETS.messageAttachments,
+    storage_path: uploadedPaths[index],
+    file_name: file.name,
+    mime_type: file.type || 'application/octet-stream',
+    file_size_bytes: file.size,
+    sort_order: index,
+  }))
   const inserted=await supabase
     .from(COMMUNITY_TABLES.messages)
     .insert(messageRow)
@@ -913,16 +923,7 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
 
   if(!inserted.error){
     if (files.length) {
-      const attachmentInsert = await supabase.from(COMMUNITY_TABLES.messageAttachments).insert(files.map((file, index) => ({
-        message_id: clientNonce,
-        uploaded_by: user.id,
-        storage_bucket: COMMUNITY_BUCKETS.messageAttachments,
-        storage_path: uploadedPaths[index],
-        file_name: file.name,
-        mime_type: file.type || 'application/octet-stream',
-        file_size_bytes: file.size,
-        sort_order: index,
-      })))
+      const attachmentInsert = await supabase.from(COMMUNITY_TABLES.messageAttachments).insert(attachmentRows)
       if (attachmentInsert.error) {
         await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
         throw attachmentInsert.error
@@ -932,8 +933,6 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
     message.attachments = files.map((file, index) => ({ id: uploadedPaths[index], file_name: file.name, mime_type: file.type, file_size_bytes: file.size, url: URL.createObjectURL(file) }))
     return message
   }
-
-  if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
 
   // Retrying uses the same UUID. If the first request was committed but its
   // response was lost, return that message instead of creating a duplicate.
@@ -946,9 +945,28 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
       .eq('sender_id',user.id)
       .single()
     if(existing.error)throw existing.error
-    return mapDirectMessage(existing.data as DbCommunityMessage)
+    if (files.length) {
+      const priorAttachments = await supabase.from(COMMUNITY_TABLES.messageAttachments).select('id').eq('message_id', clientNonce).limit(1)
+      if (priorAttachments.error) {
+        await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+        throw priorAttachments.error
+      }
+      if ((priorAttachments.data ?? []).length === 0) {
+        const attachmentInsert = await supabase.from(COMMUNITY_TABLES.messageAttachments).insert(attachmentRows)
+        if (attachmentInsert.error) {
+          await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+          throw attachmentInsert.error
+        }
+      } else {
+        await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+      }
+    }
+    const message = mapDirectMessage(existing.data as DbCommunityMessage)
+    if (files.length) message.attachments = files.map((file, index) => ({ id: uploadedPaths[index], file_name: file.name, mime_type: file.type, file_size_bytes: file.size, url: URL.createObjectURL(file) }))
+    return message
   }
 
+  if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
   throw inserted.error
 }
 
