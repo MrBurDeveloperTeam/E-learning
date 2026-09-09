@@ -7,10 +7,13 @@ import { recordCommunityPostShare, recordCommunityPostView, softDeleteCommunityP
 import { fetchCommunityPost } from '@/features/community/api/communityApi'
 import { recordCommunityOperationalEvent } from '@/features/community/api/communityReleaseApi'
 import { deleteCommunityDraft, fetchCommunityDrafts, migrateLocalCommunityDrafts, saveCommunityDraft, type CommunityDraftInput } from '@/features/community/api/communityDraftApi'
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility'
 
 export function useCommunityPosts(userId?: string, mode: CommunityFeedMode = 'home', search = '', topic = 'all', sort: 'relevant'|'newest'|'popular'='relevant', communityId?: string) {
   const queryClient = useQueryClient()
+  const isPageVisible = useDocumentVisibility()
   useEffect(() => {
+    if (!isPageVisible) return
     const refresh = () => {
       void queryClient.invalidateQueries({ queryKey: ['community-posts'] })
       void queryClient.invalidateQueries({ queryKey: ['community-post'] })
@@ -24,7 +27,7 @@ export function useCommunityPosts(userId?: string, mode: CommunityFeedMode = 'ho
         if (status === 'SUBSCRIBED') refresh()
       })
     return () => { void supabase.removeChannel(channel) }
-  }, [mode, queryClient, userId])
+  }, [isPageVisible, mode, queryClient, userId])
   return useInfiniteQuery({
     queryKey: ['community-posts', mode, userId ?? 'guest', search, topic, sort, communityId ?? 'all'],
     queryFn: ({ pageParam }) => fetchCommunityPosts(pageParam, userId, mode, search, topic, sort, communityId),
@@ -64,21 +67,22 @@ export function useCommunityPostActions(userId?:string){const client=useQueryCli
 
 export function useCommunityComments(postId: string, userId: string | undefined, enabled: boolean, page = 0, search = '') {
   const client = useQueryClient()
+  const isPageVisible = useDocumentVisibility()
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !isPageVisible) return
     const refresh = () => {
       void client.invalidateQueries({ queryKey: ['community-comments', postId] })
       void client.invalidateQueries({ queryKey: ['community-posts'] })
       void client.invalidateQueries({ queryKey: ['community-post', postId] })
     }
     const channel = supabase.channel(`community-comments:${postId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comment_likes' }, refresh)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') refresh()
       })
     return () => { void supabase.removeChannel(channel) }
-  }, [client, enabled, postId])
+  }, [client, enabled, isPageVisible, postId])
   return useQuery({
     queryKey: ['community-comments', postId, page, search, userId],
     queryFn: () => fetchCommunityComments(postId, userId, page, search),

@@ -20,6 +20,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { cn } from '@/lib/utils'
 import type { CommunityManagedPost } from '@/features/community/types'
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility'
 
 
 function BuildingIcon() {
@@ -58,6 +59,7 @@ function CardIcon() {
 }
 
 export function Profile() {
+  const isPageVisible = useDocumentVisibility()
   const { userId } = useParams({ from: '/profile/$userId' })
   const [tab, setTab] = useState<'posts' | 'likes' | 'reposts'>('posts')
   const [isRequestingVerification, setIsRequestingVerification] = useState(false)
@@ -115,7 +117,7 @@ export function Profile() {
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update follow status.'),
   })
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id || !isPageVisible) return
     const refreshRelationships = () => {
       void queryClient.invalidateQueries({ queryKey: ['community-profile-access', user.id, userId] })
       void queryClient.invalidateQueries({ queryKey: ['community-friend-requests'] })
@@ -126,7 +128,7 @@ export function Profile() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_friendships' }, refreshRelationships)
       .subscribe(status => { if (status === 'SUBSCRIBED') refreshRelationships() })
     return () => { void supabase.removeChannel(channel) }
-  }, [queryClient, user?.id, userId])
+  }, [isPageVisible, queryClient, user?.id, userId])
   const creatorApplicationQuery = useQuery({
     queryKey: ['creator-application', currentProfile?.user_id],
     queryFn: async () => {

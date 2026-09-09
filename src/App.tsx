@@ -5,7 +5,6 @@ import { Toaster } from 'sonner'
 import { queryClient } from './lib/queryClient'
 import { router } from './routes'
 import { useAuth } from './hooks/useAuth'
-import { supabase } from './lib/supabase'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import CatMascot from './components/CatMascot.jsx'
 import MolarAIFloat from './components/MolarAIFloat.jsx'
@@ -110,15 +109,6 @@ function InnerApp() {
       })
     }
   )
-
-  useEffect(() => {
-    const channel = supabase.channel('app-health')
-    channel.subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
 
   // Scroll to top on route navigation
   useEffect(() => {
