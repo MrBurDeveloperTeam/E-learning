@@ -4,9 +4,11 @@ import { Headphones, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { supabase } from '@/lib/supabase'
 
-type VoiceMember = { userId: string; name: string; muted: boolean; joinedAt: string }
+type VoiceMember = { userId: string; name: string; muted: boolean; joinedAt: string; avatarUrl?: string | null }
+type VoiceParticipantRow = { user_id: string; display_name: string; avatar_url: string | null; joined_at: string }
 type VoiceSignalKind = 'ready' | 'offer' | 'answer' | 'ice' | 'mute' | 'leave'
 type VoiceSignal = { to: string | null; kind: VoiceSignalKind; payload?: RTCSessionDescriptionInit | RTCIceCandidateInit }
 type VoiceSignalRow = {
@@ -19,6 +21,7 @@ type VoiceSignalRow = {
 const MAX_VOICE_MEMBERS = 4
 const MAX_CALL_MS = 60 * 60 * 1000
 const HEARTBEAT_MS = 30 * 1000
+const LOBBY_REFRESH_MS = 15 * 1000
 const rtcConfiguration: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
 
 export function CommunityVoiceRoom({ communityId, userId, userName, visibility, canJoin, disabled = false }: { communityId: string; userId: string; userName: string; visibility: 'public' | 'private'; canJoin: boolean; disabled?: boolean }) {
@@ -36,6 +39,20 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
   const reservedRef = useRef(false)
   const heartbeatRef = useRef<number | null>(null)
   const callTimeoutRef = useRef<number | null>(null)
+
+  const loadVisibleMembers = async () => {
+    const { data, error } = await supabase.rpc('community_list_voice_participants', { input_community_id: communityId })
+    if (error) throw error
+    if (!joinedRef.current) {
+      setMembers(((data ?? []) as VoiceParticipantRow[]).map((participant) => ({
+        userId: participant.user_id,
+        name: participant.display_name,
+        avatarUrl: participant.avatar_url,
+        muted: false,
+        joinedAt: participant.joined_at,
+      })))
+    }
+  }
 
   const sendSignal = async (signal: VoiceSignal, memberMuted = muted) => {
     const { error } = await supabase.rpc('community_send_voice_signal', {
@@ -116,7 +133,16 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
     setMuted(false)
   }
 
-  useEffect(() => leave, [])
+  useEffect(() => {
+    void loadVisibleMembers().catch(() => undefined)
+    const refresh = window.setInterval(() => {
+      if (!joinedRef.current) void loadVisibleMembers().catch(() => undefined)
+    }, LOBBY_REFRESH_MS)
+    return () => {
+      window.clearInterval(refresh)
+      leave()
+    }
+  }, [communityId])
 
   const join = async () => {
     if (!canJoin || disabled || joining || joined) return
@@ -213,8 +239,8 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
 
   return <div className="rounded-2xl border bg-card p-5">
     <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-sm font-semibold"><Volume2 className="size-4 text-primary" />Voice chat</h2>{joined && <Badge variant="secondary">Connected</Badge>}</div>
-    {!joined ? <><p className="mt-2 text-sm leading-6 text-muted-foreground">Peer-to-peer room · up to {MAX_VOICE_MEMBERS} members · 60-minute limit · no recording or sharing.</p><Button className="mt-4 w-full" disabled={!canJoin || disabled || joining} onClick={() => void join()}><Headphones />{joining ? 'Connecting…' : !canJoin ? 'Join the Community first' : 'Join voice chat'}</Button></> : <>
-      <div className="mt-4 space-y-2">{members.map((member) => <div key={member.userId} className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2 text-sm"><span className="truncate">{member.name}{member.userId === userId ? ' (You)' : ''}</span>{member.muted ? <MicOff className="size-4 text-muted-foreground" /> : <Mic className="size-4 text-emerald-600" />}</div>)}</div>
+    {!joined ? <><p className="mt-2 text-sm leading-6 text-muted-foreground">Peer-to-peer room · up to {MAX_VOICE_MEMBERS} members · 60-minute limit · no recording or sharing.</p>{members.length > 0 && <div className="mt-4 space-y-2"><p className="text-xs font-medium text-muted-foreground">In voice now · {members.length}</p>{members.map((member) => <div key={member.userId} className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"><UserAvatar name={member.name} avatarUrl={member.avatarUrl} size={28} /><span className="min-w-0 flex-1 truncate">{member.name}</span><Volume2 className="size-4 text-emerald-600" /></div>)}</div>}<Button className="mt-4 w-full" disabled={!canJoin || disabled || joining} onClick={() => void join()}><Headphones />{joining ? 'Connecting…' : !canJoin ? 'Join the Community first' : 'Join voice chat'}</Button></> : <>
+      <div className="mt-4 space-y-2">{members.map((member) => <div key={member.userId} className="flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"><UserAvatar name={member.name} avatarUrl={member.avatarUrl} size={28} /><span className="min-w-0 flex-1 truncate">{member.name}{member.userId === userId ? ' (You)' : ''}</span>{member.muted ? <MicOff className="size-4 text-muted-foreground" /> : <Mic className="size-4 text-emerald-600" />}</div>)}</div>
       {Object.entries(remoteStreams).map(([peerId, stream]) => <audio key={peerId} autoPlay playsInline ref={(element) => { if (element && element.srcObject !== stream) element.srcObject = stream }} />)}
       <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" onClick={() => void toggleMute()}>{muted ? <MicOff /> : <Mic />}{muted ? 'Unmute' : 'Mute'}</Button><Button variant="destructive" onClick={leave}><PhoneOff />Leave</Button></div>
     </>}
