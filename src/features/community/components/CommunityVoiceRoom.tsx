@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RealtimeChannel } from '@supabase/supabase-js'
+import { RealtimeClient, type RealtimeChannel } from '@supabase/supabase-js'
 import { Headphones, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, dis
   const [members, setMembers] = useState<VoiceMember[]>([])
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({})
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const realtimeRef = useRef<RealtimeClient | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const peersRef = useRef(new Map<string, RTCPeerConnection>())
   const joinedRef = useRef(false)
@@ -65,8 +66,10 @@ export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, dis
     heartbeatRef.current = null
     callTimeoutRef.current = null
     channelRef.current?.untrack()
-    if (channelRef.current) void supabase.removeChannel(channelRef.current)
+    if (channelRef.current && realtimeRef.current) void realtimeRef.current.removeChannel(channelRef.current)
     channelRef.current = null
+    void realtimeRef.current?.disconnect()
+    realtimeRef.current = null
     peersRef.current.forEach((peer) => peer.close())
     peersRef.current.clear()
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -99,8 +102,16 @@ export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, dis
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
       if (sessionError || !sessionData.session?.access_token) throw sessionError ?? new Error('Your session expired. Please sign in again.')
-      await supabase.realtime.setAuth(sessionData.session.access_token)
-      const channel = supabase.channel(`community-voice:${communityId}`, { config: { private: true, presence: { key: userId }, broadcast: { self: false } } })
+      // Voice gets a dedicated authenticated socket. Reusing the app-wide
+      // Realtime connection can retain an anonymous/previous token when that
+      // socket was opened earlier by feed subscriptions.
+      const voiceRealtime = new RealtimeClient(`${import.meta.env.VITE_SUPABASE_URL}/realtime/v1`, {
+        params: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+        accessToken: async () => sessionData.session.access_token,
+      })
+      realtimeRef.current = voiceRealtime
+      await voiceRealtime.setAuth(sessionData.session.access_token)
+      const channel = voiceRealtime.channel(`community-voice:${communityId}`, { config: { private: true, presence: { key: userId }, broadcast: { self: false } } })
       channelRef.current = channel
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<VoiceMember>()
