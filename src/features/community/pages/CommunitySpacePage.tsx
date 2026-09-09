@@ -2,6 +2,7 @@ import { Link, useParams } from '@tanstack/react-router'
 import { Archive, ArrowLeft, Globe2, LockKeyhole, Megaphone, UsersRound, VolumeX } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/layout/Navbar'
+import '../styles/community-space.css'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -31,7 +32,7 @@ export function CommunitySpacePage() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="community-space min-h-screen bg-background">
       <Navbar />
       {directory.isLoading ? (
         <div className="flex min-h-[60vh] items-center justify-center"><LoadingSpinner size="lg" /></div>

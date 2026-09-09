@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/features/community/components/CommunityDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -44,7 +44,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/features/community/components/CommunityDialog";
 import { CommunityConfirmAction } from "@/features/community/components/CommunityConfirmAction";
 import { browseCommunities, fetchCommunityInvitePreview, searchJoinableCommunities, type CommunitySearchResult } from "@/features/community/api/communityApi";
 
