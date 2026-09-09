@@ -320,6 +320,7 @@ export function useDirectMessages(conversationId?: string, userId?: string) {
     const channel = supabase
       .channel(`community-messages:${conversationId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages', filter: `conversation_id=eq.${conversationId}` }, receiveMessage)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_attachments' }, refreshMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_message_reactions' }, refreshMessages)
       // Listen to participant receipt updates allowed by RLS, then scope the
       // event client-side. This avoids a filtered UPDATE being missed and keeps
@@ -397,17 +398,17 @@ export function useCommunityMessageReaction(conversationId?: string) {
 export function useSendDirectMessage(userId: string, conversationId?: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({body,clientNonce,conversationId:targetConversationId,replyToMessageId}:{body:string;clientNonce:string;conversationId?:string;replyToMessageId?:string}) => {
+    mutationFn: ({body,clientNonce,conversationId:targetConversationId,replyToMessageId,files=[]}:{body:string;clientNonce:string;conversationId?:string;replyToMessageId?:string;files?:File[]}) => {
       const resolvedConversationId=targetConversationId??conversationId
       if(!resolvedConversationId)throw new Error('Choose a member before sending a message.')
-      return sendDirectMessage(resolvedConversationId, body, clientNonce, replyToMessageId)
+      return sendDirectMessage(resolvedConversationId, body, clientNonce, replyToMessageId, files)
     },
     onMutate: async ({ body, clientNonce, conversationId: targetConversationId, replyToMessageId }) => {
       const resolvedConversationId = targetConversationId ?? conversationId
       if (!resolvedConversationId) return
       const queryKey = ['community-direct-messages', resolvedConversationId]
       await queryClient.cancelQueries({ queryKey })
-      const optimistic: DirectMessage = { id: clientNonce, conversation_id: resolvedConversationId, sender_id: userId, body: body.trim(), created_at: new Date().toISOString(), edited_at: null, status: 'sent', reply_to_message_id: replyToMessageId ?? null, reply_to: null, reactions: [], delivery_status: 'sending' }
+      const optimistic: DirectMessage = { id: clientNonce, conversation_id: resolvedConversationId, sender_id: userId, body: body.trim(), created_at: new Date().toISOString(), edited_at: null, status: 'sent', reply_to_message_id: replyToMessageId ?? null, reply_to: null, reactions: [], attachments: [], delivery_status: 'sending' }
       queryClient.setQueryData<DirectMessage[]>(queryKey, current => {
         const rows = current ?? []
         return rows.some(message => message.id === clientNonce) ? rows.map(message => message.id === clientNonce ? { ...message, ...optimistic } : message) : [...rows, optimistic]

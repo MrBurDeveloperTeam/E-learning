@@ -828,10 +828,21 @@ export async function fetchDirectMessages(conversationId: string) {
   if (error) throw error
   const visibleRows = (data ?? []).filter((row) => !hiddenIds.has(row.id))
   const messageIds = visibleRows.map((row) => row.id)
-  const reactionResult = messageIds.length
-    ? await supabase.from(COMMUNITY_TABLES.messageReactions).select('message_id,user_id,emoji').in('message_id', messageIds)
-    : { data: [], error: null }
+  const [reactionResult, attachmentResult] = messageIds.length
+    ? await Promise.all([
+      supabase.from(COMMUNITY_TABLES.messageReactions).select('message_id,user_id,emoji').in('message_id', messageIds),
+      supabase.from(COMMUNITY_TABLES.messageAttachments).select('id,message_id,storage_bucket,storage_path,file_name,mime_type,file_size_bytes,sort_order').in('message_id', messageIds).order('sort_order'),
+    ])
+    : [{ data: [], error: null }, { data: [], error: null }]
   if (reactionResult.error) throw reactionResult.error
+  if (attachmentResult.error) throw attachmentResult.error
+  const attachmentUrls = new Map<string, string>()
+  const attachments = attachmentResult.data ?? []
+  if (attachments.length) {
+    const signed = await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).createSignedUrls(attachments.map((row) => row.storage_path), 3600)
+    if (signed.error) throw signed.error
+    for (const item of signed.data ?? []) if (item.path && item.signedUrl) attachmentUrls.set(item.path, item.signedUrl)
+  }
   const rowById = new Map((data ?? []).map((row) => [row.id, row]))
   return visibleRows.map((row) => {
     const message = mapDirectMessage(row as DbCommunityMessage)
@@ -845,6 +856,10 @@ export async function fetchDirectMessages(conversationId: string) {
       reactionMap.set(reaction.emoji, current)
     }
     message.reactions = [...reactionMap.values()]
+    message.attachments = attachments.filter((attachment) => attachment.message_id === row.id).flatMap((attachment) => {
+      const url = attachmentUrls.get(attachment.storage_path)
+      return url ? [{ id: attachment.id, file_name: attachment.file_name, mime_type: attachment.mime_type, file_size_bytes: Number(attachment.file_size_bytes), url }] : []
+    })
     message.reply_to = replyRow ? {
       id: replyRow.id,
       sender_id: replyRow.sender_id ?? '',
@@ -858,19 +873,33 @@ export async function fetchDirectMessages(conversationId: string) {
   })
 }
 
-export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string, replyToMessageId?: string): Promise<DirectMessage> {
+export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string, replyToMessageId?: string, files: File[] = []): Promise<DirectMessage> {
   const content=body.trim()
-  if(!content)throw new Error('Write a message before sending.')
+  if(!content && files.length === 0)throw new Error('Write a message or choose an attachment before sending.')
+  if(files.length > 3)throw new Error('You can attach up to 3 files per message.')
+  if(files.some((file) => file.size <= 0 || file.size > 10 * 1024 * 1024))throw new Error('Each attachment must be 10 MB or smaller.')
 
   const {data:{user},error:userError}=await supabase.auth.getUser()
   if(userError)throw userError
   if(!user)throw new Error('Sign in before sending a message.')
 
+  const uploadedPaths: string[] = []
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `${conversationId}/${user.id}/${clientNonce}/${crypto.randomUUID()}-${safeName}`
+    const upload = await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).upload(storagePath, file, { contentType: file.type || 'application/octet-stream', upsert: false })
+    if (upload.error) {
+      if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+      throw upload.error
+    }
+    uploadedPaths.push(storagePath)
+  }
+
   const messageRow={
     id:clientNonce,
     conversation_id:conversationId,
     sender_id:user.id,
-    content,
+    content:content || null,
     message_status:'sent' as const,
     reply_to_message_id:replyToMessageId??null,
   }
@@ -880,7 +909,29 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
     .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at,reply_to_message_id')
     .single()
 
-  if(!inserted.error)return mapDirectMessage(inserted.data as DbCommunityMessage)
+  if(!inserted.error){
+    if (files.length) {
+      const attachmentInsert = await supabase.from(COMMUNITY_TABLES.messageAttachments).insert(files.map((file, index) => ({
+        message_id: clientNonce,
+        uploaded_by: user.id,
+        storage_bucket: COMMUNITY_BUCKETS.messageAttachments,
+        storage_path: uploadedPaths[index],
+        file_name: file.name,
+        mime_type: file.type || 'application/octet-stream',
+        file_size_bytes: file.size,
+        sort_order: index,
+      })))
+      if (attachmentInsert.error) {
+        await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+        throw attachmentInsert.error
+      }
+    }
+    const message = mapDirectMessage(inserted.data as DbCommunityMessage)
+    message.attachments = files.map((file, index) => ({ id: uploadedPaths[index], file_name: file.name, mime_type: file.type, file_size_bytes: file.size, url: URL.createObjectURL(file) }))
+    return message
+  }
+
+  if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
 
   // Retrying uses the same UUID. If the first request was committed but its
   // response was lost, return that message instead of creating a duplicate.

@@ -232,5 +232,6 @@ export function mapDirectMessage(row: DbCommunityMessage): DirectMessage {
     reply_to_message_id: row.reply_to_message_id,
     reply_to: null,
     reactions: [],
+    attachments: [],
   }
 }
