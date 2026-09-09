@@ -31,10 +31,14 @@ begin
   if not exists (
     select 1 from public.communities c
     where c.id = input_community_id and c.moderation_status = 'active'
-      and (c.owner_id = auth.uid() or exists (
-        select 1 from public.community_members m
-        where m.community_id = c.id and m.user_id = auth.uid() and m.membership_status = 'active'
-      ))
+      and (
+        c.visibility = 'public'
+        or c.owner_id = auth.uid()
+        or exists (
+          select 1 from public.community_members m
+          where m.community_id = c.id and m.user_id = auth.uid() and m.membership_status = 'active'
+        )
+      )
   ) then
     raise exception 'You must be an active Community member to join this voice room.';
   end if;
@@ -92,13 +96,23 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select input_topic like 'community-voice:%'
+  select input_topic ~ '^community-voice:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     and exists (
-      select 1 from public.community_voice_participants participant
-      where participant.user_id = auth.uid()
-        and participant.community_id::text = replace(input_topic, 'community-voice:', '')
-        and participant.last_seen_at >= now() - interval '90 seconds'
-        and participant.joined_at >= now() - interval '60 minutes'
+      select 1
+      from public.communities community
+      where community.id::text = replace(input_topic, 'community-voice:', '')
+        and community.moderation_status = 'active'
+        and (
+          community.visibility = 'public'
+          or
+          community.owner_id = auth.uid()
+          or exists (
+            select 1 from public.community_members member
+            where member.community_id = community.id
+              and member.user_id = auth.uid()
+              and member.membership_status = 'active'
+          )
+        )
     );
 $$;
 
