@@ -26,6 +26,10 @@ function CommunityPanelFallback() {
   return <div className="mt-7 flex min-h-64 items-center justify-center" role="status" aria-label="Loading Community section"><LoadingSpinner size="lg" /></div>
 }
 
+// Community Video feed is temporarily hidden. Keep its UI/feed code intact;
+// set this flag to true to restore the navigation and ?tab=video access.
+const COMMUNITY_VIDEO_FEED_ENABLED = false
+
 const navigation = [
   { id: 'home', label: 'Home', icon: Home, available: true },
   { id: 'following', label: 'Following', icon: UserRoundCheck, available: true },
@@ -33,14 +37,15 @@ const navigation = [
   { id: 'video', label: 'Video', icon: PlaySquare, available: true },
   { id: 'chat', label: 'Chat', icon: MessagesSquare, available: true },
   { id: 'me', label: 'Profile', icon: CircleUserRound, available: true },
-]
+].filter(item => item.id !== 'video' || COMMUNITY_VIDEO_FEED_ENABLED)
 
 export function CommunityPage() {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { tab?: string;q?:string;topic?:string;sort?:'relevant'|'newest'|'popular' }
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
-  const activeTab = search.tab === 'following' || search.tab === 'communities' || search.tab === 'video' || search.tab === 'chat' || search.tab === 'me' || search.tab === 'settings' ? (search.tab === 'settings' ? 'me' : search.tab) : 'home'
+  const requestedTab = search.tab === 'video' && !COMMUNITY_VIDEO_FEED_ENABLED ? 'home' : search.tab
+  const activeTab = requestedTab === 'following' || requestedTab === 'communities' || requestedTab === 'video' || requestedTab === 'chat' || requestedTab === 'me' || requestedTab === 'settings' ? (requestedTab === 'settings' ? 'me' : requestedTab) : 'home'
   const feedMode = activeTab === 'communities' || activeTab === 'chat' || activeTab === 'me' ? 'home' : activeTab
   const [postSearch,setPostSearch]=useState(search.q??'')
   const topic=search.topic??'all',sort=search.sort??'relevant'
