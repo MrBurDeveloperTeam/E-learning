@@ -8,6 +8,7 @@ create table if not exists public.community_message_attachments (
   storage_path text not null,
   file_name text not null,
   mime_type text not null,
+  attachment_type text not null check (attachment_type in ('image', 'video', 'file')),
   file_size_bytes bigint not null check (file_size_bytes > 0 and file_size_bytes <= 10485760),
   sort_order smallint not null default 0 check (sort_order between 0 and 2),
   created_at timestamptz not null default now(),
@@ -23,6 +24,7 @@ alter table public.community_message_attachments
   add column if not exists storage_path text,
   add column if not exists file_name text,
   add column if not exists mime_type text,
+  add column if not exists attachment_type text,
   add column if not exists file_size_bytes bigint,
   add column if not exists sort_order smallint default 0,
   add column if not exists created_at timestamptz default now();

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, Loader2, MessageCircleMore, Paperclip, Pencil, Reply, Send, SmilePlus, Trash2, X } from 'lucide-react'
+import { FileText, Loader2, MessageCircleMore, MoreHorizontal, Paperclip, Pencil, Reply, Send, SmilePlus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
+import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDeleteDirectConversation, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
 import { cn } from '@/lib/utils'
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import type { CommunityPerson, DirectConversation, DirectMessage } from '@/features/community/types'
 
 function getMessageError(error: unknown) {
@@ -28,6 +29,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
   const [peopleSearch,setPeopleSearch]=useState('')
   const [editingMessage,setEditingMessage]=useState<DirectMessage|null>(null),[editBody,setEditBody]=useState('')
   const [withdrawingMessage,setWithdrawingMessage]=useState<DirectMessage|null>(null)
+  const [deletingConversation,setDeletingConversation]=useState(false)
   const [replyingTo,setReplyingTo]=useState<DirectMessage|null>(null)
   const [reactingMessageId,setReactingMessageId]=useState<string|null>(null)
   const [sendError,setSendError]=useState('')
@@ -45,6 +47,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
   const send = useSendDirectMessage(userId, selectedId)
   const messageActions=useCommunityMessageActions(selectedId)
   const reactionAction=useCommunityMessageReaction(selectedId)
+  const deleteConversation=useDeleteDirectConversation(userId)
   const displayedMessages = useMemo(() => {
     const rows = messages.data ?? []
     if (!failedNonce || !send.isError || rows.some(message => message.id === failedNonce) || !selectedId) return rows
@@ -109,6 +112,23 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
     }
   }
 
+  async function confirmDeleteConversation() {
+    if (!selectedId) return
+    try {
+      await deleteConversation.mutateAsync(selectedId)
+      setSelectedId(undefined)
+      setDeletingConversation(false)
+      setBody('')
+      setFiles([])
+      setReplyingTo(null)
+      setSendError('')
+      setFailedNonce(null)
+      toast.success('Conversation deleted for you.')
+    } catch (error) {
+      toast.error(getMessageError(error))
+    }
+  }
+
   if (conversationsLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
   return (
     <div className="mt-4 grid h-[calc(100%-1rem)] min-h-0 overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
@@ -148,7 +168,8 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
       {activeRecipient ? <section className="flex min-h-0 flex-col overflow-hidden">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3">
           <UserAvatar name={activeRecipient.full_name || activeRecipient.name} avatarUrl={activeRecipient.avatar_url} size={34} />
-          <div><p className="text-sm font-semibold">{activeRecipient.full_name || activeRecipient.name}</p><p className="text-xs text-muted-foreground">{selected?'Private conversation':'New conversation'}</p></div>
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{activeRecipient.full_name || activeRecipient.name}</p><p className="text-xs text-muted-foreground">{selected?'Private conversation':'New conversation'}</p></div>
+          {selected&&<DropdownMenu><DropdownMenuTrigger className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Conversation settings"><MoreHorizontal className="size-5"/></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48"><DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={()=>setDeletingConversation(true)}><Trash2/>Delete conversation</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
         </header>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4" aria-live="polite">
           {!selected?<EmptyState icon={<MessageCircleMore/>} title="Start a conversation" description="Send your first message to begin this conversation."/>:messages.isLoading ? <div className="flex h-full items-center justify-center"><LoadingSpinner /></div> : displayedMessages.map((message) => (
@@ -190,6 +211,16 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
             <Button type="button" variant="outline" disabled={messageActions.isPending} onClick={()=>setWithdrawingMessage(null)}>Cancel</Button>
             <Button type="button" variant="outline" disabled={messageActions.isPending} onClick={()=>void removeMessage('hide')}>Delete for me</Button>
             {withdrawingMessage?.sender_id===userId&&<Button type="button" variant="destructive" disabled={messageActions.isPending} onClick={()=>void removeMessage('withdraw')}>{messageActions.isPending?<><Loader2 className="animate-spin"/>Updating…</>:'Withdraw for everyone'}</Button>}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deletingConversation} onOpenChange={open=>{if(!open&&!deleteConversation.isPending)setDeletingConversation(false)}}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete conversation?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">This removes the conversation from your view only. It will not delete the other person's copy. New messages can make the conversation appear again.</p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" disabled={deleteConversation.isPending} onClick={()=>setDeletingConversation(false)}>Cancel</Button>
+            <Button type="button" variant="destructive" disabled={deleteConversation.isPending} onClick={()=>void confirmDeleteConversation()}>{deleteConversation.isPending?<><Loader2 className="animate-spin"/>Deleting…</>:'Delete conversation'}</Button>
           </div>
         </DialogContent>
       </Dialog>

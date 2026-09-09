@@ -771,7 +771,7 @@ export async function fetchDirectConversations(userId: string) {
   const conversationIds = (ownParticipants ?? []).map((row) => row.conversation_id)
   if (conversationIds.length === 0) return [] as DirectConversation[]
 
-  const [conversationsResult, participantsResult] = await Promise.all([
+  const [conversationsResult, participantsResult, deletionsResult] = await Promise.all([
     supabase
       .from(COMMUNITY_TABLES.conversations)
       .select('id,last_message_at')
@@ -783,6 +783,11 @@ export async function fetchDirectConversations(userId: string) {
       .select('conversation_id,user_id')
       .in('conversation_id', conversationIds)
       .neq('user_id', userId),
+    supabase
+      .from(COMMUNITY_TABLES.conversationDeletions)
+      .select('conversation_id,deleted_before')
+      .eq('user_id', userId)
+      .in('conversation_id', conversationIds),
   ])
   if (conversationsResult.error) throw conversationsResult.error
   if (participantsResult.error) throw participantsResult.error
@@ -796,12 +801,15 @@ export async function fetchDirectConversations(userId: string) {
   const verifiedProfiles = await addCommunityVerification(profiles ?? [])
   const profileMap = new Map(verifiedProfiles.map((profile) => [profile.user_id, profile]))
   const participantMap = new Map((participantsResult.data ?? []).map((row) => [row.conversation_id, row.user_id]))
+  const deletedBefore = new Map((deletionsResult.error ? [] : (deletionsResult.data ?? [])).map((row) => [row.conversation_id, row.deleted_before]))
 
   const messageResult = await supabase.from(COMMUNITY_TABLES.messages).select('conversation_id,sender_id,created_at').in('conversation_id',conversationIds).neq('message_status','deleted')
   if(messageResult.error)throw messageResult.error
   const reads=new Map((ownParticipants??[]).map(row=>[row.conversation_id,row.last_read_at]))
   const unread=new Map<string,number>();for(const message of messageResult.data??[]){if(message.sender_id!==userId&&(!reads.get(message.conversation_id)||message.created_at>reads.get(message.conversation_id)!))unread.set(message.conversation_id,(unread.get(message.conversation_id)??0)+1)}
   return (conversationsResult.data ?? []).flatMap((conversation) => {
+    const cutoff = deletedBefore.get(conversation.id)
+    if (cutoff && (!conversation.last_message_at || Date.parse(conversation.last_message_at) <= Date.parse(cutoff))) return []
     const otherId = participantMap.get(conversation.id)
     const profile = otherId ? profileMap.get(otherId) : null
     return profile ? [{ ...conversation, other_user: profile, unread_count: unread.get(conversation.id)??0 } as DirectConversation] : []
@@ -812,9 +820,10 @@ export async function fetchDirectMessages(conversationId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('Sign in before viewing messages.')
-  const [hiddenResult, recipientResult] = await Promise.all([
+  const [hiddenResult, recipientResult, deletionResult] = await Promise.all([
     supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id),
     supabase.from(COMMUNITY_TABLES.conversationParticipants).select('last_read_at').eq('conversation_id', conversationId).neq('user_id', user.id).maybeSingle(),
+    supabase.from(COMMUNITY_TABLES.conversationDeletions).select('deleted_before').eq('conversation_id', conversationId).eq('user_id', user.id).maybeSingle(),
   ])
   if (hiddenResult.error) throw hiddenResult.error
   if (recipientResult.error) throw recipientResult.error
@@ -826,7 +835,8 @@ export async function fetchDirectMessages(conversationId: string) {
     .order('created_at', { ascending: true })
     .limit(200)
   if (error) throw error
-  const visibleRows = (data ?? []).filter((row) => !hiddenIds.has(row.id))
+  const cutoff = !deletionResult.error && deletionResult.data?.deleted_before ? Date.parse(deletionResult.data.deleted_before) : null
+  const visibleRows = (data ?? []).filter((row) => !hiddenIds.has(row.id) && (cutoff === null || Date.parse(row.created_at) > cutoff))
   const messageIds = visibleRows.map((row) => row.id)
   const [reactionResult, attachmentResult] = messageIds.length
     ? await Promise.all([
@@ -875,6 +885,18 @@ export async function fetchDirectMessages(conversationId: string) {
   })
 }
 
+export async function deleteDirectConversationForCurrentUser(conversationId: string): Promise<void> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in before deleting a conversation.')
+  const { error } = await supabase.from(COMMUNITY_TABLES.conversationDeletions).upsert({
+    conversation_id: conversationId,
+    user_id: user.id,
+    deleted_before: new Date().toISOString(),
+  }, { onConflict: 'conversation_id,user_id' })
+  if (error) throw error
+}
+
 export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string, replyToMessageId?: string, files: File[] = []): Promise<DirectMessage> {
   const content=body.trim()
   if(!content && files.length === 0)throw new Error('Write a message or choose an attachment before sending.')
@@ -912,6 +934,7 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
     storage_path: uploadedPaths[index],
     file_name: file.name,
     mime_type: file.type || 'application/octet-stream',
+    attachment_type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file',
     file_size_bytes: file.size,
     sort_order: index,
   }))

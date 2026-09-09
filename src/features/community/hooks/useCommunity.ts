@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addCommunityRule, archiveCommunity, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, fetchCloseFriends, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, followCommunityPerson, hideCommunityMessageForCurrentUser, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAbout, saveCommunityAnnouncement, saveCommunityPreferences, searchCommunityPeople, sendDirectMessage, setCloseFriend, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, toggleCommunityMessageReaction, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
+import { addCommunityRule, archiveCommunity, cancelFriendRequest, checkCommunityCommentSafety, createCommunity, createCommunityComment, createCommunityPost, decideCommunityJoinRequest, deleteCommunityComment, deleteCommunityMessage, deleteCommunityRule, deleteDirectConversationForCurrentUser, fetchCloseFriends, fetchCommunityBlockedUsers, fetchCommunityComments, fetchCommunityDirectory, fetchCommunityManagement, fetchCommunityMembers, fetchCommunityMentionUsers, fetchCommunityPosts, fetchCommunityPreferences, fetchDirectConversations, fetchDirectMessages, fetchFollowingPeople, fetchFriendRequests, fetchFriends, fetchManagedPosts, followCommunityPerson, hideCommunityMessageForCurrentUser, joinPublicCommunity, leaveCommunity, markConversationRead, moveCommunityRule, openCommunityConversation, openDirectConversation, removeCommunityMember, removeCommunitySettingRelation, requestPrivateCommunityJoin, respondFriendRequest, restoreOwnCommunityPost, saveCommunityAbout, saveCommunityAnnouncement, saveCommunityPreferences, searchCommunityPeople, sendDirectMessage, setCloseFriend, setCommunityCommentFeature, setCommunityCommentLike, setCommunityMemberMute, setCommunityPostInteraction, setCommunityUserBlock, toggleCommunityMessageReaction, updateCommunityComment, updateCommunityMessage, updateCommunityRule, type CommunityFeedCursor, type CommunityFeedMode, type CommunitySettingsSection } from '@/features/community/api/communityApi'
 import type { CommunityComment, CommunityManagedPost, CommunityPerson, DirectConversation, DirectMessage } from '@/features/community/types'
 import { supabase } from '@/lib/supabase'
 import { recordCommunityPostShare, recordCommunityPostView, softDeleteCommunityPost, updateCommunityPost } from '@/features/community/api/communityApi'
@@ -353,6 +353,16 @@ export function useOpenDirectConversation(userId: string) {
   return useMutation({
     mutationFn: openDirectConversation,
     onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
+    },
+  })
+}
+export function useDeleteDirectConversation(userId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: deleteDirectConversationForCurrentUser,
+    onSuccess: async (_data, conversationId) => {
+      client.removeQueries({ queryKey: ['community-direct-messages', conversationId] })
       await client.invalidateQueries({ queryKey: ['community-direct-conversations', userId] })
     },
   })
