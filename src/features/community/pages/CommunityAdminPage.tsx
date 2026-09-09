@@ -83,7 +83,7 @@ export function CommunityAdminPage() {
   }
   const reviewComment = async (id: string, decision: 'publish' | 'reject') => {
     try { await commentMutation.mutateAsync({ id, decision }); toast.success(decision === 'publish' ? 'Comment restored.' : 'Comment rejected.') }
-    catch (error) { toast.error(error instanceof Error ? error.message : 'Comment review failed') }
+    catch (error) { toast.error(error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Comment review failed') }
   }
   const resolveReport = async (id: string, action: 'dismiss' | 'resolve' | 'hide') => {
     try { await reportMutation.mutateAsync({ id, action }); toast.success(action === 'hide' ? 'Content hidden and report resolved' : action === 'dismiss' ? 'Report dismissed' : 'Report resolved') }
