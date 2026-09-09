@@ -132,6 +132,7 @@ export async function reviewCommunityComment(id: string, decision: 'publish' | '
   const { error } = await supabase.rpc('community_review_comment', {
     target_comment_id: id,
     decision: decision === 'reject' ? 'remove' : decision,
+    review_reason: decision === 'reject' ? 'Rejected by administrator' : 'Approved by administrator',
   })
   if (error) throw error
 }
