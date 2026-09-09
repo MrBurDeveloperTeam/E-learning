@@ -7,7 +7,14 @@ import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/lib/supabase'
 
 type VoiceMember = { userId: string; name: string; muted: boolean; joinedAt: string }
-type VoiceSignal = { from: string; to: string; kind: 'ready' | 'offer' | 'answer' | 'ice'; payload?: RTCSessionDescriptionInit | RTCIceCandidateInit }
+type VoiceSignalKind = 'ready' | 'offer' | 'answer' | 'ice' | 'mute' | 'leave'
+type VoiceSignal = { to: string | null; kind: VoiceSignalKind; payload?: RTCSessionDescriptionInit | RTCIceCandidateInit }
+type VoiceSignalRow = {
+  sender_id: string
+  recipient_id: string | null
+  signal_kind: VoiceSignalKind
+  payload: { data?: RTCSessionDescriptionInit | RTCIceCandidateInit; member?: VoiceMember }
+}
 
 const MAX_VOICE_MEMBERS = 4
 const MAX_CALL_MS = 60 * 60 * 1000
@@ -24,18 +31,34 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const peersRef = useRef(new Map<string, RTCPeerConnection>())
+  const pendingCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>())
   const joinedRef = useRef(false)
   const reservedRef = useRef(false)
   const heartbeatRef = useRef<number | null>(null)
   const callTimeoutRef = useRef<number | null>(null)
 
-  const sendSignal = async (signal: Omit<VoiceSignal, 'from'>) => {
-    await channelRef.current?.send({ type: 'broadcast', event: 'voice-signal', payload: { ...signal, from: userId } satisfies VoiceSignal })
+  const sendSignal = async (signal: VoiceSignal, memberMuted = muted) => {
+    const { error } = await supabase.rpc('community_send_voice_signal', {
+      input_community_id: communityId,
+      input_recipient_id: signal.to,
+      input_signal_kind: signal.kind,
+      input_payload: {
+        data: signal.payload ?? null,
+        member: { userId, name: userName, muted: memberMuted, joinedAt: new Date().toISOString() },
+      },
+    })
+    if (error) throw error
   }
+
+  const upsertMember = (member: VoiceMember) => setMembers((current) => {
+    const withoutMember = current.filter((entry) => entry.userId !== member.userId)
+    return [...withoutMember, member]
+  })
 
   const closePeer = (peerId: string) => {
     peersRef.current.get(peerId)?.close()
     peersRef.current.delete(peerId)
+    pendingCandidatesRef.current.delete(peerId)
     setRemoteStreams((current) => { const next = { ...current }; delete next[peerId]; return next })
   }
 
@@ -44,11 +67,19 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
     if (existing) return existing
     const peer = new RTCPeerConnection(rtcConfiguration)
     streamRef.current?.getTracks().forEach((track) => peer.addTrack(track, streamRef.current!))
-    peer.onicecandidate = (event) => { if (event.candidate) void sendSignal({ to: peerId, kind: 'ice', payload: event.candidate.toJSON() }) }
+    peer.onicecandidate = (event) => {
+      if (event.candidate) void sendSignal({ to: peerId, kind: 'ice', payload: event.candidate.toJSON() }).catch(() => closePeer(peerId))
+    }
     peer.ontrack = (event) => setRemoteStreams((current) => ({ ...current, [peerId]: event.streams[0] ?? new MediaStream([event.track]) }))
     peer.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(peer.connectionState)) closePeer(peerId) }
     peersRef.current.set(peerId, peer)
     return peer
+  }
+
+  const flushPendingCandidates = async (peerId: string, peer: RTCPeerConnection) => {
+    const candidates = pendingCandidatesRef.current.get(peerId) ?? []
+    pendingCandidatesRef.current.delete(peerId)
+    for (const candidate of candidates) await peer.addIceCandidate(candidate)
   }
 
   const makeOffer = async (peerId: string) => {
@@ -65,16 +96,18 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
     if (callTimeoutRef.current) window.clearTimeout(callTimeoutRef.current)
     heartbeatRef.current = null
     callTimeoutRef.current = null
-    channelRef.current?.untrack()
     if (channelRef.current) void supabase.removeChannel(channelRef.current)
     channelRef.current = null
     peersRef.current.forEach((peer) => peer.close())
     peersRef.current.clear()
+    pendingCandidatesRef.current.clear()
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
     if (reservedRef.current) {
       reservedRef.current = false
-      void supabase.rpc('community_leave_voice_room', { input_community_id: communityId })
+      void sendSignal({ to: null, kind: 'leave' })
+        .catch(() => undefined)
+        .then(() => supabase.rpc('community_leave_voice_room', { input_community_id: communityId }))
     }
     setRemoteStreams({})
     setMembers([])
@@ -98,41 +131,57 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
       reservedRef.current = true
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Voice chat is not supported by this browser.')
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !sessionData.session?.access_token) throw sessionError ?? new Error('Your session expired. Please sign in again.')
-      // Send the current Auth JWT through the Supabase-managed Realtime client
-      // before joining this private channel. This keeps token refresh and
-      // private-channel authorization on the supported client path.
-      await supabase.realtime.setAuth(sessionData.session.access_token)
-      const channel = supabase.channel(voiceTopic, { config: { private: true, presence: { key: userId }, broadcast: { self: false } } })
+      const channel = supabase.channel(voiceTopic)
       channelRef.current = channel
-      channel.on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<VoiceMember>()
-        const next = Object.values(state).flat().map((entry) => ({ userId: entry.userId, name: entry.name, muted: entry.muted, joinedAt: entry.joinedAt }))
-        setMembers(next)
-        const active = new Set(next.map((member) => member.userId))
-        peersRef.current.forEach((_peer, id) => { if (!active.has(id)) closePeer(id) })
-      })
-      channel.on('broadcast', { event: 'voice-signal' }, async ({ payload }) => {
-        const signal = payload as VoiceSignal
-        if (!joinedRef.current || (signal.to !== userId && signal.to !== '*') || signal.from === userId) return
+      channel.on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'community_voice_signals',
+        filter: `community_id=eq.${communityId}`,
+      }, async (change) => {
+        const signal = change.new as VoiceSignalRow
+        if (!joinedRef.current || signal.sender_id === userId) return
+        if (signal.recipient_id && signal.recipient_id !== userId) return
+        const member = signal.payload.member
+        if (signal.signal_kind === 'leave') {
+          closePeer(signal.sender_id)
+          setMembers((current) => current.filter((entry) => entry.userId !== signal.sender_id))
+          return
+        }
+        if (member) upsertMember(member)
         try {
-          if (signal.kind === 'ready') { if (userId.localeCompare(signal.from) < 0) await makeOffer(signal.from); return }
-          const peer = ensurePeer(signal.from)
-          if (signal.kind === 'offer') {
-            await peer.setRemoteDescription(signal.payload as RTCSessionDescriptionInit)
+          if (signal.signal_kind === 'ready') {
+            if (!signal.recipient_id) await sendSignal({ to: signal.sender_id, kind: 'ready' })
+            if (userId.localeCompare(signal.sender_id) < 0) await makeOffer(signal.sender_id)
+            return
+          }
+          if (signal.signal_kind === 'mute') return
+          const peer = ensurePeer(signal.sender_id)
+          if (signal.signal_kind === 'offer') {
+            await peer.setRemoteDescription(signal.payload.data as RTCSessionDescriptionInit)
+            await flushPendingCandidates(signal.sender_id, peer)
             const answer = await peer.createAnswer(); await peer.setLocalDescription(answer)
-            await sendSignal({ to: signal.from, kind: 'answer', payload: answer })
-          } else if (signal.kind === 'answer') await peer.setRemoteDescription(signal.payload as RTCSessionDescriptionInit)
-          else if (signal.kind === 'ice' && signal.payload) await peer.addIceCandidate(signal.payload as RTCIceCandidateInit)
-        } catch { closePeer(signal.from) }
+            await sendSignal({ to: signal.sender_id, kind: 'answer', payload: answer })
+          } else if (signal.signal_kind === 'answer') {
+            await peer.setRemoteDescription(signal.payload.data as RTCSessionDescriptionInit)
+            await flushPendingCandidates(signal.sender_id, peer)
+          } else if (signal.signal_kind === 'ice' && signal.payload.data) {
+            const candidate = signal.payload.data as RTCIceCandidateInit
+            if (peer.remoteDescription) await peer.addIceCandidate(candidate)
+            else pendingCandidatesRef.current.set(signal.sender_id, [...(pendingCandidatesRef.current.get(signal.sender_id) ?? []), candidate])
+          }
+        } catch { closePeer(signal.sender_id) }
       })
-      await new Promise<void>((resolve, reject) => channel.subscribe(async (status, connectionError) => {
+      await new Promise<void>((resolve, reject) => channel.subscribe((status, connectionError) => {
         if (status === 'SUBSCRIBED') {
-          joinedRef.current = true
-          await channel.track({ userId, name: userName, muted: false, joinedAt: new Date().toISOString() })
-          await channel.send({ type: 'broadcast', event: 'voice-signal', payload: { from: userId, to: '*', kind: 'ready' } })
-          resolve()
+          void (async () => {
+            try {
+              joinedRef.current = true
+              upsertMember({ userId, name: userName, muted: false, joinedAt: new Date().toISOString() })
+              await sendSignal({ to: null, kind: 'ready' })
+              resolve()
+            } catch (error) { reject(error) }
+          })()
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(connectionError?.message || `Could not connect to the secure voice room (${status.toLowerCase().replace('_', ' ')}).`))
       }))
       setJoined(true)
@@ -159,7 +208,7 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
     const next = !muted
     streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next })
     setMuted(next)
-    await channelRef.current?.track({ userId, name: userName, muted: next, joinedAt: members.find((member) => member.userId === userId)?.joinedAt ?? new Date().toISOString() })
+    await sendSignal({ to: null, kind: 'mute' }, next)
   }
 
   return <div className="rounded-2xl border bg-card p-5">
