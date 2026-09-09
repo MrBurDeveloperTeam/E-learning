@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileText, Loader2, MessageCircleMore, MoreHorizontal, Paperclip, Pencil, Reply, Send, SmilePlus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
   const [sendError,setSendError]=useState('')
   const [failedNonce,setFailedNonce]=useState<string|null>(null)
   const [online,setOnline]=useState(()=>navigator.onLine)
+  const messagesEndRef=useRef<HTMLDivElement|null>(null)
   const people=useCommunityPeopleSearch(userId,peopleSearch)
   const following=useCommunitySettings(userId,'following')
   const openConversation=useOpenDirectConversation(userId)
@@ -55,6 +56,14 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
     if (!failedBody) return rows
     return [...rows, { id: failedNonce, conversation_id: selectedId, sender_id: userId, body: failedBody, created_at: new Date().toISOString(), edited_at: null, status: 'sent' as const, reply_to_message_id: send.variables?.replyToMessageId ?? null, reply_to: null, reactions: [], attachments: [], delivery_status: 'failed' as const }]
   }, [failedNonce, messages.data, selectedId, send.isError, send.variables, userId])
+
+  useEffect(() => {
+    if (!selectedId || messages.isLoading) return
+    const frame = window.requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [displayedMessages.length, messages.isLoading, selectedId])
 
   useEffect(() => {
     if (selected && draftRecipient?.user_id === selected.other_user.user_id) {
@@ -186,6 +195,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
               </div>
             </div>
           ))}
+          {selected&&<div ref={messagesEndRef} aria-hidden="true"/>}
         </div>
         {!online&&<div className="border-t border-warning/30 bg-warning/10 px-4 py-2 text-xs text-foreground" role="status">You are offline. Messages stay in the composer until you reconnect.</div>}
         {sendError&&<div className="flex items-center gap-3 border-t border-destructive/25 bg-destructive/5 px-4 py-2 text-xs text-destructive" role="alert"><span className="min-w-0 flex-1">{sendError}</span><Button type="button" size="sm" variant="outline" disabled={send.isPending||!online} onClick={()=>void submit()}>Retry</Button></div>}
