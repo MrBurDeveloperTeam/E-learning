@@ -71,12 +71,16 @@ export function CommunityComments({
   postAuthorId,
   expanded = false,
   onRequestExpand,
+  readOnly = false,
+  commentsDisabledReason,
 }: {
   postId: string;
   userId?: string;
   postAuthorId?: string;
   expanded?: boolean;
   onRequestExpand?: () => void;
+  readOnly?: boolean;
+  commentsDisabledReason?: string;
 }) {
   const [search, setSearch] = useState(""),
     [searchInput, setSearchInput] = useState("");
@@ -90,6 +94,8 @@ export function CommunityComments({
   const [body, setBody] = useState(""),
     [files, setFiles] = useState<File[]>([]),
     [replying, setReplying] = useState<CommunityComment | null>(null);
+  const [activeMentionIndex, setActiveMentionIndex] = useState(0);
+  const [selectedMentions, setSelectedMentions] = useState<string[]>([]);
   const replyComposerRef = useRef<HTMLFormElement>(null);
   const [editing, setEditing] = useState<CommunityComment | null>(null),
     [editBody, setEditBody] = useState(""),
@@ -102,6 +108,63 @@ export function CommunityComments({
     [warnConfirmedBody, setWarnConfirmedBody] = useState<string | null>(null);
   const mentionQuery = mentionTail(body),
     mentions = useCommunityMentionUsers(mentionQuery);
+
+  const chooseMention = (username: string | null) => {
+    if (!username) return;
+    setBody((current) =>
+      current.replace(/@([a-zA-Z0-9_.-]*)$/, `@${username} `),
+    );
+    setSelectedMentions((current) => current.includes(username) ? current : [...current, username]);
+    setActiveMentionIndex(0);
+  };
+
+  const handleMentionKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const choices = mentions.data ?? [];
+    if (!mentionQuery || choices.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveMentionIndex((current) => (current + 1) % choices.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveMentionIndex((current) => (current - 1 + choices.length) % choices.length);
+    } else if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      chooseMention(choices[activeMentionIndex]?.username);
+    } else if (event.key === "Escape") {
+      setBody((current) => current.replace(/@([a-zA-Z0-9_.-]*)$/, ""));
+    }
+  };
+
+  const mentionSuggestions = mentionQuery ? (
+    <div className="overflow-hidden rounded-lg border bg-popover shadow-md" role="listbox" aria-label="Mention a Community member">
+      {mentions.isLoading && <p className="px-3 py-2 text-xs text-muted-foreground">Finding members…</p>}
+      {mentions.isError && <p className="px-3 py-2 text-xs text-destructive">Member search is unavailable. Try again.</p>}
+      {!mentions.isLoading && !mentions.isError && mentions.data?.length === 0 && (
+        <p className="px-3 py-2 text-xs text-muted-foreground">No member matches “@{mentionQuery}”.</p>
+      )}
+      {mentions.data?.map((person, index) => {
+        const displayName = person.full_name || person.name || person.username;
+        return (
+          <button
+            key={person.user_id}
+            type="button"
+            role="option"
+            aria-selected={index === activeMentionIndex}
+            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent ${index === activeMentionIndex ? "bg-accent" : ""}`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => chooseMention(person.username)}
+          >
+            <UserAvatar name={displayName ?? "Community member"} avatarUrl={person.avatar_url} size={30} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{displayName}</span>
+              <span className="block truncate text-xs text-muted-foreground">@{person.username}</span>
+            </span>
+          </button>
+        );
+      })}
+      <p className="border-t px-3 py-1.5 text-[11px] text-muted-foreground">Use ↑ ↓ and Enter to select.</p>
+    </div>
+  ) : null;
 
   const comments = useMemo(() => {
     const rows = [...(query.data ?? [])].filter((comment) => expanded || comment.status === "visible");
@@ -163,14 +226,16 @@ export function CommunityComments({
     }
     setFiles(next);
   };
-  const submit = async () => {
+  const submit = async (confirmWarning = false) => {
     const value = body.trim();
     if (!value) return;
     try {
       const safety = await safetyMutation.mutateAsync(value);
-      if (safety === "warn" && warnConfirmedBody !== value) {
+      if (safety === "block") {
+        throw new Error("This comment contains blocked words or phrases and cannot be published. Please revise it and try again.");
+      }
+      if (safety === "warn" && !confirmWarning) {
         setWarnConfirmedBody(value);
-        toast.warning("Review this language, then submit again to continue.");
         return;
       }
       const result = await createMutation.mutateAsync({
@@ -179,6 +244,7 @@ export function CommunityComments({
         files,
       });
       setBody("");
+      setSelectedMentions([]);
       setFiles([]);
       setReplying(null);
       setWarnConfirmedBody(null);
@@ -196,11 +262,12 @@ export function CommunityComments({
             : "Comment published.",
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Comment could not be submitted.",
-      );
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === "object" && error && "message" in error
+          ? String(error.message)
+          : "Comment could not be submitted.";
+      toast.error(message);
     }
   };
   const saveEdit = async () => {
@@ -387,7 +454,8 @@ export function CommunityComments({
                 )}
               </div>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            {readOnly && <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground"><Heart className="size-4" />{comment.like_count}</div>}
+            <div className={`mt-2 flex flex-wrap items-center gap-1 ${readOnly ? "hidden" : ""}`}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -405,7 +473,7 @@ export function CommunityComments({
                 />
                 {comment.like_count}
               </Button>
-              {userId && (
+              {userId && !commentsDisabledReason && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -453,7 +521,7 @@ export function CommunityComments({
             </div>
           </div>
           <div className="flex shrink-0 flex-col gap-1">
-            {isOwner && editing?.id !== comment.id && (
+            {!readOnly && isOwner && editing?.id !== comment.id && (
               <>
                 <Button
                   variant="ghost"
@@ -476,7 +544,7 @@ export function CommunityComments({
                 </Button>
               </>
             )}
-            {userId && !isOwner && (
+            {!readOnly && userId && !isOwner && (
               <CommunityReportDialog
                 userId={userId}
                 commentId={comment.id}
@@ -485,7 +553,7 @@ export function CommunityComments({
             )}
           </div>
         </article>
-        {replying?.id === comment.id && userId && (
+        {!readOnly && !commentsDisabledReason && replying?.id === comment.id && userId && (
           <form
             ref={replyComposerRef}
             noValidate
@@ -497,7 +565,7 @@ export function CommunityComments({
           >
             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
               <span>Replying to <strong className="font-medium text-foreground">{name}</strong></span>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Cancel reply" onClick={() => { setReplying(null); setBody(""); }}>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Cancel reply" onClick={() => { setReplying(null); setBody(""); setSelectedMentions([]); }}>
                 <X />
               </Button>
             </div>
@@ -512,21 +580,15 @@ export function CommunityComments({
                 setBody(event.target.value);
                 setWarnConfirmedBody(null);
               }}
+              onKeyDown={handleMentionKeyDown}
               maxLength={5000}
               placeholder={`Reply to ${name}…`}
               className="min-h-20 resize-none bg-background"
             />
-            {mentionQuery && mentions.data && mentions.data.length > 0 && (
-              <div className="rounded-lg border bg-popover p-1">
-                {mentions.data.map((person) => (
-                  <Button key={person.user_id} type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setBody((current) => current.replace(/@([a-zA-Z0-9_.-]*)$/, `@${person.username} `))}>
-                    @{person.username} · {person.full_name || person.name}
-                  </Button>
-                ))}
-              </div>
-            )}
+            {mentionSuggestions}
+            {selectedMentions.length > 0 && <div className="flex flex-wrap gap-1" aria-live="polite">{selectedMentions.map((username) => <Badge key={username} variant="secondary">Mention added: @{username}</Badge>)}</div>}
             <div className="flex items-center justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={() => { setReplying(null); setBody(""); }}>Cancel</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => { setReplying(null); setBody(""); setSelectedMentions([]); }}>Cancel</Button>
               <Button type="submit" size="sm" disabled={!body.trim() || createMutation.isPending}>
                 {createMutation.isPending ? "Replying…" : "Reply"}
               </Button>
@@ -560,7 +622,8 @@ export function CommunityComments({
       className="mt-4 border-t border-border/70 pt-4"
       aria-label="Comments"
     >
-      {expanded && !replying && (userId ? (
+      {expanded && commentsDisabledReason && <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950" role="status">{commentsDisabledReason}</div>}
+      {expanded && !readOnly && !commentsDisabledReason && !replying && (userId ? (
         <form
           ref={replyComposerRef}
           noValidate
@@ -576,33 +639,13 @@ export function CommunityComments({
               setBody(e.target.value);
               setWarnConfirmedBody(null);
             }}
+            onKeyDown={handleMentionKeyDown}
             maxLength={5000}
             placeholder="Add a clinical comment… Use @username to mention someone."
             className="min-h-24 resize-none"
           />
-          {mentionQuery && mentions.data && mentions.data.length > 0 && (
-            <div className="rounded-lg border bg-popover p-1">
-              {mentions.data.map((person) => (
-                <Button
-                  key={person.user_id}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() =>
-                    setBody((current) =>
-                      current.replace(
-                        /@([a-zA-Z0-9_.-]*)$/,
-                        `@${person.username} `,
-                      ),
-                    )
-                  }
-                >
-                  @{person.username} · {person.full_name || person.name}
-                </Button>
-              ))}
-            </div>
-          )}
+          {mentionSuggestions}
+          {selectedMentions.length > 0 && <div className="flex flex-wrap gap-1" aria-live="polite">{selectedMentions.map((username) => <Badge key={username} variant="secondary">Mention added: @{username}</Badge>)}</div>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
               <Paperclip className="size-4" />
@@ -700,6 +743,29 @@ export function CommunityComments({
           </Button>
         </div>
       )}
+      <Dialog
+        open={Boolean(warnConfirmedBody)}
+        onOpenChange={(open) => {
+          if (!open && !createMutation.isPending) setWarnConfirmedBody(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish this comment anyway?</DialogTitle>
+            <DialogDescription>
+              This comment may contain language that could be inappropriate or sensitive. Review it before choosing to publish.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" disabled={createMutation.isPending} />}>
+              Edit comment
+            </DialogClose>
+            <Button disabled={createMutation.isPending || body.trim() !== warnConfirmedBody} onClick={() => void submit(true)}>
+              {createMutation.isPending ? "Publishing…" : "Publish anyway"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => {

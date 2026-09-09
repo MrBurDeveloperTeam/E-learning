@@ -1,5 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Globe2, LockKeyhole, Megaphone, UsersRound } from 'lucide-react'
+import { Archive, ArrowLeft, Globe2, LockKeyhole, Megaphone, UsersRound, VolumeX } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,10 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
+import { CommunityManagementDialog } from '@/features/community/components/CommunityManagementDialog'
+import { CommunityJoinRequestsDialog } from '@/features/community/components/CommunityJoinRequestsDialog'
 import { CommunitySpaceSettingsDialog } from '@/features/community/components/CommunitySpaceSettingsDialog'
+import { CommunityVoiceRoom } from '@/features/community/components/CommunityVoiceRoom'
 import { CreateCommunityPostDialog } from '@/features/community/components/CreateCommunityPostDialog'
 import { useCommunityDirectory, useCommunityPosts, useJoinPublicCommunity } from '@/features/community/hooks/useCommunity'
 import { useAuthStore } from '@/store/authStore'
@@ -20,6 +23,10 @@ export function CommunitySpacePage() {
   const postsQuery = useCommunityPosts(user?.id, 'home', '', 'all', 'newest', community?.id ?? '__loading__')
   const posts = postsQuery.data?.pages.flat() ?? []
   const join = useJoinPublicCommunity(user?.id)
+  const isArchived = community?.status === 'archived'
+  const isMuted = Boolean(community?.viewer_muted_until && Date.parse(community.viewer_muted_until) > Date.now())
+  const mutedUntil = isMuted && community?.viewer_muted_until ? new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(community.viewer_muted_until)) : null
+  const muteMessage = isMuted ? `You are muted${mutedUntil ? ` until ${mutedUntil}` : ''} and cannot post or comment.${community?.viewer_mute_reason ? ` Reason: ${community.viewer_mute_reason}` : ''}` : undefined
 
   if (!user) return null
 
@@ -52,14 +59,18 @@ export function CommunitySpacePage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  {community.viewer_is_member ? <CreateCommunityPostDialog userId={user.id} communityId={community.id} communityName={community.name} /> : community.visibility === 'public' ? (
+                  {!isArchived && !isMuted && (community.viewer_is_member ? <CreateCommunityPostDialog userId={user.id} communityId={community.id} communityName={community.name} /> : community.visibility === 'public' ? (
                     <Button disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not join this community.'))}>{join.isPending ? 'Joining…' : 'Join community'}</Button>
-                  ) : null}
-                  <CommunitySpaceSettingsDialog community={community} />
+                  ) : null)}
+                  {!isArchived && community.viewer_membership_role === 'owner' && <CommunityJoinRequestsDialog community={community} userId={user.id} />}
+                  {!isArchived && community.viewer_membership_role === 'owner' ? <CommunityManagementDialog community={community} /> : <CommunitySpaceSettingsDialog community={community} />}
                 </div>
               </div>
             </div>
           </header>
+
+          {isArchived && <div className="border-b border-amber-300/60 bg-amber-50 text-amber-950"><div className="mx-auto flex max-w-[1240px] items-start gap-3 px-4 py-4 sm:px-6"><Archive className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">This Community was deleted by its owner.</p><p className="mt-1 text-sm leading-6 text-amber-900/80">Existing posts and comments remain available for reference. This Community is read-only and no actions can be performed.</p></div></div></div>}
+          {!isArchived && isMuted && <div className="border-b border-red-200 bg-red-50/80 text-red-700"><div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 sm:px-6"><VolumeX className="size-4 shrink-0" /><p className="text-sm font-semibold">You are currently muted.</p><p className="text-xs sm:text-sm">You cannot post or comment{mutedUntil ? ` until ${mutedUntil}` : ''}{community.viewer_mute_reason ? ` · Reason: ${community.viewer_mute_reason}` : ''}.</p></div></div>}
 
           <main className="mx-auto grid max-w-[1240px] gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,760px)_minmax(240px,1fr)]">
             <section aria-labelledby="community-feed-title">
@@ -70,12 +81,13 @@ export function CommunitySpacePage() {
                 {postsQuery.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
                 {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
                 {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && <EmptyState icon={<UsersRound />} title="No posts here yet" description={community.viewer_is_member ? 'Start the first discussion by sharing text, images, or a video.' : 'Join this community to take part in the discussion.'} />}
-                {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user.id} />)}
+                {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user.id} readOnly={isArchived} commentsDisabledReason={muteMessage} />)}
               </div>
               {postsQuery.hasNextPage && <div className="mt-6 flex justify-center"><Button variant="outline" disabled={postsQuery.isFetchingNextPage} onClick={() => void postsQuery.fetchNextPage()}>{postsQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}</Button></div>}
             </section>
 
             <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+              <CommunityVoiceRoom communityId={community.id} userId={user.id} userName={String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? 'Community member')} canJoin={community.visibility === 'public' || community.viewer_is_member || community.viewer_membership_role === 'owner'} disabled={isArchived} />
               <div className="rounded-2xl border bg-card p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold"><UsersRound className="size-4 text-primary" />{community.member_count} {community.member_count === 1 ? 'member' : 'members'}</div>
                 <p className="mt-2 text-xs capitalize text-muted-foreground">{community.visibility} community</p>

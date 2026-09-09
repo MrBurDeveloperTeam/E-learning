@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDirectConversations, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
+import { useCommunityMessageActions, useCommunityMessageReaction, useCommunityPeopleSearch, useCommunitySettings, useDirectMessages, useOpenDirectConversation, useSendDirectMessage } from '@/features/community/hooks/useCommunity'
 import { cn } from '@/lib/utils'
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import type { CommunityPerson, DirectMessage } from '@/features/community/types'
+import type { CommunityPerson, DirectConversation, DirectMessage } from '@/features/community/types'
 
 function getMessageError(error: unknown) {
   if (error instanceof Error && error.message) return error.message
@@ -20,8 +20,7 @@ function getMessageError(error: unknown) {
   return 'Message could not be confirmed. Retry uses the same message ID to prevent duplicates.'
 }
 
-export function DirectMessages({ userId }: { userId: string }) {
-  const conversations = useDirectConversations(userId)
+export function DirectMessages({ userId, conversations, conversationsLoading = false }: { userId: string; conversations?: DirectConversation[]; conversationsLoading?: boolean }) {
   const [selectedId, setSelectedId] = useState<string>()
   const [draftRecipient,setDraftRecipient]=useState<CommunityPerson|null>(null)
   const [body, setBody] = useState('')
@@ -39,12 +38,19 @@ export function DirectMessages({ userId }: { userId: string }) {
 
   useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update)}},[])
 
-  const selected = conversations.data?.find((conversation) => conversation.id === selectedId)
+  const selected = conversations?.find((conversation) => conversation.id === selectedId)
   const activeRecipient=selected?.other_user??draftRecipient
-  const messages = useDirectMessages(selectedId)
+  const messages = useDirectMessages(selectedId, userId)
   const send = useSendDirectMessage(userId, selectedId)
   const messageActions=useCommunityMessageActions(selectedId)
   const reactionAction=useCommunityMessageReaction(selectedId)
+  const displayedMessages = useMemo(() => {
+    const rows = messages.data ?? []
+    if (!failedNonce || !send.isError || rows.some(message => message.id === failedNonce) || !selectedId) return rows
+    const failedBody = send.variables?.body?.trim()
+    if (!failedBody) return rows
+    return [...rows, { id: failedNonce, conversation_id: selectedId, sender_id: userId, body: failedBody, created_at: new Date().toISOString(), edited_at: null, status: 'sent' as const, reply_to_message_id: send.variables?.replyToMessageId ?? null, reply_to: null, reactions: [], delivery_status: 'failed' as const }]
+  }, [failedNonce, messages.data, selectedId, send.isError, send.variables, userId])
 
   useEffect(() => {
     if (selected && draftRecipient?.user_id === selected.other_user.user_id) {
@@ -53,15 +59,15 @@ export function DirectMessages({ userId }: { userId: string }) {
   }, [draftRecipient?.user_id, selected])
 
   const suggestions=useMemo(()=>{
-    const conversationRows=conversations.data??[]
+    const conversationRows=conversations??[]
     const remaining=Math.max(0,15-conversationRows.length)
     if(!remaining)return [] as CommunityPerson[]
     const existing=new Set(conversationRows.map(conversation=>conversation.other_user.user_id))
     return ([...((following.data??[]) as CommunityPerson[])]).filter(person=>!existing.has(person.user_id)).sort(()=>Math.random()-.5).slice(0,remaining)
-  },[conversations.data,following.data])
+  },[conversations,following.data])
 
   function startConversation(person:CommunityPerson){
-    const existing=conversations.data?.find(conversation=>conversation.other_user.user_id===person.user_id)
+    const existing=conversations?.find(conversation=>conversation.other_user.user_id===person.user_id)
     setSelectedId(existing?.id)
     setDraftRecipient(existing?null:person)
     setPeopleSearch('')
@@ -101,13 +107,13 @@ export function DirectMessages({ userId }: { userId: string }) {
     }
   }
 
-  if (conversations.isLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
+  if (conversationsLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
   return (
     <div className="mt-4 grid h-[calc(100%-1rem)] min-h-0 overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col overflow-hidden border-b border-border md:border-b-0 md:border-r">
             <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/>{peopleSearch.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">{people.data?.map(person=><button type="button" key={person.user_id} onClick={()=>startConversation(person)} className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-muted"><UserAvatar name={person.full_name||person.name||'Community member'} avatarUrl={person.avatar_url} size={30}/><span className="truncate text-xs font-medium">{person.full_name||person.name||person.username||'Community member'}</span></button>)}</div>}</div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
-          {(conversations.data??[]).map((conversation) => {
+          {(conversations??[]).map((conversation) => {
             const name = conversation.other_user.full_name || conversation.other_user.name || 'Friend'
             return (
               <button
@@ -120,7 +126,13 @@ export function DirectMessages({ userId }: { userId: string }) {
                 )}
               >
                 <UserAvatar name={name} avatarUrl={conversation.other_user.avatar_url} size={36} />
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">Direct message</p></div>{conversation.unread_count>0&&<span className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{conversation.unread_count}</span>}
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-semibold">{name}</p>
+                    {conversation.unread_count > 0 && <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground" aria-label={`${conversation.unread_count} unread messages`}>{conversation.unread_count > 99 ? '99+' : conversation.unread_count}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Direct message</p>
+                </div>
               </button>
             )
           })}
@@ -137,7 +149,7 @@ export function DirectMessages({ userId }: { userId: string }) {
           <div><p className="text-sm font-semibold">{activeRecipient.full_name || activeRecipient.name}</p><p className="text-xs text-muted-foreground">{selected?'Private conversation':'New conversation'}</p></div>
         </header>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4" aria-live="polite">
-          {!selected?<EmptyState icon={<MessageCircleMore/>} title="Start a conversation" description="Send your first message to begin this conversation."/>:messages.isLoading ? <div className="flex h-full items-center justify-center"><LoadingSpinner /></div> : messages.data?.map((message) => (
+          {!selected?<EmptyState icon={<MessageCircleMore/>} title="Start a conversation" description="Send your first message to begin this conversation."/>:messages.isLoading ? <div className="flex h-full items-center justify-center"><LoadingSpinner /></div> : displayedMessages.map((message) => (
             <div id={`message-${message.id}`} key={message.id} className={cn('flex', message.sender_id === userId ? 'justify-end' : 'justify-start')}>
               <div className="max-w-[82%]">
                 {message.status!=='deleted'&&reactingMessageId===message.id&&<div className="mb-1 flex gap-1 rounded-full border border-border bg-card p-1 shadow-sm">{['👍','❤️','😂','😮','😢','🎉'].map(emoji=><button key={emoji} type="button" className="rounded-full px-1.5 py-0.5 hover:bg-muted" onClick={()=>{const existing=message.reactions.find(reaction=>reaction.emoji===emoji);void reactionAction.mutateAsync({id:message.id,emoji,reacted:Boolean(existing?.viewer_reacted)}).catch(error=>toast.error(getMessageError(error)));setReactingMessageId(null)}}>{emoji}</button>)}</div>}
@@ -146,6 +158,7 @@ export function DirectMessages({ userId }: { userId: string }) {
                   {message.status==='deleted'?'This message was withdrawn.':message.body}{message.status!=='deleted'&&message.edited_at&&<span className="ml-2 text-[10px] opacity-70">edited</span>}{message.status!=='deleted'&&<span className="ml-2 inline-flex gap-1"><button type="button" aria-label="React to message" onClick={()=>setReactingMessageId(current=>current===message.id?null:message.id)}><SmilePlus className="size-3"/></button><button type="button" aria-label="Reply to message" onClick={()=>{setReplyingTo(message);setReactingMessageId(null)}}><Reply className="size-3"/></button>{message.sender_id===userId&&<button type="button" aria-label="Edit message" onClick={()=>{setEditingMessage(message);setEditBody(message.body)}}><Pencil className="size-3"/></button>}<button type="button" aria-label="Delete message" disabled={messageActions.isPending} onClick={()=>setWithdrawingMessage(message)}><Trash2 className="size-3"/></button></span>}
                 </div>
                 {message.status!=='deleted'&&message.reactions.length>0&&<div className={cn('mt-1 flex flex-wrap gap-1',message.sender_id===userId&&'justify-end')}>{message.reactions.map(reaction=><button key={reaction.emoji} type="button" className={cn('rounded-full border px-2 py-0.5 text-xs',reaction.viewer_reacted?'border-primary bg-primary/10':'border-border bg-card')} onClick={()=>void reactionAction.mutateAsync({id:message.id,emoji:reaction.emoji,reacted:reaction.viewer_reacted}).catch(error=>toast.error(getMessageError(error)))}>{reaction.emoji} {reaction.count}</button>)}</div>}
+                {message.sender_id===userId&&message.status!=='deleted'&&<p className={cn('mt-1 text-right text-[10px]',message.delivery_status==='failed'?'text-destructive':'text-muted-foreground')} aria-live="polite">{message.delivery_status==='sending'?'Sending…':message.delivery_status==='failed'?'Failed to send':message.delivery_status==='read'?'Read':'Unread'}</p>}
               </div>
             </div>
           ))}

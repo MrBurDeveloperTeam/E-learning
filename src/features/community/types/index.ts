@@ -28,7 +28,7 @@ export interface CommunityPost {
   published_at: string | null
   created_at: string
   profiles: Pick<Profile, 'user_id' | 'full_name' | 'name' | 'username' | 'avatar_url' | 'is_verified'> | null
-  communities: { name: string; slug: string } | null
+  communities: { name: string; slug: string; moderation_status?: 'active' | 'archived' | 'pending' | 'rejected' | 'hidden' } | null
   viewer_has_liked: boolean
   viewer_has_reposted: boolean
   viewer_has_bookmarked: boolean
@@ -91,6 +91,8 @@ export interface CommunitySummary {
   created_at: string
   viewer_is_member: boolean
   viewer_membership_role: 'owner' | 'member' | null
+  viewer_muted_until: string | null
+  viewer_mute_reason: string | null
 }
 
 export interface DirectConversation {
@@ -117,6 +119,7 @@ export interface DirectMessage {
   reply_to_message_id: string | null
   reply_to: { id: string; sender_id: string; body: string; status: 'sent' | 'edited' | 'deleted' | 'admin_hidden' } | null
   reactions: Array<{ emoji: string; count: number; viewer_reacted: boolean }>
+  delivery_status?: 'sending' | 'sent' | 'read' | 'failed'
 }
 
 export interface CommunityManagedPost {

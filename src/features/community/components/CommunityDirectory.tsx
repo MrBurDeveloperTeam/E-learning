@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+  ArrowLeft,
+  ChevronRight,
   Globe2,
   LockKeyhole,
   Plus,
@@ -44,9 +46,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CommunityConfirmAction } from "@/features/community/components/CommunityConfirmAction";
-import { CommunityAppealDialog } from "@/features/community/components/CommunityAppealDialog";
+import { browseCommunities, fetchCommunityInvitePreview, searchJoinableCommunities, type CommunitySearchResult } from "@/features/community/api/communityApi";
 
-type DirectoryTab = "public" | "joined";
+type DirectoryTab = "public" | "private" | "joined";
+
+function DiscoveryCommunityTile({ community, userId, onView }: { community: CommunitySearchResult; userId: string; onView: (community: CommunitySearchResult) => void }) {
+  const join = useJoinPublicCommunity(userId)
+  return <article className="rounded-2xl border border-border bg-card p-5 shadow-card">
+    <div className="flex items-start gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">{community.visibility === 'private' ? <LockKeyhole className="size-5" /> : <Globe2 className="size-5" />}</div><div className="min-w-0 flex-1"><h3 className="font-semibold">{community.name}</h3><p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{community.description || 'A dental Community for sharing knowledge and discussion.'}</p><div className="mt-4 flex flex-wrap items-center gap-3"><span className="rounded-full bg-muted px-2 py-1 text-xs font-medium capitalize">{community.visibility}</span><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><UsersRound className="size-3.5" />{community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}</span>{community.visibility === 'public' ? <Button size="sm" variant="secondary" className="ml-auto" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>View community</Button> : <Button size="sm" variant="secondary" className="ml-auto" onClick={() => onView(community)}>View</Button>}{community.visibility === 'public' && !community.viewerIsMember && <Button size="sm" disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch(error => toast.error(error instanceof Error ? error.message : 'Could not join this Community.'))}>{join.isPending ? 'Joining…' : 'Join'}</Button>}</div></div></div>
+  </article>
+}
 
 function CommunityTile({
   community,
@@ -130,14 +139,14 @@ function CommunityTile({
             </details>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium capitalize text-muted-foreground">
+              {community.visibility}
+            </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <UsersRound className="size-3.5" /> {community.member_count}{" "}
               {community.member_count === 1 ? "member" : "members"}
             </span>
-            <span className="text-xs capitalize text-muted-foreground">
-              {community.visibility}
-            </span>
-            {community.viewer_is_member ? (
+            {community.status !== "archived" && (community.viewer_is_member ? (
               community.viewer_membership_role !== "owner" ? (
                 <CommunityConfirmAction
                   trigger={
@@ -164,27 +173,19 @@ function CommunityTile({
               >
                 {join.isPending ? "Joining…" : "Join"}
               </Button>
-            ) : null}
-            {community.viewer_is_member && community.status === "active" && (
+            ) : null)}
+            {community.viewer_is_member && (community.status === "active" || community.status === "archived") && (
               <Button size="sm" variant="secondary" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>
-                Open community
+                {community.status === "archived" ? "View history" : "Open community"}
               </Button>
             )}
+            {community.status === "archived" && <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">Deleted · read-only</span>}
             {community.status === "pending_review" && (
               <span className="ml-auto rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700">
                 Pending admin review
               </span>
             )}
-            {community.viewer_membership_role === "owner" &&
-              (community.status === "rejected" ||
-                community.status === "hidden") && (
-                <CommunityAppealDialog
-                  userId={userId}
-                  communityId={community.id}
-                  targetLabel={community.name}
-                />
-              )}
-            {community.owner_id !== userId && (
+            {community.status !== "archived" && community.owner_id !== userId && (
               <CommunityReportDialog
                 userId={userId}
                 communityId={community.id}
@@ -202,6 +203,7 @@ export function CommunityDirectory({ userId }: { userId: string }) {
   const [tab, setTab] = useState<DirectoryTab>("public");
   const directory = useCommunityDirectory(userId);
   const create = useCreateCommunity(userId);
+  const inviteJoin = useJoinPublicCommunity(userId);
   const requestPrivate = useRequestPrivateCommunityJoin();
   const [createOpen, setCreateOpen] = useState(false),
     [name, setName] = useState(""),
@@ -210,51 +212,120 @@ export function CommunityDirectory({ userId }: { userId: string }) {
   const [joinOpen, setJoinOpen] = useState(false),
     [privateSlug, setPrivateSlug] = useState(""),
     [joinMessage, setJoinMessage] = useState("");
+  const [inviteSlugLocked, setInviteSlugLocked] = useState(false);
+  const [inviteCommunityName, setInviteCommunityName] = useState("");
+  const [communitySearch, setCommunitySearch] = useState("");
+  const [communitySearchResults, setCommunitySearchResults] = useState<CommunitySearchResult[]>([]);
+  const [selectedCommunity, setSelectedCommunity] = useState<CommunitySearchResult | null>(null);
+  const [communitySearchLoading, setCommunitySearchLoading] = useState(false);
+  const [communitySearchError, setCommunitySearchError] = useState("");
+  const [browseResults, setBrowseResults] = useState<CommunitySearchResult[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState(false);
   const [directorySearch, setDirectorySearch] = useState("");
   const communities = directory.data ?? [];
-  const visibleCommunities = (
-    tab === "public"
-      ? communities.filter((community) => community.visibility === "public")
-      : communities.filter((community) => community.viewer_is_member)
-  ).filter((community) =>
+  const processedInvite = useRef<string | null>(null);
+  useEffect(() => {
+    if (directory.isLoading || directory.isError) return
+    const invite = new URLSearchParams(window.location.search).get('invite')?.trim().toLowerCase()
+    if (!invite || processedInvite.current === invite) return
+    processedInvite.current = invite
+    const publicCommunity = communities.find(community => community.slug === invite && community.visibility === 'public' && community.status === 'active')
+    if (!publicCommunity) {
+      setPrivateSlug(invite)
+      setInviteSlugLocked(true)
+      setInviteCommunityName('')
+      setJoinOpen(true)
+      void fetchCommunityInvitePreview(invite)
+        .then(preview => setInviteCommunityName(preview.name))
+        .catch(() => setInviteCommunityName('Private Community'))
+      return
+    }
+    if (publicCommunity.viewer_is_member) {
+      window.location.assign(`/community/${encodeURIComponent(publicCommunity.slug)}`)
+      return
+    }
+    void inviteJoin.mutateAsync(publicCommunity.id)
+      .then(() => {
+        toast.success(`Joined ${publicCommunity.name}.`)
+        window.location.assign(`/community/${encodeURIComponent(publicCommunity.slug)}`)
+      })
+      .catch((error: unknown) => {
+        processedInvite.current = null
+        toast.error(error instanceof Error ? error.message : 'Could not join this Community.')
+      })
+  }, [communities, directory.isError, directory.isLoading, inviteJoin])
+  useEffect(() => {
+    if (inviteSlugLocked || !joinOpen || communitySearch.trim().length < 2) {
+      setCommunitySearchResults([])
+      setCommunitySearchError('')
+      return
+    }
+    let active = true
+    const timer = window.setTimeout(() => {
+      setCommunitySearchLoading(true)
+      void searchJoinableCommunities(communitySearch)
+        .then(results => { if (active) setCommunitySearchResults(results) })
+        .catch(() => { if (active) setCommunitySearchError('Communities could not be searched. Please try again.') })
+        .finally(() => { if (active) setCommunitySearchLoading(false) })
+    }, 250)
+    return () => { active = false; window.clearTimeout(timer) }
+  }, [communitySearch, inviteSlugLocked, joinOpen])
+  useEffect(() => {
+    if (tab === 'joined') return
+    let active = true
+    setBrowseLoading(true)
+    setBrowseError(false)
+    void browseCommunities(tab)
+      .then(results => { if (active) setBrowseResults(results) })
+      .catch(() => { if (active) setBrowseError(true) })
+      .finally(() => { if (active) setBrowseLoading(false) })
+    return () => { active = false }
+  }, [tab])
+  const visibleCommunities = communities.filter((community) => community.viewer_is_member).filter((community) =>
     `${community.name} ${community.description ?? ""}`
       .toLowerCase()
       .includes(directorySearch.trim().toLowerCase()),
+  );
+  const visibleBrowseResults = browseResults.filter(community =>
+    `${community.name} ${community.description ?? ''}`.toLowerCase().includes(directorySearch.trim().toLowerCase()),
   );
 
   return (
     <section className="mt-7">
       <div className="mb-4 flex flex-wrap justify-end gap-2">
         <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
-          <DialogTrigger render={<Button variant="outline" />}>
-            <LockKeyhole />
-            Join private
+          <DialogTrigger render={<Button variant="outline" onClick={() => { setInviteSlugLocked(false); setInviteCommunityName(''); setPrivateSlug(''); setJoinMessage(''); setCommunitySearch(''); setSelectedCommunity(null) }} />}>
+            <Search />
+            Find community
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Request to join a private community</DialogTitle>
+              <DialogTitle>{inviteSlugLocked ? 'Request to join a private community' : selectedCommunity ? selectedCommunity.name : 'Find a community'}</DialogTitle>
               <DialogDescription>
-                Enter the community slug shared by its owner. The owner must
-                approve your request.
+                {inviteSlugLocked ? 'This is a private Community. Send a request and wait for the owner to approve it.' : selectedCommunity ? `${selectedCommunity.visibility === 'public' ? 'Public' : 'Private'} Community · ${selectedCommunity.memberCount} ${selectedCommunity.memberCount === 1 ? 'member' : 'members'}` : 'Search by Community name, then view it before joining or requesting access.'}
               </DialogDescription>
             </DialogHeader>
-            <Input
-              value={privateSlug}
-              onChange={(event) => setPrivateSlug(event.target.value)}
-              placeholder="community-slug"
-            />
-            <Textarea
+            {inviteSlugLocked ? <div className="rounded-lg border bg-muted/60 px-3 py-2.5" aria-label="Invited Community"><p className="text-xs text-muted-foreground">Community</p><p className="mt-0.5 font-medium">{inviteCommunityName || 'Loading Community…'}</p></div> : selectedCommunity ? <div className="space-y-4">
+              <Button variant="ghost" size="sm" className="-ml-2" onClick={() => { setSelectedCommunity(null); setJoinMessage('') }}><ArrowLeft />Back to results</Button>
+              <div className="rounded-xl border p-4"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">{selectedCommunity.visibility === 'private' ? <LockKeyhole className="size-5" /> : <Globe2 className="size-5" />}</div><div><p className="font-semibold">{selectedCommunity.name}</p><p className="text-xs capitalize text-muted-foreground">{selectedCommunity.visibility} Community</p></div></div><p className="mt-3 text-sm leading-6 text-muted-foreground">{selectedCommunity.description || 'No description has been provided.'}</p></div>
+            </div> : <div className="space-y-3">
+              <div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={communitySearch} className="pl-9" autoFocus placeholder="Search Community name" onChange={event => { setCommunitySearch(event.target.value); setCommunitySearchError('') }} /></div>
+              <div className="max-h-72 space-y-2 overflow-y-auto">{communitySearchLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : communitySearchError ? <p className="py-6 text-center text-sm text-destructive">{communitySearchError}</p> : communitySearch.trim().length < 2 ? <p className="py-6 text-center text-sm text-muted-foreground">Enter at least 2 characters.</p> : communitySearchResults.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No matching Communities found.</p> : communitySearchResults.map(result => <button key={result.id} type="button" className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-muted" onClick={() => { setSelectedCommunity(result); setPrivateSlug(result.slug) }}><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">{result.visibility === 'private' ? <LockKeyhole className="size-4" /> : <Globe2 className="size-4" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{result.name}</p><p className="text-xs capitalize text-muted-foreground">{result.visibility} · {result.memberCount} {result.memberCount === 1 ? 'member' : 'members'}</p></div><ChevronRight className="size-4 text-muted-foreground" /></button>)}</div>
+            </div>}
+            {inviteSlugLocked && <p className="-mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><LockKeyhole className="size-3.5" />This Community was set by the invitation link and cannot be changed.</p>}
+            {(inviteSlugLocked || selectedCommunity?.visibility === 'private') && <Textarea
               value={joinMessage}
               maxLength={500}
               className="resize-none"
               onChange={(event) => setJoinMessage(event.target.value)}
               placeholder="Introduce yourself (optional)"
-            />
+            />}
             <DialogFooter>
               <DialogClose render={<Button variant="outline" />}>
                 Cancel
               </DialogClose>
-              <Button
+              {(inviteSlugLocked || (selectedCommunity?.visibility === 'private' && !selectedCommunity.viewerIsMember)) && <Button
                 disabled={!privateSlug.trim() || requestPrivate.isPending}
                 onClick={() =>
                   void requestPrivate
@@ -263,6 +334,11 @@ export function CommunityDirectory({ userId }: { userId: string }) {
                       setJoinOpen(false);
                       setPrivateSlug("");
                       setJoinMessage("");
+                      setInviteSlugLocked(false);
+                      setInviteCommunityName("");
+                      const nextUrl = new URL(window.location.href);
+                      nextUrl.searchParams.delete('invite');
+                      window.history.replaceState({}, '', nextUrl);
                       toast.success(
                         "Join request sent to the community owner.",
                       );
@@ -277,7 +353,10 @@ export function CommunityDirectory({ userId }: { userId: string }) {
                 }
               >
                 {requestPrivate.isPending ? "Sending…" : "Send request"}
-              </Button>
+              </Button>}
+              {!inviteSlugLocked && selectedCommunity?.viewerIsMember && <Button render={<Link to="/community/$communitySlug" params={{ communitySlug: selectedCommunity.slug }} />}>Open community</Button>}
+              {!inviteSlugLocked && selectedCommunity?.visibility === 'public' && !selectedCommunity.viewerIsMember && <Button variant="outline" render={<Link to="/community/$communitySlug" params={{ communitySlug: selectedCommunity.slug }} />}>View community</Button>}
+              {!inviteSlugLocked && selectedCommunity?.visibility === 'public' && !selectedCommunity.viewerIsMember && <Button disabled={inviteJoin.isPending} onClick={() => void inviteJoin.mutateAsync(selectedCommunity.id).then(() => { toast.success(`Joined ${selectedCommunity.name}.`); window.location.assign(`/community/${encodeURIComponent(selectedCommunity.slug)}`) }).catch(error => toast.error(error instanceof Error ? error.message : 'Could not join this Community.'))}>{inviteJoin.isPending ? 'Joining…' : 'Join community'}</Button>}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -363,6 +442,7 @@ export function CommunityDirectory({ userId }: { userId: string }) {
         {(
           [
             ["public", "Public"],
+            ["private", "Private"],
             ["joined", "Joined"],
           ] as const
         ).map(([id, label]) => (
@@ -404,39 +484,39 @@ export function CommunityDirectory({ userId }: { userId: string }) {
           )}
       </div>
 
-      {directory.isLoading ? (
+      {directory.isLoading || (tab !== 'joined' && browseLoading) ? (
         <div className="flex min-h-64 items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
-      ) : directory.isError ? (
+      ) : directory.isError || (tab !== 'joined' && browseError) ? (
         <div className="mt-4">
           <RetryCard onRetry={() => void directory.refetch()} />
         </div>
-      ) : visibleCommunities.length === 0 ? (
+      ) : (tab === 'joined' ? visibleCommunities : visibleBrowseResults).length === 0 ? (
         <div className="mt-4 rounded-2xl border border-border bg-card">
           <EmptyState
-            icon={tab === "joined" ? <UsersRound /> : <Globe2 />}
+            icon={tab === "joined" ? <UsersRound /> : tab === 'private' ? <LockKeyhole /> : <Globe2 />}
             title={
               tab === "joined"
                 ? "You have not joined a community yet"
-                : "No public communities yet"
+                : `No ${tab} Communities yet`
             }
             description={
               tab === "joined"
                 ? "Browse Public and join a community to see it here."
-                : "Approved public communities will appear here."
+                : `Active ${tab} Communities will appear here.`
             }
           />
         </div>
       ) : (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {visibleCommunities.map((community) => (
+          {tab === 'joined' ? visibleCommunities.map((community) => (
             <CommunityTile
               key={community.id}
               community={community}
               userId={userId}
             />
-          ))}
+          )) : visibleBrowseResults.map(community => <DiscoveryCommunityTile key={community.id} community={community} userId={userId} onView={result => { setInviteSlugLocked(false); setSelectedCommunity(result); setPrivateSlug(result.slug); setJoinMessage(''); setJoinOpen(true) }} />)}
         </div>
       )}
     </section>

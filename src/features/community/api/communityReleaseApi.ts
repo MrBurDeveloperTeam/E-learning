@@ -13,13 +13,13 @@ const defaultNotificationPreferences: CommunityNotificationPreferences = {
 }
 
 export async function fetchCommunityNotificationPreferences(userId: string) {
-  const { data, error } = await supabase.from(COMMUNITY_TABLES.userSettings).select('notify_post_likes,notify_comments,notify_follows,notify_friend_requests,notify_community_activity,notify_messages').eq('user_id', userId).maybeSingle()
+  const { data, error } = await supabase.from(COMMUNITY_TABLES.userSettings).select('notify_post_likes,notify_replies,notify_mentions,notify_follows,notify_friend_requests,notify_community_updates,notify_moderation_updates,notify_messages').eq('user_id', userId).maybeSingle()
   if (error) throw error
-  return data ? { likes: data.notify_post_likes, replies: data.notify_comments, mentions: data.notify_comments, follows: data.notify_follows, friend_requests: data.notify_friend_requests, community_updates: data.notify_community_activity, moderation_updates: data.notify_community_activity, direct_messages: data.notify_messages } : defaultNotificationPreferences
+  return data ? { likes: data.notify_post_likes, replies: data.notify_replies, mentions: data.notify_mentions, follows: data.notify_follows, friend_requests: data.notify_friend_requests, community_updates: data.notify_community_updates, moderation_updates: data.notify_moderation_updates, direct_messages: data.notify_messages } : defaultNotificationPreferences
 }
 
 export async function saveCommunityNotificationPreferences(userId: string, preferences: CommunityNotificationPreferences) {
-  const { error } = await supabase.from(COMMUNITY_TABLES.userSettings).upsert({ user_id: userId, notify_post_likes: preferences.likes, notify_comments: preferences.replies || preferences.mentions, notify_follows: preferences.follows, notify_friend_requests: preferences.friend_requests, notify_community_activity: preferences.community_updates || preferences.moderation_updates, notify_messages: preferences.direct_messages })
+  const { error } = await supabase.from(COMMUNITY_TABLES.userSettings).upsert({ user_id: userId, notify_post_likes: preferences.likes, notify_replies: preferences.replies, notify_mentions: preferences.mentions, notify_follows: preferences.follows, notify_friend_requests: preferences.friend_requests, notify_community_updates: preferences.community_updates, notify_moderation_updates: preferences.moderation_updates, notify_messages: preferences.direct_messages })
   if (error) throw error
 }
 
@@ -50,16 +50,22 @@ export type CommunityAppeal = {
   created_at: string; reviewed_at: string | null
 }
 
-export async function fetchCommunityAppeals(_userId: string): Promise<CommunityAppeal[]> {
-  throw new CommunityBackendUnavailableError('Community appeals')
+export async function fetchCommunityAppeals(userId: string): Promise<CommunityAppeal[]> {
+  const { data, error } = await supabase.from('community_appeals').select('id,post_id,comment_id,community_id,moderation_action_id,target_label,reason,status,decision_note,created_at,reviewed_at').eq('appellant_id', userId).order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as CommunityAppeal[]
 }
 
-export async function createCommunityAppeal(_input: { userId: string; postId?: string; commentId?: string; communityId?:string;moderationActionId?:string;targetLabel?:string;reason: string }): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community appeals')
+export async function createCommunityAppeal(input: { userId: string; postId?: string; commentId?: string; communityId?:string;moderationActionId?:string;targetLabel?:string;reason: string }): Promise<void> {
+  void input.userId
+  if (!input.communityId) throw new CommunityBackendUnavailableError('This appeal type')
+  const { error } = await supabase.rpc('community_submit_appeal', { target_community_id: input.communityId, appeal_reason: input.reason, appeal_target_label: input.targetLabel ?? null })
+  if (error) throw error
 }
 
-export async function withdrawCommunityAppeal(_id: string): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community appeals')
+export async function withdrawCommunityAppeal(id: string): Promise<void> {
+  const { error } = await supabase.rpc('community_withdraw_appeal', { target_appeal_id: id })
+  if (error) throw error
 }
 
 export async function recordCommunityOperationalEvent(_input: { userId: string; eventName: string; severity?: 'info'|'warning'|'error'; targetType?: string; targetId?: string; metadata?: Record<string, unknown> }) {

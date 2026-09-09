@@ -35,6 +35,7 @@ export function AdminSectionCard({
   children,
   className,
   contentClassName,
+  actionClassName,
 }: {
   title?: string
   description?: string
@@ -42,6 +43,7 @@ export function AdminSectionCard({
   children: ReactNode
   className?: string
   contentClassName?: string
+  actionClassName?: string
 }) {
   return (
     <section
@@ -62,7 +64,7 @@ export function AdminSectionCard({
               </p>
             )}
           </div>
-          {action && <div className="flex items-center gap-2">{action}</div>}
+          {action && <div className={cn('flex items-center gap-2', actionClassName)}>{action}</div>}
         </div>
       )}
       <div className={cn('px-5 py-5 sm:px-6', contentClassName)}>{children}</div>
@@ -160,7 +162,7 @@ export function AdminFilterTabs<T extends string>({
             type="button"
             onClick={() => onChange(option.value)}
             className={cn(
-              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all',
+              'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all',
               active
                 ? 'bg-card text-foreground shadow-[0_10px_30px_rgba(30,51,51,0.08)] ring-1 ring-border/70'
                 : 'text-muted-foreground hover:bg-card/70 hover:text-foreground'
@@ -231,18 +233,21 @@ export function AdminTableShell({
   action,
   children,
   className,
+  actionClassName,
 }: {
   title?: string
   description?: string
   action?: ReactNode
   children: ReactNode
   className?: string
+  actionClassName?: string
 }) {
   return (
     <AdminSectionCard
       title={title}
       description={description}
       action={action}
+      actionClassName={actionClassName}
       className={className}
       contentClassName="p-0"
     >

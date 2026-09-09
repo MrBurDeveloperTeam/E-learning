@@ -38,6 +38,7 @@ export const COMMUNITY_TABLES = {
   messageReactions: 'community_message_reactions',
   notifications: 'community_notifications',
   videoInteractions: 'community_video_interactions',
+  postViews: 'community_post_views',
   topics: 'community_topics',
   postTopics: 'community_post_topics',
   userTopicPreferences: 'community_user_topic_preferences',
@@ -73,6 +74,7 @@ export type DbCommunity = {
   visibility: 'public' | 'private'
   moderation_status: 'pending' | 'active' | 'rejected' | 'hidden' | 'archived'
   avatar_url: string | null
+  announcement?: string | null
   created_at: string
 }
 
@@ -154,11 +156,13 @@ export function mapCommunity(row: DbCommunity, memberCount = 0): CommunitySummar
     status: row.moderation_status === 'pending' ? 'pending_review' : row.moderation_status,
     avatar_url: row.avatar_url,
     member_count: memberCount,
-    announcement: null,
+    announcement: row.announcement ?? null,
     rules: [],
     created_at: row.created_at,
     viewer_is_member: false,
     viewer_membership_role: null,
+    viewer_muted_until: null,
+    viewer_mute_reason: null,
   }
 }
 

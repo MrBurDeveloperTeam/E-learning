@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -52,19 +52,63 @@ export function CommunityPostCard({
   userId,
   autoplayVideos = false,
   showCommunityBadge = false,
+  readOnly = false,
+  commentsDisabledReason,
 }: {
   post: CommunityPost;
   userId?: string;
   autoplayVideos?: boolean;
   showCommunityBadge?: boolean;
+  readOnly?: boolean;
+  commentsDisabledReason?: string;
 }) {
   const [repostOpen, setRepostOpen] = useState(false),
     [repostComment, setRepostComment] = useState("");
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const interaction = useCommunityPostInteraction(userId);
   const actions = useCommunityPostActions(userId);
+  const cardRef = useRef<HTMLElement>(null);
+  const viewRecordedRef = useRef(false);
+  const isReadOnly = readOnly || post.communities?.moderation_status === "archived";
   const authorName =
     post.profiles?.full_name || post.profiles?.name || post.profiles?.username || "Community member";
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || !userId || viewRecordedRef.current) return;
+    let viewTimer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (viewRecordedRef.current) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          if (!viewTimer) {
+            viewTimer = setTimeout(() => {
+              viewRecordedRef.current = true;
+              viewTimer = undefined;
+              actions.mutate(
+                { action: "view", postId: post.id },
+                {
+                  onSuccess: () => observer.disconnect(),
+                  onError: () => {
+                    viewRecordedRef.current = false;
+                  },
+                },
+              );
+            }, 1200);
+          }
+        } else if (viewTimer) {
+          clearTimeout(viewTimer);
+          viewTimer = undefined;
+        }
+      },
+      { threshold: [0.6] },
+    );
+    observer.observe(card);
+    return () => {
+      observer.disconnect();
+      if (viewTimer) clearTimeout(viewTimer);
+    };
+  }, [post.id, userId]);
 
   async function toggle(
     table:
@@ -86,11 +130,12 @@ export function CommunityPostCard({
       });
       toast.success(success);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "The action could not be completed.",
-      );
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === "object" && error && "message" in error
+          ? String(error.message)
+          : "The action could not be completed.";
+      toast.error(message);
     }
   }
   async function share() {
@@ -126,7 +171,7 @@ export function CommunityPostCard({
   }
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+    <article ref={cardRef} className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-card">
       <div className="p-5 sm:p-6">
         {post.friend_activity && post.friend_activity.length > 0 && (
           <p className="mb-4 text-xs font-medium text-primary">
@@ -206,10 +251,10 @@ export function CommunityPostCard({
             postTitle={post.title}
             autoplayVideos={autoplayVideos}
             viewerProgress={post.viewer_progress}
-            onVideoPlay={() =>
+            onVideoPlay={isReadOnly ? undefined : () =>
               void actions.mutateAsync({ action: "view", postId: post.id })
             }
-            onVideoPause={(currentTime, duration) => {
+            onVideoPause={isReadOnly ? undefined : (currentTime, duration) => {
               if (duration)
                 void actions.mutateAsync({
                   action: "view",
@@ -218,7 +263,7 @@ export function CommunityPostCard({
                   progress: currentTime / duration,
                 });
             }}
-            onVideoEnded={(duration) =>
+            onVideoEnded={isReadOnly ? undefined : (duration) =>
               void actions.mutateAsync({
                 action: "view",
                 postId: post.id,
@@ -230,6 +275,12 @@ export function CommunityPostCard({
         )}
 
         <footer className="mt-4 flex items-center gap-1 border-t border-border/70 pt-3">
+          {isReadOnly ? <>
+            <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground"><Heart className="size-4" />{post.like_count}</span>
+            <Button variant="ghost" size="sm" aria-expanded={commentsExpanded} aria-controls={`comments-${post.id}`} onClick={() => setCommentsExpanded(current => !current)}><MessageCircle />{post.comment_count}</Button>
+            <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground"><Repeat2 className="size-4" />{post.repost_count}</span>
+            <span className="ml-auto text-xs font-medium text-muted-foreground">Read-only</span>
+          </> : <>
           <Button
             variant="ghost"
             size="sm"
@@ -335,6 +386,7 @@ export function CommunityPostCard({
               targetName={post.title || "this post"}
             />
           )}
+          </>}
         </footer>
         {(post.title || post.body) && (
           <div className="mt-3 border-b border-border/70 pb-4">
@@ -374,6 +426,8 @@ export function CommunityPostCard({
                 postAuthorId={post.author_id}
                 expanded={commentsExpanded}
                 onRequestExpand={() => setCommentsExpanded(true)}
+                readOnly={isReadOnly}
+                commentsDisabledReason={commentsDisabledReason}
               />
             </Suspense>
         </div>

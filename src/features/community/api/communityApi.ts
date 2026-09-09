@@ -19,15 +19,16 @@ import {
 const PAGE_SIZE = 10
 
 async function findCommunityTopic(topic: CommunityPostTopic) {
-  const slugs = [...new Set([topic, topic.replaceAll('_', '-')])]
+  const normalize = (value: string) => value
+    .trim()
+    .toLocaleLowerCase()
+    .replace('paediatric', 'pediatric')
+    .replace(/[^a-z0-9]+/g, '')
   const result = await supabase
     .from(COMMUNITY_TABLES.topics)
     .select('id,slug')
-    .in('slug', slugs)
-    .limit(1)
-    .maybeSingle()
   if (result.error) throw result.error
-  return result.data
+  return (result.data ?? []).find((row) => normalize(row.slug) === normalize(topic)) ?? null
 }
 
 async function addCommunityVerification<T extends { user_id: string; is_verified?: boolean | null }>(profiles: T[]): Promise<T[]> {
@@ -115,7 +116,7 @@ export async function fetchCommunityPosts(cursor: CommunityFeedCursor | undefine
 
   let query = supabase
     .from(COMMUNITY_TABLES.posts)
-    .select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug)`)
+    .select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug,moderation_status)`)
     .eq('moderation_status', 'visible')
     .order('published_at', { ascending: false })
     .order('id', { ascending: false })
@@ -364,10 +365,19 @@ export async function softDeleteCommunityPost(id:string,authorId:string): Promis
 // Sharing is performed by the Clipboard API. There is no share-event table or
 // RPC in the current production contract, so missing analytics must not block it.
 export async function recordCommunityPostShare(_id:string): Promise<void>{}
-export async function recordCommunityPostView(_postId:string,_watchSeconds=0,_progress=0): Promise<void>{throw new CommunityBackendUnavailableError('Community post view tracking')}
+export async function recordCommunityPostView(postId:string,_watchSeconds=0,_progress=0): Promise<void>{
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in to save your watch history.')
+  const { error } = await supabase.from(COMMUNITY_TABLES.postViews).upsert(
+    { user_id: user.id, post_id: postId, viewed_at: new Date().toISOString() },
+    { onConflict: 'user_id,post_id' },
+  )
+  if (error) throw error
+}
 
 export async function fetchCommunityPost(postId:string,userId?:string){
-  const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug)`).eq('id',postId).single()
+  const{data,error}=await supabase.from(COMMUNITY_TABLES.posts).select(`id,author_id,community_id,post_kind,title,content,moderation_status,published_at,created_at,profiles!community_posts_author_id_fkey(user_id,full_name,name,avatar_url,is_verified),communities(name,slug,moderation_status)`).eq('id',postId).single()
   if(error)throw error
   const post = mapCommunityPost(data as unknown as DbCommunityPost)
   await hydrateCommunityPosts([post], userId)
@@ -473,19 +483,26 @@ export async function checkCommunityCommentSafety(body: string): Promise<'safe' 
   const value=body.trim()
   if(!value)throw new Error('Write something before publishing your comment.')
   if(value.length>5000)throw new Error('Comments must be 5,000 characters or fewer.')
-  return 'safe'
+  const { data, error } = await supabase.rpc('community_check_comment_safety', { input_body: value })
+  if(error)throw error
+  return data as 'safe' | 'warn' | 'review' | 'block'
 }
 
 export async function createCommunityComment(input: { postId: string; authorId: string; body: string; parentCommentId?: string | null; files?: File[] }) {
   const commentId=crypto.randomUUID()
+  const safety = await checkCommunityCommentSafety(input.body)
+  if (safety === 'block') {
+    throw new Error('This comment contains blocked words or phrases and cannot be published. Please revise it and try again.')
+  }
+  const autoHidden = safety === 'review'
   const { error } = await supabase.from(COMMUNITY_TABLES.comments).insert({
     id:commentId,
     post_id: input.postId,
     author_id: input.authorId,
     content: input.body.trim(),
     parent_comment_id: input.parentCommentId ?? null,
-    moderation_status: 'visible',
-    moderation_reason:null,
+    moderation_status: autoHidden ? 'auto_hidden' : 'visible',
+    moderation_reason: autoHidden ? `blocked_word:${safety}` : null,
   })
   if (error) throw error
   const files = input.files ?? []
@@ -515,7 +532,7 @@ export async function createCommunityComment(input: { postId: string; authorId: 
     await supabase.rpc('community_delete_own_comment', { p_comment_id: commentId })
     throw cause
   }
-  return { id:commentId, status:'visible' as CommunityComment['status'] }
+  return { id:commentId, status:(autoHidden ? 'hidden' : 'visible') as CommunityComment['status'] }
 }
 
 export async function updateCommunityComment(commentId: string, authorId: string, body: string) {
@@ -547,8 +564,16 @@ export async function setCommunityUserBlock(blockedUserId: string, userId: strin
 }
 
 export async function fetchCommunityMentionUsers(query: string) {
-  if (query.length < 1) return []
-  const { data, error } = await supabase.from('public_profiles').select('user_id,username,full_name,name,avatar_url').ilike('username', `${query.replaceAll('%', '')}%`).not('username', 'is', null).limit(6)
+  const cleaned = query.trim().replace(/[^a-zA-Z0-9_. -]/g, '')
+  if (cleaned.length < 1) return []
+  const pattern = `%${cleaned}%`
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('user_id,username,full_name,name,avatar_url')
+    .not('username', 'is', null)
+    .or(`username.ilike.${pattern},full_name.ilike.${pattern},name.ilike.${pattern}`)
+    .order('username')
+    .limit(6)
   if (error) throw error
   return data ?? []
 }
@@ -577,60 +602,48 @@ export async function fetchCommunityDirectory(userId: string) {
   const [communitiesResult, membershipsResult, memberCountsResult] = await Promise.all([
     supabase
       .from(COMMUNITY_TABLES.communities)
-      .select('id,owner_id,name,slug,description,visibility,moderation_status,avatar_url,created_at')
-      .or(`moderation_status.eq.active,owner_id.eq.${userId}`)
+      .select('id,owner_id,name,slug,description,visibility,moderation_status,avatar_url,announcement,created_at')
+      .in('moderation_status', ['active', 'archived'])
       .order('created_at', { ascending: false }),
     supabase
       .from(COMMUNITY_TABLES.members)
-      .select('community_id,membership_status')
+      .select('community_id,membership_status,muted_until,mute_reason')
       .eq('user_id', userId)
       .eq('membership_status', 'active'),
-    supabase.from(COMMUNITY_TABLES.members).select('community_id').eq('membership_status', 'active'),
+    supabase.from(COMMUNITY_TABLES.members).select('community_id,user_id').eq('membership_status', 'active'),
   ])
   if (communitiesResult.error) throw communitiesResult.error
   if (membershipsResult.error) throw membershipsResult.error
   if (memberCountsResult.error) throw memberCountsResult.error
 
-  const memberships = new Set((membershipsResult.data ?? []).map((membership) => membership.community_id))
-  const memberCounts = (memberCountsResult.data ?? []).reduce((counts, row) => counts.set(row.community_id, (counts.get(row.community_id) ?? 0) + 1), new Map<string, number>())
-  const isLocalSupabase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/)/.test(import.meta.env.VITE_SUPABASE_URL ?? '')
-  const localAnnouncements = new Map<string, string|null>()
+  const memberships = new Map((membershipsResult.data ?? []).map((membership) => [membership.community_id, membership]))
+  const membersByCommunity = (memberCountsResult.data ?? []).reduce((members, row) => {
+    const users = members.get(row.community_id) ?? new Set<string>()
+    users.add(row.user_id)
+    members.set(row.community_id, users)
+    return members
+  }, new Map<string, Set<string>>())
   const localRules = new Map<string, CommunitySummary['rules']>()
-  if (isLocalSupabase) {
-    const [announcements, rules] = await Promise.all([
-      supabase.from(COMMUNITY_TABLES.communities).select('id,announcement'),
-      supabase.from('community_rules').select('id,community_id,title,description,position').order('position'),
-    ])
-    if (!announcements.error) for (const row of announcements.data ?? []) localAnnouncements.set(row.id, row.announcement)
-    if (!rules.error) for (const row of rules.data ?? []) localRules.set(row.community_id, [...(localRules.get(row.community_id) ?? []), { id: row.id, title: row.title, description: row.description, position: row.position }])
-  }
+  const rules = await supabase.from('community_rules').select('id,community_id,title,description,position').order('position')
+  if (rules.error) throw rules.error
+  for (const row of rules.data ?? []) localRules.set(row.community_id, [...(localRules.get(row.community_id) ?? []), { id: row.id, title: row.title, description: row.description, position: row.position }])
 
   return (communitiesResult.data ?? []).map((row) => {
-    const community = mapCommunity(row as DbCommunity, memberCounts.get(row.id) ?? 0)
-    community.announcement = localAnnouncements.get(row.id) ?? null
+    const memberIds = membersByCommunity.get(row.id) ?? new Set<string>()
+    const community = mapCommunity(row as DbCommunity, memberIds.size + (memberIds.has(row.owner_id) ? 0 : 1))
     community.rules = localRules.get(row.id) ?? []
-    community.viewer_is_member = memberships.has(row.id) || row.owner_id === userId
-    community.viewer_membership_role = row.owner_id === userId ? 'owner' : memberships.has(row.id) ? 'member' : null
+    const membership = memberships.get(row.id)
+    community.viewer_is_member = Boolean(membership) || row.owner_id === userId
+    community.viewer_membership_role = row.owner_id === userId ? 'owner' : membership ? 'member' : null
+    community.viewer_muted_until = membership?.muted_until ?? null
+    community.viewer_mute_reason = membership?.mute_reason ?? null
     return community
   }).sort((a, b) => b.member_count - a.member_count)
 }
 
 export async function joinPublicCommunity(communityId: string, userId: string) {
-  const { data: existing, error: readError } = await supabase
-    .from(COMMUNITY_TABLES.members)
-    .select('community_id,membership_status')
-    .eq('community_id', communityId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (readError) throw readError
-
-  if (existing?.membership_status === 'active') return
-  if (existing) throw new CommunityBackendUnavailableError('Community rejoining')
-  const { error } = await supabase.from(COMMUNITY_TABLES.members).insert({
-    community_id: communityId,
-    user_id: userId,
-    membership_status: 'active',
-  })
+  void userId
+  const { error } = await supabase.rpc('community_join_public', { target_community_id: communityId })
   if (error) throw error
 }
 
@@ -648,21 +661,26 @@ export async function leaveCommunity(communityId: string, _userId: string) {
 }
 
 export async function fetchCommunityManagement(communityId: string) {
-  const [members, requests] = await Promise.all([
-    supabase.from(COMMUNITY_TABLES.members).select('community_id,user_id,membership_status,joined_at').eq('community_id', communityId).eq('membership_status', 'active').order('joined_at'),
+  const [community, members, requests, rules] = await Promise.all([
+    supabase.from(COMMUNITY_TABLES.communities).select('id,owner_id,description,announcement').eq('id', communityId).single(),
+    supabase.from(COMMUNITY_TABLES.members).select('community_id,user_id,membership_status,membership_role,muted_until,mute_reason,joined_at').eq('community_id', communityId).eq('membership_status', 'active').order('joined_at'),
     supabase.from(COMMUNITY_TABLES.joinRequests).select('id,requester_id,request_message,request_status,created_at').eq('community_id', communityId).eq('request_status', 'pending').order('created_at'),
+    supabase.from('community_rules').select('id,community_id,title,description,position').eq('community_id', communityId).order('position'),
   ])
+  if (community.error) throw community.error
   if (members.error) throw members.error
   if (requests.error) throw requests.error
+  if (rules.error) throw rules.error
   const ids = [...new Set([...(members.data ?? []).map(row => row.user_id), ...(requests.data ?? []).map(row => row.requester_id)])]
   const profiles = ids.length ? await supabase.from('public_profiles').select('user_id,full_name,name,avatar_url').in('user_id', ids) : { data: [], error: null }
   if (profiles.error) throw profiles.error
   const names = new Map((profiles.data ?? []).map(profile => [profile.user_id, profile]))
   return {
-    members: (members.data ?? []).map(row => ({ ...row, id: `${row.community_id}:${row.user_id}`, membership_role: 'member', status: row.membership_status, muted_until: null, mute_reason: null, profile: names.get(row.user_id) ?? null })),
+    members: (members.data ?? []).map(row => ({ ...row, id: `${row.community_id}:${row.user_id}`, membership_role: row.user_id === community.data.owner_id ? 'owner' : row.membership_role, status: row.membership_status, profile: names.get(row.user_id) ?? null })),
     requests: (requests.data ?? []).map(row => ({ ...row, message: row.request_message, status: row.request_status, profile: names.get(row.requester_id) ?? null })),
-    announcement: null as string|null,
-    rules: [],
+    description: community.data.description as string|null,
+    announcement: community.data.announcement as string|null,
+    rules: rules.data ?? [],
   }
 }
 
@@ -687,26 +705,61 @@ export async function fetchCommunityMembers(communityId: string) {
 }
 
 export async function decideCommunityJoinRequest(requestId: string, decision: 'approved' | 'rejected', _userId: string) {
-  const { error } = await supabase.rpc('community_decide_join_request', {
+  const { error } = await supabase.rpc('community_review_join_request', {
     target_request_id: requestId,
-    decision: decision === 'approved' ? 'approve' : 'reject',
+    target_decision: decision,
   })
   if (error) throw error
 }
 
-export async function removeCommunityMember(_memberId: string) {
-  throw new CommunityBackendUnavailableError('Community member removal')
+export async function removeCommunityMember(memberId: string) {
+  const [communityId, userId] = memberId.split(':')
+  if (!communityId || !userId) throw new Error('The selected member is invalid.')
+  const result = await supabase.from(COMMUNITY_TABLES.members).delete().eq('community_id', communityId).eq('user_id', userId).select('user_id').single()
+  if (result.error) throw result.error
 }
 
-export async function saveCommunityAnnouncement(_communityId:string,_announcement:string){throw new CommunityBackendUnavailableError('Community announcements')}
-export async function addCommunityRule(_communityId:string,_title:string,_description:string,_position:number){throw new CommunityBackendUnavailableError('Community rules')}
-export async function updateCommunityRule(_ruleId:string,_title:string,_description:string){throw new CommunityBackendUnavailableError('Community rules')}
-export async function moveCommunityRule(_ruleId:string,_direction:'up'|'down'){throw new CommunityBackendUnavailableError('Community rule ordering')}
-export async function deleteCommunityRule(_ruleId:string){throw new CommunityBackendUnavailableError('Community rules')}
-export async function setCommunityMemberMute(_memberId:string,_until:string|null,_reason:string|null){throw new CommunityBackendUnavailableError('Community member mute controls')}
+export async function saveCommunityAbout(communityId:string,description:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({description:description.trim()||null,updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
+export async function archiveCommunity(communityId:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({moderation_status:'archived',updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
+export async function saveCommunityAnnouncement(communityId:string,announcement:string){const result=await supabase.from(COMMUNITY_TABLES.communities).update({announcement:announcement.trim()||null,updated_at:new Date().toISOString()}).eq('id',communityId).select('id').single();if(result.error)throw result.error}
+export async function addCommunityRule(communityId:string,title:string,description:string,position:number){const result=await supabase.from('community_rules').insert({community_id:communityId,title:title.trim(),description:description.trim()||null,position,created_by:(await supabase.auth.getUser()).data.user?.id}).select('id').single();if(result.error)throw result.error}
+export async function updateCommunityRule(ruleId:string,title:string,description:string){const result=await supabase.from('community_rules').update({title:title.trim(),description:description.trim()||null,updated_at:new Date().toISOString()}).eq('id',ruleId).select('id').single();if(result.error)throw result.error}
+export async function moveCommunityRule(ruleId:string,direction:'up'|'down'){
+  const current=await supabase.from('community_rules').select('id,community_id,position').eq('id',ruleId).single();if(current.error)throw current.error
+  const neighbour=await supabase.from('community_rules').select('id,position').eq('community_id',current.data.community_id).order('position',{ascending:direction==='down'}).filter('position',direction==='up'?'lt':'gt',current.data.position).limit(1).maybeSingle();if(neighbour.error)throw neighbour.error;if(!neighbour.data)return
+  const first=await supabase.from('community_rules').update({position:neighbour.data.position,updated_at:new Date().toISOString()}).eq('id',current.data.id);if(first.error)throw first.error
+  const second=await supabase.from('community_rules').update({position:current.data.position,updated_at:new Date().toISOString()}).eq('id',neighbour.data.id);if(second.error)throw second.error
+}
+export async function deleteCommunityRule(ruleId:string){const result=await supabase.from('community_rules').delete().eq('id',ruleId).select('id').single();if(result.error)throw result.error}
+export async function setCommunityMemberMute(memberId:string,until:string|null,reason:string|null){const[communityId,userId]=memberId.split(':');if(!communityId||!userId)throw new Error('The selected member is invalid.');const result=await supabase.from(COMMUNITY_TABLES.members).update({muted_until:until,mute_reason:until?reason?.trim()||null:null,updated_at:new Date().toISOString()}).eq('community_id',communityId).eq('user_id',userId).select('user_id').single();if(result.error)throw result.error}
 
-export async function requestPrivateCommunityJoin(_slug: string, _message: string): Promise<void> {
-  throw new CommunityBackendUnavailableError('Private Community join requests')
+export async function requestPrivateCommunityJoin(slug: string, message: string): Promise<void> {
+  const { error } = await supabase.rpc('community_request_join_by_slug', { target_slug: slug.trim().toLowerCase(), request_message: message.trim() || null })
+  if (error) throw error
+}
+
+export async function fetchCommunityInvitePreview(slug: string): Promise<{ name: string; slug: string; visibility: 'public' | 'private' }> {
+  const { data, error } = await supabase.rpc('community_invite_preview', { target_slug: slug.trim().toLowerCase() })
+  if (error) throw error
+  const preview = Array.isArray(data) ? data[0] : data
+  if (!preview) throw new Error('This Community invitation is unavailable.')
+  return { name: preview.community_name, slug: preview.community_slug, visibility: preview.community_visibility as 'public' | 'private' }
+}
+
+export type CommunitySearchResult = { id: string; name: string; slug: string; description: string | null; visibility: 'public' | 'private'; memberCount: number; viewerIsMember: boolean }
+
+export async function searchJoinableCommunities(searchText: string): Promise<CommunitySearchResult[]> {
+  const query = searchText.trim()
+  if (query.length < 2) return []
+  const { data, error } = await supabase.rpc('community_search_joinable', { search_text: query })
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({ id: row.community_id, name: row.community_name, slug: row.community_slug, description: row.community_description, visibility: row.community_visibility, memberCount: Number(row.member_count ?? 0), viewerIsMember: Boolean(row.viewer_is_member) }))
+}
+
+export async function browseCommunities(visibility: 'public' | 'private'): Promise<CommunitySearchResult[]> {
+  const { data, error } = await supabase.rpc('community_browse', { target_visibility: visibility })
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({ id: row.community_id, name: row.community_name, slug: row.community_slug, description: row.community_description, visibility: row.community_visibility, memberCount: Number(row.member_count ?? 0), viewerIsMember: Boolean(row.viewer_is_member) }))
 }
 
 export async function fetchDirectConversations(userId: string) {
@@ -759,8 +812,12 @@ export async function fetchDirectMessages(conversationId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('Sign in before viewing messages.')
-  const hiddenResult = await supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id)
+  const [hiddenResult, recipientResult] = await Promise.all([
+    supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id),
+    supabase.from(COMMUNITY_TABLES.conversationParticipants).select('last_read_at').eq('conversation_id', conversationId).neq('user_id', user.id).maybeSingle(),
+  ])
   if (hiddenResult.error) throw hiddenResult.error
+  if (recipientResult.error) throw recipientResult.error
   const hiddenIds = new Set((hiddenResult.data ?? []).map((row) => row.message_id))
   const { data, error } = await supabase
     .from(COMMUNITY_TABLES.messages)
@@ -794,6 +851,9 @@ export async function fetchDirectMessages(conversationId: string) {
       body: replyRow.content ?? '',
       status: replyRow.message_status,
     } : null
+    if (message.sender_id === user.id) {
+      message.delivery_status = recipientResult.data?.last_read_at && Date.parse(recipientResult.data.last_read_at) >= Date.parse(message.created_at) ? 'read' : 'sent'
+    }
     return message
   })
 }
@@ -925,12 +985,13 @@ export async function fetchManagedPosts(userId: string, section: 'posts' | 'like
     return posts
   }
 
-  const table = section === 'likes' ? COMMUNITY_TABLES.postLikes : section==='reposts'?COMMUNITY_TABLES.postReposts:section==='bookmarks'?COMMUNITY_TABLES.postBookmarks:COMMUNITY_TABLES.videoInteractions
+  const table = section === 'likes' ? COMMUNITY_TABLES.postLikes : section==='reposts'?COMMUNITY_TABLES.postReposts:section==='bookmarks'?COMMUNITY_TABLES.postBookmarks:COMMUNITY_TABLES.postViews
+  const orderColumn = section === 'history' ? 'viewed_at' : 'created_at'
   const { data: relations, error: relationError } = await supabase
     .from(table)
     .select('post_id')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .order(orderColumn, { ascending: false })
   if (relationError) throw relationError
   const ids = (relations ?? []).map((row) => row.post_id)
   if (ids.length === 0) return [] as CommunityManagedPost[]
@@ -1000,16 +1061,26 @@ export async function searchCommunityPeople(userId:string,search:string){
   if(error)throw error
   const profiles=await addCommunityVerification(data??[])
   if(profiles.length===0)return []
-  const follows=await supabase.from(COMMUNITY_TABLES.follows).select('following_id').eq('follower_id',userId).in('following_id',profiles.map(profile=>profile.user_id))
+  const profileIds=profiles.map(profile=>profile.user_id)
+  const [follows,settings,requests]=await Promise.all([
+    supabase.from(COMMUNITY_TABLES.follows).select('following_id').eq('follower_id',userId).in('following_id',profileIds),
+    supabase.from(COMMUNITY_TABLES.userSettings).select('user_id,profile_visibility').in('user_id',profileIds),
+    supabase.from(COMMUNITY_TABLES.friendships).select('addressee_id').eq('requester_id',userId).eq('friendship_status','pending').in('addressee_id',profileIds),
+  ])
   if(follows.error)throw follows.error
+  if(settings.error)throw settings.error
+  if(requests.error)throw requests.error
   const followed=new Set((follows.data??[]).map(row=>row.following_id))
-  return profiles.map(profile=>({...profile,viewer_is_following:followed.has(profile.user_id)}))
+  const visibility=new Map((settings.data??[]).map(row=>[row.user_id,row.profile_visibility==='private'?'private':'public']))
+  const pending=new Set((requests.data??[]).map(row=>row.addressee_id))
+  return profiles.map(profile=>({...profile,profile_visibility:visibility.get(profile.user_id)??'public',viewer_is_following:followed.has(profile.user_id),viewer_request_pending:pending.has(profile.user_id)}))
 }
 
 export async function followCommunityPerson(userId:string,followingId:string){
   if(userId===followingId)throw new Error('You cannot follow your own profile.')
-  const{error}=await supabase.from(COMMUNITY_TABLES.follows).upsert({follower_id:userId,following_id:followingId},{onConflict:'follower_id,following_id',ignoreDuplicates:true})
+  const{data,error}=await supabase.rpc('community_follow_or_request',{target_user_id:followingId})
   if(error)throw error
+  return data as 'following'|'request_pending'
 }
 
 export async function unfollowCommunityPerson(userId:string,followingId:string){
@@ -1018,8 +1089,9 @@ export async function unfollowCommunityPerson(userId:string,followingId:string){
 }
 
 export type CommunityProfileAccess = {
-  profile_visibility: 'public' | 'followers' | 'friends'
+  profile_visibility: 'public' | 'private'
   viewer_is_following: boolean
+  viewer_request_pending: boolean
   can_view_details: boolean
   follower_count: number
   following_count: number
@@ -1120,7 +1192,7 @@ export async function removeCommunitySettingRelation(section: Exclude<CommunityS
       : section === 'bookmarks'
         ? supabase.from(COMMUNITY_TABLES.postBookmarks).delete().eq('post_id',id).eq('user_id',userId)
       : section === 'history'
-        ? supabase.from(COMMUNITY_TABLES.videoInteractions).delete().eq('post_id',id).eq('user_id',userId)
+        ? supabase.from(COMMUNITY_TABLES.postViews).delete().eq('post_id',id).eq('user_id',userId)
       : section === 'following'
         ? supabase.from(COMMUNITY_TABLES.follows).delete().eq('following_id', id).eq('follower_id', userId)
         : supabase.from(COMMUNITY_TABLES.friendships).delete().eq('id', id)
@@ -1130,5 +1202,5 @@ export async function removeCommunitySettingRelation(section: Exclude<CommunityS
 
 export async function restoreOwnCommunityPost(_id:string): Promise<void>{throw new CommunityBackendUnavailableError('Community post restoration')}
 export type CommunityMessagePermission='everyone'|'following'|'friends'|'nobody'
-export async function fetchCommunityPreferences(userId:string){const{data,error}=await supabase.from(COMMUNITY_TABLES.userSettings).select('allow_friend_requests,message_permission,show_likes_to_friends,show_reposts_to_friends,likes_visibility,reposts_visibility,autoplay_videos').eq('user_id',userId).maybeSingle();if(error)throw error;const permission=data?.message_permission;return data?{allow_friend_requests:data.allow_friend_requests,message_permission:(permission==='followers'?'following':permission==='friends'||permission==='nobody'?permission:'everyone') as CommunityMessagePermission,show_friend_activity:data.show_likes_to_friends||data.show_reposts_to_friends,likes_visibility:(data.likes_visibility==='public'?'public':'private') as 'public'|'private',reposts_visibility:(data.reposts_visibility==='public'?'public':'private') as 'public'|'private',autoplay_videos:data.autoplay_videos}:{allow_friend_requests:true,message_permission:'everyone' as CommunityMessagePermission,show_friend_activity:true,likes_visibility:'private' as const,reposts_visibility:'private' as const,autoplay_videos:true}}
-export async function saveCommunityPreferences(userId:string,values:{allow_friend_requests:boolean;message_permission:CommunityMessagePermission;show_friend_activity:boolean;likes_visibility:'public'|'private';reposts_visibility:'public'|'private';autoplay_videos:boolean}){const databasePermission=values.message_permission==='following'?'followers':values.message_permission;const{error}=await supabase.from(COMMUNITY_TABLES.userSettings).upsert({user_id:userId,allow_friend_requests:values.allow_friend_requests,message_permission:databasePermission,show_likes_to_friends:values.show_friend_activity,show_reposts_to_friends:values.show_friend_activity,likes_visibility:values.likes_visibility,reposts_visibility:values.reposts_visibility,autoplay_videos:values.autoplay_videos});if(error)throw error}
+export async function fetchCommunityPreferences(userId:string){const{data,error}=await supabase.from(COMMUNITY_TABLES.userSettings).select('allow_friend_requests,message_permission,show_likes_to_friends,show_reposts_to_friends,profile_visibility,likes_visibility,reposts_visibility,autoplay_videos').eq('user_id',userId).maybeSingle();if(error)throw error;const permission=data?.message_permission;return data?{allow_friend_requests:data.allow_friend_requests,message_permission:(permission==='followers'?'following':permission==='friends'||permission==='nobody'?permission:'everyone') as CommunityMessagePermission,show_friend_activity:data.show_likes_to_friends||data.show_reposts_to_friends,profile_visibility:(data.profile_visibility==='private'?'private':'public') as 'public'|'private',likes_visibility:(data.likes_visibility==='public'?'public':'private') as 'public'|'private',reposts_visibility:(data.reposts_visibility==='public'?'public':'private') as 'public'|'private',autoplay_videos:data.autoplay_videos}:{allow_friend_requests:true,message_permission:'everyone' as CommunityMessagePermission,show_friend_activity:true,profile_visibility:'public' as const,likes_visibility:'private' as const,reposts_visibility:'private' as const,autoplay_videos:true}}
+export async function saveCommunityPreferences(userId:string,values:{allow_friend_requests:boolean;message_permission:CommunityMessagePermission;show_friend_activity:boolean;profile_visibility:'public'|'private';likes_visibility:'public'|'private';reposts_visibility:'public'|'private';autoplay_videos:boolean}){const databasePermission=values.message_permission==='following'?'followers':values.message_permission;const{error}=await supabase.from(COMMUNITY_TABLES.userSettings).upsert({user_id:userId,allow_friend_requests:values.allow_friend_requests,message_permission:databasePermission,show_likes_to_friends:values.show_friend_activity,show_reposts_to_friends:values.show_friend_activity,profile_visibility:values.profile_visibility,likes_visibility:values.likes_visibility,reposts_visibility:values.reposts_visibility,autoplay_videos:values.autoplay_videos});if(error)throw error}

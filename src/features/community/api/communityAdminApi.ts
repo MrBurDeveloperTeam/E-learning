@@ -72,7 +72,7 @@ export async function fetchCommunityReviewComments() {
   const { data, error } = await supabase
     .from(COMMUNITY_TABLES.comments)
     .select('id,post_id,author_id,content,moderation_status,created_at')
-    .in('moderation_status', ['visible', 'auto_hidden', 'admin_hidden', 'removed'])
+    .eq('moderation_status', 'auto_hidden')
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw error
@@ -91,7 +91,37 @@ export async function reviewCommunityPost(id: string, decision: 'publish' | 'rej
 export async function setCommunityPostPin(_id:string,_enabled:boolean): Promise<void>{throw new CommunityBackendUnavailableError('Community post pinning')}
 
 export interface CommunityAuditAction {id:string;admin_id:string|null;target_user_id:string|null;action_type:string;reason:string|null;metadata:Record<string,unknown>;created_at:string;admin_name:string;target_name:string}
-export async function fetchCommunityAuditActions(): Promise<CommunityAuditAction[]>{const{data,error}=await supabase.rpc('community_get_admin_audit_log',{result_limit:100});if(error)throw error;return ((data??[]) as Array<Record<string,unknown>>).map(row=>({id:String(row.id),admin_id:row.admin_id as string|null,target_user_id:null,action_type:String(row.action_type),reason:row.reason as string|null,metadata:(row.metadata as Record<string,unknown>|null)??{},created_at:String(row.created_at),admin_name:'Administrator',target_name:`${String(row.target_type)}:${String(row.target_id)}`}))}
+export async function fetchCommunityAuditActions(): Promise<CommunityAuditAction[]> {
+  const { data, error } = await supabase.rpc('community_get_admin_audit_log', { result_limit: 100 })
+  if (error) throw error
+
+  const rows = (data ?? []) as Array<Record<string, unknown>>
+  const adminIds = [...new Set(rows.flatMap((row) => typeof row.admin_id === 'string' ? [row.admin_id] : []))]
+  const profiles = adminIds.length
+    ? await supabase.from('public_profiles').select('user_id,username,full_name,name').in('user_id', adminIds)
+    : { data: [], error: null }
+  if (profiles.error) throw profiles.error
+
+  const adminNames = new Map((profiles.data ?? []).map((profile) => [
+    profile.user_id,
+    profile.username ? `@${profile.username}` : profile.full_name || profile.name || 'Unknown administrator',
+  ]))
+
+  return rows.map((row) => {
+    const adminId = typeof row.admin_id === 'string' ? row.admin_id : null
+    return {
+      id: String(row.id),
+      admin_id: adminId,
+      target_user_id: null,
+      action_type: String(row.action_type),
+      reason: row.reason as string | null,
+      metadata: (row.metadata as Record<string, unknown> | null) ?? {},
+      created_at: String(row.created_at),
+      admin_name: adminId ? adminNames.get(adminId) ?? 'Unknown administrator' : 'System',
+      target_name: `${String(row.target_type)}:${String(row.target_id)}`,
+    }
+  })
+}
 
 export async function reviewCommunityGroup(id: string, decision: 'approve' | 'reject') {
   const { error } = await supabase.rpc('community_review_community', { target_community_id: id, decision })

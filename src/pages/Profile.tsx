@@ -1,7 +1,7 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { useProfileImage } from '@/hooks/useProfileImage'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, CheckCircle2, FileText, Heart, LockKeyhole, Repeat2, UserPlus } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -97,19 +97,36 @@ export function Profile() {
   const communityFollowMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Sign in to follow this member.')
-      if (communityAccessQuery.data?.viewer_is_following) await unfollowCommunityPerson(user.id, userId)
-      else await followCommunityPerson(user.id, userId)
+      if (communityAccessQuery.data?.viewer_is_following) {
+        await unfollowCommunityPerson(user.id, userId)
+        return 'unfollowed' as const
+      }
+      return await followCommunityPerson(user.id, userId)
     },
-    onSuccess: async () => {
+    onSuccess: async (status) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['community-profile-access', user?.id, userId] }),
         queryClient.invalidateQueries({ queryKey: ['community-people-search', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['community-settings', user?.id, 'following'] }),
         queryClient.invalidateQueries({ queryKey: ['community-posts'] }),
       ])
+      if (status === 'request_pending') toast.success('Follow request sent.')
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update follow status.'),
   })
+  useEffect(() => {
+    if (!user?.id) return
+    const refreshRelationships = () => {
+      void queryClient.invalidateQueries({ queryKey: ['community-profile-access', user.id, userId] })
+      void queryClient.invalidateQueries({ queryKey: ['community-friend-requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['community-people-search'] })
+    }
+    const channel = supabase.channel(`profile-relationships:${user.id}:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_follows' }, refreshRelationships)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_friendships' }, refreshRelationships)
+      .subscribe(status => { if (status === 'SUBSCRIBED') refreshRelationships() })
+    return () => { void supabase.removeChannel(channel) }
+  }, [queryClient, user?.id, userId])
   const creatorApplicationQuery = useQuery({
     queryKey: ['creator-application', currentProfile?.user_id],
     queryFn: async () => {
@@ -218,11 +235,7 @@ export function Profile() {
 
               {isOwnProfile ? (
                 <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
-                  <Link to="/settings">
-                    <button className="btn-outline text-sm px-4 py-2 w-full md:w-auto [html.light_&]:text-[#6F9693]">
-                      Edit profile
-                    </button>
-                  </Link>
+                  <Link to="/settings"><button className="btn-outline text-sm px-4 py-2 w-full md:w-auto [html.light_&]:text-[#6F9693]">Edit profile</button></Link>
                   {isVerificationApproved ? (
                     <div className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 w-full md:w-auto">
                       <CheckCircle2 className="h-4 w-4" />
@@ -253,10 +266,10 @@ export function Profile() {
                 <Button
                   type="button"
                   variant={communityAccessQuery.data?.viewer_is_following ? 'outline' : 'default'}
-                  disabled={communityAccessQuery.isLoading || communityFollowMutation.isPending}
+                  disabled={communityAccessQuery.isLoading || communityFollowMutation.isPending || communityAccessQuery.data?.viewer_request_pending}
                   onClick={() => communityFollowMutation.mutate()}
                 >
-                  {communityAccessQuery.data?.viewer_is_following ? <><Check className="size-4" />Following</> : <><UserPlus className="size-4" />Follow</>}
+                  {communityAccessQuery.data?.viewer_is_following ? <><Check className="size-4" />Following</> : communityAccessQuery.data?.viewer_request_pending ? <><Check className="size-4" />Request sent</> : <><UserPlus className="size-4" />{communityAccessQuery.data?.profile_visibility === 'private' ? 'Request to follow' : 'Follow'}</>}
                 </Button>
               ) : null}
             </div>
@@ -330,7 +343,7 @@ export function Profile() {
           <div className="card flex min-h-64 flex-col items-center justify-center p-8 text-center">
             <span className="mb-4 grid size-14 place-items-center rounded-full bg-muted"><LockKeyhole className="size-6 text-muted-foreground" /></span>
             <h2 className="text-lg font-semibold">This account is private</h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">Follow this member to see their Community posts and profile details.</p>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">Send a follow request. You can see this member's Community posts and profile details after they approve it.</p>
           </div>
         ) : (
           <section aria-label="Profile activity">

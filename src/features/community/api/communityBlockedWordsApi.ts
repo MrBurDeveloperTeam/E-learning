@@ -1,4 +1,4 @@
-import { CommunityBackendUnavailableError } from '@/features/community/api/communityContract'
+import { supabase } from '@/lib/supabase'
 
 export interface CommunityBlockedWord {
   id: string
@@ -11,21 +11,30 @@ export interface CommunityBlockedWord {
 }
 
 export async function fetchCommunityBlockedWords(): Promise<CommunityBlockedWord[]> {
-  throw new CommunityBackendUnavailableError('Community banned-term administration')
+  const { data, error } = await supabase.from('community_blocked_words').select('id,term,is_active,created_by,created_at,severity,match_mode').order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as CommunityBlockedWord[]
 }
 
-export async function addCommunityBlockedWord(_input: { term: string; severity: CommunityBlockedWord['severity']; matchMode: CommunityBlockedWord['match_mode'] }, _adminId: string): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community banned-term administration')
+export async function addCommunityBlockedWord(input: { term: string; severity: CommunityBlockedWord['severity']; matchMode: CommunityBlockedWord['match_mode'] }, adminId: string): Promise<void> {
+  const { error } = await supabase.from('community_blocked_words').insert({ term: input.term.trim(), severity: input.severity, match_mode: input.matchMode, created_by: adminId })
+  if (error) {
+    if (error.code === '23505') throw new Error('This word or phrase already exists.')
+    throw error
+  }
 }
 
-export async function updateCommunityBlockedWord(_id: string, _values: Partial<Pick<CommunityBlockedWord, 'severity' | 'match_mode'>>): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community banned-term administration')
+export async function updateCommunityBlockedWord(id: string, values: Partial<Pick<CommunityBlockedWord, 'severity' | 'match_mode'>>): Promise<void> {
+  const { error } = await supabase.from('community_blocked_words').update(values).eq('id', id)
+  if (error) throw error
 }
 
-export async function setCommunityBlockedWordActive(_id: string, _isActive: boolean): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community banned-term administration')
+export async function setCommunityBlockedWordActive(id: string, isActive: boolean): Promise<void> {
+  const { error } = await supabase.from('community_blocked_words').update({ is_active: isActive }).eq('id', id)
+  if (error) throw error
 }
 
-export async function deleteCommunityBlockedWord(_id: string): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community banned-term administration')
+export async function deleteCommunityBlockedWord(id: string): Promise<void> {
+  const { error } = await supabase.from('community_blocked_words').delete().eq('id', id)
+  if (error) throw error
 }

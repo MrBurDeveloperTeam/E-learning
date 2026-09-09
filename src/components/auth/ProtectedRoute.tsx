@@ -23,7 +23,7 @@ export function ProtectedRoute({ children, requiredRole, requireAdmin = false }:
   }
 
   if (!user) {
-    return <Navigate to="/login" search={{ redirect: location.pathname }} />
+    return <Navigate to="/login" search={{ redirect: location.href }} />
   }
 
   if (requireAdmin && !isAdminProfile(profile)) {

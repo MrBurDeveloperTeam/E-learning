@@ -89,7 +89,62 @@ export function CommunitySettings({ userId }: { userId: string }) {
         <div className="mt-6"><EmptyState icon={isPeopleSection ? <UsersRound /> : <Bookmark />} title={`No ${sections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>
       )}
 
-      {showsActivity && !query.isLoading && !query.isError && !isPeopleSection && (
+      {(section === 'history' || section === 'bookmarks' || section === 'deleted') && !query.isLoading && !query.isError && items.length > 0 && (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {(items as CommunityManagedPost[]).map((post) => (
+            <article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card shadow-card">
+              <Link
+                to="/community/post/$postId"
+                params={{postId:post.id}}
+                aria-label={`Open ${post.title || 'post'}`}
+                className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                {post.preview_media?.media_type === 'image' ? (
+                  <img src={post.preview_media.public_url} alt={post.preview_media.alt_text || ''} loading="lazy" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" />
+                ) : post.preview_media?.media_type === 'video' ? (
+                  <video src={post.preview_media.public_url} muted playsInline preload="metadata" aria-label={post.preview_media.alt_text || 'Video post preview'} className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" />
+                ) : (
+                  <span className="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted px-5 text-center text-muted-foreground">
+                    <FileText className="size-8" />
+                    <span className="line-clamp-3 text-sm font-medium text-foreground">{post.title || post.body || 'Text post'}</span>
+                  </span>
+                )}
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/55 via-black/10 to-transparent p-3 pt-12 text-white">
+                  <span className="line-clamp-1 min-w-0 text-xs font-medium">{post.title || 'Untitled post'}</span>
+                  {post.preview_media?.media_type === 'video' && <span className="shrink-0 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium">Video</span>}
+                </span>
+              </Link>
+              {section === 'deleted' ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={restoreMutation.isPending}
+                  aria-label={`Restore ${post.title || 'post'}`}
+                  className="absolute right-2 top-2 z-10 bg-card/90 shadow-sm backdrop-blur hover:bg-card"
+                  onClick={() => void restoreMutation.mutateAsync(post.id)}
+                >
+                  <RotateCcw className="size-4" />
+                  Restore
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="secondary"
+                  aria-label={`Remove ${post.title || 'post'} from ${section === 'history' ? 'watch history' : 'saved posts'}`}
+                  className="absolute right-2 top-2 z-10 cursor-pointer bg-card/90 text-destructive shadow-sm backdrop-blur hover:bg-card hover:text-destructive"
+                  onClick={() => setPendingRemoval({ id: post.id, label: post.title || 'this post' })}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {showsActivity && section !== 'history' && section !== 'bookmarks' && section !== 'deleted' && !query.isLoading && !query.isError && !isPeopleSection && (
         <div className="mt-5 space-y-3">
           {(items as CommunityManagedPost[]).map((post) => (
             <article key={post.id} className="rounded-2xl border border-border bg-card p-5">
@@ -105,7 +160,9 @@ export function CommunitySettings({ userId }: { userId: string }) {
                   <p className="mt-3 text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p>
                   {section==='posts'&&<p className="mt-2 max-w-xl rounded-lg bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">{postStatusHelp[post.status]}</p>}
                 </div>
-                {section === 'deleted'?<Button size="sm" variant="outline" disabled={restoreMutation.isPending} onClick={()=>void restoreMutation.mutateAsync(post.id)}>Restore</Button>:section === 'posts' && (post.status==='hidden'||post.status==='rejected')?<CommunityAppealDialog userId={userId} postId={post.id}/>:section !== 'posts' && <Button size="sm" variant="outline" onClick={() => setPendingRemoval({ id: post.id, label: post.title || 'this post' })}>Remove</Button>}
+                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  {section === 'posts' && (post.status==='hidden'||post.status==='rejected')?<CommunityAppealDialog userId={userId} postId={post.id}/>:section !== 'posts' && <Button size="sm" variant="outline" onClick={() => setPendingRemoval({ id: post.id, label: post.title || 'this post' })}>Remove</Button>}
+                </div>
               </div>
             </article>
           ))}

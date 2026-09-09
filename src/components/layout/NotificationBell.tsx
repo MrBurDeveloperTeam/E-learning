@@ -28,7 +28,30 @@ function getNotificationMessage(notification: NotificationWithActor) {
     case 'community_mention':
       return `${actorName} mentioned you in Community`
     case 'community_report_resolved':
-      return 'Your Community report was reviewed'
+      return notification.title ?? 'Your Community report was reviewed'
+    case 'community_appeal_decided':
+      return notification.title ?? 'Your Community appeal was reviewed'
+    case 'community_post_like':
+      return `${actorName} liked your Community post`
+    case 'community_comment':
+      return `${actorName} commented on your Community post`
+    case 'community_reply':
+      return `${actorName} replied to your Community comment`
+    case 'community_friend_request':
+      return `${actorName} sent you a friend request`
+    case 'community_friend_accepted':
+      return `${actorName} accepted your friend request`
+    case 'community_join_request':
+      return `${actorName} requested to join your Community`
+    case 'community_join_decision':
+      return notification.title ?? 'Your Community join request was reviewed'
+    case 'community_announcement':
+      return notification.title ?? 'A Community you joined has an update'
+    case 'community_message':
+    case 'community_direct_message':
+      return `${actorName} sent you a message`
+    case 'community_post_review':
+      return notification.title ?? 'Your Community content was reviewed'
     case 'new_video':
       return `${actorName} uploaded a new video`
     default:
@@ -78,7 +101,9 @@ export function NotificationBell() {
   function handleNotificationClick(notification: NotificationWithActor) {
     markRead.mutate(notification)
 
-    if (notification.type === 'new_follower') {
+    if (notification.action_url?.startsWith('/')) {
+      void navigate({ to: notification.action_url })
+    } else if (notification.type === 'new_follower') {
       void navigate({
         to: '/profile/$userId',
         params: {

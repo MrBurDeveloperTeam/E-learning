@@ -30,10 +30,14 @@ export function CommunityMemberManager({ communityId, members }: { communityId: 
   const applyMute = async () => {
     if (!muteMember) return
     const until = new Date(Date.now() + Number(duration) * 60 * 60 * 1000).toISOString()
-    await actions.mutateAsync({ action: 'mute', memberId: muteMember.id, until, reason })
-    toast.success(`Member muted for ${duration === '1' ? '1 hour' : duration === '24' ? '24 hours' : '7 days'}.`)
-    setMuteMember(null)
-    setReason('')
+    try {
+      await actions.mutateAsync({ action: 'mute', memberId: muteMember.id, until, reason })
+      toast.success(`Member muted for ${duration === '1' ? '1 hour' : duration === '24' ? '24 hours' : '7 days'}.`)
+      setMuteMember(null)
+      setReason('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Member could not be muted.')
+    }
   }
 
   return <section>
@@ -50,8 +54,8 @@ export function CommunityMemberManager({ communityId, members }: { communityId: 
             {muted && member.mute_reason && <p className="mt-1 text-xs text-muted-foreground">Reason: {member.mute_reason}</p>}
           </div>
           {member.membership_role === 'member' && <>
-            {muted ? <CommunityConfirmAction trigger={<Button size="icon-sm" variant="ghost" aria-label="Unmute member"><Volume2 /></Button>} title={`Unmute ${name}?`} description="This member can immediately post comments and send messages again." label="Unmute member" onConfirm={() => actions.mutateAsync({ action: 'mute', memberId: member.id, until: null, reason: null }).then(() => toast.success('Member unmuted.'))} /> : <Button size="icon-sm" variant="ghost" aria-label="Mute member" onClick={() => setMuteMember(member)}><VolumeX /></Button>}
-            <CommunityConfirmAction trigger={<Button size="icon-sm" variant="ghost" aria-label="Remove member"><UserMinus /></Button>} title={`Remove ${name}?`} description="The member will lose access to private content and Community group chat." label="Remove member" onConfirm={() => remove.mutateAsync(member.id).then(() => toast.success('Member removed.'))} />
+            {muted ? <CommunityConfirmAction trigger={<Button size="icon-sm" variant="ghost" aria-label="Unmute member"><Volume2 /></Button>} title={`Unmute ${name}?`} description="This member can immediately publish Community posts and comments again." label="Unmute member" onConfirm={() => actions.mutateAsync({ action: 'mute', memberId: member.id, until: null, reason: null }).then(() => toast.success('Member unmuted.')).catch(error => toast.error(error instanceof Error ? error.message : 'Member could not be unmuted.'))} /> : <Button size="icon-sm" variant="ghost" aria-label="Mute member" onClick={() => setMuteMember(member)}><VolumeX /></Button>}
+            <CommunityConfirmAction trigger={<Button size="icon-sm" variant="ghost" aria-label="Remove member"><UserMinus /></Button>} title={`Remove ${name}?`} description="The member will lose access to private content and Community group chat." label="Remove member" onConfirm={() => remove.mutateAsync(member.id).then(() => toast.success('Member removed.')).catch(error => toast.error(error instanceof Error ? error.message : 'Member could not be removed.'))} />
           </>}
         </div>
       })}
