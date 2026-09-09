@@ -14,7 +14,8 @@ const MAX_CALL_MS = 60 * 60 * 1000
 const HEARTBEAT_MS = 30 * 1000
 const rtcConfiguration: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
 
-export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, disabled = false }: { communityId: string; userId: string; userName: string; canJoin: boolean; disabled?: boolean }) {
+export function CommunityVoiceRoom({ communityId, userId, userName, visibility, canJoin, disabled = false }: { communityId: string; userId: string; userName: string; visibility: 'public' | 'private'; canJoin: boolean; disabled?: boolean }) {
+  const voiceTopic = `community-voice-${visibility}:${communityId}`
   const [joined, setJoined] = useState(false)
   const [joining, setJoining] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -111,7 +112,7 @@ export function CommunityVoiceRoom({ communityId, userId, userName, canJoin, dis
       })
       realtimeRef.current = voiceRealtime
       await voiceRealtime.setAuth(sessionData.session.access_token)
-      const channel = voiceRealtime.channel(`community-voice:${communityId}`, { config: { private: true, presence: { key: userId }, broadcast: { self: false } } })
+      const channel = voiceRealtime.channel(voiceTopic, { config: { private: true, presence: { key: userId }, broadcast: { self: false } } })
       channelRef.current = channel
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<VoiceMember>()
