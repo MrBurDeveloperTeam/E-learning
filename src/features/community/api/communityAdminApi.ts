@@ -124,7 +124,11 @@ export async function fetchCommunityAuditActions(): Promise<CommunityAuditAction
 }
 
 export async function reviewCommunityGroup(id: string, decision: 'approve' | 'reject') {
-  const { error } = await supabase.rpc('community_review_community', { target_community_id: id, decision })
+  const { error } = await supabase.rpc('community_review_community', {
+    target_community_id: id,
+    decision,
+    review_reason: null,
+  })
   if (error) throw error
 }
 

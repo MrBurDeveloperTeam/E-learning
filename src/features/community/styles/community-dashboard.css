@@ -55,6 +55,14 @@
   box-shadow: inset 0 1px 2px hsl(var(--foreground) / .025);
 }
 .community-dashboard [data-slot="select-trigger"] { width: 100%; }
+.community-dashboard .community-privacy-settings > div:has([data-slot="select-trigger"]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.community-dashboard .community-privacy-settings > div > div { min-width: 0; }
+.community-dashboard .community-privacy-settings [data-slot="select-trigger"] { min-width: 0; }
 .community-dashboard [data-slot="button"] { border-radius: 11px; transition: background .18s, box-shadow .18s; }
 .community-dashboard [data-slot="button"][data-variant="default"] { box-shadow: 0 3px 10px hsl(var(--primary) / .2); }
 .community-dashboard-main > [aria-live="polite"] { max-width: 920px; margin-inline: auto; }
