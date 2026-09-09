@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { Headphones, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react'
+import { Headphones, Mic, MicOff, PhoneOff, UserMinus, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,14 +8,14 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { supabase } from '@/lib/supabase'
 
 type VoiceMember = { userId: string; name: string; muted: boolean; joinedAt: string; avatarUrl?: string | null }
-type VoiceParticipantRow = { user_id: string; display_name: string; avatar_url: string | null; joined_at: string }
-type VoiceSignalKind = 'ready' | 'offer' | 'answer' | 'ice' | 'mute' | 'leave'
+type VoiceParticipantRow = { user_id: string; display_name: string; avatar_url: string | null; joined_at: string; is_owner_muted: boolean }
+type VoiceSignalKind = 'ready' | 'offer' | 'answer' | 'ice' | 'mute' | 'leave' | 'owner_mute' | 'owner_unmute' | 'owner_remove'
 type VoiceSignal = { to: string | null; kind: VoiceSignalKind; payload?: RTCSessionDescriptionInit | RTCIceCandidateInit }
 type VoiceSignalRow = {
   sender_id: string
   recipient_id: string | null
   signal_kind: VoiceSignalKind
-  payload: { data?: RTCSessionDescriptionInit | RTCIceCandidateInit; member?: VoiceMember }
+  payload: { data?: RTCSessionDescriptionInit | RTCIceCandidateInit; member?: VoiceMember; target_user_id?: string }
 }
 
 const MAX_VOICE_MEMBERS = 4
@@ -24,11 +24,13 @@ const HEARTBEAT_MS = 30 * 1000
 const LOBBY_REFRESH_MS = 15 * 1000
 const rtcConfiguration: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
 
-export function CommunityVoiceRoom({ communityId, userId, userName, visibility, canJoin, disabled = false }: { communityId: string; userId: string; userName: string; visibility: 'public' | 'private'; canJoin: boolean; disabled?: boolean }) {
+export function CommunityVoiceRoom({ communityId, userId, userName, visibility, canJoin, isOwner = false, disabled = false }: { communityId: string; userId: string; userName: string; visibility: 'public' | 'private'; canJoin: boolean; isOwner?: boolean; disabled?: boolean }) {
   const voiceTopic = `community-voice-${visibility}:${communityId}`
   const [joined, setJoined] = useState(false)
   const [joining, setJoining] = useState(false)
   const [muted, setMuted] = useState(false)
+  const [ownerMuted, setOwnerMuted] = useState(false)
+  const [moderatingUserId, setModeratingUserId] = useState<string | null>(null)
   const [members, setMembers] = useState<VoiceMember[]>([])
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({})
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -41,14 +43,14 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
   const callTimeoutRef = useRef<number | null>(null)
 
   const loadVisibleMembers = async () => {
-    const { data, error } = await supabase.rpc('community_list_voice_participants', { input_community_id: communityId })
+    const { data, error } = await supabase.rpc('community_list_voice_participants_v2', { input_community_id: communityId })
     if (error) throw error
     if (!joinedRef.current) {
       setMembers(((data ?? []) as VoiceParticipantRow[]).map((participant) => ({
         userId: participant.user_id,
         name: participant.display_name,
         avatarUrl: participant.avatar_url,
-        muted: false,
+        muted: participant.is_owner_muted,
         joinedAt: participant.joined_at,
       })))
     }
@@ -131,6 +133,34 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
     setJoined(false)
     setJoining(false)
     setMuted(false)
+    setOwnerMuted(false)
+  }
+
+  const moderateMember = async (member: VoiceMember, action: 'mute' | 'unmute' | 'remove') => {
+    if (!isOwner || member.userId === userId || moderatingUserId) return
+    setModeratingUserId(member.userId)
+    try {
+      const { error } = await supabase.rpc('community_owner_moderate_voice_participant', {
+        input_community_id: communityId,
+        input_user_id: member.userId,
+        input_action: action,
+      })
+      if (error) throw error
+      if (action === 'remove') {
+        closePeer(member.userId)
+        setMembers((current) => current.filter((entry) => entry.userId !== member.userId))
+        toast.success(`${member.name} was removed from the voice room.`)
+      } else {
+        peersRef.current.get(member.userId)?.getReceivers().forEach((receiver) => { if (receiver.track.kind === 'audio') receiver.track.enabled = action !== 'mute' })
+        setMembers((current) => current.map((entry) => entry.userId === member.userId ? { ...entry, muted: action === 'mute' } : entry))
+        toast.success(action === 'mute' ? `${member.name} was muted by the owner.` : `${member.name} may unmute now.`)
+      }
+      if (!joinedRef.current) await loadVisibleMembers()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not manage this voice participant.')
+    } finally {
+      setModeratingUserId(null)
+    }
   }
 
   useEffect(() => {
@@ -174,6 +204,37 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
           setMembers((current) => current.filter((entry) => entry.userId !== signal.sender_id))
           return
         }
+        if (signal.signal_kind === 'owner_mute') {
+          const targetUserId = signal.payload.target_user_id
+          if (targetUserId) {
+            peersRef.current.get(targetUserId)?.getReceivers().forEach((receiver) => { if (receiver.track.kind === 'audio') receiver.track.enabled = false })
+            setMembers((current) => current.map((entry) => entry.userId === targetUserId ? { ...entry, muted: true } : entry))
+          }
+          if (targetUserId === userId) {
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false })
+            setMuted(true)
+            setOwnerMuted(true)
+            toast.warning('The Community owner muted your microphone.')
+          }
+          return
+        }
+        if (signal.signal_kind === 'owner_unmute') {
+          const targetUserId = signal.payload.target_user_id
+          if (targetUserId) {
+            peersRef.current.get(targetUserId)?.getReceivers().forEach((receiver) => { if (receiver.track.kind === 'audio') receiver.track.enabled = true })
+            setMembers((current) => current.map((entry) => entry.userId === targetUserId ? { ...entry, muted: false } : entry))
+          }
+          if (targetUserId === userId) {
+            setOwnerMuted(false)
+            toast.info('The Community owner removed your mute restriction. You may unmute when ready.')
+          }
+          return
+        }
+        if (signal.signal_kind === 'owner_remove') {
+          leave()
+          toast.error('The Community owner removed you from this voice room.')
+          return
+        }
         if (member) upsertMember(member)
         try {
           if (signal.signal_kind === 'ready') {
@@ -212,10 +273,15 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
       }))
       setJoined(true)
       heartbeatRef.current = window.setInterval(() => {
-        void supabase.rpc('community_voice_heartbeat', { input_community_id: communityId }).then(({ data, error }) => {
-          if (error || data !== true) {
+        void supabase.rpc('community_voice_heartbeat_status', { input_community_id: communityId }).then(({ data, error }) => {
+          const status = data as { active?: boolean; owner_muted?: boolean } | null
+          if (error || status?.active !== true) {
             toast.error('Your voice session expired or lost its room reservation.')
             leave()
+          } else if (status.owner_muted && !ownerMuted) {
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false })
+            setMuted(true)
+            setOwnerMuted(true)
           }
         })
       }, HEARTBEAT_MS)
@@ -231,6 +297,10 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
   }
 
   const toggleMute = async () => {
+    if (ownerMuted) {
+      toast.error('The Community owner has muted your microphone.')
+      return
+    }
     const next = !muted
     streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next })
     setMuted(next)
@@ -239,10 +309,23 @@ export function CommunityVoiceRoom({ communityId, userId, userName, visibility, 
 
   return <div className="rounded-2xl border bg-card p-5">
     <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-sm font-semibold"><Volume2 className="size-4 text-primary" />Voice chat</h2>{joined && <Badge variant="secondary">Connected</Badge>}</div>
-    {!joined ? <><p className="mt-2 text-sm leading-6 text-muted-foreground">Peer-to-peer room · up to {MAX_VOICE_MEMBERS} members · 60-minute limit · no recording or sharing.</p>{members.length > 0 && <div className="mt-4 space-y-2"><p className="text-xs font-medium text-muted-foreground">In voice now · {members.length}</p>{members.map((member) => <div key={member.userId} className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"><UserAvatar name={member.name} avatarUrl={member.avatarUrl} size={28} /><span className="min-w-0 flex-1 truncate">{member.name}</span><Volume2 className="size-4 text-emerald-600" /></div>)}</div>}<Button className="mt-4 w-full" disabled={!canJoin || disabled || joining} onClick={() => void join()}><Headphones />{joining ? 'Connecting…' : !canJoin ? 'Join the Community first' : 'Join voice chat'}</Button></> : <>
-      <div className="mt-4 space-y-2">{members.map((member) => <div key={member.userId} className="flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"><UserAvatar name={member.name} avatarUrl={member.avatarUrl} size={28} /><span className="min-w-0 flex-1 truncate">{member.name}{member.userId === userId ? ' (You)' : ''}</span>{member.muted ? <MicOff className="size-4 text-muted-foreground" /> : <Mic className="size-4 text-emerald-600" />}</div>)}</div>
+    {!joined ? <><p className="mt-2 text-sm leading-6 text-muted-foreground">Peer-to-peer room · up to {MAX_VOICE_MEMBERS} members · 60-minute limit · no recording or sharing.</p>{members.length > 0 && <div className="mt-4 space-y-2"><p className="text-xs font-medium text-muted-foreground">In voice now · {members.length}</p>{members.map((member) => <VoiceMemberItem key={member.userId} member={member} currentUserId={userId} isOwner={isOwner} busy={moderatingUserId === member.userId} onModerate={moderateMember} />)}</div>}<Button className="mt-4 w-full" disabled={!canJoin || disabled || joining} onClick={() => void join()}><Headphones />{joining ? 'Connecting…' : !canJoin ? 'Join the Community first' : 'Join voice chat'}</Button></> : <>
+      <div className="mt-4 space-y-2">{members.map((member) => <VoiceMemberItem key={member.userId} member={member} currentUserId={userId} isOwner={isOwner} busy={moderatingUserId === member.userId} onModerate={moderateMember} />)}</div>
       {Object.entries(remoteStreams).map(([peerId, stream]) => <audio key={peerId} autoPlay playsInline ref={(element) => { if (element && element.srcObject !== stream) element.srcObject = stream }} />)}
-      <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" onClick={() => void toggleMute()}>{muted ? <MicOff /> : <Mic />}{muted ? 'Unmute' : 'Mute'}</Button><Button variant="destructive" onClick={leave}><PhoneOff />Leave</Button></div>
+      <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" disabled={ownerMuted} onClick={() => void toggleMute()}>{muted ? <MicOff /> : <Mic />}{ownerMuted ? 'Muted by owner' : muted ? 'Unmute' : 'Mute'}</Button><Button variant="destructive" onClick={leave}><PhoneOff />Leave</Button></div>
     </>}
+  </div>
+}
+
+function VoiceMemberItem({ member, currentUserId, isOwner, busy, onModerate }: { member: VoiceMember; currentUserId: string; isOwner: boolean; busy: boolean; onModerate: (member: VoiceMember, action: 'mute' | 'unmute' | 'remove') => Promise<void> }) {
+  const canModerate = isOwner && member.userId !== currentUserId
+  return <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm">
+    <UserAvatar name={member.name} avatarUrl={member.avatarUrl} size={28} />
+    <span className="min-w-0 flex-1 truncate">{member.name}{member.userId === currentUserId ? ' (You)' : ''}</span>
+    {member.muted ? <MicOff className="size-4 text-muted-foreground" /> : <Mic className="size-4 text-emerald-600" />}
+    {canModerate && <div className="flex gap-1">
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => void onModerate(member, member.muted ? 'unmute' : 'mute')}>{member.muted ? <Mic /> : <MicOff />}{member.muted ? 'Allow' : 'Mute'}</Button>
+      <Button size="sm" variant="destructive" disabled={busy} onClick={() => void onModerate(member, 'remove')}><UserMinus />Remove</Button>
+    </div>}
   </div>
 }

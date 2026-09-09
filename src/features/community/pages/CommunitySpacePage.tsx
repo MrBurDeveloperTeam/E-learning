@@ -87,7 +87,7 @@ export function CommunitySpacePage() {
             </section>
 
             <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-              <CommunityVoiceRoom communityId={community.id} userId={user.id} userName={String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? 'Community member')} visibility={community.visibility} canJoin={community.visibility === 'public' || community.viewer_is_member || community.viewer_membership_role === 'owner'} disabled={isArchived} />
+              <CommunityVoiceRoom communityId={community.id} userId={user.id} userName={String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? 'Community member')} visibility={community.visibility} canJoin={community.visibility === 'public' || community.viewer_is_member || community.viewer_membership_role === 'owner'} isOwner={community.viewer_membership_role === 'owner'} disabled={isArchived} />
               <div className="rounded-2xl border bg-card p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold"><UsersRound className="size-4 text-primary" />{community.member_count} {community.member_count === 1 ? 'member' : 'members'}</div>
                 <p className="mt-2 text-xs capitalize text-muted-foreground">{community.visibility} community</p>
