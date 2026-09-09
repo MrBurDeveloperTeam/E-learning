@@ -835,13 +835,15 @@ export async function fetchDirectMessages(conversationId: string) {
     ])
     : [{ data: [], error: null }, { data: [], error: null }]
   if (reactionResult.error) throw reactionResult.error
-  if (attachmentResult.error) throw attachmentResult.error
   const attachmentUrls = new Map<string, string>()
-  const attachments = attachmentResult.data ?? []
+  // Attachments are an optional enhancement. A migration/RLS mismatch must not
+  // prevent users from reading messages that were fetched successfully.
+  const attachments = attachmentResult.error ? [] : (attachmentResult.data ?? [])
   if (attachments.length) {
     const signed = await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).createSignedUrls(attachments.map((row) => row.storage_path), 3600)
-    if (signed.error) throw signed.error
-    for (const item of signed.data ?? []) if (item.path && item.signedUrl) attachmentUrls.set(item.path, item.signedUrl)
+    if (!signed.error) {
+      for (const item of signed.data ?? []) if (item.path && item.signedUrl) attachmentUrls.set(item.path, item.signedUrl)
+    }
   }
   const rowById = new Map((data ?? []).map((row) => [row.id, row]))
   return visibleRows.map((row) => {
