@@ -160,7 +160,7 @@ async function hydrateCommunityPosts(posts: CommunityPost[], userId?: string) {
   const ids = posts.map((post) => post.id)
   const [likes, comments, reposts, bookmarks, media, topicLinks] = await Promise.all([
     supabase.from(COMMUNITY_TABLES.postLikes).select('post_id,user_id').in('post_id', ids),
-    supabase.from(COMMUNITY_TABLES.comments).select('post_id').in('post_id', ids).neq('moderation_status', 'removed'),
+    supabase.from(COMMUNITY_TABLES.comments).select('post_id').in('post_id', ids).eq('moderation_status', 'visible'),
     supabase.from(COMMUNITY_TABLES.postReposts).select('post_id,user_id').in('post_id', ids),
     supabase.from(COMMUNITY_TABLES.postBookmarks).select('post_id,user_id').in('post_id', ids),
     supabase.from(COMMUNITY_TABLES.postMedia).select('id,post_id,media_type,storage_bucket,storage_path,external_url,alt_text,sort_order').in('post_id', ids).order('sort_order'),
@@ -394,7 +394,7 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
         ? 'id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,is_pinned,is_best_answer,created_at,updated_at'
         : 'id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,created_at,updated_at')
       .eq('post_id', postId)
-      .neq('moderation_status', 'removed')
+      .eq('moderation_status', 'visible')
       .order('created_at', { ascending: false })
       .limit(200)
     if (search.trim()) request = request.ilike('content', `%${search.trim().replaceAll('%', '\\%').replaceAll('_', '\\_')}%`)
