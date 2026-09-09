@@ -1,5 +1,20 @@
 begin;
 
+-- Realtime authorization below checks the caller's active voice reservation.
+-- Repeat these grants and policies here so this corrective migration is safe
+-- even when an earlier voice migration was only partially applied.
+alter table public.community_voice_participants enable row level security;
+
+grant select on public.community_voice_participants to authenticated;
+
+drop policy if exists community_voice_participants_read_own
+  on public.community_voice_participants;
+create policy community_voice_participants_read_own
+  on public.community_voice_participants
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
 -- Public Communities are open to every authenticated user. Private Communities
 -- continue to require ownership or an active membership.
 create or replace function public.community_join_voice_room(input_community_id uuid)
@@ -108,14 +123,35 @@ drop policy if exists community_voice_realtime_read on realtime.messages;
 create policy community_voice_realtime_read on realtime.messages
 for select to authenticated using (
   realtime.messages.extension in ('broadcast', 'presence')
-  and public.community_can_access_voice_topic((select realtime.topic()))
+  and (select realtime.topic()) ~ '^community-voice-(public|private):[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+  and exists (
+    select 1
+    from public.community_voice_participants participant
+    where participant.user_id = (select auth.uid())
+      and participant.community_id::text = split_part((select realtime.topic()), ':', 2)
+      and participant.last_seen_at >= now() - interval '90 seconds'
+      and participant.joined_at >= now() - interval '60 minutes'
+  )
 );
 
 drop policy if exists community_voice_realtime_write on realtime.messages;
 create policy community_voice_realtime_write on realtime.messages
 for insert to authenticated with check (
   realtime.messages.extension in ('broadcast', 'presence')
-  and public.community_can_access_voice_topic((select realtime.topic()))
+  and (select realtime.topic()) ~ '^community-voice-(public|private):[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+  and exists (
+    select 1
+    from public.community_voice_participants participant
+    where participant.user_id = (select auth.uid())
+      and participant.community_id::text = split_part((select realtime.topic()), ':', 2)
+      and participant.last_seen_at >= now() - interval '90 seconds'
+      and participant.joined_at >= now() - interval '60 minutes'
+  )
 );
+
+-- The policies now use the reservation table directly, so the helper is no
+-- longer part of the authorization path or exposed as an RPC.
+revoke all on function public.community_can_access_voice_topic(text) from authenticated;
+drop function public.community_can_access_voice_topic(text);
 
 commit;

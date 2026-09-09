@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import { Check, Clock3, Flag, GraduationCap, History, MessageSquareText, Paperclip, Search, UsersRound, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import '../styles/community-controls.css'
 import { AdminFilterTabs, AdminStatCard, AdminStatusBadge, AdminTableShell } from '@/components/admin/AdminPrimitives'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -83,7 +84,7 @@ export function CommunityAdminPage() {
   }
   const reviewComment = async (id: string, decision: 'publish' | 'reject') => {
     try { await commentMutation.mutateAsync({ id, decision }); toast.success(decision === 'publish' ? 'Comment restored.' : 'Comment rejected.') }
-    catch (error) { toast.error(error instanceof Error ? error.message : 'Comment review failed') }
+    catch (error) { toast.error(error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Comment review failed') }
   }
   const resolveReport = async (id: string, action: 'dismiss' | 'resolve' | 'hide') => {
     try { await reportMutation.mutateAsync({ id, action }); toast.success(action === 'hide' ? 'Content hidden and report resolved' : action === 'dismiss' ? 'Report dismissed' : 'Report resolved') }
@@ -98,7 +99,7 @@ export function CommunityAdminPage() {
   const reviewVerification = async (id: string, decision: 'approve' | 'reject') => { try { await verificationMutation.mutateAsync({ id, decision }); toast.success(decision === 'approve' ? 'Professional verification approved' : 'Verification application rejected') } catch (error) { toast.error(error instanceof Error ? error.message : 'Verification review failed') } }
   const openEvidence = async (path?: string) => { if (!path) return; try { window.open(await getVerificationEvidenceUrl(path), '_blank', 'noopener,noreferrer') } catch (error) { toast.error(error instanceof Error ? error.message : 'Evidence could not be opened') } }
 
-  return <AdminLayout title="Community review" subtitle="Review reported or automatically hidden content, manage reports, and review new communities.">
+  return <AdminLayout className="community-review-dashboard" title="Community review" subtitle="Review reported or automatically hidden content, manage reports, and review new communities.">
     <div className="grid gap-4 sm:grid-cols-3">
       <AdminStatCard label="Auto-hidden comments" value={pendingComments} icon={MessageSquareText} accent="warning" />
       <AdminStatCard label="Pending communities" value={pendingGroups} icon={UsersRound} accent="warning" />

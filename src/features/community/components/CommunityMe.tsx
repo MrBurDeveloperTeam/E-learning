@@ -17,6 +17,7 @@ import type { Profile } from '@/types'
 import { cn } from '@/lib/utils'
 import { useProfileImage } from '@/hooks/useProfileImage'
 import { supabase } from '@/lib/supabase'
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility'
 
 type ProfileSection = 'posts' | 'likes' | 'reposts'
 
@@ -27,6 +28,7 @@ const profileSections = [
 ] as const
 
 export function CommunityMe({ userId, profile, openFollowRequests = false }: { userId: string; profile: Profile | null; openFollowRequests?: boolean }) {
+  const isPageVisible = useDocumentVisibility()
   const queryClient = useQueryClient()
   const [showSettings, setShowSettings] = useState(false)
   const [followRequestsOpen, setFollowRequestsOpen] = useState(openFollowRequests)
@@ -51,6 +53,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   }, [openFollowRequests])
 
   useEffect(() => {
+    if (!isPageVisible) return
     const refreshRequests = () => void queryClient.invalidateQueries({ queryKey: ['community-friend-requests', userId] })
     const channel = supabase
       .channel(`community-profile-follow-requests-${userId}`)
@@ -58,7 +61,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_follows' }, refreshRequests)
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
-  }, [queryClient, userId])
+  }, [isPageVisible, queryClient, userId])
 
   if (connectionsView) {
     const query = connectionsView === 'following' ? followingQuery : closeFriendsQuery

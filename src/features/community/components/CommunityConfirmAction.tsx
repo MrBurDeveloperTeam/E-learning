@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type React from 'react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/features/community/components/CommunityDialog'
 
 export function CommunityConfirmAction({trigger,title,description,label,onConfirm,danger=true}:{trigger:ReactNode;title:string;description:string;label:string;onConfirm:()=>Promise<unknown>;danger?:boolean}){
   const[open,setOpen]=useState(false),[pending,setPending]=useState(false)

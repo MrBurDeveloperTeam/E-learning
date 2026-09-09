@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FindPeopleDialog } from '@/features/community/components/FindPeopleDialog'
+import '../styles/community-dashboard.css'
+import '../styles/community-controls.css'
 
 const CreateCommunityPostDialog = lazy(() => import('@/features/community/components/CreateCommunityPostDialog').then(module => ({ default: module.CreateCommunityPostDialog })))
 const CommunityDirectory = lazy(() => import('@/features/community/components/CommunityDirectory').then(module => ({ default: module.CommunityDirectory })))
@@ -55,7 +57,7 @@ export function CommunityPage() {
   return (
     <div className={cn('bg-background',activeTab==='chat'?'h-screen overflow-hidden':'min-h-screen')}>
       <Navbar />
-      <div className={cn('mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 md:px-6',activeTab==='chat'&&'h-[calc(100vh-4.375rem)] overflow-hidden')}>
+      <div data-community-tab={activeTab} className={cn('community-dashboard mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 md:px-6',activeTab==='chat'&&'h-[calc(100vh-4.375rem)] overflow-hidden')}>
         <aside className="hidden border-r border-border/70 py-7 pr-5 md:sticky md:top-14 md:block md:h-[calc(100vh-3.5rem)] md:self-start md:overflow-y-auto">
           <div className="mb-6 px-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Community</p>
@@ -98,7 +100,7 @@ export function CommunityPage() {
           </nav>
         </aside>
 
-        <main className={cn('min-w-0 px-4 py-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden')}>
+        <main className={cn('community-dashboard-main min-w-0 px-4 py-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden')}>
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">

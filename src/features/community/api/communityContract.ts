@@ -32,6 +32,7 @@ export const COMMUNITY_TABLES = {
   professionalBadges: 'community_professional_badges',
   conversations: 'community_conversations',
   conversationParticipants: 'community_conversation_participants',
+  conversationDeletions: 'community_conversation_deletions',
   messages: 'community_messages',
   messageAttachments: 'community_message_attachments',
   messageHiddenUsers: 'community_message_hidden_users',
@@ -232,5 +233,6 @@ export function mapDirectMessage(row: DbCommunityMessage): DirectMessage {
     reply_to_message_id: row.reply_to_message_id,
     reply_to: null,
     reactions: [],
+    attachments: [],
   }
 }

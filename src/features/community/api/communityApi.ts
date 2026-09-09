@@ -160,7 +160,7 @@ async function hydrateCommunityPosts(posts: CommunityPost[], userId?: string) {
   const ids = posts.map((post) => post.id)
   const [likes, comments, reposts, bookmarks, media, topicLinks] = await Promise.all([
     supabase.from(COMMUNITY_TABLES.postLikes).select('post_id,user_id').in('post_id', ids),
-    supabase.from(COMMUNITY_TABLES.comments).select('post_id').in('post_id', ids).neq('moderation_status', 'removed'),
+    supabase.from(COMMUNITY_TABLES.comments).select('post_id').in('post_id', ids).eq('moderation_status', 'visible'),
     supabase.from(COMMUNITY_TABLES.postReposts).select('post_id,user_id').in('post_id', ids),
     supabase.from(COMMUNITY_TABLES.postBookmarks).select('post_id,user_id').in('post_id', ids),
     supabase.from(COMMUNITY_TABLES.postMedia).select('id,post_id,media_type,storage_bucket,storage_path,external_url,alt_text,sort_order').in('post_id', ids).order('sort_order'),
@@ -394,7 +394,7 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
         ? 'id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,is_pinned,is_best_answer,created_at,updated_at'
         : 'id,post_id,author_id,parent_comment_id,content,moderation_status,moderation_reason,created_at,updated_at')
       .eq('post_id', postId)
-      .neq('moderation_status', 'removed')
+      .eq('moderation_status', 'visible')
       .order('created_at', { ascending: false })
       .limit(200)
     if (search.trim()) request = request.ilike('content', `%${search.trim().replaceAll('%', '\\%').replaceAll('_', '\\_')}%`)
@@ -771,7 +771,7 @@ export async function fetchDirectConversations(userId: string) {
   const conversationIds = (ownParticipants ?? []).map((row) => row.conversation_id)
   if (conversationIds.length === 0) return [] as DirectConversation[]
 
-  const [conversationsResult, participantsResult] = await Promise.all([
+  const [conversationsResult, participantsResult, deletionsResult] = await Promise.all([
     supabase
       .from(COMMUNITY_TABLES.conversations)
       .select('id,last_message_at')
@@ -783,6 +783,11 @@ export async function fetchDirectConversations(userId: string) {
       .select('conversation_id,user_id')
       .in('conversation_id', conversationIds)
       .neq('user_id', userId),
+    supabase
+      .from(COMMUNITY_TABLES.conversationDeletions)
+      .select('conversation_id,deleted_before')
+      .eq('user_id', userId)
+      .in('conversation_id', conversationIds),
   ])
   if (conversationsResult.error) throw conversationsResult.error
   if (participantsResult.error) throw participantsResult.error
@@ -796,12 +801,15 @@ export async function fetchDirectConversations(userId: string) {
   const verifiedProfiles = await addCommunityVerification(profiles ?? [])
   const profileMap = new Map(verifiedProfiles.map((profile) => [profile.user_id, profile]))
   const participantMap = new Map((participantsResult.data ?? []).map((row) => [row.conversation_id, row.user_id]))
+  const deletedBefore = new Map((deletionsResult.error ? [] : (deletionsResult.data ?? [])).map((row) => [row.conversation_id, row.deleted_before]))
 
   const messageResult = await supabase.from(COMMUNITY_TABLES.messages).select('conversation_id,sender_id,created_at').in('conversation_id',conversationIds).neq('message_status','deleted')
   if(messageResult.error)throw messageResult.error
   const reads=new Map((ownParticipants??[]).map(row=>[row.conversation_id,row.last_read_at]))
   const unread=new Map<string,number>();for(const message of messageResult.data??[]){if(message.sender_id!==userId&&(!reads.get(message.conversation_id)||message.created_at>reads.get(message.conversation_id)!))unread.set(message.conversation_id,(unread.get(message.conversation_id)??0)+1)}
   return (conversationsResult.data ?? []).flatMap((conversation) => {
+    const cutoff = deletedBefore.get(conversation.id)
+    if (cutoff && (!conversation.last_message_at || Date.parse(conversation.last_message_at) <= Date.parse(cutoff))) return []
     const otherId = participantMap.get(conversation.id)
     const profile = otherId ? profileMap.get(otherId) : null
     return profile ? [{ ...conversation, other_user: profile, unread_count: unread.get(conversation.id)??0 } as DirectConversation] : []
@@ -812,9 +820,10 @@ export async function fetchDirectMessages(conversationId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('Sign in before viewing messages.')
-  const [hiddenResult, recipientResult] = await Promise.all([
+  const [hiddenResult, recipientResult, deletionResult] = await Promise.all([
     supabase.from(COMMUNITY_TABLES.messageHiddenUsers).select('message_id').eq('user_id', user.id),
     supabase.from(COMMUNITY_TABLES.conversationParticipants).select('last_read_at').eq('conversation_id', conversationId).neq('user_id', user.id).maybeSingle(),
+    supabase.from(COMMUNITY_TABLES.conversationDeletions).select('deleted_before').eq('conversation_id', conversationId).eq('user_id', user.id).maybeSingle(),
   ])
   if (hiddenResult.error) throw hiddenResult.error
   if (recipientResult.error) throw recipientResult.error
@@ -826,12 +835,26 @@ export async function fetchDirectMessages(conversationId: string) {
     .order('created_at', { ascending: true })
     .limit(200)
   if (error) throw error
-  const visibleRows = (data ?? []).filter((row) => !hiddenIds.has(row.id))
+  const cutoff = !deletionResult.error && deletionResult.data?.deleted_before ? Date.parse(deletionResult.data.deleted_before) : null
+  const visibleRows = (data ?? []).filter((row) => !hiddenIds.has(row.id) && (cutoff === null || Date.parse(row.created_at) > cutoff))
   const messageIds = visibleRows.map((row) => row.id)
-  const reactionResult = messageIds.length
-    ? await supabase.from(COMMUNITY_TABLES.messageReactions).select('message_id,user_id,emoji').in('message_id', messageIds)
-    : { data: [], error: null }
+  const [reactionResult, attachmentResult] = messageIds.length
+    ? await Promise.all([
+      supabase.from(COMMUNITY_TABLES.messageReactions).select('message_id,user_id,emoji').in('message_id', messageIds),
+      supabase.from(COMMUNITY_TABLES.messageAttachments).select('id,message_id,storage_bucket,storage_path,file_name,mime_type,file_size_bytes,sort_order').in('message_id', messageIds).order('sort_order'),
+    ])
+    : [{ data: [], error: null }, { data: [], error: null }]
   if (reactionResult.error) throw reactionResult.error
+  const attachmentUrls = new Map<string, string>()
+  // Attachments are an optional enhancement. A migration/RLS mismatch must not
+  // prevent users from reading messages that were fetched successfully.
+  const attachments = attachmentResult.error ? [] : (attachmentResult.data ?? [])
+  if (attachments.length) {
+    const signed = await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).createSignedUrls(attachments.map((row) => row.storage_path), 3600)
+    if (!signed.error) {
+      for (const item of signed.data ?? []) if (item.path && item.signedUrl) attachmentUrls.set(item.path, item.signedUrl)
+    }
+  }
   const rowById = new Map((data ?? []).map((row) => [row.id, row]))
   return visibleRows.map((row) => {
     const message = mapDirectMessage(row as DbCommunityMessage)
@@ -845,6 +868,10 @@ export async function fetchDirectMessages(conversationId: string) {
       reactionMap.set(reaction.emoji, current)
     }
     message.reactions = [...reactionMap.values()]
+    message.attachments = attachments.filter((attachment) => attachment.message_id === row.id).flatMap((attachment) => {
+      const url = attachmentUrls.get(attachment.storage_path)
+      return url ? [{ id: attachment.id, file_name: attachment.file_name, mime_type: attachment.mime_type, file_size_bytes: Number(attachment.file_size_bytes), url }] : []
+    })
     message.reply_to = replyRow ? {
       id: replyRow.id,
       sender_id: replyRow.sender_id ?? '',
@@ -858,29 +885,77 @@ export async function fetchDirectMessages(conversationId: string) {
   })
 }
 
-export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string, replyToMessageId?: string): Promise<DirectMessage> {
+export async function deleteDirectConversationForCurrentUser(conversationId: string): Promise<void> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Sign in before deleting a conversation.')
+  const { error } = await supabase.from(COMMUNITY_TABLES.conversationDeletions).upsert({
+    conversation_id: conversationId,
+    user_id: user.id,
+    deleted_before: new Date().toISOString(),
+  }, { onConflict: 'conversation_id,user_id' })
+  if (error) throw error
+}
+
+export async function sendDirectMessage(conversationId: string, body: string, clientNonce: string, replyToMessageId?: string, files: File[] = []): Promise<DirectMessage> {
   const content=body.trim()
-  if(!content)throw new Error('Write a message before sending.')
+  if(!content && files.length === 0)throw new Error('Write a message or choose an attachment before sending.')
+  if(files.length > 3)throw new Error('You can attach up to 3 files per message.')
+  if(files.some((file) => file.size <= 0 || file.size > 10 * 1024 * 1024))throw new Error('Each attachment must be 10 MB or smaller.')
 
   const {data:{user},error:userError}=await supabase.auth.getUser()
   if(userError)throw userError
   if(!user)throw new Error('Sign in before sending a message.')
 
+  const uploadedPaths: string[] = []
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `${conversationId}/${user.id}/${clientNonce}/${crypto.randomUUID()}-${safeName}`
+    const upload = await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).upload(storagePath, file, { contentType: file.type || 'application/octet-stream', upsert: false })
+    if (upload.error) {
+      if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+      throw upload.error
+    }
+    uploadedPaths.push(storagePath)
+  }
+
   const messageRow={
     id:clientNonce,
     conversation_id:conversationId,
     sender_id:user.id,
-    content,
+    content:content || null,
     message_status:'sent' as const,
     reply_to_message_id:replyToMessageId??null,
   }
+  const attachmentRows = files.map((file, index) => ({
+    message_id: clientNonce,
+    uploaded_by: user.id,
+    storage_bucket: COMMUNITY_BUCKETS.messageAttachments,
+    storage_path: uploadedPaths[index],
+    file_name: file.name,
+    mime_type: file.type || 'application/octet-stream',
+    attachment_type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file',
+    file_size_bytes: file.size,
+    sort_order: index,
+  }))
   const inserted=await supabase
     .from(COMMUNITY_TABLES.messages)
     .insert(messageRow)
     .select('id,conversation_id,sender_id,content,message_status,created_at,edited_at,reply_to_message_id')
     .single()
 
-  if(!inserted.error)return mapDirectMessage(inserted.data as DbCommunityMessage)
+  if(!inserted.error){
+    if (files.length) {
+      const attachmentInsert = await supabase.from(COMMUNITY_TABLES.messageAttachments).insert(attachmentRows)
+      if (attachmentInsert.error) {
+        await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+        throw attachmentInsert.error
+      }
+    }
+    const message = mapDirectMessage(inserted.data as DbCommunityMessage)
+    message.attachments = files.map((file, index) => ({ id: uploadedPaths[index], file_name: file.name, mime_type: file.type, file_size_bytes: file.size, url: URL.createObjectURL(file) }))
+    return message
+  }
 
   // Retrying uses the same UUID. If the first request was committed but its
   // response was lost, return that message instead of creating a duplicate.
@@ -893,9 +968,28 @@ export async function sendDirectMessage(conversationId: string, body: string, cl
       .eq('sender_id',user.id)
       .single()
     if(existing.error)throw existing.error
-    return mapDirectMessage(existing.data as DbCommunityMessage)
+    if (files.length) {
+      const priorAttachments = await supabase.from(COMMUNITY_TABLES.messageAttachments).select('id').eq('message_id', clientNonce).limit(1)
+      if (priorAttachments.error) {
+        await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+        throw priorAttachments.error
+      }
+      if ((priorAttachments.data ?? []).length === 0) {
+        const attachmentInsert = await supabase.from(COMMUNITY_TABLES.messageAttachments).insert(attachmentRows)
+        if (attachmentInsert.error) {
+          await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+          throw attachmentInsert.error
+        }
+      } else {
+        await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
+      }
+    }
+    const message = mapDirectMessage(existing.data as DbCommunityMessage)
+    if (files.length) message.attachments = files.map((file, index) => ({ id: uploadedPaths[index], file_name: file.name, mime_type: file.type, file_size_bytes: file.size, url: URL.createObjectURL(file) }))
+    return message
   }
 
+  if (uploadedPaths.length) await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).remove(uploadedPaths)
   throw inserted.error
 }
 

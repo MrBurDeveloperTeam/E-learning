@@ -124,7 +124,11 @@ export async function fetchCommunityAuditActions(): Promise<CommunityAuditAction
 }
 
 export async function reviewCommunityGroup(id: string, decision: 'approve' | 'reject') {
-  const { error } = await supabase.rpc('community_review_community', { target_community_id: id, decision })
+  const { error } = await supabase.rpc('community_review_community', {
+    target_community_id: id,
+    decision,
+    review_reason: null,
+  })
   if (error) throw error
 }
 
@@ -132,6 +136,7 @@ export async function reviewCommunityComment(id: string, decision: 'publish' | '
   const { error } = await supabase.rpc('community_review_comment', {
     target_comment_id: id,
     decision: decision === 'reject' ? 'remove' : decision,
+    review_reason: decision === 'reject' ? 'Rejected by administrator' : 'Approved by administrator',
   })
   if (error) throw error
 }

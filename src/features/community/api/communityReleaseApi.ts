@@ -58,6 +58,15 @@ export async function fetchCommunityAppeals(userId: string): Promise<CommunityAp
 
 export async function createCommunityAppeal(input: { userId: string; postId?: string; commentId?: string; communityId?:string;moderationActionId?:string;targetLabel?:string;reason: string }): Promise<void> {
   void input.userId
+  if (input.commentId || input.moderationActionId) {
+    const { error } = await supabase.rpc('community_submit_restriction_appeal', {
+      target_comment_id: input.commentId ?? null,
+      target_action_id: input.moderationActionId ?? null,
+      appeal_reason: input.reason,
+    })
+    if (error) throw new Error(error.message)
+    return
+  }
   if (!input.communityId) throw new CommunityBackendUnavailableError('This appeal type')
   const { error } = await supabase.rpc('community_submit_appeal', { target_community_id: input.communityId, appeal_reason: input.reason, appeal_target_label: input.targetLabel ?? null })
   if (error) throw error

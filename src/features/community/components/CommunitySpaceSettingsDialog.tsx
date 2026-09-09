@@ -1,6 +1,6 @@
 import { Info, Megaphone, Settings2, ShieldCheck, UsersRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/features/community/components/CommunityDialog'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useCommunityMembers } from '@/features/community/hooks/useCommunity'
