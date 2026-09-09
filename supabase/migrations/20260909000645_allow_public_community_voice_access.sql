@@ -1,5 +1,20 @@
 begin;
 
+-- Realtime authorization below checks the caller's active voice reservation.
+-- Repeat these grants and policies here so this corrective migration is safe
+-- even when an earlier voice migration was only partially applied.
+alter table public.community_voice_participants enable row level security;
+
+grant select on public.community_voice_participants to authenticated;
+
+drop policy if exists community_voice_participants_read_own
+  on public.community_voice_participants;
+create policy community_voice_participants_read_own
+  on public.community_voice_participants
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
 -- Public Communities are open to every authenticated user. Private Communities
 -- continue to require ownership or an active membership.
 create or replace function public.community_join_voice_room(input_community_id uuid)
