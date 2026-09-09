@@ -322,7 +322,7 @@ export function CommunityPostCard({
                     await actions.mutateAsync({ action: "delete", postId: post.id })
                     toast.success("Post deleted.")
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Could not delete post.")
+                    toast.error(error instanceof Error ? error.message : typeof error === "object" && error && "message" in error ? String(error.message) : "Could not delete post.")
                     throw error
                   }
                 }}
