@@ -102,4 +102,21 @@ $$;
 revoke all on function public.community_can_access_voice_topic(text) from public, anon;
 grant execute on function public.community_can_access_voice_topic(text) to authenticated;
 
+-- Recreate the two voice-only Realtime policies as part of this corrective
+-- migration. This also repairs projects where the original policy creation was
+-- skipped or an older definition is still installed.
+drop policy if exists community_voice_realtime_read on realtime.messages;
+create policy community_voice_realtime_read on realtime.messages
+for select to authenticated using (
+  realtime.messages.extension in ('broadcast', 'presence')
+  and public.community_can_access_voice_topic((select realtime.topic()))
+);
+
+drop policy if exists community_voice_realtime_write on realtime.messages;
+create policy community_voice_realtime_write on realtime.messages
+for insert to authenticated with check (
+  realtime.messages.extension in ('broadcast', 'presence')
+  and public.community_can_access_voice_topic((select realtime.topic()))
+);
+
 commit;
