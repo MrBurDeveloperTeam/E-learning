@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/input'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useCommunityPeopleSearch, useFollowCommunityPerson } from '@/features/community/hooks/useCommunity'
+import '../styles/community-controls.css'
 
 export function FindPeopleDialog({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false)
@@ -37,7 +38,7 @@ export function FindPeopleDialog({ userId }: { userId: string }) {
         <UserPlus className="size-4" />
         Find people
       </DialogTrigger>
-      <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent overlayClassName="community-people-overlay" className="community-people-dialog grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
@@ -68,7 +69,7 @@ export function FindPeopleDialog({ userId }: { userId: string }) {
           )}
         </div>
 
-        <div className="min-h-52 overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6" aria-live="polite">
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6 sm:pb-6" aria-live="polite">
           {!query.trim() && <EmptyState icon={<UsersRound />} title="Search the Community" description="Enter a name or username to find someone." />}
           {query.trim().length === 1 && <p className="pt-5 text-sm text-muted-foreground">Enter at least 2 characters.</p>}
           {committedQuery.length >= 2 && peopleQuery.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner /></div>}

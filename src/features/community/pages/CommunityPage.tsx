@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FindPeopleDialog } from '@/features/community/components/FindPeopleDialog'
 import '../styles/community-dashboard.css'
+import '../styles/community-controls.css'
 
 const CreateCommunityPostDialog = lazy(() => import('@/features/community/components/CreateCommunityPostDialog').then(module => ({ default: module.CreateCommunityPostDialog })))
 const CommunityDirectory = lazy(() => import('@/features/community/components/CommunityDirectory').then(module => ({ default: module.CommunityDirectory })))
