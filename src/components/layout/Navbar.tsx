@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { submitCreatorApplication } from '@/lib/creatorApplications'
 import type { CreatorApplication } from '@/types'
+import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -29,7 +30,17 @@ export function Navbar() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
-  const avatarSrc = profileImageUrl || profile?.avatar_url
+  const accountProfileQuery = useQuery({
+    queryKey: ['snabbb-account-profile', user?.id],
+    queryFn: fetchAccountProfile,
+    enabled: !!user,
+    staleTime: 60_000,
+  })
+  const accountProfile = accountProfileQuery.data
+  const accountFullName = accountProfile
+    ? `${accountProfile.firstName} ${accountProfile.lastName}`.trim()
+    : ''
+  const avatarSrc = accountProfile?.imageUrl || profileImageUrl || profile?.avatar_url
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const router = useRouterState()
@@ -44,8 +55,11 @@ export function Navbar() {
   const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false)
   const [isRequestingCreatorAccess, setIsRequestingCreatorAccess] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
-  const badgeLabel = profile?.position || profile?.company_name
+  // Profile Info uses the same Odoo account source as Settings; Supabase is only a fallback while it loads.
+  const avatarLabel = accountFullName || profile?.full_name || profile?.name || user?.email?.split('@')[0] || null
+  const badgeLabel = accountProfile?.categoryIds[0]
+    ? ACCOUNT_SPECIALTY_NAMES[accountProfile.categoryIds[0]]
+    : profile?.specialty || null
   const canAccessCreatorTools = isCreatorProfile(profile)
   const canAccessAdmin = isAdminProfile(profile)
   const hasCreatorAccount = profile?.is_creator === true || profile?.role === 'creator'
@@ -382,7 +396,7 @@ export function Navbar() {
                           <div className="flex flex-col gap-3">
                             <div>
                               <p className="truncate text-base font-bold leading-tight text-foreground">
-                                {profile?.full_name ?? profile?.name ?? 'User'}
+                                {avatarLabel || 'User'}
                               </p>
 
                               {badgeLabel && (
@@ -395,13 +409,13 @@ export function Navbar() {
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Mail className="h-3 w-3 shrink-0" />
-                                <p className="truncate text-xs font-semibold">{user?.email}</p>
+                                <p className="truncate text-xs font-semibold">{accountProfile?.email || user?.email}</p>
                               </div>
 
-                              {profile?.phone && (
+                              {(accountProfile?.phone || profile?.phone) && (
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <Phone className="h-3 w-3 shrink-0" />
-                                  <p className="truncate text-xs font-semibold">{profile.phone}</p>
+                                  <p className="truncate text-xs font-semibold">{accountProfile?.phone || profile?.phone}</p>
                                 </div>
                               )}
                             </div>
@@ -640,7 +654,7 @@ export function Navbar() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1E3333]">
-                    {profile?.full_name ?? 'DentalLearn User'}
+                    {avatarLabel || 'DentalLearn User'}
                   </p>
                   <p className="text-xs capitalize text-[#9BB5B5]">
                     {profile?.role ?? 'member'}
