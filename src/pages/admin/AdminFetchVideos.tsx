@@ -71,7 +71,7 @@ function FeatureCard({ icon: Icon, title, description, status, buttonLabel, onOp
       </div>
       <h2 className="mt-5 text-lg font-semibold tracking-[-0.015em] text-foreground">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-      <button type="button" onClick={onOpen} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-primary/10 bg-gradient-to-b from-primary to-primary/90 px-4 text-sm font-medium text-primary-foreground shadow-[0_9px_18px_-11px_rgba(20,100,105,0.8),inset_0_1px_0_rgba(255,255,255,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_13px_24px_-12px_rgba(20,100,105,0.9),inset_0_1px_0_rgba(255,255,255,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:translate-y-0">
+      <button type="button" onClick={onOpen} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[#69b6b5] !bg-[#86c9c7] px-4 text-sm font-semibold !text-[#123d40] shadow-[0_9px_18px_-11px_rgba(20,100,105,0.8),inset_0_1px_0_rgba(255,255,255,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:!bg-[#78bfbd] hover:shadow-[0_13px_24px_-12px_rgba(20,100,105,0.9),inset_0_1px_0_rgba(255,255,255,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#69b6b5] focus-visible:ring-offset-2 active:translate-y-0 dark:border-[#69b6b5] dark:!bg-[#86c9c7] dark:!text-[#123d40] dark:hover:!bg-[#78bfbd]">
         {buttonLabel}<ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
       </button>
     </article>
