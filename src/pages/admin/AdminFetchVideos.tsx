@@ -61,15 +61,18 @@ function FeatureCard({ icon: Icon, title, description, status, buttonLabel, onOp
   className?: string
 }) {
   return (
-    <article className={cn("group flex min-h-[230px] flex-col rounded-[28px] border border-border/80 bg-card/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg", className)}>
+    <article className={cn(
+      "group relative isolate flex min-h-[242px] flex-col overflow-hidden rounded-[30px] border border-white/80 bg-gradient-to-br from-white via-card to-primary/[0.055] p-6 shadow-[0_2px_3px_rgba(23,64,69,0.04),0_12px_28px_-14px_rgba(23,64,69,0.22),inset_0_1px_0_rgba(255,255,255,0.95)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary/35 before:to-transparent after:pointer-events-none after:absolute after:-right-16 after:-top-16 after:-z-10 after:h-40 after:w-40 after:rounded-full after:bg-primary/[0.08] after:blur-2xl hover:-translate-y-1.5 hover:border-primary/35 hover:shadow-[0_5px_8px_rgba(23,64,69,0.06),0_24px_48px_-18px_rgba(23,64,69,0.32),inset_0_1px_0_rgba(255,255,255,1)] dark:border-white/10 dark:from-card dark:via-card dark:to-primary/10 dark:shadow-[0_2px_3px_rgba(0,0,0,0.18),0_18px_34px_-16px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)]",
+      className,
+    )}>
       <div className="flex items-start justify-between gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-[19px] border border-primary/15 bg-gradient-to-br from-primary/20 via-primary/10 to-white text-primary shadow-[0_10px_22px_-12px_rgba(31,132,136,0.65),inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-300 group-hover:-rotate-2 group-hover:scale-105 dark:to-card"><Icon className="h-6 w-6 drop-shadow-sm" /></div>
         <AdminStatusBadge label={status} tone="default" />
       </div>
-      <h2 className="mt-5 text-lg font-semibold text-foreground">{title}</h2>
+      <h2 className="mt-5 text-lg font-semibold tracking-[-0.015em] text-foreground">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-      <button type="button" onClick={onOpen} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-        {buttonLabel}<ArrowRight className="h-4 w-4" />
+      <button type="button" onClick={onOpen} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-primary/10 bg-gradient-to-b from-primary to-primary/90 px-4 text-sm font-medium text-primary-foreground shadow-[0_9px_18px_-11px_rgba(20,100,105,0.8),inset_0_1px_0_rgba(255,255,255,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_13px_24px_-12px_rgba(20,100,105,0.9),inset_0_1px_0_rgba(255,255,255,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:translate-y-0">
+        {buttonLabel}<ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
       </button>
     </article>
   )
@@ -83,7 +86,7 @@ function PanelDialog({ open, onOpenChange, title, description, children }: {
   children: ReactNode
 }) {
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="flex h-[min(88vh,940px)] w-[min(94vw,1500px)] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] p-0 sm:max-w-none" overlayClassName="bg-black/25">
+    <DialogContent className="z-[2147483647] flex h-[min(88vh,940px)] w-[min(94vw,1500px)] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border border-white/60 p-0 shadow-[0_36px_100px_-20px_rgba(5,25,28,0.55)] ring-1 ring-black/10 sm:max-w-none" overlayClassName="z-[2147483646] bg-slate-950/35 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md">
       <DialogHeader className="shrink-0 border-b border-border bg-popover px-6 py-5 pr-16">
         <DialogTitle className="text-xl">{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
