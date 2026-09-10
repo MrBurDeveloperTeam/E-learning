@@ -1,5 +1,16 @@
 const ACCOUNT_PROFILE_URL = 'https://account.snabbb.com/api/account/profile'
 
+export const ACCOUNT_SPECIALTY_NAMES: Record<string, string> = {
+  '76': 'General Dentistry',
+  '77': 'Endodontics',
+  '78': 'Orthodontics',
+  '79': 'Prosthodontics',
+  '80': 'Periodontics',
+  '81': 'Implant Dentistry',
+  '82': 'Oral Surgery',
+  '83': 'Pediatric Dentistry',
+}
+
 type OdooRelation = false | [number, string] | null
 
 interface AccountProfileResponse {
