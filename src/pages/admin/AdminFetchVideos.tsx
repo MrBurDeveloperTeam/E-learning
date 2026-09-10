@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   CheckCircle,
@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Filter,
   History,
+  LibraryBig,
   Loader2,
   RefreshCw,
   ScanLine,
@@ -22,6 +23,7 @@ import { Link } from '@tanstack/react-router'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { ImportedVideoManagement } from '@/components/admin/ImportedVideoManagement'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AdminSectionCard,
   AdminStatCard,
@@ -36,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { isAdminProfile } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { VIDEO_CATEGORIES, type VideoCategory } from '@/types'
@@ -46,6 +49,49 @@ import {
 } from '@/constants/videoLanguages'
 
 type ImportSize = 10 | 25 | 50
+type VideoPanel = 'automatic' | 'manage' | 'history' | 'official' | 'orientation'
+
+function FeatureCard({ icon: Icon, title, description, status, buttonLabel, onOpen, className }: {
+  icon: typeof Youtube
+  title: string
+  description: string
+  status: string
+  buttonLabel: string
+  onOpen: () => void
+  className?: string
+}) {
+  return (
+    <article className={cn("group flex min-h-[230px] flex-col rounded-[28px] border border-border/80 bg-card/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg", className)}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
+        <AdminStatusBadge label={status} tone="default" />
+      </div>
+      <h2 className="mt-5 text-lg font-semibold text-foreground">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+      <button type="button" onClick={onOpen} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        {buttonLabel}<ArrowRight className="h-4 w-4" />
+      </button>
+    </article>
+  )
+}
+
+function PanelDialog({ open, onOpenChange, title, description, children }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="flex h-[min(88vh,940px)] w-[min(94vw,1500px)] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] p-0 sm:max-w-none" overlayClassName="bg-black/25">
+      <DialogHeader className="shrink-0 border-b border-border bg-popover px-6 py-5 pr-16">
+        <DialogTitle className="text-xl">{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+      </DialogHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 p-4 sm:p-6">{children}</div>
+    </DialogContent>
+  </Dialog>
+}
 
 type ImportedVideo = {
   id: string
@@ -313,6 +359,7 @@ export function AdminFetchVideos() {
   const [customChannelUrl, setCustomChannelUrl] = useState('')
   const [channelNotAddedVideos, setChannelNotAddedVideos] = useState<ChannelNotAddedVideo[]>([])
   const [channelImportCompletion, setChannelImportCompletion] = useState<ChannelImportCompletion | null>(storedChannelImportReport?.completion || null)
+  const [activePanel, setActivePanel] = useState<VideoPanel | null>(null)
 
   const [isCreatingClassifierCode, setIsCreatingClassifierCode] = useState(false)
   const [orientationPending, setOrientationPending] = useState<number | null>(null)
@@ -666,7 +713,7 @@ export function AdminFetchVideos() {
   return (
     <AdminLayout
       title="Video ingestion"
-      subtitle="Automatically find focused dental education videos and add them to the selected library category."
+      subtitle="Open the tool you need to import, review, manage, or classify videos."
       heroAside={
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">
@@ -681,6 +728,15 @@ export function AdminFetchVideos() {
         </div>
       }
     >
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6" aria-label="Video ingestion tools">
+        <FeatureCard className="xl:col-span-2" icon={SearchCheck} title="Automatic YouTube import" description="Find focused dental education videos by specialty and language." status={lastFetched ? 'Previously imported' : 'Ready'} buttonLabel="Import videos" onOpen={() => setActivePanel('automatic')} />
+        <FeatureCard className="xl:col-span-2" icon={Youtube} title="Official YouTube channel import" description="Import complete public upload lists from approved or custom channels." status={isImportingChannels ? 'Importing…' : channelImportCompletion ? 'Latest run complete' : 'Ready'} buttonLabel="Import channels" onOpen={() => setActivePanel('official')} />
+        <FeatureCard className="xl:col-span-2" icon={LibraryBig} title="Manage imported videos" description="Search the library, correct classifications, and remove incorrect results." status="All imported videos" buttonLabel="Manage videos" onOpen={() => setActivePanel('manage')} />
+        <FeatureCard className="xl:col-span-3" icon={History} title="Automatic import history" description="Review scheduled runs, imported records, warnings, and failures." status={`${automaticImportRuns.length} recent runs`} buttonLabel="View history" onOpen={() => setActivePanel('history')} />
+        <FeatureCard className="xl:col-span-3" icon={ScanLine} title="Video orientation classifier" description="Classify portrait videos as Shorts and landscape or square videos as Videos." status={orientationPending === null ? 'Tools ready' : `${orientationPending} pending`} buttonLabel="Open classifier tools" onOpen={() => setActivePanel('orientation')} />
+      </section>
+
+      <PanelDialog open={activePanel === 'automatic'} onOpenChange={(open) => !open && setActivePanel(null)} title="Automatic YouTube import" description="Choose a specialty, language, and import size. All existing quality checks remain enabled.">
       <div className="grid items-start gap-4">
         <AdminSectionCard
           title="Automatic YouTube import"
@@ -802,10 +858,36 @@ export function AdminFetchVideos() {
           </form>
         </AdminSectionCard>
 
+        {error && (
+          <AdminSectionCard className="border-destructive/20 bg-destructive/5">
+            <div role="alert" className="flex items-start gap-3">
+              <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{error.code === 'YOUTUBE_QUOTA_EXCEEDED' ? 'Daily YouTube quota reached' : 'YouTube import failed'}</p>
+                <p className="mt-1 break-words text-sm text-muted-foreground">{error.message}</p>
+                {error.details.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{error.details.slice(0, 4).map((detail, index) => <li key={`${detail}-${index}`} className="break-words">{detail}</li>)}</ul>}
+              </div>
+            </div>
+          </AdminSectionCard>
+        )}
+        {result && (
+          <AdminSectionCard title={`Import result · ${result.category} · ${getVideoLanguageLabel(result.language)}`} description={`Requested up to ${result.requested} new ${getVideoLanguageLabel(result.language)} videos. Accepted videos were assigned directly to the selected category.`}>
+            <div aria-live="polite">
+              <ResultSummary result={result} />
+              {result.warnings && result.warnings.length > 0 && <div className="mt-5 rounded-[20px] border border-amber-500/20 bg-amber-500/5 p-4"><p className="text-sm font-semibold text-foreground">Import completed with warnings</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{result.warnings.slice(0, 4).map((warning, index) => <li key={`${warning}-${index}`} className="break-words">{warning}</li>)}</ul></div>}
+            </div>
+            <ImportedVideoList videos={result.videos} />
+          </AdminSectionCard>
+        )}
+
       </div>
+      </PanelDialog>
 
+      <PanelDialog open={activePanel === 'manage'} onOpenChange={(open) => !open && setActivePanel(null)} title="Manage imported videos" description="Search, filter, correct classifications, or remove an incorrect imported video.">
       <ImportedVideoManagement />
+      </PanelDialog>
 
+      <PanelDialog open={activePanel === 'history'} onOpenChange={(open) => !open && setActivePanel(null)} title="Automatic import history" description="Review the latest scheduled YouTube runs and their complete results.">
       <AdminSectionCard
         title="Automatic import history"
         description="The latest scheduled YouTube runs. Open a run to review the exact videos added, warnings, or failure reason."
@@ -884,7 +966,9 @@ export function AdminFetchVideos() {
           </div>
         )}
       </AdminSectionCard>
+      </PanelDialog>
 
+      <PanelDialog open={activePanel === 'official'} onOpenChange={(open) => !open && setActivePanel(null)} title="Official YouTube channel import" description="Import all public uploads from approved channels or another YouTube channel.">
       <AdminSectionCard
         title="Official YouTube channel import"
         description="Import every public upload from the approved channels, including regular videos and YouTube Shorts. Video duration is not filtered."
@@ -1041,7 +1125,9 @@ export function AdminFetchVideos() {
           </details>
         )}
       </AdminSectionCard>
+      </PanelDialog>
 
+      <PanelDialog open={activePanel === 'orientation'} onOpenChange={(open) => !open && setActivePanel(null)} title="Video orientation classifier" description="Download classifier tools, create temporary access, and review live classification results.">
       <AdminSectionCard
         title="Video orientation classifier"
         description="Use the Windows or macOS classifier to label portrait videos as Short videos and landscape or square videos as Videos. Duration is ignored."
@@ -1155,51 +1241,7 @@ export function AdminFetchVideos() {
           </div>
         </AdminSectionCard>
       )}
-
-      {error && (
-        <AdminSectionCard className="border-destructive/20 bg-destructive/5">
-          <div role="alert" className="flex items-start gap-3">
-            <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">
-                {error.code === 'YOUTUBE_QUOTA_EXCEEDED'
-                  ? 'Daily YouTube quota reached'
-                  : 'YouTube import failed'}
-              </p>
-              <p className="mt-1 break-words text-sm text-muted-foreground">{error.message}</p>
-              {error.details.length > 0 && (
-                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  {error.details.slice(0, 4).map((detail, index) => (
-                    <li key={`${detail}-${index}`} className="break-words">{detail}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </AdminSectionCard>
-      )}
-
-      {result && (
-        <AdminSectionCard
-          title={`Import result · ${result.category} · ${getVideoLanguageLabel(result.language)}`}
-          description={`Requested up to ${result.requested} new ${getVideoLanguageLabel(result.language)} videos. Accepted videos were assigned directly to the selected category.`}
-        >
-          <div aria-live="polite">
-            <ResultSummary result={result} />
-            {result.warnings && result.warnings.length > 0 && (
-              <div className="mt-5 rounded-[20px] border border-amber-500/20 bg-amber-500/5 p-4">
-                <p className="text-sm font-semibold text-foreground">Import completed with warnings</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  {result.warnings.slice(0, 4).map((warning, index) => (
-                    <li key={`${warning}-${index}`} className="break-words">{warning}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-          <ImportedVideoList videos={result.videos} />
-        </AdminSectionCard>
-      )}
+      </PanelDialog>
 
     </AdminLayout>
   )
