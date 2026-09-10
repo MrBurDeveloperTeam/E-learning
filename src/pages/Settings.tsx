@@ -7,12 +7,14 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
+  Copy,
   Lock,
   LogOut,
   MoonStar,
   Monitor,
   Pencil,
   Shield,
+  Share2,
   SunMedium,
   UserRound,
 } from 'lucide-react'
@@ -23,10 +25,8 @@ import { submitCreatorApplication } from '../lib/creatorApplications'
 import { cn, getInitials } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
-import { DENTAL_POSITIONS } from '../constants/signupOptions'
 import {
   useUpdateProfile,
-  useUploadAvatar,
   useUploadBackground,
 } from '../hooks/useProfile'
 import { toast } from 'sonner'
@@ -35,6 +35,7 @@ import { PasswordField } from '../components/ui/PasswordField'
 import { useTheme } from '../components/shared/ThemeProvider'
 import { useProfileImage } from '../hooks/useProfileImage'
 import type { CreatorApplication } from '../types'
+import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
 
 type SettingsTab =
   | 'profile'
@@ -43,38 +44,48 @@ type SettingsTab =
   | 'appearance'
 
 interface ProfileFormValues {
-  full_name: string
+  first_name: string
+  last_name: string
   phone: string
-  position: string
-  customPosition: string
-  company_name: string
+  date_of_birth: string
   specialty: string
-  institution: string
+  street_address: string
+  address_line_2: string
+  city: string
+  state_id: string
+  postal_code: string
+  country_id: string
+  invoice_delivery: string
+  electronic_invoice_format: string
   bio: string
 }
 
-const DENTAL_POSITION_SET: readonly string[] = DENTAL_POSITIONS
-
-function resolvePositionFields(position: string | null | undefined): { position: string; customPosition: string } {
-  const trimmed = (position ?? '').trim()
-  if (!trimmed) return { position: '', customPosition: '' }
-  if (DENTAL_POSITION_SET.includes(trimmed)) return { position: trimmed, customPosition: '' }
-  return { position: 'OTHER', customPosition: trimmed }
+function splitProfileName(fullName: string | null | undefined) {
+  const [firstName = '', ...lastNameParts] = (fullName ?? '').trim().split(/\s+/).filter(Boolean)
+  return { first_name: firstName, last_name: lastNameParts.join(' ') }
 }
 
-const SPECIALTY_OPTIONS = [
-  'General Dentistry',
-  'Implantology',
-  'Orthodontics',
-  'Endodontics',
-  'Periodontology',
-  'Oral Surgery',
-  'Pediatric Dentistry',
-  'Prosthodontics',
-  'Dental Burs',
-  'Handpieces',
-  'Clinic Management',
+const SPECIALTY_CATEGORIES = [
+  { id: '76', name: 'General Dentistry' }, { id: '77', name: 'Endodontics' },
+  { id: '78', name: 'Orthodontics' }, { id: '79', name: 'Prosthodontics' },
+  { id: '80', name: 'Periodontics' }, { id: '81', name: 'Implant Dentistry' },
+  { id: '82', name: 'Oral Surgery' }, { id: '83', name: 'Pediatric Dentistry' },
 ]
+
+const MALAYSIAN_STATES = [
+  { id: '483', name: 'Selangor' }, { id: '480', name: 'Kuala Lumpur' },
+  { id: '481', name: 'Penang' }, { id: '482', name: 'Johor' },
+  { id: '484', name: 'Perak' }, { id: '485', name: 'Sabah' },
+  { id: '486', name: 'Sarawak' },
+]
+
+const ELECTRONIC_FORMATS = [
+  ['', 'None'], ['facturx', 'France (FacturX)'], ['ubl_bis3', 'EU Standard (Peppol Bis 3.0)'],
+  ['zugferd', 'Germany (ZUGFeRD)'], ['xrechnung', 'Germany (XRechnung)'],
+  ['nlcius', 'Netherlands (NLCIUS)'], ['ubl_a_nz', 'Australia (BIS Billing 3.0 A-NZ)'],
+  ['ubl_sg', 'Singapore (BIS Billing 3.0 SG)'], ['pint_jp', 'Japan (Peppol PINT JP)'],
+  ['pint_my', 'Malaysia (Peppol PINT MY)'],
+] as const
 
 const TAB_META: Record<SettingsTab, { title: string; description: string }> = {
   profile: { title: 'Profile information', description: 'Update your personal details and professional information' },
@@ -170,7 +181,6 @@ export function Settings() {
   const queryClient = useQueryClient()
   const { signOut } = useAuth()
   const updateProfile = useUpdateProfile()
-  const uploadAvatar = useUploadAvatar()
   const uploadBackground = useUploadBackground()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
@@ -181,6 +191,13 @@ export function Settings() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isApplyingForCreator, setIsApplyingForCreator] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const accountProfileQuery = useQuery({
+    queryKey: ['snabbb-account-profile', user?.id],
+    queryFn: fetchAccountProfile,
+    enabled: !!user,
+  })
+  const accountProfile = accountProfileQuery.data
   const [notificationSettings, setNotificationSettings] = useState<Record<string, boolean>>({
     certificateReady: true,
     lessonReminder: true,
@@ -220,54 +237,90 @@ export function Settings() {
     creatorApplicationStatus === 'rejected' ||
     creatorApplicationStatus === 'revoked'
 
-  const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<ProfileFormValues>({
+  const fallbackName = splitProfileName(profile?.full_name ?? profile?.name)
+
+  const { register, handleSubmit, reset, watch, formState: { isDirty, isSubmitting } } = useForm<ProfileFormValues>({
     defaultValues: {
-      full_name: profile?.full_name ?? '',
+      first_name: fallbackName.first_name,
+      last_name: fallbackName.last_name,
       phone: profile?.phone ?? '',
-      ...resolvePositionFields(profile?.position),
-      company_name: profile?.company_name ?? '',
-      specialty: profile?.specialty ?? '',
-      institution: profile?.institution ?? '',
+      date_of_birth: '',
+      specialty: '',
+      street_address: '',
+      address_line_2: '',
+      city: '',
+      state_id: '',
+      postal_code: '',
+      country_id: '',
+      invoice_delivery: 'email',
+      electronic_invoice_format: '',
       bio: profile?.bio ?? '',
     },
   })
 
-  const watchedFullName = watch('full_name')
-  const watchedBio = watch('bio') ?? ''
-  const watchedPosition = watch('position')
+  const watchedFullName = `${watch('first_name') ?? ''} ${watch('last_name') ?? ''}`.trim()
 
   useEffect(() => {
+    if (!accountProfile) return
     reset({
-      full_name: profile?.full_name ?? '',
-      phone: profile?.phone ?? '',
-      ...resolvePositionFields(profile?.position),
-      company_name: profile?.company_name ?? '',
-      specialty: profile?.specialty ?? '',
-      institution: profile?.institution ?? '',
+      first_name: accountProfile.firstName,
+      last_name: accountProfile.lastName,
+      phone: accountProfile.phone,
+      date_of_birth: accountProfile.dateOfBirth,
+      specialty: accountProfile.categoryIds[0] ?? '',
+      street_address: accountProfile.street,
+      address_line_2: accountProfile.street2,
+      city: accountProfile.city,
+      state_id: accountProfile.stateId,
+      postal_code: accountProfile.postalCode,
+      country_id: accountProfile.countryId,
+      invoice_delivery: accountProfile.receiveInvoices,
+      electronic_invoice_format: accountProfile.electronicFormat,
       bio: profile?.bio ?? '',
     })
-    setAvatarPreviewUrl(profile?.avatar_url || profileImageUrl || null)
+    setAvatarPreviewUrl(accountProfile.imageUrl || profileImageUrl || null)
     setBackgroundPreviewUrl(profile?.background_url ?? null)
-  }, [profile, profileImageUrl, reset])
+  }, [accountProfile, profile?.background_url, profile?.bio, profileImageUrl, reset])
 
 
 
   async function onSubmit(values: ProfileFormValues) {
-    if (!profile) return
-    const effectivePosition = values.position === 'OTHER' ? values.customPosition.trim() : values.position
+    if (!profile || !accountProfile) return
+    const fullName = `${values.first_name.trim()} ${values.last_name.trim()}`.trim()
     try {
-      await updateProfile.mutateAsync({
-        userId: profile.user_id,
-        payload: {
-          full_name: values.full_name,
-          phone: values.phone || null,
-          position: effectivePosition || null,
-          company_name: values.company_name || null,
-          specialty: values.specialty || null,
-          institution: values.institution || null,
-          bio: values.bio || null,
-        },
+      const updatedAccount = await saveAccountProfile({
+        ...accountProfile,
+        firstName: values.first_name,
+        lastName: values.last_name,
+        email: accountProfile.email || profile.email || user?.email || '',
+        phone: values.phone,
+        dateOfBirth: values.date_of_birth,
+        street: values.street_address,
+        street2: values.address_line_2,
+        city: values.city,
+        stateId: values.state_id,
+        postalCode: values.postal_code,
+        countryId: values.country_id,
+        categoryIds: values.specialty ? [values.specialty] : [],
+        receiveInvoices: values.invoice_delivery,
+        electronicFormat: values.electronic_invoice_format,
       })
+      queryClient.setQueryData(['snabbb-account-profile', user?.id], updatedAccount)
+
+      // Keep only the e-learning display summary mirrored in Supabase; Odoo remains the source of truth.
+      try {
+        await updateProfile.mutateAsync({
+          userId: profile.user_id,
+          payload: {
+            full_name: fullName,
+            name: fullName,
+            phone: values.phone || null,
+            specialty: SPECIALTY_CATEGORIES.find((item) => item.id === values.specialty)?.name ?? null,
+          },
+        })
+      } catch (syncError) {
+        console.warn('Account profile saved, but the e-learning display cache did not refresh', syncError)
+      }
       reset(values)
       toast.success('Profile updated successfully')
     } catch {
@@ -277,14 +330,22 @@ export function Settings() {
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !profile) return
+    if (!file || !accountProfile) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be below 2MB')
+      e.target.value = ''
+      return
+    }
     try {
-      const updatedProfile = await uploadAvatar.mutateAsync({ userId: profile.user_id, file })
-      setAvatarPreviewUrl(updatedProfile.avatar_url)
-      toast.success('Avatar updated')
+      setIsUploadingAvatar(true)
+      const updatedAccount = await saveAccountProfile(accountProfile, file)
+      queryClient.setQueryData(['snabbb-account-profile', user?.id], updatedAccount)
+      setAvatarPreviewUrl(updatedAccount.imageUrl)
+      toast.success('Profile photo updated')
     } catch {
-      toast.error('Failed to upload avatar')
+      toast.error('Failed to upload profile photo')
     } finally {
+      setIsUploadingAvatar(false)
       e.target.value = ''
     }
   }
@@ -307,13 +368,21 @@ export function Settings() {
   }
 
   function handleReset() {
+    if (!accountProfile) return
     reset({
-      full_name: profile?.full_name ?? '',
-      phone: profile?.phone ?? '',
-      ...resolvePositionFields(profile?.position),
-      company_name: profile?.company_name ?? '',
-      specialty: profile?.specialty ?? '',
-      institution: profile?.institution ?? '',
+      first_name: accountProfile.firstName,
+      last_name: accountProfile.lastName,
+      phone: accountProfile.phone,
+      date_of_birth: accountProfile.dateOfBirth,
+      specialty: accountProfile.categoryIds[0] ?? '',
+      street_address: accountProfile.street,
+      address_line_2: accountProfile.street2,
+      city: accountProfile.city,
+      state_id: accountProfile.stateId,
+      postal_code: accountProfile.postalCode,
+      country_id: accountProfile.countryId,
+      invoice_delivery: accountProfile.receiveInvoices,
+      electronic_invoice_format: accountProfile.electronicFormat,
       bio: profile?.bio ?? '',
     })
   }
@@ -506,10 +575,10 @@ export function Settings() {
                 {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" className="h-full w-full object-cover" /> : getInitials(watchedFullName || avatarName)}
               </div>
               <label className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:opacity-90">
-                {uploadAvatar.isPending ? <LoadingSpinner size="sm" /> : <Pencil size={10} color='white' />}
+                {isUploadingAvatar ? <LoadingSpinner size="sm" /> : <Pencil size={10} color='white' />}
                 <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
               </label>
-              {uploadAvatar.isPending && (
+              {isUploadingAvatar && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/60">
                   <LoadingSpinner size="sm" />
                 </div>
@@ -601,75 +670,57 @@ export function Settings() {
           </div>
 
           <div className="border-b border-border py-6">
-            <SectionLabel>Personal details</SectionLabel>
+            <SectionLabel>Personal information</SectionLabel>
+            {accountProfileQuery.isLoading && <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground"><LoadingSpinner size="sm" />Loading your Snabbb account details...</div>}
+            {accountProfileQuery.isError && <p className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">We could not load your Snabbb account details. Please sign in again and refresh this page.</p>}
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5"><label htmlFor="first_name" className="text-xs font-medium text-foreground/70">First Name</label><input id="first_name" className="input-field" {...register('first_name', { required: true })} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="last_name" className="text-xs font-medium text-foreground/70">Last Name</label><input id="last_name" className="input-field" {...register('last_name', { required: true })} /></div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="full_name" className="text-xs font-medium text-foreground/70">Full name<span className="ml-0.5 text-destructive">*</span></label>
-                <input id="full_name" className="input-field" placeholder="Dr. Aina Rahman" {...register('full_name', { required: true })} />
+                <label htmlFor="email" className="text-xs font-medium text-foreground/70">Email Address</label>
+                <input id="email" disabled value={accountProfile?.email ?? profile?.email ?? user?.email ?? ''} className="input-field cursor-not-allowed bg-muted/50 text-muted-foreground" readOnly />
+                <p className="text-[11px] text-muted-foreground/60">Email cannot be changed</p>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="email" className="text-xs font-medium text-foreground/70">Email address</label>
-                <div className="relative">
-                  <input id="email" disabled value={profile?.email ?? user?.email ?? ''} className="input-field cursor-not-allowed bg-muted/50 pr-9 text-muted-foreground" readOnly />
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Lock size={12} /></div>
-                </div>
-                <p className="text-[11px] text-muted-foreground/60">Cannot be changed</p>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="phone" className="text-xs font-medium text-foreground/70">Phone number</label>
-                <input id="phone" className="input-field" placeholder="+60 12-345 6789" {...register('phone')} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="company_name" className="text-xs font-medium text-foreground/70">Company / clinic name</label>
-                <input id="company_name" className="input-field" placeholder="Clinic or organisation" {...register('company_name')} />
-              </div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="phone" className="text-xs font-medium text-foreground/70">Phone Number</label><input id="phone" className="input-field" {...register('phone')} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="date_of_birth" className="text-xs font-medium text-foreground/70">Date of Birth</label><input id="date_of_birth" type="date" className="input-field" {...register('date_of_birth')} /></div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label htmlFor="institution" className="text-xs font-medium text-foreground/70">Institution</label>
-                <input id="institution" className="input-field" placeholder="Hospital, university, or training institution" {...register('institution')} />
+                <label htmlFor="specialty" className="text-xs font-medium text-foreground/70">Your Specialty</label>
+                <div className="relative"><select id="specialty" className="input-field appearance-none bg-transparent pr-9" {...register('specialty')}><option value="">+ Add specialty...</option>{SPECIALTY_CATEGORIES.map((specialty) => <option key={specialty.id} value={specialty.id}>{specialty.name}</option>)}</select><ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" /></div>
               </div>
             </div>
           </div>
 
           <div className="border-b border-border py-6">
-            <SectionLabel>Professional details</SectionLabel>
+            <SectionLabel>Address</SectionLabel>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="specialty" className="text-xs font-medium text-foreground/70">Specialty</label>
-                <div className="relative">
-                  <select id="specialty" className="input-field appearance-none pr-9 bg-transparent" {...register('specialty')}>
-                    <option value="">Select specialty</option>
-                    {SPECIALTY_OPTIONS.map((specialty) => <option key={specialty} value={specialty}>{specialty}</option>)}
-                  </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><ChevronDown size={12} /></div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="position" className="text-xs font-medium text-foreground/70">Position / title</label>
-                <div className="relative">
-                  <select id="position" className="input-field appearance-none pr-9 bg-transparent" {...register('position')}>
-                    <option value="">Select position</option>
-                    {DENTAL_POSITIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-                    <option value="OTHER">Other</option>
-                  </select>
-                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><ChevronDown size={12} /></div>
-                </div>
-              </div>
-              {watchedPosition === 'OTHER' && (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="customPosition" className="text-xs font-medium text-foreground/70">Specify position</label>
-                  <input id="customPosition" className="input-field" placeholder="e.g. Clinic Manager" {...register('customPosition')} />
-                </div>
-              )}
-              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">Account overview</p>
-                <div className="mt-3 flex items-center gap-2 text-sm text-foreground/80">
-                  <span className="capitalize">{profile?.role ?? 'member'}</span>
-                  <span className="text-border">/</span>
-                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">{formatPlanLabel(profile?.plan)}</span>
-                </div>
-              </div>
+              <div className="flex flex-col gap-1.5 md:col-span-2"><label htmlFor="street_address" className="text-xs font-medium text-foreground/70">Street Address</label><input id="street_address" className="input-field" {...register('street_address')} /></div>
+              <div className="md:col-span-2"><input aria-label="Address line 2" className="input-field" {...register('address_line_2')} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="city" className="text-xs font-medium text-foreground/70">City</label><input id="city" className="input-field" {...register('city')} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="state_id" className="text-xs font-medium text-foreground/70">State / Province</label><div className="relative"><select id="state_id" className="input-field appearance-none bg-transparent pr-9" {...register('state_id')}><option value="">Select state</option>{MALAYSIAN_STATES.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}</select><ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" /></div></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="postal_code" className="text-xs font-medium text-foreground/70">Zip / Postal Code</label><input id="postal_code" className="input-field" {...register('postal_code')} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="country_id" className="text-xs font-medium text-foreground/70">Country</label><input id="country_id" type="hidden" {...register('country_id')} /><input className="input-field cursor-not-allowed bg-muted/50 text-muted-foreground" value={accountProfile?.countryName ?? ''} disabled readOnly /></div>
             </div>
+          </div>
+
+          <div className="border-b border-border py-6">
+            <SectionLabel>Billing preferences</SectionLabel>
+            <p className="mb-5 text-xs text-muted-foreground">Choose how you would like to receive invoices.</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5"><label htmlFor="invoice_delivery" className="text-xs font-medium text-foreground/70">Receive Invoices</label><select id="invoice_delivery" className="input-field bg-transparent" {...register('invoice_delivery')}><option value="email">by Email</option><option value="snailmail">by Post</option></select></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="electronic_invoice_format" className="text-xs font-medium text-foreground/70">Electronic Format</label><select id="electronic_invoice_format" className="input-field bg-transparent" {...register('electronic_invoice_format')}>{ELECTRONIC_FORMATS.map(([value, label]) => <option key={value || 'none'} value={value}>{label}</option>)}</select></div>
+            </div>
+          </div>
+
+          <div className="border-b border-border py-6">
+            <SectionLabel>Referral program</SectionLabel>
+            <p className="mb-5 text-xs text-muted-foreground">Share your Contact ID with friends. When they sign up using your code, you both earn Snabbb credits.</p>
+            <label className="text-xs font-medium text-foreground/70">Your Contact ID</label>
+            <div className="mt-2 flex gap-3">
+              <div className="flex min-h-12 flex-1 items-center rounded-xl border-2 border-primary/70 px-4 font-mono text-lg font-semibold tracking-[0.18em]">{accountProfile?.contactId ?? 'Loading...'}</div>
+              <button type="button" aria-label="Copy Contact ID" className="rounded-xl border border-border px-4 text-muted-foreground hover:bg-muted" onClick={() => accountProfile?.contactId && void navigator.clipboard.writeText(accountProfile.contactId).then(() => toast.success('Contact ID copied'))}><Copy size={18} /></button>
+              <button type="button" aria-label="Share Contact ID" className="rounded-xl border border-border px-4 text-muted-foreground hover:bg-muted" onClick={() => accountProfile?.contactId && (navigator.share ? void navigator.share({ text: `Join Snabbb with my referral code ${accountProfile.contactId}` }) : void navigator.clipboard.writeText(accountProfile.contactId).then(() => toast.success('Contact ID copied')))}><Share2 size={18} /></button>
+            </div>
+            {accountProfile?.contactId && <p className="mt-3 text-xs text-muted-foreground">Ask friends to enter <span className="font-semibold text-foreground/70">{accountProfile.contactId}</span> in the referral field when signing up.</p>}
           </div>
 
           {false && (
@@ -755,14 +806,16 @@ export function Settings() {
             </div>
           )}
 
-          <div className="border-b border-border py-6">
-            <SectionLabel>Bio</SectionLabel>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="bio" className="text-xs font-medium text-foreground/70">Professional bio</label>
-              <textarea id="bio" maxLength={500} className="input-field h-28 resize-none" placeholder="Write a short professional bio visible to other members..." {...register('bio')} />
-              <p className="text-right text-[11px] text-muted-foreground/60">{watchedBio.length}/500</p>
+          {/* Bio is intentionally retained for a future profile version, but hidden to match the current account settings design. */}
+          {false && (
+            <div className="border-b border-border py-6">
+              <SectionLabel>Bio</SectionLabel>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="bio" className="text-xs font-medium text-foreground/70">Professional bio</label>
+                <textarea id="bio" maxLength={500} className="input-field h-28 resize-none" placeholder="Write a short professional bio visible to other members..." {...register('bio')} />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-h-[20px]">
@@ -770,9 +823,9 @@ export function Settings() {
             </div>
             <div className="-mb-3 flex w-full justify-end gap-2 sm:mb-0 sm:w-auto">
               <button type="button" onClick={handleReset} className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted">Discard</button>
-              <button type="submit" disabled={updateProfile.isPending} className="flex text-white items-center gap-2 btn-primary px-5 py-2 text-sm">
-                {updateProfile.isPending ? <LoadingSpinner size="sm" /> : null}
-                Save changes
+              <button type="submit" disabled={!accountProfile || accountProfileQuery.isLoading || isSubmitting} className="flex text-white items-center gap-2 btn-primary px-5 py-2 text-sm disabled:opacity-60">
+                {isSubmitting ? <LoadingSpinner size="sm" /> : null}
+                {isSubmitting ? 'Saving...' : 'Save changes'}
               </button>
             </div>
           </div>
