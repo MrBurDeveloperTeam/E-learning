@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { ImportedVideoManagement } from '@/components/admin/ImportedVideoManagement'
 import {
   AdminSectionCard,
   AdminStatCard,
@@ -802,6 +803,8 @@ export function AdminFetchVideos() {
         </AdminSectionCard>
 
       </div>
+
+      <ImportedVideoManagement />
 
       <AdminSectionCard
         title="Automatic import history"
