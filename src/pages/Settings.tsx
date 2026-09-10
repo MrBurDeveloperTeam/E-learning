@@ -95,14 +95,15 @@ const TAB_META: Record<SettingsTab, { title: string; description: string }> = {
 }
 
 const NOTIFICATION_GROUPS = [
-  {
-    label: 'Learning activity',
-    items: [
-      { key: 'certificateReady', label: 'CE certificate ready', description: 'When your certificate is generated after course completion' },
-      { key: 'lessonReminder', label: 'Lesson reminder', description: 'Remind me to continue an in-progress course after 3 days' },
-      { key: 'newSpecialtyCourse', label: 'New course in my specialty', description: 'When a new course matching your specialty is published' },
-    ],
-  },
+  // Learning activity notifications are intentionally retained for future use but hidden from the current Settings UI.
+  ...(false ? [{
+      label: 'Learning activity',
+      items: [
+        { key: 'certificateReady', label: 'CE certificate ready', description: 'When your certificate is generated after course completion' },
+        { key: 'lessonReminder', label: 'Lesson reminder', description: 'Remind me to continue an in-progress course after 3 days' },
+        { key: 'newSpecialtyCourse', label: 'New course in my specialty', description: 'When a new course matching your specialty is published' },
+      ],
+    }] : []),
   {
     label: 'Community',
     items: [
@@ -963,6 +964,7 @@ export function Settings() {
 
   function renderPanelBody() {
     if (activeTab === 'profile') return renderProfilePanel()
+    // Security and Appearance panels are retained above, but their sidebar entries are currently hidden.
     if (activeTab === 'security') return renderSecurityPanel()
     if (activeTab === 'notifications') return renderNotificationsPanel()
     if (activeTab === 'appearance') return renderAppearancePanel()
@@ -970,8 +972,22 @@ export function Settings() {
   }
 
   const navGroups = [
-    { label: 'Account', items: [{ id: 'profile' as SettingsTab, label: 'Profile', icon: UserRound }, { id: 'security' as SettingsTab, label: 'Security', icon: Shield }] },
-    { label: 'Preferences', items: [{ id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell }, { id: 'appearance' as SettingsTab, label: 'Appearance', icon: SunMedium }] },
+    {
+      label: 'Account',
+      items: [
+        { id: 'profile' as SettingsTab, label: 'Profile', icon: UserRound },
+        // Security is intentionally retained for future use but hidden from desktop and mobile navigation.
+        ...(false ? [{ id: 'security' as SettingsTab, label: 'Security', icon: Shield }] : []),
+      ],
+    },
+    {
+      label: 'Preferences',
+      items: [
+        { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
+        // Appearance is intentionally retained for future use but hidden from desktop and mobile navigation.
+        ...(false ? [{ id: 'appearance' as SettingsTab, label: 'Appearance', icon: SunMedium }] : []),
+      ],
+    },
   ]
   const mobileItems = navGroups.flatMap((group) => group.items)
   const currentTabMeta = TAB_META[activeTab]
