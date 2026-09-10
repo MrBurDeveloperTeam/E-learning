@@ -26,6 +26,9 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
   { label: 'Categories', path: '/category' },
 ]
 
+// Keep the support ticket integration intact while its profile-menu entry is not ready for users.
+const SHOW_SUPPORT_TICKETS = false
+
 export function Navbar() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
@@ -481,21 +484,23 @@ export function Navbar() {
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </button>
 
-                          <button
-                            type="button"
-                            disabled={isOpeningSupportTickets}
-                            onClick={() => void openSupportTickets()}
-                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
-                          >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-                              <LifeBuoy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-bold leading-tight text-foreground">Support Tickets</p>
-                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Create and track your support tickets</p>
-                            </div>
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
-                          </button>
+                          {SHOW_SUPPORT_TICKETS && (
+                            <button
+                              type="button"
+                              disabled={isOpeningSupportTickets}
+                              onClick={() => void openSupportTickets()}
+                              className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                            >
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+                                <LifeBuoy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold leading-tight text-foreground">Support Tickets</p>
+                                <p className="truncate text-[11px] font-semibold text-muted-foreground">Create and track your support tickets</p>
+                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                            </button>
+                          )}
 
                           <Link
                             to="/settings"
