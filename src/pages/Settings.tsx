@@ -369,23 +369,26 @@ export function Settings() {
   }
 
   function handleReset() {
-    if (!accountProfile) return
-    reset({
-      first_name: accountProfile.firstName,
-      last_name: accountProfile.lastName,
-      phone: accountProfile.phone,
-      date_of_birth: accountProfile.dateOfBirth,
-      specialty: accountProfile.categoryIds[0] ?? '',
-      street_address: accountProfile.street,
-      address_line_2: accountProfile.street2,
-      city: accountProfile.city,
-      state_id: accountProfile.stateId,
-      postal_code: accountProfile.postalCode,
-      country_id: accountProfile.countryId,
-      invoice_delivery: accountProfile.receiveInvoices,
-      electronic_invoice_format: accountProfile.electronicFormat,
-      bio: profile?.bio ?? '',
-    })
+    if (accountProfile) {
+      reset({
+        first_name: accountProfile.firstName,
+        last_name: accountProfile.lastName,
+        phone: accountProfile.phone,
+        date_of_birth: accountProfile.dateOfBirth,
+        specialty: accountProfile.categoryIds[0] ?? '',
+        street_address: accountProfile.street,
+        address_line_2: accountProfile.street2,
+        city: accountProfile.city,
+        state_id: accountProfile.stateId,
+        postal_code: accountProfile.postalCode,
+        country_id: accountProfile.countryId,
+        invoice_delivery: accountProfile.receiveInvoices,
+        electronic_invoice_format: accountProfile.electronicFormat,
+        bio: profile?.bio ?? '',
+      })
+    }
+
+    window.history.back()
   }
 
   async function handleSignOut() {
