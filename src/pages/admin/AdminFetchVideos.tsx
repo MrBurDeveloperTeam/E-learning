@@ -763,7 +763,7 @@ export function AdminFetchVideos() {
                   >
                     <SelectValue placeholder="Choose a category" />
                   </SelectTrigger>
-                  <SelectContent align="start" className="z-[1000001] rounded-xl">
+                  <SelectContent align="start" positionerClassName="z-[1000001]" className="z-[1000001] rounded-xl">
                     {VIDEO_CATEGORIES.map((item) => (
                       <SelectItem key={item} value={item}>{item}</SelectItem>
                     ))}
@@ -787,7 +787,7 @@ export function AdminFetchVideos() {
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="start" className="z-[1000001] rounded-xl">
+                  <SelectContent align="start" positionerClassName="z-[1000001]" className="z-[1000001] rounded-xl">
                     {IMPORT_VIDEO_LANGUAGE_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                     ))}
@@ -811,7 +811,7 @@ export function AdminFetchVideos() {
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="start" className="z-[1000001] rounded-xl">
+                  <SelectContent align="start" positionerClassName="z-[1000001]" className="z-[1000001] rounded-xl">
                     <SelectItem value="10">10 videos</SelectItem>
                     <SelectItem value="25">25 videos</SelectItem>
                     <SelectItem value="50">50 videos</SelectItem>
