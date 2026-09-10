@@ -86,12 +86,12 @@ function PanelDialog({ open, onOpenChange, title, description, children }: {
   children: ReactNode
 }) {
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="z-[2147483647] flex h-[min(88vh,940px)] w-[min(94vw,1500px)] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border border-white/60 p-0 shadow-[0_36px_100px_-20px_rgba(5,25,28,0.55)] ring-1 ring-black/10 sm:max-w-none" overlayClassName="z-[2147483646] bg-slate-950/35 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md">
+    <DialogContent className="z-[1000000] flex h-[min(88vh,940px)] w-[min(94vw,1500px)] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border border-white/60 p-0 shadow-[0_36px_100px_-20px_rgba(5,25,28,0.55)] ring-1 ring-black/10 sm:max-w-none" overlayClassName="z-[999999] bg-slate-950/35 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md">
       <DialogHeader className="shrink-0 border-b border-border bg-popover px-6 py-5 pr-16">
         <DialogTitle className="text-xl">{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 p-4 sm:p-6">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-6">{children}</div>
     </DialogContent>
   </Dialog>
 }
@@ -763,7 +763,7 @@ export function AdminFetchVideos() {
                   >
                     <SelectValue placeholder="Choose a category" />
                   </SelectTrigger>
-                  <SelectContent align="start" className="rounded-xl">
+                  <SelectContent align="start" className="z-[1000001] rounded-xl">
                     {VIDEO_CATEGORIES.map((item) => (
                       <SelectItem key={item} value={item}>{item}</SelectItem>
                     ))}
@@ -787,7 +787,7 @@ export function AdminFetchVideos() {
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="start" className="rounded-xl">
+                  <SelectContent align="start" className="z-[1000001] rounded-xl">
                     {IMPORT_VIDEO_LANGUAGE_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                     ))}
@@ -811,7 +811,7 @@ export function AdminFetchVideos() {
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="start" className="rounded-xl">
+                  <SelectContent align="start" className="z-[1000001] rounded-xl">
                     <SelectItem value="10">10 videos</SelectItem>
                     <SelectItem value="25">25 videos</SelectItem>
                     <SelectItem value="50">50 videos</SelectItem>
