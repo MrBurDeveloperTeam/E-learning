@@ -47,12 +47,17 @@ function isCloudflarePagesPreview() {
 
 async function fetchSsoExchange(token?: string | null) {
   try {
-    const exchangePath = token
-      ? `/api/sso/exchange?token=${encodeURIComponent(token)}`
-      : '/api/sso/exchange'
-    const response = await fetch(getApiUrl(exchangePath), {
+    // Exchange directly with the central SSO Worker. Going through the
+    // E-learning Pages proxy adds another deployment/configuration layer and
+    // can leave a fresh browser on the landing page even though it received
+    // a valid per-launch token.
+    const exchangeUrl = token
+      ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(token)}`
+      : 'https://sso.snabbb.com/api/sso/exchange'
+    const response = await fetch(exchangeUrl, {
       method: 'GET',
       credentials: 'include',
+      cache: 'no-store',
     })
 
     // Only return if we got a valid JSON response
@@ -63,6 +68,8 @@ async function fetchSsoExchange(token?: string | null) {
       }
     }
 
+    const errorBody = await response.text().catch(() => '')
+    console.warn('[useAuth] SSO exchange rejected:', response.status, errorBody)
     return null
   } catch (error) {
     console.warn('[useAuth] fetchSsoExchange error:', error)
