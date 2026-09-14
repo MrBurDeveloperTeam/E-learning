@@ -126,7 +126,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
           // Attempt seamless SSO if no Supabase session exists
           try {
             const searchParams = new URLSearchParams(window.location.search)
-            const appLinkToken = searchParams.get('token')
+            const appLinkToken = searchParams.get('sso_token') || searchParams.get('token')
             const ssoRes = await fetchSsoExchange(appLinkToken)
             if (!ssoRes) {
               clearStore()
@@ -147,7 +147,10 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
                 } else if (appLinkToken) {
                   // Remove the one-time JWT from browser history/address bar
                   // after it has been exchanged successfully.
-                  window.history.replaceState({}, '', '/')
+                  const cleanUrl = new URL(window.location.href)
+                  cleanUrl.searchParams.delete('sso_token')
+                  cleanUrl.searchParams.delete('token')
+                  window.history.replaceState({}, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`)
                 }
               } else {
                 clearStore()
