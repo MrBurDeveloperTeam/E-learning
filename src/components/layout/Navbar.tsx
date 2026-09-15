@@ -26,8 +26,7 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
   { label: 'Categories', path: '/category' },
 ]
 
-// Keep the support ticket integration intact while its profile-menu entry is not ready for users.
-const SHOW_SUPPORT_TICKETS = false
+const SHOW_SUPPORT_TICKETS = true
 
 export function Navbar() {
   const user = useAuthStore((state) => state.user)
@@ -495,8 +494,8 @@ export function Navbar() {
                                 <LifeBuoy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold leading-tight text-foreground">Support Tickets</p>
-                                <p className="truncate text-[11px] font-semibold text-muted-foreground">Create and track your support tickets</p>
+                                <p className="text-sm font-bold leading-tight text-foreground">{canAccessAdmin ? 'Admin Dashboard' : 'User Dashboard'}</p>
+                                <p className="truncate text-[11px] font-semibold text-muted-foreground">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
                               </div>
                               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                             </button>
