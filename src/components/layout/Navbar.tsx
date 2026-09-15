@@ -189,31 +189,14 @@ export function Navbar() {
     }
   }
 
-  async function openSupportTickets() {
+  function openSupportTickets() {
     if (isOpeningSupportTickets) return
 
     setMenuOpen(false)
     setMobileMenuOpen(false)
     setIsOpeningSupportTickets(true)
-
-    try {
-      const response = await fetch('/api/ticketing/sso', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok || !data?.redirectUrl) {
-        throw new Error(data?.error || 'Unable to open the support portal.')
-      }
-
-      window.location.assign(data.redirectUrl)
-    } catch (error) {
-      console.error('Ticketing SSO failed:', error)
-      toast.error('Unable to open Support Tickets. Please try again.')
-      setIsOpeningSupportTickets(false)
-    }
+    const dashboardPath = canAccessAdmin ? '/admin/dashboard' : '/user/dashboard'
+    window.location.assign(`https://app.snabbb.com${dashboardPath}`)
   }
 
   useEffect(() => {
