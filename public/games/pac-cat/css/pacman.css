@@ -1,502 +1,503 @@
-::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
-}
-::-webkit-scrollbar-track { 
-	background-color: #333;
-} 
-::-webkit-scrollbar-thumb { 
-	background-color: #424e69;
-}
-::-webkit-scrollbar-thumb:hover { 
-	background-color: #8295d5;
-}
-
-@font-face {
-	font-family: 'Quadrit';
-	src: url('../css/Quadrit.ttf');
-}
-
-* {
-	font-family: Quadrit, sans-serif;
-	font-size: 20px;
-	color: #fff;
-}
-
-html,
-body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-
-    overflow: hidden !important;
-    overscroll-behavior: none;
-    background-color: #000;
-}
-
-html {
-    position: fixed;
-    inset: 0;
-}
-
-body {
-    position: fixed;
-    inset: 0;
-
-    touch-action: none;
-    -webkit-overflow-scrolling: auto;
-}
-
-
-#score, #highscore  { 
-	position: absolute;
-	display: inline;
-	top: 70px;
-	margin: 0px;
-	padding: 0px;
-	width: 160px;
-}
-#highscore { 
-	left: 180px;
-}
-#score h2, #score span, #highscore h2, #highscore span { 
-	display: block;
-	text-transform: uppercase;
-	font-weight: 800;
-	letter-spacing: 2px;
-	font-size: 16px;
-	height: 21px;
-	margin: 0px;
-	padding: 0px;
-	text-align: right;
-	padding-right: 15px;
-}
-#score span, #highscore span {letter-spacing: 0.14em;
-     
-	padding-right: 0px;
-}
-#highscore span { 
-	padding-right: 40px;
-}
-#message { 
-	position: absolute;
-	display: inline;
-	top: 413px;
-	left: 180px;
-	margin: 0px;
-	padding: 0px;
-	width: 210px;
-	height: 30px;
-	text-transform: uppercase;
-	font-weight: 800;
-	letter-spacing: 2px;
-	font-size: 20px;
-	color: #fff200;
-	text-align: center;
-}
-#message.red { 
-	color: red;
-}
-
-span.combo, span.fruits { 
-	position: absolute;
-	letter-spacing: 1.5px;
-	font-size: 14px;
-	color: #89dfff;
-	font-weight: 800;
-}
-
-#panel, #home { 
-	width: 550px;
-	height: 690px;
-	margin: auto;
-	margin-top: 10px;
-	left: 0px;
-	right: 0px;
-	position: absolute;
-	padding: 5px 10px 10px 10px;
-	background-color: #000;
-}			
-#board, #canvas-board, #canvas-paths, #canvas-fruits, #canvas-pacman, #canvas-bubbles, #canvas-ghost-blinky, #canvas-ghost-pinky, #canvas-ghost-inky, #canvas-ghost-clyde { 
-	width: 550px;
-	height: 550px;
-	position: absolute;
-}
-#canvas-paths { 
-	display: none;
-}
-#board {  
-	position: relative;
-}
-
-#canvas-lifes, #canvas-level-fruits { 
-	height: 30px;
-	top: 670px;
-	position: absolute;
-	z-index: 111111;
-}
-#canvas-lifes { 
-	width: 120px;
-	left: 50px;
-}
-#canvas-level-fruits { 
-	width: 265px;
-	right: 50px;
-}
-
-#control { 
-	position: absolute;
-	margin: auto;
-	left: 0px;
-	right: 0px;
-	bottom: -145px;
-	width: 550px;
-	height: 140px;
-	background-color: #666;
-	opacity: 0.7;
-	display: none;
-}
-#control-up, #control-down, #control-up-second, #control-down-second, #control-left, #control-right, #control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-	position: absolute;
-	margin: auto;
-	background-repeat: no-repeat;
-	background-position: 50% 50%;
-	background-size: 64px;
-	cursor: pointer;
-	width: 64px;
-	height: 64px;
-	padding: 5px;
-}
-#control-up { 
-	top: 0px;
-	left: 70px;
-	background-image: url('../img/move-up.png');
-}
-#control-down { 
-	bottom: 0px;
-	right: 70px;
-	background-image: url('../img/move-down.png');
-}
-#control-up-second { 
-	top: 0px;
-	right: 70px;
-	background-image: url('../img/move-up.png');
-}
-#control-down-second{ 
-	bottom: 0px;
-	left: 70px;
-	background-image: url('../img/move-down.png');
-}
-#control-left { 
-	bottom: 0px;
-	top: 0px;
-	left: 0px;
-	background-image: url('../img/move-left.png');
-}
-#control-right { 
-	bottom: 0px;
-	top: 0px;
-	right: 0px;
-	background-image: url('../img/move-right.png');
-}
-
-/*
- * Direction button images.
- * Size and position are controlled by mobile-controls-v2.css.
- */
-#control-up-big {
-    background-image:
-        url('../img/move-up-big.png');
-}
-
-#control-down-big {
-    background-image:
-        url('../img/move-down-big.png');
-}
-
-#control-left-big {
-    background-image:
-        url('../img/move-left-big.png');
-}
-
-#control-right-big {
-    background-image:
-        url('../img/move-right-big.png');
-}
-
-
-
-h1 { 
-	margin: 0px 0px 74px 0px;
-	padding: 0px;
-	font-size: 24px;
-	letter-spacing: 3px;
-	color: #fff;
-	text-transform: uppercase;
-	font-style: normal;
-}
-.cat-emoji {
-	display: inline-block;
-	font-size: 24px;
-	line-height: 1;
-	vertical-align: middle;
-}
-#home .cat-emoji {
-	font-size: 84px;
-	vertical-align: middle;
-	position: relative;
-	top: -22px; /* nudge upward to align with text baseline */
-}
-#panel .cat-emoji {
-	font-size: 24px;
-	position: relative;
-	top: -2px; /* lift to match text baseline in panel header */
-}
-h3 { 
-	margin: 0px;
-	padding: 0px;
-	font-size: 20px;
-	letter-spacing: 2px;
-	color: #fff;
-	text-transform: uppercase;
-	font-style: normal;
-}
-
-.sound { 
-	position: absolute;
-}
-.sound img { 
-	height: 28px;
-}
-#home .sound { 
-	top: 160px;
-	right: 110px;
-}
-#panel .sound { 
-	top: 77px;
-	right: 5px;
-}
-
-.help-button { 
-	position: absolute;
-	text-align: center;
-	bottom: 8px;
-	right: 55px;
-	margin: auto;
-	font-size: 14px;
-	font-weight: bold;
-	text-transform: lowercase;
-	letter-spacing: 0.5px;
-	cursor: pointer;
-	color: #78abf7;
-	transition: color 1.5s;
-}
-.help-button.yo { 
-	color: #333;
-}
-#panel .help-button { 
-	top: -510px;
-	height: 25px;
-}
-#home .help-button {
-	top: 160px;
-	left: 120px;
-	bottom: auto;
-	right: auto;
-}
-
-#help h2 { 
-	margin: 0px 0px 10px 0px;
-	color: #d43b3b;
-	text-transform: uppercase;
-	font-weight: bold;
-	font-size: 26px;
-}
-#help { 
-	position: absolute;
-	width: 420px;
-	height: 265px;
-	top: 290px;
-	left: 0px;
-	right: 0px;
-	margin: auto;
-	padding-top: 15px;
-	text-align: center;
-	z-index: 999999;
-	background-color: #222;
-	border: solid 1px #193fff;
-	text-transform: uppercase;
-	opacity: 0.9;
-	display: none;
-	cursor: pointer;
-}
-#help  table  tr  td { 
-	font-size: 16px;
-	letter-spacing: 1px;
-}
-#help  table  tr  td:first-child { 
-	color: #f4c030;
-	font-weight: bold;
-	text-align: right;
-}
-#help  table  tr  td:last-child { 
-	text-align: left;
-}
-
-#sound { 
-	position: absolute;
-}
-
-.ui-mobile {
-	-webkit-touch-callout: none;
-	-webkit-user-select: none;
-	-khtml-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-	-webkit-tap-highlight-color: rgba(0,0,0,0);
-}
-
-
-
-@media screen and (min-height:1200px), screen and (min-device-height : 1200px) { 
-	#panel, #home { 
-		zoom: 135%;
-	}
-}
-
-@media screen and (max-width:1024px), screen and (min-device-width : 768px) and (max-device-width : 1024px) { 
-	#home .help-button, #panel .help-button, #home .github, #sound, .sound { 
-		display: none;
-	}
-	#panel, #home { 
-		zoom: 105%;
-	}
-
-
-}
-@media screen and (max-height:640px), screen and (min-device-height : 480px) and (max-device-height : 640px) and (-webkit-device-pixel-ratio: 3) { 
-	#panel, #home { 
-		zoom: 60%;
-	}
-	#home .help-button, #panel .help-button, #home .github, #sound, .sound { 
-		display: none;
-	}
-	h1, #canvas-panel-title-pacman { 
-		visibility: hidden;
-	}
-}
-@media screen and (max-height:480px), screen and (min-device-height : 320px) and (max-device-height : 480px) { 
-	#panel, #home { 
-		zoom: 55%;
-	}
-	h1, #canvas-panel-title-pacman, #control-up-second, #control-down-second, #home .help-button, #panel .help-button, #home .github, #sound, .sound { 
-		display: none;
-	}
-	#score, #highscore { 
-		top: 0px;
-	}
-	#panel { 
-		padding-top: 50px;
-	}
-	#canvas-lifes, #canvas-level-fruits { 
-		top: 607px;
-	}
-	#control { 
-		bottom: 50px;
-		width: 550px;
-		height: 55px;
-	}
-	#control-up, #control-down, #control-left, #control-right { 
-		top: 0px;
-		bottom: 0px;
-		background-size: 48px;
-		width: 48px;
-		height: 48px;
-		padding: 5px;
-	}
-	#message { 
-		top: 347px;
-	}
-}
-
-/*
- * Modern responsive PAC-CAT viewport.
- * Override the old zoom-based mobile layout.
- */
-:root {
-    --pac-cat-scale: 1;
-    --pac-cat-center-x: 50vw;
-    --pac-cat-center-y: 50vh;
-}
-
-#panel,
-#home {
-    box-sizing: content-box;
-
-    width: 550px !important;
-    height: 690px !important;
-
-    position: fixed !important;
-    left: var(--pac-cat-center-x) !important;
-    top: var(--pac-cat-center-y) !important;
-    right: auto !important;
-    bottom: auto !important;
-
-    margin: 0 !important;
-    margin-top: 0 !important;
-    padding: 5px 10px 10px !important;
-
-    zoom: 1 !important;
-
-    transform:
-        translate(-50%, -50%)
-        scale(var(--pac-cat-scale));
-
-    transform-origin: center center;
-    will-change: transform;
-
-    overflow: visible;
-}
-
-/*
- * Restore elements hidden or repositioned by the old
- * max-height mobile media queries.
- */
-#home h1,
-#panel h1 {
-    display: block !important;
-    visibility: visible !important;
-}
-
-#canvas-panel-title-pacman {
-    display: block !important;
-    visibility: visible !important;
-}
-
-#score,
-#highscore {
-    top: 70px !important;
-}
-
-#message {
-    top: 413px !important;
-}
-
-#canvas-lifes,
-#canvas-level-fruits {
-    top: 670px !important;
-}
-
-/*
- * The old lower control bar is no longer used.
- */
-#control {
-    display: none !important;
-}
-#canvas-home-title-pacman,
-#canvas-panel-title-pacman {
-  display: none !important;
-  visibility: hidden !important;
-}
+/* LEGACY GAME: inactive; original lines JSON-encoded below. */
+/* legacy-line: "::\u002dwebkit\u002dscrollbar {\r" */
+/* legacy-line: "    display: none;\r" */
+/* legacy-line: "    width: 0;\r" */
+/* legacy-line: "    height: 0;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "::\u002dwebkit\u002dscrollbar\u002dtrack { \r" */
+/* legacy-line: "\tbackground\u002dcolor: #333;\r" */
+/* legacy-line: "} \r" */
+/* legacy-line: "::\u002dwebkit\u002dscrollbar\u002dthumb { \r" */
+/* legacy-line: "\tbackground\u002dcolor: #424e69;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "::\u002dwebkit\u002dscrollbar\u002dthumb:hover { \r" */
+/* legacy-line: "\tbackground\u002dcolor: #8295d5;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@font\u002dface {\r" */
+/* legacy-line: "\tfont\u002dfamily: 'Quadrit';\r" */
+/* legacy-line: "\tsrc: url('..\u002fcss\u002fQuadrit.ttf');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "* {\r" */
+/* legacy-line: "\tfont\u002dfamily: Quadrit, sans\u002dserif;\r" */
+/* legacy-line: "\tfont\u002dsize: 20px;\r" */
+/* legacy-line: "\tcolor: #fff;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "html,\r" */
+/* legacy-line: "body {\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    height: 100%;\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    padding: 0;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    overflow: hidden !important;\r" */
+/* legacy-line: "    overscroll\u002dbehavior: none;\r" */
+/* legacy-line: "    background\u002dcolor: #000;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "html {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "    inset: 0;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "body {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "    inset: 0;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    touch\u002daction: none;\r" */
+/* legacy-line: "    \u002dwebkit\u002doverflow\u002dscrolling: auto;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#score, #highscore  { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tdisplay: inline;\r" */
+/* legacy-line: "\ttop: 70px;\r" */
+/* legacy-line: "\tmargin: 0px;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\twidth: 160px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#highscore { \r" */
+/* legacy-line: "\tleft: 180px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#score h2, #score span, #highscore h2, #highscore span { \r" */
+/* legacy-line: "\tdisplay: block;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\tfont\u002dweight: 800;\r" */
+/* legacy-line: "\tletter\u002dspacing: 2px;\r" */
+/* legacy-line: "\tfont\u002dsize: 16px;\r" */
+/* legacy-line: "\theight: 21px;\r" */
+/* legacy-line: "\tmargin: 0px;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\ttext\u002dalign: right;\r" */
+/* legacy-line: "\tpadding\u002dright: 15px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#score span, #highscore span {letter\u002dspacing: 0.14em;\r" */
+/* legacy-line: "     \r" */
+/* legacy-line: "\tpadding\u002dright: 0px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#highscore span { \r" */
+/* legacy-line: "\tpadding\u002dright: 40px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#message { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tdisplay: inline;\r" */
+/* legacy-line: "\ttop: 413px;\r" */
+/* legacy-line: "\tleft: 180px;\r" */
+/* legacy-line: "\tmargin: 0px;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\twidth: 210px;\r" */
+/* legacy-line: "\theight: 30px;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\tfont\u002dweight: 800;\r" */
+/* legacy-line: "\tletter\u002dspacing: 2px;\r" */
+/* legacy-line: "\tfont\u002dsize: 20px;\r" */
+/* legacy-line: "\tcolor: #fff200;\r" */
+/* legacy-line: "\ttext\u002dalign: center;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#message.red { \r" */
+/* legacy-line: "\tcolor: red;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "span.combo, span.fruits { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tletter\u002dspacing: 1.5px;\r" */
+/* legacy-line: "\tfont\u002dsize: 14px;\r" */
+/* legacy-line: "\tcolor: #89dfff;\r" */
+/* legacy-line: "\tfont\u002dweight: 800;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#panel, #home { \r" */
+/* legacy-line: "\twidth: 550px;\r" */
+/* legacy-line: "\theight: 690px;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tmargin\u002dtop: 10px;\r" */
+/* legacy-line: "\tleft: 0px;\r" */
+/* legacy-line: "\tright: 0px;\r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tpadding: 5px 10px 10px 10px;\r" */
+/* legacy-line: "\tbackground\u002dcolor: #000;\r" */
+/* legacy-line: "}\t\t\t\r" */
+/* legacy-line: "#board, #canvas\u002dboard, #canvas\u002dpaths, #canvas\u002dfruits, #canvas\u002dpacman, #canvas\u002dbubbles, #canvas\u002dghost\u002dblinky, #canvas\u002dghost\u002dpinky, #canvas\u002dghost\u002dinky, #canvas\u002dghost\u002dclyde { \r" */
+/* legacy-line: "\twidth: 550px;\r" */
+/* legacy-line: "\theight: 550px;\r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpaths { \r" */
+/* legacy-line: "\tdisplay: none;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#board {  \r" */
+/* legacy-line: "\tposition: relative;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#canvas\u002dlifes, #canvas\u002dlevel\u002dfruits { \r" */
+/* legacy-line: "\theight: 30px;\r" */
+/* legacy-line: "\ttop: 670px;\r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tz\u002dindex: 111111;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dlifes { \r" */
+/* legacy-line: "\twidth: 120px;\r" */
+/* legacy-line: "\tleft: 50px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dlevel\u002dfruits { \r" */
+/* legacy-line: "\twidth: 265px;\r" */
+/* legacy-line: "\tright: 50px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#control { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tleft: 0px;\r" */
+/* legacy-line: "\tright: 0px;\r" */
+/* legacy-line: "\tbottom: \u002d145px;\r" */
+/* legacy-line: "\twidth: 550px;\r" */
+/* legacy-line: "\theight: 140px;\r" */
+/* legacy-line: "\tbackground\u002dcolor: #666;\r" */
+/* legacy-line: "\topacity: 0.7;\r" */
+/* legacy-line: "\tdisplay: none;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002dup, #control\u002ddown, #control\u002dup\u002dsecond, #control\u002ddown\u002dsecond, #control\u002dleft, #control\u002dright, #control\u002dup\u002dbig, #control\u002ddown\u002dbig, #control\u002dleft\u002dbig, #control\u002dright\u002dbig { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tbackground\u002drepeat: no\u002drepeat;\r" */
+/* legacy-line: "\tbackground\u002dposition: 50% 50%;\r" */
+/* legacy-line: "\tbackground\u002dsize: 64px;\r" */
+/* legacy-line: "\tcursor: pointer;\r" */
+/* legacy-line: "\twidth: 64px;\r" */
+/* legacy-line: "\theight: 64px;\r" */
+/* legacy-line: "\tpadding: 5px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002dup { \r" */
+/* legacy-line: "\ttop: 0px;\r" */
+/* legacy-line: "\tleft: 70px;\r" */
+/* legacy-line: "\tbackground\u002dimage: url('..\u002fimg\u002fmove\u002dup.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002ddown { \r" */
+/* legacy-line: "\tbottom: 0px;\r" */
+/* legacy-line: "\tright: 70px;\r" */
+/* legacy-line: "\tbackground\u002dimage: url('..\u002fimg\u002fmove\u002ddown.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002dup\u002dsecond { \r" */
+/* legacy-line: "\ttop: 0px;\r" */
+/* legacy-line: "\tright: 70px;\r" */
+/* legacy-line: "\tbackground\u002dimage: url('..\u002fimg\u002fmove\u002dup.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002ddown\u002dsecond{ \r" */
+/* legacy-line: "\tbottom: 0px;\r" */
+/* legacy-line: "\tleft: 70px;\r" */
+/* legacy-line: "\tbackground\u002dimage: url('..\u002fimg\u002fmove\u002ddown.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002dleft { \r" */
+/* legacy-line: "\tbottom: 0px;\r" */
+/* legacy-line: "\ttop: 0px;\r" */
+/* legacy-line: "\tleft: 0px;\r" */
+/* legacy-line: "\tbackground\u002dimage: url('..\u002fimg\u002fmove\u002dleft.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#control\u002dright { \r" */
+/* legacy-line: "\tbottom: 0px;\r" */
+/* legacy-line: "\ttop: 0px;\r" */
+/* legacy-line: "\tright: 0px;\r" */
+/* legacy-line: "\tbackground\u002dimage: url('..\u002fimg\u002fmove\u002dright.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Direction button images.\r" */
+/* legacy-line: " * Size and position are controlled by mobile\u002dcontrols\u002dv2.css.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#control\u002dup\u002dbig {\r" */
+/* legacy-line: "    background\u002dimage:\r" */
+/* legacy-line: "        url('..\u002fimg\u002fmove\u002dup\u002dbig.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#control\u002ddown\u002dbig {\r" */
+/* legacy-line: "    background\u002dimage:\r" */
+/* legacy-line: "        url('..\u002fimg\u002fmove\u002ddown\u002dbig.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#control\u002dleft\u002dbig {\r" */
+/* legacy-line: "    background\u002dimage:\r" */
+/* legacy-line: "        url('..\u002fimg\u002fmove\u002dleft\u002dbig.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#control\u002dright\u002dbig {\r" */
+/* legacy-line: "    background\u002dimage:\r" */
+/* legacy-line: "        url('..\u002fimg\u002fmove\u002dright\u002dbig.png');\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "h1 { \r" */
+/* legacy-line: "\tmargin: 0px 0px 74px 0px;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\tfont\u002dsize: 24px;\r" */
+/* legacy-line: "\tletter\u002dspacing: 3px;\r" */
+/* legacy-line: "\tcolor: #fff;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\tfont\u002dstyle: normal;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: ".cat\u002demoji {\r" */
+/* legacy-line: "\tdisplay: inline\u002dblock;\r" */
+/* legacy-line: "\tfont\u002dsize: 24px;\r" */
+/* legacy-line: "\tline\u002dheight: 1;\r" */
+/* legacy-line: "\tvertical\u002dalign: middle;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#home .cat\u002demoji {\r" */
+/* legacy-line: "\tfont\u002dsize: 84px;\r" */
+/* legacy-line: "\tvertical\u002dalign: middle;\r" */
+/* legacy-line: "\tposition: relative;\r" */
+/* legacy-line: "\ttop: \u002d22px; \u002f* nudge upward to align with text baseline *\u002f\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#panel .cat\u002demoji {\r" */
+/* legacy-line: "\tfont\u002dsize: 24px;\r" */
+/* legacy-line: "\tposition: relative;\r" */
+/* legacy-line: "\ttop: \u002d2px; \u002f* lift to match text baseline in panel header *\u002f\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "h3 { \r" */
+/* legacy-line: "\tmargin: 0px;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\tfont\u002dsize: 20px;\r" */
+/* legacy-line: "\tletter\u002dspacing: 2px;\r" */
+/* legacy-line: "\tcolor: #fff;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\tfont\u002dstyle: normal;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".sound { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: ".sound img { \r" */
+/* legacy-line: "\theight: 28px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#home .sound { \r" */
+/* legacy-line: "\ttop: 160px;\r" */
+/* legacy-line: "\tright: 110px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#panel .sound { \r" */
+/* legacy-line: "\ttop: 77px;\r" */
+/* legacy-line: "\tright: 5px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".help\u002dbutton { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\ttext\u002dalign: center;\r" */
+/* legacy-line: "\tbottom: 8px;\r" */
+/* legacy-line: "\tright: 55px;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tfont\u002dsize: 14px;\r" */
+/* legacy-line: "\tfont\u002dweight: bold;\r" */
+/* legacy-line: "\ttext\u002dtransform: lowercase;\r" */
+/* legacy-line: "\tletter\u002dspacing: 0.5px;\r" */
+/* legacy-line: "\tcursor: pointer;\r" */
+/* legacy-line: "\tcolor: #78abf7;\r" */
+/* legacy-line: "\ttransition: color 1.5s;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: ".help\u002dbutton.yo { \r" */
+/* legacy-line: "\tcolor: #333;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#panel .help\u002dbutton { \r" */
+/* legacy-line: "\ttop: \u002d510px;\r" */
+/* legacy-line: "\theight: 25px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#home .help\u002dbutton {\r" */
+/* legacy-line: "\ttop: 160px;\r" */
+/* legacy-line: "\tleft: 120px;\r" */
+/* legacy-line: "\tbottom: auto;\r" */
+/* legacy-line: "\tright: auto;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#help h2 { \r" */
+/* legacy-line: "\tmargin: 0px 0px 10px 0px;\r" */
+/* legacy-line: "\tcolor: #d43b3b;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\tfont\u002dweight: bold;\r" */
+/* legacy-line: "\tfont\u002dsize: 26px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#help { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\twidth: 420px;\r" */
+/* legacy-line: "\theight: 265px;\r" */
+/* legacy-line: "\ttop: 290px;\r" */
+/* legacy-line: "\tleft: 0px;\r" */
+/* legacy-line: "\tright: 0px;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tpadding\u002dtop: 15px;\r" */
+/* legacy-line: "\ttext\u002dalign: center;\r" */
+/* legacy-line: "\tz\u002dindex: 999999;\r" */
+/* legacy-line: "\tbackground\u002dcolor: #222;\r" */
+/* legacy-line: "\tborder: solid 1px #193fff;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\topacity: 0.9;\r" */
+/* legacy-line: "\tdisplay: none;\r" */
+/* legacy-line: "\tcursor: pointer;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#help  table  tr  td { \r" */
+/* legacy-line: "\tfont\u002dsize: 16px;\r" */
+/* legacy-line: "\tletter\u002dspacing: 1px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#help  table  tr  td:first\u002dchild { \r" */
+/* legacy-line: "\tcolor: #f4c030;\r" */
+/* legacy-line: "\tfont\u002dweight: bold;\r" */
+/* legacy-line: "\ttext\u002dalign: right;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#help  table  tr  td:last\u002dchild { \r" */
+/* legacy-line: "\ttext\u002dalign: left;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#sound { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".ui\u002dmobile {\r" */
+/* legacy-line: "\t\u002dwebkit\u002dtouch\u002dcallout: none;\r" */
+/* legacy-line: "\t\u002dwebkit\u002duser\u002dselect: none;\r" */
+/* legacy-line: "\t\u002dkhtml\u002duser\u002dselect: none;\r" */
+/* legacy-line: "\t\u002dms\u002duser\u002dselect: none;\r" */
+/* legacy-line: "\tuser\u002dselect: none;\r" */
+/* legacy-line: "\t\u002dwebkit\u002dtap\u002dhighlight\u002dcolor: rgba(0,0,0,0);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@media screen and (min\u002dheight:1200px), screen and (min\u002ddevice\u002dheight : 1200px) { \r" */
+/* legacy-line: "\t#panel, #home { \r" */
+/* legacy-line: "\t\tzoom: 135%;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@media screen and (max\u002dwidth:1024px), screen and (min\u002ddevice\u002dwidth : 768px) and (max\u002ddevice\u002dwidth : 1024px) { \r" */
+/* legacy-line: "\t#home .help\u002dbutton, #panel .help\u002dbutton, #home .github, #sound, .sound { \r" */
+/* legacy-line: "\t\tdisplay: none;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#panel, #home { \r" */
+/* legacy-line: "\t\tzoom: 105%;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "@media screen and (max\u002dheight:640px), screen and (min\u002ddevice\u002dheight : 480px) and (max\u002ddevice\u002dheight : 640px) and (\u002dwebkit\u002ddevice\u002dpixel\u002dratio: 3) { \r" */
+/* legacy-line: "\t#panel, #home { \r" */
+/* legacy-line: "\t\tzoom: 60%;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#home .help\u002dbutton, #panel .help\u002dbutton, #home .github, #sound, .sound { \r" */
+/* legacy-line: "\t\tdisplay: none;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\th1, #canvas\u002dpanel\u002dtitle\u002dpacman { \r" */
+/* legacy-line: "\t\tvisibility: hidden;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "@media screen and (max\u002dheight:480px), screen and (min\u002ddevice\u002dheight : 320px) and (max\u002ddevice\u002dheight : 480px) { \r" */
+/* legacy-line: "\t#panel, #home { \r" */
+/* legacy-line: "\t\tzoom: 55%;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\th1, #canvas\u002dpanel\u002dtitle\u002dpacman, #control\u002dup\u002dsecond, #control\u002ddown\u002dsecond, #home .help\u002dbutton, #panel .help\u002dbutton, #home .github, #sound, .sound { \r" */
+/* legacy-line: "\t\tdisplay: none;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#score, #highscore { \r" */
+/* legacy-line: "\t\ttop: 0px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#panel { \r" */
+/* legacy-line: "\t\tpadding\u002dtop: 50px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#canvas\u002dlifes, #canvas\u002dlevel\u002dfruits { \r" */
+/* legacy-line: "\t\ttop: 607px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#control { \r" */
+/* legacy-line: "\t\tbottom: 50px;\r" */
+/* legacy-line: "\t\twidth: 550px;\r" */
+/* legacy-line: "\t\theight: 55px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#control\u002dup, #control\u002ddown, #control\u002dleft, #control\u002dright { \r" */
+/* legacy-line: "\t\ttop: 0px;\r" */
+/* legacy-line: "\t\tbottom: 0px;\r" */
+/* legacy-line: "\t\tbackground\u002dsize: 48px;\r" */
+/* legacy-line: "\t\twidth: 48px;\r" */
+/* legacy-line: "\t\theight: 48px;\r" */
+/* legacy-line: "\t\tpadding: 5px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "\t#message { \r" */
+/* legacy-line: "\t\ttop: 347px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Modern responsive PAC\u002dCAT viewport.\r" */
+/* legacy-line: " * Override the old zoom\u002dbased mobile layout.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: ":root {\r" */
+/* legacy-line: "    \u002d\u002dpac\u002dcat\u002dscale: 1;\r" */
+/* legacy-line: "    \u002d\u002dpac\u002dcat\u002dcenter\u002dx: 50vw;\r" */
+/* legacy-line: "    \u002d\u002dpac\u002dcat\u002dcenter\u002dy: 50vh;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#panel,\r" */
+/* legacy-line: "#home {\r" */
+/* legacy-line: "    box\u002dsizing: content\u002dbox;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    width: 550px !important;\r" */
+/* legacy-line: "    height: 690px !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    position: fixed !important;\r" */
+/* legacy-line: "    left: var(\u002d\u002dpac\u002dcat\u002dcenter\u002dx) !important;\r" */
+/* legacy-line: "    top: var(\u002d\u002dpac\u002dcat\u002dcenter\u002dy) !important;\r" */
+/* legacy-line: "    right: auto !important;\r" */
+/* legacy-line: "    bottom: auto !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    margin: 0 !important;\r" */
+/* legacy-line: "    margin\u002dtop: 0 !important;\r" */
+/* legacy-line: "    padding: 5px 10px 10px !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    zoom: 1 !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    transform:\r" */
+/* legacy-line: "        translate(\u002d50%, \u002d50%)\r" */
+/* legacy-line: "        scale(var(\u002d\u002dpac\u002dcat\u002dscale));\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    transform\u002dorigin: center center;\r" */
+/* legacy-line: "    will\u002dchange: transform;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    overflow: visible;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Restore elements hidden or repositioned by the old\r" */
+/* legacy-line: " * max\u002dheight mobile media queries.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#home h1,\r" */
+/* legacy-line: "#panel h1 {\r" */
+/* legacy-line: "    display: block !important;\r" */
+/* legacy-line: "    visibility: visible !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#canvas\u002dpanel\u002dtitle\u002dpacman {\r" */
+/* legacy-line: "    display: block !important;\r" */
+/* legacy-line: "    visibility: visible !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#score,\r" */
+/* legacy-line: "#highscore {\r" */
+/* legacy-line: "    top: 70px !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#message {\r" */
+/* legacy-line: "    top: 413px !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#canvas\u002dlifes,\r" */
+/* legacy-line: "#canvas\u002dlevel\u002dfruits {\r" */
+/* legacy-line: "    top: 670px !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * The old lower control bar is no longer used.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#control {\r" */
+/* legacy-line: "    display: none !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dhome\u002dtitle\u002dpacman,\r" */
+/* legacy-line: "#canvas\u002dpanel\u002dtitle\u002dpacman {\r" */
+/* legacy-line: "  display: none !important;\r" */
+/* legacy-line: "  visibility: hidden !important;\r" */
+/* legacy-line: "}" */

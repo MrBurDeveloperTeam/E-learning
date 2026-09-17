@@ -1,467 +1,468 @@
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
-	<!-- Global site tag (gtag.js) - Google Analytics -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-121647007-2"></script>
-	<script>
-		window.dataLayer = window.dataLayer || [];
-		function gtag() { dataLayer.push(arguments); }
-		gtag('js', new Date());
-
-		gtag('config', 'UA-121647007-2');
-	</script>
-
-	<meta property="og:image" content="https://pacman-e281c.firebaseapp.com/img/preview.png">
-	<meta property="og:url" content="https://pacman-e281c.firebaseapp.com/">
-	<meta property="og:description"
-		content="Pac-Man game written in HTML5 + CSS3 + jQuery with Canvas. This WebApp is a Responsive Web Design (RWD) website.">
-	<meta property="og:title" content="PAC-CAT">
-
-	<meta name="viewport"
-		content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-	<meta name="description"
-		content="Pac-Man game written in HTML5 + CSS3 + jQuery with Canvas. This WebApp is a Responsive Web Design (RWD) website." />
-	<meta name="keywords"
-		content="pacman, pac-man, pac-man online, pacman online, online, online games, games, free, puzzle, lucio panepinto, lucio, panepinto, html, html5, css, css3, javascript, jquery, rwd, responsive, responsive web design, responsive web, web design, canvas, draw" />
-
-	<link
-		rel="stylesheet"
-		type="text/css"
-		href="css/pacman.css"
-	/>
-
-	<link
-		rel="stylesheet"
-		type="text/css"
-		href="css/pacman-home.css"
-	/>
-
-	<link
-    rel="stylesheet"
-    type="text/css"
-    href="css/mobile-controls-v2.css"
-	/>
-
-	<script type="text/javascript" src="js/jquery.js"></script>
-	<!--<script type="text/javascript" src="js/jquery-mobile.js"></script>-->
-	<script type="text/javascript" src="js/jquery-buzz.js"></script>
-
-	<script type="text/javascript" src="js/game.js"></script>
-	<script type="text/javascript" src="js/tools.js"></script>
-	<script type="text/javascript" src="js/board.js"></script>
-	<script type="text/javascript" src="js/paths.js"></script>
-	<script type="text/javascript" src="js/bubbles.js"></script>
-	<script type="text/javascript" src="js/fruits.js"></script>
-	<script type="text/javascript" src="js/pacman.js"></script>
-	<script type="text/javascript" src="js/ghosts.js"></script>
-	<script type="text/javascript" src="js/home.js"></script>
-	<script type="text/javascript" src="js/sound.js"></script>
-
-	<script type="text/javascript">
-
-		function simulateKeyup(code) {
-			var e = jQuery.Event("keyup");
-			e.keyCode = code;
-			jQuery('body').trigger(e);
-		}
-		function simulateKeydown(code) {
-			var e = jQuery.Event("keydown");
-			e.keyCode = code;
-			jQuery('body').trigger(e);
-		}
-
-		/*
-		* Prevent touch dragging from moving the page on mobile browsers.
-		*/
-		function preventPacCatScroll(event) {
-			event.preventDefault();
-		}
-
-		/*
-		* Scale the fixed 570 × 705 PAC-CAT layout so the entire
-		* game always fits inside the currently visible viewport.
-		*
-		* The CSS panel width is 550px plus 20px horizontal padding.
-		* The CSS panel height is 690px plus 15px vertical padding.
-		*/
-		function fitPacCatToViewport() {
-			var viewport = window.visualViewport;
-
-			var viewportWidth = viewport
-				? viewport.width
-				: window.innerWidth;
-
-			var viewportHeight = viewport
-				? viewport.height
-				: window.innerHeight;
-
-			var viewportLeft = viewport
-				? viewport.offsetLeft
-				: 0;
-
-			var viewportTop = viewport
-				? viewport.offsetTop
-				: 0;
-
-			var baseWidth = 570;
-			var baseHeight = 705;
-			var edgePadding = 8;
-
-			var availableWidth = Math.max(
-				viewportWidth - edgePadding * 2,
-				1
-			);
-
-			var availableHeight = Math.max(
-				viewportHeight - edgePadding * 2,
-				1
-			);
-
-			var gameScale = Math.min(
-				availableWidth / baseWidth,
-				availableHeight / baseHeight,
-				1
-			);
-
-			document.documentElement.style.setProperty(
-				"--pac-cat-scale",
-				String(gameScale)
-			);
-
-			document.documentElement.style.setProperty(
-				"--pac-cat-center-x",
-				viewportLeft + viewportWidth / 2 + "px"
-			);
-
-			document.documentElement.style.setProperty(
-				"--pac-cat-center-y",
-				viewportTop + viewportHeight / 2 + "px"
-			);
-		}
-
-		$(document).ready(function () {
-
-			/*
-			* Always begin on the presentation screen without
-			* gameplay direction controls.
-			*/
-			document.body.classList.remove(
-				"game-active"
-			);
-
-			//$.mobile.loading().hide();
-			loadAllSound();
-
-			HELP_TIMER = setInterval('blinkHelp()', HELP_DELAY);
-
-			initHome();
-
-			fitPacCatToViewport();
-
-			window.addEventListener(
-				"resize",
-				fitPacCatToViewport
-			);
-
-			window.addEventListener(
-				"orientationchange",
-				function () {
-					/*
-					* Give Safari time to finish updating its visual viewport
-					* after the device changes orientation.
-					*/
-					setTimeout(
-						fitPacCatToViewport,
-						150
-					);
-				}
-			);
-
-			if (window.visualViewport) {
-				window.visualViewport.addEventListener(
-					"resize",
-					fitPacCatToViewport
-				);
-
-				window.visualViewport.addEventListener(
-					"scroll",
-					fitPacCatToViewport
-				);
-			}
-
-			document.addEventListener(
-				"touchmove",
-				preventPacCatScroll,
-				{
-					passive: false
-				}
-			);
-
-			$(".sound").click(function (e) {
-				e.stopPropagation();
-
-				var sound = $(this).attr("data-sound");
-				if (sound === "on") {
-					$(".sound").attr("data-sound", "off");
-					$(".sound").find("img").attr("src", "img/sound-off.png");
-					GROUP_SOUND.mute();
-				} else {
-					$(".sound").attr("data-sound", "on");
-					$(".sound").find("img").attr("src", "img/sound-on.png");
-					GROUP_SOUND.unmute();
-				}
-			});
-
-			$(".help-button, #help").click(function (e) {
-				e.stopPropagation();
-				if (!PACMAN_DEAD && !LOCK && !GAMEOVER) {
-					if ($('#help').css("display") === "none") {
-						$('#help').fadeIn("slow");
-						$(".help-button").hide();
-						if ($("#panel").css("display") !== "none") {
-							pauseGame();
-						}
-					} else {
-						$('#help').fadeOut("slow");
-						$(".help-button").show();
-					}
-				}
-			});
-
-			$("#home").on("click touchstart", function (e) {
-				if ($('#help').css("display") === "none") {
-					e.preventDefault();
-					simulateKeydown(13);
-				}
-			});
-			$("#control-up, #control-up-second, #control-up-big").on("mousedown touchstart", function (e) {
-				e.preventDefault();
-				simulateKeydown(38);
-				simulateKeyup(13);
-			});
-			$("#control-down, #control-down-second, #control-down-big").on("mousedown touchstart", function (e) {
-				e.preventDefault();
-				simulateKeydown(40);
-				simulateKeyup(13);
-			});
-			$("#control-left, #control-left-big").on("mousedown touchstart", function (e) {
-				e.preventDefault();
-				simulateKeydown(37);
-				simulateKeyup(13);
-			});
-			$("#control-right, #control-right-big").on("mousedown touchstart", function (e) {
-				e.preventDefault();
-				simulateKeydown(39);
-				simulateKeyup(13);
-			});
-
-
-			$("body").keyup(function (e) {
-				KEYDOWN = false;
-			});
-
-			$("body").keydown(function (e) {
-
-				if (HOME) {
-
-					initGame(true);
-
-				} else {
-					//if (!KEYDOWN) { 
-					KEYDOWN = true;
-					if (PACMAN_DEAD && !LOCK) {
-						erasePacman();
-						resetPacman();
-						drawPacman();
-
-						eraseGhosts();
-						resetGhosts();
-						drawGhosts();
-						moveGhosts();
-
-						blinkSuperBubbles();
-
-					} else if (e.keyCode >= 37 && e.keyCode <= 40 && !PAUSE && !PACMAN_DEAD && !LOCK) {
-						if (e.keyCode === 39) {
-							movePacman(1);
-						} else if (e.keyCode === 40) {
-							movePacman(2);
-						} else if (e.keyCode === 37) {
-							movePacman(3);
-						} else if (e.keyCode === 38) {
-							movePacman(4);
-						}
-					} else if (e.keyCode === 68 && !PAUSE) {
-						/*if ( $("#canvas-paths").css("display") === "none" ) { 
-							$("#canvas-paths").show();
-						} else { 
-							$("#canvas-paths").hide();
-						}*/
-					} else if (e.keyCode === 80 && !PACMAN_DEAD && !LOCK) {
-						if (PAUSE) {
-							resumeGame();
-						} else {
-							pauseGame();
-						}
-					} else if (GAMEOVER) {
-						initHome();
-					}
-					//}
-				}
-			});
-		});
-	</script>
-
-	<title>PAC-CAT</title>
-</head>
-
-<body>
-
-	<div id="sound"></div>
-
-	<div id="help">
-		<h2>Help</h2>
-		<table align="center" border="0" cellPadding="2" cellSpacing="0">
-			<tbody>
-				<tr>
-					<td>Arrow Left : </td>
-					<td>Move Left</td>
-				</tr>
-				<tr>
-					<td>Arrow Right : </td>
-					<td>Move Right</td>
-				</tr>
-				<tr>
-					<td>Arrow Down : </td>
-					<td>Move Down</td>
-				</tr>
-				<tr>
-					<td>Arrow Up : </td>
-					<td>Move Up</td>
-				</tr>
-				<tr>
-					<td colspan="2">&nbsp;</td>
-				</tr>
-				<tr>
-					<td>P : </td>
-					<td>PAUSE</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
-
-	<div id="home">
-		<h1>
-			PAC-CAT
-			<span class="cat-emoji" aria-hidden="true">🐱</span>
-		</h1>
-		<canvas id="canvas-home-title-pacman"></canvas>
-		<div id="presentation">
-			<div id="presentation-titles">
-				character &nbsp;/&nbsp; nickname
-			</div>
-
-			<canvas id="canvas-presentation-blinky"></canvas>
-			<div id="presentation-character-blinky">- shadow</div>
-			<div id="presentation-name-blinky">"blinky"</div>
-
-			<canvas id="canvas-presentation-pinky"></canvas>
-			<div id="presentation-character-pinky">- speedy</div>
-			<div id="presentation-name-pinky">"pinky"</div>
-
-			<canvas id="canvas-presentation-inky"></canvas>
-			<div id="presentation-character-inky">- bashful</div>
-			<div id="presentation-name-inky">"inky"</div>
-
-			<canvas id="canvas-presentation-clyde"></canvas>
-			<div id="presentation-character-clyde">- pokey</div>
-			<div id="presentation-name-clyde">"clyde"</div>
-
-			<div
-				id="start-notice"
-				role="status"
-				aria-live="polite"
-			>
-				Click or tap anywhere to start
-			</div>
-		</div>
-
-		<canvas id="trailer"></canvas>
-
-		<div class="help-button">- help -</div>
-		<a class="sound" href="javascript:void(0);" data-sound="on"><img src="img/sound-on.png" alt="" border="0"></a>
-	</div>
-
-	<div id="panel">
-		<h1>
-			PAC-CAT
-			<span class="cat-emoji" aria-hidden="true">🐱</span>
-		</h1>
-		<canvas id="canvas-panel-title-pacman"></canvas>
-		<div id="score">
-			<h2>1UP</h2><span>00</span>
-		</div>
-		<div id="highscore">
-			<h2>High Score</h2><span>00</span>
-		</div>
-		<div id="board">
-			<canvas id="canvas-board"></canvas>
-			<canvas id="canvas-paths"></canvas>
-			<canvas id="canvas-bubbles"></canvas>
-			<canvas id="canvas-fruits"></canvas>
-			<canvas id="canvas-pacman"></canvas>
-			<canvas id="canvas-ghost-blinky"></canvas>
-			<canvas id="canvas-ghost-pinky"></canvas>
-			<canvas id="canvas-ghost-inky"></canvas>
-			<canvas id="canvas-ghost-clyde"></canvas>
-		</div>
-		<div id="control">
-			<div id="control-up"></div>
-			<div id="control-up-second"></div>
-			<div id="control-down"></div>
-			<div id="control-down-second"></div>
-			<div id="control-left"></div>
-			<div id="control-right"></div>
-		</div>
-		<canvas id="canvas-lifes"></canvas>
-		<canvas id="canvas-level-fruits"></canvas>
-		<div id="message"></div>
-		<div class="help-button">- help -</div>
-		<a class="sound" href="javascript:void(0);" data-sound="on"><img src="img/sound-on.png" alt="" border="0"></a>
-	</div>
-
-	<div
-		id="mobile-controls"
-		aria-label="PAC-CAT movement controls"
-	>
-		<div
-			id="control-up-big"
-			role="button"
-			aria-label="Move up"
-		></div>
-
-		<div
-			id="control-left-big"
-			role="button"
-			aria-label="Move left"
-		></div>
-
-		<div
-			id="control-down-big"
-			role="button"
-			aria-label="Move down"
-		></div>
-
-		<div
-			id="control-right-big"
-			role="button"
-			aria-label="Move right"
-		></div>
-	</div>
-
-</body>
-
-</html>
+<!-- LEGACY GAME: inactive; original lines JSON-encoded below. -->
+<!-- legacy-line: "<!DOCTYPE html>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "<html>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "<head>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<!\u002d\u002d Global site tag (gtag.js) \u002d Google Analytics \u002d\u002d>\r" -->
+<!-- legacy-line: "\t<script async src=\"https:\u002f\u002fwww.googletagmanager.com\u002fgtag\u002fjs?id=UA\u002d121647007\u002d2\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script>\r" -->
+<!-- legacy-line: "\t\twindow.dataLayer = window.dataLayer || [];\r" -->
+<!-- legacy-line: "\t\tfunction gtag() { dataLayer.push(arguments); }\r" -->
+<!-- legacy-line: "\t\tgtag('js', new Date());\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\tgtag('config', 'UA\u002d121647007\u002d2');\r" -->
+<!-- legacy-line: "\t<\u002fscript>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<meta property=\"og:image\" content=\"https:\u002f\u002fpacman\u002de281c.firebaseapp.com\u002fimg\u002fpreview.png\">\r" -->
+<!-- legacy-line: "\t<meta property=\"og:url\" content=\"https:\u002f\u002fpacman\u002de281c.firebaseapp.com\u002f\">\r" -->
+<!-- legacy-line: "\t<meta property=\"og:description\"\r" -->
+<!-- legacy-line: "\t\tcontent=\"Pac\u002dMan game written in HTML5 + CSS3 + jQuery with Canvas. This WebApp is a Responsive Web Design (RWD) website.\">\r" -->
+<!-- legacy-line: "\t<meta property=\"og:title\" content=\"PAC\u002dCAT\">\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<meta name=\"viewport\"\r" -->
+<!-- legacy-line: "\t\tcontent=\"width=device\u002dwidth, initial\u002dscale=1, minimum\u002dscale=1, maximum\u002dscale=1, user\u002dscalable=no, viewport\u002dfit=cover\"\u002f>\r" -->
+<!-- legacy-line: "\t<meta name=\"description\"\r" -->
+<!-- legacy-line: "\t\tcontent=\"Pac\u002dMan game written in HTML5 + CSS3 + jQuery with Canvas. This WebApp is a Responsive Web Design (RWD) website.\" \u002f>\r" -->
+<!-- legacy-line: "\t<meta name=\"keywords\"\r" -->
+<!-- legacy-line: "\t\tcontent=\"pacman, pac\u002dman, pac\u002dman online, pacman online, online, online games, games, free, puzzle, lucio panepinto, lucio, panepinto, html, html5, css, css3, javascript, jquery, rwd, responsive, responsive web design, responsive web, web design, canvas, draw\" \u002f>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<link\r" -->
+<!-- legacy-line: "\t\trel=\"stylesheet\"\r" -->
+<!-- legacy-line: "\t\ttype=\"text\u002fcss\"\r" -->
+<!-- legacy-line: "\t\thref=\"css\u002fpacman.css\"\r" -->
+<!-- legacy-line: "\t\u002f>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<link\r" -->
+<!-- legacy-line: "\t\trel=\"stylesheet\"\r" -->
+<!-- legacy-line: "\t\ttype=\"text\u002fcss\"\r" -->
+<!-- legacy-line: "\t\thref=\"css\u002fpacman\u002dhome.css\"\r" -->
+<!-- legacy-line: "\t\u002f>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<link\r" -->
+<!-- legacy-line: "    rel=\"stylesheet\"\r" -->
+<!-- legacy-line: "    type=\"text\u002fcss\"\r" -->
+<!-- legacy-line: "    href=\"css\u002fmobile\u002dcontrols\u002dv2.css\"\r" -->
+<!-- legacy-line: "\t\u002f>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fjquery.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<!\u002d\u002d<script type=\"text\u002fjavascript\" src=\"js\u002fjquery\u002dmobile.js\"><\u002fscript>\u002d\u002d>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fjquery\u002dbuzz.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fgame.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002ftools.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fboard.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fpaths.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fbubbles.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002ffruits.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fpacman.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fghosts.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fhome.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\" src=\"js\u002fsound.js\"><\u002fscript>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<script type=\"text\u002fjavascript\">\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\tfunction simulateKeyup(code) {\r" -->
+<!-- legacy-line: "\t\t\tvar e = jQuery.Event(\"keyup\");\r" -->
+<!-- legacy-line: "\t\t\te.keyCode = code;\r" -->
+<!-- legacy-line: "\t\t\tjQuery('body').trigger(e);\r" -->
+<!-- legacy-line: "\t\t}\r" -->
+<!-- legacy-line: "\t\tfunction simulateKeydown(code) {\r" -->
+<!-- legacy-line: "\t\t\tvar e = jQuery.Event(\"keydown\");\r" -->
+<!-- legacy-line: "\t\t\te.keyCode = code;\r" -->
+<!-- legacy-line: "\t\t\tjQuery('body').trigger(e);\r" -->
+<!-- legacy-line: "\t\t}\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\u002f*\r" -->
+<!-- legacy-line: "\t\t* Prevent touch dragging from moving the page on mobile browsers.\r" -->
+<!-- legacy-line: "\t\t*\u002f\r" -->
+<!-- legacy-line: "\t\tfunction preventPacCatScroll(event) {\r" -->
+<!-- legacy-line: "\t\t\tevent.preventDefault();\r" -->
+<!-- legacy-line: "\t\t}\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\u002f*\r" -->
+<!-- legacy-line: "\t\t* Scale the fixed 570 × 705 PAC\u002dCAT layout so the entire\r" -->
+<!-- legacy-line: "\t\t* game always fits inside the currently visible viewport.\r" -->
+<!-- legacy-line: "\t\t*\r" -->
+<!-- legacy-line: "\t\t* The CSS panel width is 550px plus 20px horizontal padding.\r" -->
+<!-- legacy-line: "\t\t* The CSS panel height is 690px plus 15px vertical padding.\r" -->
+<!-- legacy-line: "\t\t*\u002f\r" -->
+<!-- legacy-line: "\t\tfunction fitPacCatToViewport() {\r" -->
+<!-- legacy-line: "\t\t\tvar viewport = window.visualViewport;\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar viewportWidth = viewport\r" -->
+<!-- legacy-line: "\t\t\t\t? viewport.width\r" -->
+<!-- legacy-line: "\t\t\t\t: window.innerWidth;\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar viewportHeight = viewport\r" -->
+<!-- legacy-line: "\t\t\t\t? viewport.height\r" -->
+<!-- legacy-line: "\t\t\t\t: window.innerHeight;\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar viewportLeft = viewport\r" -->
+<!-- legacy-line: "\t\t\t\t? viewport.offsetLeft\r" -->
+<!-- legacy-line: "\t\t\t\t: 0;\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar viewportTop = viewport\r" -->
+<!-- legacy-line: "\t\t\t\t? viewport.offsetTop\r" -->
+<!-- legacy-line: "\t\t\t\t: 0;\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar baseWidth = 570;\r" -->
+<!-- legacy-line: "\t\t\tvar baseHeight = 705;\r" -->
+<!-- legacy-line: "\t\t\tvar edgePadding = 8;\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar availableWidth = Math.max(\r" -->
+<!-- legacy-line: "\t\t\t\tviewportWidth \u002d edgePadding * 2,\r" -->
+<!-- legacy-line: "\t\t\t\t1\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar availableHeight = Math.max(\r" -->
+<!-- legacy-line: "\t\t\t\tviewportHeight \u002d edgePadding * 2,\r" -->
+<!-- legacy-line: "\t\t\t\t1\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tvar gameScale = Math.min(\r" -->
+<!-- legacy-line: "\t\t\t\tavailableWidth \u002f baseWidth,\r" -->
+<!-- legacy-line: "\t\t\t\tavailableHeight \u002f baseHeight,\r" -->
+<!-- legacy-line: "\t\t\t\t1\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tdocument.documentElement.style.setProperty(\r" -->
+<!-- legacy-line: "\t\t\t\t\"\u002d\u002dpac\u002dcat\u002dscale\",\r" -->
+<!-- legacy-line: "\t\t\t\tString(gameScale)\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tdocument.documentElement.style.setProperty(\r" -->
+<!-- legacy-line: "\t\t\t\t\"\u002d\u002dpac\u002dcat\u002dcenter\u002dx\",\r" -->
+<!-- legacy-line: "\t\t\t\tviewportLeft + viewportWidth \u002f 2 + \"px\"\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tdocument.documentElement.style.setProperty(\r" -->
+<!-- legacy-line: "\t\t\t\t\"\u002d\u002dpac\u002dcat\u002dcenter\u002dy\",\r" -->
+<!-- legacy-line: "\t\t\t\tviewportTop + viewportHeight \u002f 2 + \"px\"\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\t\t}\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t$(document).ready(function () {\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\u002f*\r" -->
+<!-- legacy-line: "\t\t\t* Always begin on the presentation screen without\r" -->
+<!-- legacy-line: "\t\t\t* gameplay direction controls.\r" -->
+<!-- legacy-line: "\t\t\t*\u002f\r" -->
+<!-- legacy-line: "\t\t\tdocument.body.classList.remove(\r" -->
+<!-- legacy-line: "\t\t\t\t\"game\u002dactive\"\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\u002f\u002f$.mobile.loading().hide();\r" -->
+<!-- legacy-line: "\t\t\tloadAllSound();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tHELP_TIMER = setInterval('blinkHelp()', HELP_DELAY);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tinitHome();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tfitPacCatToViewport();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\twindow.addEventListener(\r" -->
+<!-- legacy-line: "\t\t\t\t\"resize\",\r" -->
+<!-- legacy-line: "\t\t\t\tfitPacCatToViewport\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\twindow.addEventListener(\r" -->
+<!-- legacy-line: "\t\t\t\t\"orientationchange\",\r" -->
+<!-- legacy-line: "\t\t\t\tfunction () {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\u002f*\r" -->
+<!-- legacy-line: "\t\t\t\t\t* Give Safari time to finish updating its visual viewport\r" -->
+<!-- legacy-line: "\t\t\t\t\t* after the device changes orientation.\r" -->
+<!-- legacy-line: "\t\t\t\t\t*\u002f\r" -->
+<!-- legacy-line: "\t\t\t\t\tsetTimeout(\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tfitPacCatToViewport,\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t150\r" -->
+<!-- legacy-line: "\t\t\t\t\t);\r" -->
+<!-- legacy-line: "\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tif (window.visualViewport) {\r" -->
+<!-- legacy-line: "\t\t\t\twindow.visualViewport.addEventListener(\r" -->
+<!-- legacy-line: "\t\t\t\t\t\"resize\",\r" -->
+<!-- legacy-line: "\t\t\t\t\tfitPacCatToViewport\r" -->
+<!-- legacy-line: "\t\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\twindow.visualViewport.addEventListener(\r" -->
+<!-- legacy-line: "\t\t\t\t\t\"scroll\",\r" -->
+<!-- legacy-line: "\t\t\t\t\tfitPacCatToViewport\r" -->
+<!-- legacy-line: "\t\t\t\t);\r" -->
+<!-- legacy-line: "\t\t\t}\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\tdocument.addEventListener(\r" -->
+<!-- legacy-line: "\t\t\t\t\"touchmove\",\r" -->
+<!-- legacy-line: "\t\t\t\tpreventPacCatScroll,\r" -->
+<!-- legacy-line: "\t\t\t\t{\r" -->
+<!-- legacy-line: "\t\t\t\t\tpassive: false\r" -->
+<!-- legacy-line: "\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t$(\".sound\").click(function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\te.stopPropagation();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\tvar sound = $(this).attr(\"data\u002dsound\");\r" -->
+<!-- legacy-line: "\t\t\t\tif (sound === \"on\") {\r" -->
+<!-- legacy-line: "\t\t\t\t\t$(\".sound\").attr(\"data\u002dsound\", \"off\");\r" -->
+<!-- legacy-line: "\t\t\t\t\t$(\".sound\").find(\"img\").attr(\"src\", \"img\u002fsound\u002doff.png\");\r" -->
+<!-- legacy-line: "\t\t\t\t\tGROUP_SOUND.mute();\r" -->
+<!-- legacy-line: "\t\t\t\t} else {\r" -->
+<!-- legacy-line: "\t\t\t\t\t$(\".sound\").attr(\"data\u002dsound\", \"on\");\r" -->
+<!-- legacy-line: "\t\t\t\t\t$(\".sound\").find(\"img\").attr(\"src\", \"img\u002fsound\u002don.png\");\r" -->
+<!-- legacy-line: "\t\t\t\t\tGROUP_SOUND.unmute();\r" -->
+<!-- legacy-line: "\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t$(\".help\u002dbutton, #help\").click(function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\te.stopPropagation();\r" -->
+<!-- legacy-line: "\t\t\t\tif (!PACMAN_DEAD && !LOCK && !GAMEOVER) {\r" -->
+<!-- legacy-line: "\t\t\t\t\tif ($('#help').css(\"display\") === \"none\") {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t$('#help').fadeIn(\"slow\");\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t$(\".help\u002dbutton\").hide();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tif ($(\"#panel\").css(\"display\") !== \"none\") {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tpauseGame();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t\t\t} else {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t$('#help').fadeOut(\"slow\");\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t$(\".help\u002dbutton\").show();\r" -->
+<!-- legacy-line: "\t\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t$(\"#home\").on(\"click touchstart\", function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\tif ($('#help').css(\"display\") === \"none\") {\r" -->
+<!-- legacy-line: "\t\t\t\t\te.preventDefault();\r" -->
+<!-- legacy-line: "\t\t\t\t\tsimulateKeydown(13);\r" -->
+<!-- legacy-line: "\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\t\t\t$(\"#control\u002dup, #control\u002dup\u002dsecond, #control\u002dup\u002dbig\").on(\"mousedown touchstart\", function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\te.preventDefault();\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeydown(38);\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeyup(13);\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\t\t\t$(\"#control\u002ddown, #control\u002ddown\u002dsecond, #control\u002ddown\u002dbig\").on(\"mousedown touchstart\", function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\te.preventDefault();\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeydown(40);\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeyup(13);\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\t\t\t$(\"#control\u002dleft, #control\u002dleft\u002dbig\").on(\"mousedown touchstart\", function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\te.preventDefault();\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeydown(37);\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeyup(13);\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\t\t\t$(\"#control\u002dright, #control\u002dright\u002dbig\").on(\"mousedown touchstart\", function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\te.preventDefault();\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeydown(39);\r" -->
+<!-- legacy-line: "\t\t\t\tsimulateKeyup(13);\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t$(\"body\").keyup(function (e) {\r" -->
+<!-- legacy-line: "\t\t\t\tKEYDOWN = false;\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t$(\"body\").keydown(function (e) {\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\tif (HOME) {\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\t\tinitGame(true);\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\t} else {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\u002f\u002fif (!KEYDOWN) { \r" -->
+<!-- legacy-line: "\t\t\t\t\tKEYDOWN = true;\r" -->
+<!-- legacy-line: "\t\t\t\t\tif (PACMAN_DEAD && !LOCK) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\terasePacman();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tresetPacman();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tdrawPacman();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\t\t\teraseGhosts();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tresetGhosts();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tdrawGhosts();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tmoveGhosts();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tblinkSuperBubbles();\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t\t\t} else if (e.keyCode >= 37 && e.keyCode <= 40 && !PAUSE && !PACMAN_DEAD && !LOCK) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tif (e.keyCode === 39) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tmovePacman(1);\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t} else if (e.keyCode === 40) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tmovePacman(2);\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t} else if (e.keyCode === 37) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tmovePacman(3);\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t} else if (e.keyCode === 38) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tmovePacman(4);\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t\t\t} else if (e.keyCode === 68 && !PAUSE) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\u002f*if ( $(\"#canvas\u002dpaths\").css(\"display\") === \"none\" ) { \r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\t$(\"#canvas\u002dpaths\").show();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t} else { \r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\t$(\"#canvas\u002dpaths\").hide();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t}*\u002f\r" -->
+<!-- legacy-line: "\t\t\t\t\t} else if (e.keyCode === 80 && !PACMAN_DEAD && !LOCK) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tif (PAUSE) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tresumeGame();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t} else {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t\tpauseGame();\r" -->
+<!-- legacy-line: "\t\t\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t\t\t} else if (GAMEOVER) {\r" -->
+<!-- legacy-line: "\t\t\t\t\t\tinitHome();\r" -->
+<!-- legacy-line: "\t\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t\t\t\u002f\u002f}\r" -->
+<!-- legacy-line: "\t\t\t\t}\r" -->
+<!-- legacy-line: "\t\t\t});\r" -->
+<!-- legacy-line: "\t\t});\r" -->
+<!-- legacy-line: "\t<\u002fscript>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<title>PAC\u002dCAT<\u002ftitle>\r" -->
+<!-- legacy-line: "<\u002fhead>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "<body>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<div id=\"sound\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<div id=\"help\">\r" -->
+<!-- legacy-line: "\t\t<h2>Help<\u002fh2>\r" -->
+<!-- legacy-line: "\t\t<table align=\"center\" border=\"0\" cellPadding=\"2\" cellSpacing=\"0\">\r" -->
+<!-- legacy-line: "\t\t\t<tbody>\r" -->
+<!-- legacy-line: "\t\t\t\t<tr>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Arrow Left : <\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Move Left<\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t<\u002ftr>\r" -->
+<!-- legacy-line: "\t\t\t\t<tr>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Arrow Right : <\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Move Right<\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t<\u002ftr>\r" -->
+<!-- legacy-line: "\t\t\t\t<tr>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Arrow Down : <\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Move Down<\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t<\u002ftr>\r" -->
+<!-- legacy-line: "\t\t\t\t<tr>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Arrow Up : <\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>Move Up<\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t<\u002ftr>\r" -->
+<!-- legacy-line: "\t\t\t\t<tr>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td colspan=\"2\">&nbsp;<\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t<\u002ftr>\r" -->
+<!-- legacy-line: "\t\t\t\t<tr>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>P : <\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t\t<td>PAUSE<\u002ftd>\r" -->
+<!-- legacy-line: "\t\t\t\t<\u002ftr>\r" -->
+<!-- legacy-line: "\t\t\t<\u002ftbody>\r" -->
+<!-- legacy-line: "\t\t<\u002ftable>\r" -->
+<!-- legacy-line: "\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<div id=\"home\">\r" -->
+<!-- legacy-line: "\t\t<h1>\r" -->
+<!-- legacy-line: "\t\t\tPAC\u002dCAT\r" -->
+<!-- legacy-line: "\t\t\t<span class=\"cat\u002demoji\" aria\u002dhidden=\"true\">🐱<\u002fspan>\r" -->
+<!-- legacy-line: "\t\t<\u002fh1>\r" -->
+<!-- legacy-line: "\t\t<canvas id=\"canvas\u002dhome\u002dtitle\u002dpacman\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t<div id=\"presentation\">\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dtitles\">\r" -->
+<!-- legacy-line: "\t\t\t\tcharacter &nbsp;\u002f&nbsp; nickname\r" -->
+<!-- legacy-line: "\t\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dpresentation\u002dblinky\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dcharacter\u002dblinky\">\u002d shadow<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dname\u002dblinky\">\"blinky\"<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dpresentation\u002dpinky\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dcharacter\u002dpinky\">\u002d speedy<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dname\u002dpinky\">\"pinky\"<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dpresentation\u002dinky\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dcharacter\u002dinky\">\u002d bashful<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dname\u002dinky\">\"inky\"<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dpresentation\u002dclyde\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dcharacter\u002dclyde\">\u002d pokey<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"presentation\u002dname\u002dclyde\">\"clyde\"<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t\t<div\r" -->
+<!-- legacy-line: "\t\t\t\tid=\"start\u002dnotice\"\r" -->
+<!-- legacy-line: "\t\t\t\trole=\"status\"\r" -->
+<!-- legacy-line: "\t\t\t\taria\u002dlive=\"polite\"\r" -->
+<!-- legacy-line: "\t\t\t>\r" -->
+<!-- legacy-line: "\t\t\t\tClick or tap anywhere to start\r" -->
+<!-- legacy-line: "\t\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t<canvas id=\"trailer\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t<div class=\"help\u002dbutton\">\u002d help \u002d<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<a class=\"sound\" href=\"javascript:void(0);\" data\u002dsound=\"on\"><img src=\"img\u002fsound\u002don.png\" alt=\"\" border=\"0\"><\u002fa>\r" -->
+<!-- legacy-line: "\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<div id=\"panel\">\r" -->
+<!-- legacy-line: "\t\t<h1>\r" -->
+<!-- legacy-line: "\t\t\tPAC\u002dCAT\r" -->
+<!-- legacy-line: "\t\t\t<span class=\"cat\u002demoji\" aria\u002dhidden=\"true\">🐱<\u002fspan>\r" -->
+<!-- legacy-line: "\t\t<\u002fh1>\r" -->
+<!-- legacy-line: "\t\t<canvas id=\"canvas\u002dpanel\u002dtitle\u002dpacman\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t<div id=\"score\">\r" -->
+<!-- legacy-line: "\t\t\t<h2>1UP<\u002fh2><span>00<\u002fspan>\r" -->
+<!-- legacy-line: "\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<div id=\"highscore\">\r" -->
+<!-- legacy-line: "\t\t\t<h2>High Score<\u002fh2><span>00<\u002fspan>\r" -->
+<!-- legacy-line: "\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<div id=\"board\">\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dboard\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dpaths\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dbubbles\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dfruits\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dpacman\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dghost\u002dblinky\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dghost\u002dpinky\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dghost\u002dinky\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t\t<canvas id=\"canvas\u002dghost\u002dclyde\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<div id=\"control\">\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"control\u002dup\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"control\u002dup\u002dsecond\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"control\u002ddown\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"control\u002ddown\u002dsecond\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"control\u002dleft\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t\t<div id=\"control\u002dright\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<canvas id=\"canvas\u002dlifes\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t<canvas id=\"canvas\u002dlevel\u002dfruits\"><\u002fcanvas>\r" -->
+<!-- legacy-line: "\t\t<div id=\"message\"><\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<div class=\"help\u002dbutton\">\u002d help \u002d<\u002fdiv>\r" -->
+<!-- legacy-line: "\t\t<a class=\"sound\" href=\"javascript:void(0);\" data\u002dsound=\"on\"><img src=\"img\u002fsound\u002don.png\" alt=\"\" border=\"0\"><\u002fa>\r" -->
+<!-- legacy-line: "\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t<div\r" -->
+<!-- legacy-line: "\t\tid=\"mobile\u002dcontrols\"\r" -->
+<!-- legacy-line: "\t\taria\u002dlabel=\"PAC\u002dCAT movement controls\"\r" -->
+<!-- legacy-line: "\t>\r" -->
+<!-- legacy-line: "\t\t<div\r" -->
+<!-- legacy-line: "\t\t\tid=\"control\u002dup\u002dbig\"\r" -->
+<!-- legacy-line: "\t\t\trole=\"button\"\r" -->
+<!-- legacy-line: "\t\t\taria\u002dlabel=\"Move up\"\r" -->
+<!-- legacy-line: "\t\t><\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t<div\r" -->
+<!-- legacy-line: "\t\t\tid=\"control\u002dleft\u002dbig\"\r" -->
+<!-- legacy-line: "\t\t\trole=\"button\"\r" -->
+<!-- legacy-line: "\t\t\taria\u002dlabel=\"Move left\"\r" -->
+<!-- legacy-line: "\t\t><\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t<div\r" -->
+<!-- legacy-line: "\t\t\tid=\"control\u002ddown\u002dbig\"\r" -->
+<!-- legacy-line: "\t\t\trole=\"button\"\r" -->
+<!-- legacy-line: "\t\t\taria\u002dlabel=\"Move down\"\r" -->
+<!-- legacy-line: "\t\t><\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "\t\t<div\r" -->
+<!-- legacy-line: "\t\t\tid=\"control\u002dright\u002dbig\"\r" -->
+<!-- legacy-line: "\t\t\trole=\"button\"\r" -->
+<!-- legacy-line: "\t\t\taria\u002dlabel=\"Move right\"\r" -->
+<!-- legacy-line: "\t\t><\u002fdiv>\r" -->
+<!-- legacy-line: "\t<\u002fdiv>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "<\u002fbody>\r" -->
+<!-- legacy-line: "\r" -->
+<!-- legacy-line: "<\u002fhtml>" -->

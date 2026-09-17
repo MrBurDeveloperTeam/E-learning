@@ -1,1359 +1,1360 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
-:root {
-    --cell: 28px;
-    --cols: 10;
-    --rows: 20
-}
-
-html,
-body {
-    min-height: 100%;
-    margin: 0;
-    font-family: Inter, system-ui, Arial;
-    background: linear-gradient(180deg, #0f172a, #071024);
-    color: #e6eef8;
-    overflow-x: hidden;
-    overflow-y: auto;
-}
-
-.wrap {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-.game-title {
-    position: absolute;
-    top: 35px;
-    left: 12px;
-    right: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 34px;
-    pointer-events: none;
-    z-index: 1001;
-}
-
-.title-row {
-    width: 100%;
-    text-align: center;
-}
-
-.game-title span {
-    display: inline-block;
-    text-shadow:
-        0 0 10px rgba(0, 0, 0, 0.8),
-        2px 2px 0px rgba(0, 0, 0, 0.9);
-}
-
-.board {
-    display: grid;
-    grid-template-columns: 260px 1fr 260px;
-    gap: 20px;
-    align-items: center
-}
-
-
-.game {
-    background: #061025;
-    padding: 12px;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(2, 6, 23, .7);
-    position: relative;
-    width: fit-content;
-    height: fit-content;
-}
-
-canvas#tetris {
-    background: #041024;
-    border: 3px solid #00b4ff;
-    box-shadow: 0 0 15px rgba(0, 180, 255, 0.4) inset, 0 0 10px rgba(0, 180, 255, 0.3);
-    border-radius: 8px;
-    display: block
-}
-
-.overlay {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 140px;
-    padding-bottom: 80px;
-    justify-content: space-between;
-    pointer-events: auto;
-    z-index: 1000;
-    background: rgba(6, 16, 37, 0.85);
-    backdrop-filter: blur(4px);
-    border-radius: 8px;
-}
-
-.overlay.centered-mode {
-    justify-content: center;
-    padding-top: 20px;
-    padding-bottom: 20px;
-    gap: 30px;
-}
-
-#overlay-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: center;
-    width: 100%;
-}
-
-/* Box removed as per user request */
-.overlay h2 {
-    margin: 0;
-    margin-bottom: 10px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 26px;
-    color: #00f0f0;
-    text-shadow: 0 0 15px rgba(0, 240, 240, 0.5);
-}
-
-.overlay h2.huge-title {
-    font-size: 80px;
-    margin-bottom: 20px;
-    text-transform: uppercase;
-    color: #ffffff;
-    text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
-    text-align: center;
-    width: 100%;
-    white-space: nowrap;
-}
-
-#overlay-msg {
-    width: 90%;
-    max-width: 240px;
-}
-
-#overlay-settings-panel,
-#overlay-controls-panel {
-    width: 90%;
-    max-width: 240px;
-    background: transparent;
-    padding: 0;
-    border: none;
-    margin-top: auto;
-    margin-bottom: auto;
-}
-
-.setting-item span {
-    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 1px 1px 2px rgba(0, 0, 0, 0.9);
-}
-
-.leaderboard-container {
-    width: 220px;
-    background: #000;
-    border: 2px solid #fff;
-    border-radius: 8px;
-    padding: 2px;
-    margin-bottom: 20px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-    margin-top: 40px;
-}
-
-.leaderboard-header {
-    background: #000;
-    color: #fff;
-    font-size: 18px;
-    font-weight: 800;
-    padding: 8px 0;
-    text-align: center;
-    letter-spacing: 1px;
-    border-bottom: 2px solid #fff;
-}
-
-.leaderboard-row {
-    background: #1a1a1a;
-    border-bottom: 1px solid #333;
-    padding: 10px 15px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-}
-
-.leaderboard-row:last-child {
-    border-bottom: none;
-}
-
-.score-val {
-    color: #fff;
-    font-size: 20px;
-    font-weight: 700;
-    font-family: 'Inter', sans-serif;
-}
-
-.control-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-
-.control-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 46px;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 8px 15px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.keys {
-    display: flex;
-    gap: 7px;
-}
-
-.key {
-    background: transparent;
-    border: 2px solid #ffffff;
-    border-radius: 8px;
-    width: 25px;
-    height: 25px;
-    font-size: 16px;
-    color: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-    transition: all 0.2s;
-}
-
-.key i {
-    font-size: 15px;
-}
-
-.key.wide {
-    min-width: 65px;
-    padding: 0 12px;
-}
-
-.action {
-    font-size: 14px;
-    color: #ffffff;
-    font-weight: 500;
-    text-align: left;
-}
-
-#overlay-start,
-#overlay-restart,
-#overlay-close,
-#overlay-settings,
-#btn-settings-back,
-#btn-controls-back,
-#overlay-quit,
-#overlay-home,
-#overlay-help {
-    border: none;
-    padding: 14px 32px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 11px;
-    color: #fff;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    width: 220px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-/* Specific button colors */
-#overlay-start,
-#overlay-close {
-    background: linear-gradient(180deg, #10b981, #059669);
-    /* Emerald Green */
-    box-shadow: 0 4px 0 #065f46, 0 8px 15px rgba(16, 185, 129, 0.3);
-}
-
-#overlay-restart {
-    background: linear-gradient(180deg, #f59e0b, #d97706);
-    /* Amber */
-    box-shadow: 0 4px 0 #92400e, 0 8px 15px rgba(245, 158, 11, 0.3);
-}
-
-#overlay-settings,
-#btn-settings-back,
-#btn-controls-back {
-    background: linear-gradient(180deg, #6366f1, #4f46e5);
-    /* Indigo */
-    box-shadow: 0 4px 0 #3730a3, 0 8px 15px rgba(99, 102, 241, 0.3);
-}
-
-#overlay-help {
-    background: linear-gradient(180deg, #64748b, #475569);
-    /* Slate */
-    box-shadow: 0 4px 0 #1e293b, 0 8px 15px rgba(100, 116, 139, 0.3);
-}
-
-#overlay-home {
-    background: linear-gradient(180deg, #64748b, #475569);
-    /* Slate */
-    box-shadow: 0 4px 0 #1e293b, 0 8px 15px rgba(100, 116, 139, 0.3);
-}
-
-#overlay-quit {
-    background: linear-gradient(180deg, #ef4444, #dc2626);
-    /* Red */
-    box-shadow: 0 4px 0 #991b1b, 0 8px 15px rgba(239, 68, 68, 0.3);
-}
-
-#overlay-start:hover,
-#overlay-restart:hover,
-#overlay-settings:hover,
-#btn-settings-back:hover,
-#btn-controls-back:hover,
-#overlay-quit:hover,
-#overlay-home:hover,
-#overlay-help:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
-}
-
-#overlay-start:hover,
-#overlay-close:hover {
-    box-shadow: 0 6px 0 #065f46, 0 12px 20px rgba(16, 185, 129, 0.4);
-}
-
-#overlay-restart:hover {
-    box-shadow: 0 6px 0 #92400e, 0 12px 20px rgba(245, 158, 11, 0.4);
-}
-
-#overlay-settings:hover,
-#btn-settings-back:hover,
-#btn-controls-back:hover,
-#overlay-home:hover,
-#overlay-help:hover {
-    box-shadow: 0 6px 0 #3730a3, 0 12px 20px rgba(99, 102, 241, 0.4);
-}
-
-#overlay-quit:hover {
-    box-shadow: 0 6px 0 #991b1b, 0 12px 20px rgba(239, 68, 68, 0.4);
-}
-
-#overlay-start:active,
-#overlay-restart:active,
-#overlay-close:active,
-#overlay-settings:active,
-#btn-settings-back:active,
-#btn-controls-back:active,
-#overlay-quit:active,
-#overlay-home:active,
-#overlay-help:active {
-    transform: translateY(2px);
-    filter: brightness(0.9);
-}
-
-#overlay-start:active,
-#overlay-close:active {
-    box-shadow: 0 2px 0 #065f46, 0 4px 8px rgba(16, 185, 129, 0.3);
-}
-
-#overlay-restart:active {
-    box-shadow: 0 2px 0 #92400e, 0 4px 8px rgba(245, 158, 11, 0.3);
-}
-
-#overlay-quit:active {
-    box-shadow: 0 2px 0 #991b1b, 0 4px 8px rgba(239, 68, 68, 0.3);
-}
-
-#overlay-settings:active,
-#btn-settings-back:active,
-#btn-controls-back:active,
-#overlay-help:active {
-    box-shadow: 0 2px 0 #3730a3, 0 4px 8px rgba(99, 102, 241, 0.3);
-}
-
-/*
- * Pause button stays outside the scaled stage.
- * Place it at the top center of the iframe so it
- * cannot be clipped on narrow mobile screens.
- */
-#btn-pause {
-    position: fixed;
-
-    top:
-        max(
-            10px,
-            env(safe-area-inset-top, 0px)
-        );
-
-    left: 50%;
-    right: auto;
-
-    width:
-        clamp(
-            40px,
-            8vmin,
-            46px
-        );
-
-    height:
-        clamp(
-            40px,
-            8vmin,
-            46px
-        );
-
-    margin: 0;
-    padding: 0;
-
-    transform:
-        translateX(-50%);
-
-    font-size:
-        clamp(
-            15px,
-            3vmin,
-            18px
-        );
-
-    color: #fff;
-
-    background:
-        rgba(7, 18, 37, 0.78);
-
-    backdrop-filter:
-        blur(8px);
-
-    -webkit-backdrop-filter:
-        blur(8px);
-
-    border:
-        1px solid
-        rgba(255, 255, 255, 0.3);
-
-    border-radius: 12px;
-
-    box-shadow:
-        0 6px 18px
-        rgba(0, 0, 0, 0.35);
-
-    cursor: pointer;
-
-    align-items: center;
-    justify-content: center;
-
-    z-index: 6200;
-
-    touch-action: manipulation;
-
-    -webkit-tap-highlight-color:
-        transparent;
-
-    transition:
-        transform 0.2s ease,
-        background 0.2s ease,
-        border-color 0.2s ease;
-}
-
-#btn-pause:hover {
-    transform:
-        translateX(-50%)
-        translateY(-2px);
-
-    background:
-        rgba(30, 41, 59, 0.94);
-
-    border-color:
-        rgba(255, 255, 255, 0.5);
-}
-
-#btn-pause:active {
-    transform:
-        translateX(-50%)
-        translateY(1px)
-        scale(0.96);
-
-    background:
-        rgba(7, 18, 37, 0.9);
-}
-
-.side {
-    width: 260px
-}
-
-h1 {
-    font-family: 'Press Start 2P', cursive;
-    font-size: 46px;
-    margin: 30px 0 30px 0;
-    text-align: center;
-    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
-    letter-spacing: 2px;
-}
-
-.panel {
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 20px;
-    border-radius: 20px;
-    margin-bottom: 15px;
-    color: #f1f5f9;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.4),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-    position: relative;
-    overflow: hidden;
-}
-
-.panel::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-}
-
-.panel-title {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.stat-card {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 8px;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.stat-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    transform: translateX(4px);
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.stat-label {
-    font-size: 12px;
-    color: #64748b;
-    margin-bottom: 4px;
-}
-
-.stat-value {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 20px;
-    color: #f8fafc;
-    text-shadow: 0 0 20px rgba(248, 250, 252, 0.2);
-}
-
-.highscore-value {letter-spacing: 0.14em;
-    
-    font-size: 32px;
-    color: #fcd34d;
-    /* Golden color for high score */
-    text-shadow: 0 0 25px rgba(252, 211, 77, 0.4);
-}
-
-/* Premium Preview Box Design */
-.preview-box {
-    background: conic-gradient(from 0deg at 50% 50%,
-            #e2e8f0 0deg,
-            #94a3b8 90deg,
-            #f8fafc 180deg,
-            #94a3b8 270deg,
-            #e2e8f0 360deg);
-    padding: 4px;
-    border-radius: 26px;
-    box-shadow:
-        0 10px 25px rgba(0, 0, 0, 0.5),
-        inset 0 4px 6px rgba(255, 255, 255, 0.8),
-        inset 0 -6px 10px rgba(0, 0, 0, 0.3);
-    border: 2px solid #cbd5e1;
-    position: relative;
-    max-width: 200px;
-    margin: 0 auto;
-}
-
-.preview-inner {
-    background: linear-gradient(145deg, #0f172a, #1e293b);
-    border-radius: 26px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    box-shadow:
-        inset 0 8px 16px rgba(0, 0, 0, 0.7),
-        0 1px 1px rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(0, 0, 0, 0.5);
-}
-
-.preview-label {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    color: #f8fafc;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    margin-bottom: 8px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.preview-glare {
-    position: absolute;
-    top: 10px;
-    left: 12px;
-    width: 20px;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    transform: rotate(-30deg);
-    filter: blur(1px);
-    pointer-events: none;
-}
-
-.hold-canvas,
-.next-canvas {
-    background: transparent;
-    display: block;
-    margin: 0 auto;
-}
-
-.small {
-    font-size: 13px;
-    color: #9fc6ff
-}
-
-.controls {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap
-}
-
-button {
-    background: #0b2640;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    color: #dff0ff;
-    padding: 8px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s
-}
-
-button:hover {
-    background: #0d3050;
-    transform: translateY(-1px)
-}
-
-button:active {
-    transform: translateY(0)
-}
-
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed
-}
-
-.hint {
-    font-size: 13px;
-    color: #9fb9d6;
-    margin-top: 6px
-}
-
-.next-canvas,
-.hold-canvas {
-    background: #041024;
-    border-radius: 8px;
-    display: block;
-    margin-top: 8px;
-    border: 2px solid #555
-}
-
-footer {
-    font-size: 12px;
-    color: #8fb4d9;
-    margin-top: 6px;
-    text-align: center
-}
-
-.setting-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 8px 0
-}
-
-.toggle {
-    width: 48px;
-    height: 24px;
-    background: #334;
-    border-radius: 12px;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.3s
-}
-
-.toggle.active {
-    background: #0a84ff
-}
-
-.toggle span {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background: #fff;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: left 0.3s
-}
-
-.toggle.active span {
-    left: 26px
-}
-
-.stat-row {
-    display: flex;
-    justify-content: space-between;
-    margin: 4px 0;
-    font-size: 13px
-}
-
-.touch-controls {
-    display: none;
-    margin-top: 12px
-}
-
-@media(max-width:768px) {
-    .touch-controls {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px
-    }
-}
-
-.touch-btn {
-    padding: 16px;
-    font-size: 18px;
-    touch-action: manipulation
-}
-
-@keyframes lineClear {
-    0% {
-        opacity: 1;
-        background: rgba(255, 255, 255, 0.8)
-    }
-
-    100% {
-        opacity: 0
-    }
-}
-
-.clearing-line {
-    animation: lineClear 0.3s ease-out
-}
-
-.ghost-piece {
-    opacity: 0.3
-}
-
-
-/*
- * Tetris responsive landscape viewport.
- * Keep one fixed three-column design and scale the
- * complete stage uniformly on every device.
- */
-:root {
-    --tetris-scale: 1;
-    --tetris-stage-width: 870px;
-}
-
-html,
-body {
-    width: 100%;
-    height: 100%;
-
-    margin: 0;
-    padding: 0;
-
-    overflow: hidden !important;
-    overscroll-behavior: none;
-
-    background: #071225;
-}
-
-html {
-    position: fixed;
-    inset: 0;
-}
-
-body {
-    position: fixed;
-    inset: 0;
-
-    touch-action: none;
-
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-/*
- * GamePage.tsx already reserves the upper toolbar area.
- * This viewport only keeps a small safe margin around
- * the Tetris stage.
- */
-#tetris-viewport {
-    position: fixed !important;
-    inset: 0 !important;
-
-    width: 100% !important;
-    height: 100% !important;
-
-    min-width: 0 !important;
-    min-height: 0 !important;
-
-    margin: 0 !important;
-
-    padding-top:
-        max(
-            8px,
-            env(safe-area-inset-top, 0px)
-        ) !important;
-
-    padding-right:
-        max(
-            12px,
-            env(safe-area-inset-right, 0px)
-        ) !important;
-
-    padding-bottom:
-        max(
-            8px,
-            env(safe-area-inset-bottom, 0px)
-        ) !important;
-
-    padding-left:
-        max(
-            12px,
-            env(safe-area-inset-left, 0px)
-        ) !important;
-
-    display: block !important;
-
-    box-sizing: border-box;
-
-    overflow: hidden !important;
-}
-
-/*
- * Use one fixed desktop-style stage on every device.
- * JavaScript scales this complete 870 × 590 layout.
- */
-#tetris-stage {
-    position: absolute !important;
-
-    left: 50% !important;
-    top: 50% !important;
-
-    width:
-        var(--tetris-stage-width) !important;
-
-    /*
-    * Allow the stage height to follow the tallest column.
-    * The main game canvas still guarantees a minimum height
-    * of 590px.
-    */
-    height: auto !important;
-
-    min-width:
-        var(--tetris-stage-width) !important;
-
-    min-height: 590px !important;
-
-    max-width: none !important;
-    max-height: none !important;
-
-    margin: 0 !important;
-
-    display: grid !important;
-
-    grid-template-columns:
-        260px
-        310px
-        260px !important;
-
-    /*
-    * Let the grid row grow when either side panel is taller
-    * than the main game canvas.
-    */
-    grid-template-rows:
-        max-content !important;
-
-    gap: 20px !important;
-
-    overflow: visible !important;
-
-    align-items: center !important;
-    justify-items: stretch !important;
-
-    transform:
-        translate(-50%, -50%)
-        scale(var(--tetris-scale)) !important;
-
-    transform-origin:
-        center center !important;
-
-    will-change: transform;
-}
-
-/*
- * Keep both side panels at their original dimensions.
- */
-#tetris-stage > .side {
-    width: 260px !important;
-    max-width: none !important;
-}
-
-/*
- * The game section contains:
- * 280px canvas
- * + 6px canvas border
- * + 24px game padding
- * = 310px total width.
- */
-#tetris-stage > .game {
-    width: 286px !important;
-    max-width: none !important;
-
-    box-sizing: content-box;
-}
-
-/*
- * Prevent browser scrolling, zoom gestures and text selection
- * while the user controls Tetris.
- */
-#tetris-viewport,
-#tetris-stage,
-#tetris {
-    touch-action: none;
-
-    user-select: none;
-    -webkit-user-select: none;
-
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-/*
- * Mobile replacement for the keyboard C key.
- *
- * The button is outside #tetris-stage, so it does not become
- * too small when the complete game layout is scaled.
- */
-#mobile-hold-button {
-    position: fixed;
-
-    right:
-        max(
-            10px,
-            env(safe-area-inset-right, 0px)
-        );
-
-    bottom:
-        max(
-            10px,
-            env(safe-area-inset-bottom, 0px)
-        );
-
-    z-index: 6000;
-
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    width:
-        clamp(
-            54px,
-            11vmin,
-            70px
-        );
-
-    aspect-ratio: 1;
-
-    margin: 0;
-    padding: 6px;
-
-    border:
-        2px solid
-        rgba(255, 255, 255, 0.55);
-
-    border-radius: 50%;
-
-    color: #ffffff;
-
-    background:
-        linear-gradient(
-            180deg,
-            rgba(99, 102, 241, 0.96),
-            rgba(79, 70, 229, 0.96)
-        );
-
-    box-shadow:
-        0 5px 0 #312e81,
-        0 10px 24px
-            rgba(0, 0, 0, 0.4);
-
-    font-family:
-        'Fredoka',
-        system-ui,
-        sans-serif;
-
-    font-size:
-        clamp(
-            10px,
-            2.4vmin,
-            13px
-        );
-
-    font-weight: 800;
-    line-height: 1;
-
-    letter-spacing: 0.06em;
-
-    cursor: pointer;
-
-    touch-action: manipulation;
-
-    user-select: none;
-    -webkit-user-select: none;
-
-    -webkit-tap-highlight-color:
-        transparent;
-}
-
-#mobile-hold-button small {
-    margin-top: 4px;
-
-    font-size: 0.72em;
-    font-weight: 700;
-
-    opacity: 0.72;
-}
-
-#mobile-hold-button:active {
-    transform:
-        translateY(3px)
-        scale(0.96);
-
-    box-shadow:
-        0 2px 0 #312e81,
-        0 5px 12px
-            rgba(0, 0, 0, 0.35);
-}
-
-/*
- * Show the HOLD button only on devices whose primary
- * input is touch-oriented.
- */
-@media (hover: none) and (pointer: coarse) {
-    #mobile-hold-button.is-gameplay-visible {
-        display: flex;
-    }
-}
-
-/*
- * Mobile Tetris guide.
- * The button only appears on touch devices.
- */
-#mobile-guide-button {
-    position: fixed;
-    left: max(10px, env(safe-area-inset-left, 0px));
-    bottom: max(10px, env(safe-area-inset-bottom, 0px));
-    z-index: 6100;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    min-height: 46px;
-    padding: 0 14px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 999px;
-    color: #fff;
-    background: linear-gradient(180deg, #0ea5e9, #0284c7);
-    box-shadow: 0 5px 0 #075985, 0 10px 24px rgba(0, 0, 0, 0.4);
-    font-family: 'Fredoka', system-ui, sans-serif;
-    font-size: clamp(10px, 2.4vmin, 13px);
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-
-#mobile-guide-button i {
-    font-size: 1.15em;
-}
-
-#mobile-guide-button:active {
-    transform: translateY(3px) scale(0.97);
-    box-shadow: 0 2px 0 #075985, 0 5px 12px rgba(0, 0, 0, 0.35);
-}
-
-.mobile-guide-modal[hidden] {
-    display: none !important;
-}
-
-.mobile-guide-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 7000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding:
-        max(14px, env(safe-area-inset-top, 0px))
-        max(14px, env(safe-area-inset-right, 0px))
-        max(14px, env(safe-area-inset-bottom, 0px))
-        max(14px, env(safe-area-inset-left, 0px));
-    box-sizing: border-box;
-    touch-action: manipulation;
-}
-
-.mobile-guide-backdrop {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: rgba(2, 6, 23, 0.8);
-    backdrop-filter: blur(5px);
-    cursor: pointer;
-}
-
-.mobile-guide-card {
-    position: relative;
-    z-index: 1;
-    width: min(430px, 92vw);
-    max-height: calc(100dvh - 28px);
-    overflow-y: auto;
-    box-sizing: border-box;
-    padding: clamp(16px, 4vmin, 24px);
-    border: 2px solid rgba(125, 211, 252, 0.65);
-    border-radius: 18px;
-    color: #e6eef8;
-    background: linear-gradient(180deg, #10223d, #071225);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-}
-
-.mobile-guide-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.mobile-guide-kicker {
-    margin-bottom: 5px;
-    color: #7dd3fc;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-}
-
-.mobile-guide-header h2 {
-    margin: 0;
-    color: #fff;
-    font-size: clamp(22px, 5vmin, 30px);
-    line-height: 1.1;
-}
-
-.mobile-guide-close {
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 50%;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.08);
-    font-size: 18px;
-    cursor: pointer;
-    touch-action: manipulation;
-}
-
-.mobile-guide-intro {
-    margin: 12px 0 14px;
-    color: #b9d3ed;
-    font-size: 13px;
-    line-height: 1.45;
-}
-
-.mobile-guide-list {
-    display: grid;
-    gap: 8px;
-}
-
-.mobile-guide-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.045);
-}
-
-.mobile-guide-icon {
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    color: #fff;
-    background: rgba(14, 165, 233, 0.22);
-    font-size: 16px;
-}
-
-.mobile-guide-row div {
-    min-width: 0;
-}
-
-.mobile-guide-row strong,
-.mobile-guide-row small {
-    display: block;
-}
-
-.mobile-guide-row strong {
-    color: #fff;
-    font-size: 13px;
-    line-height: 1.2;
-}
-
-.mobile-guide-row small {
-    margin-top: 3px;
-    color: #9fc6e8;
-    font-size: 11px;
-    line-height: 1.25;
-}
-
-.mobile-guide-done {
-    width: 100%;
-    margin-top: 14px;
-    padding: 12px 18px;
-    border: 0;
-    border-radius: 11px;
-    color: #fff;
-    background: linear-gradient(180deg, #10b981, #059669);
-    box-shadow: 0 4px 0 #065f46;
-    font-family: 'Fredoka', system-ui, sans-serif;
-    font-size: 13px;
-    font-weight: 800;
-    cursor: pointer;
-    touch-action: manipulation;
-}
-
-.mobile-guide-done:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #065f46;
-}
-
-/* GUIDE only appears on touch-oriented devices. */
-@media (hover: none) and (pointer: coarse) {
-    #mobile-guide-button {
-        display: flex;
-    }
-}
-
-/* Make the instructions more compact in mobile landscape. */
-@media (max-height: 470px) and (orientation: landscape) {
-    .mobile-guide-card {
-        width: min(620px, 88vw);
-        padding: 14px 16px;
-    }
-
-    .mobile-guide-intro {
-        margin: 8px 0 10px;
-    }
-
-    .mobile-guide-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 7px;
-    }
-
-    .mobile-guide-row {
-        padding: 8px 10px;
-    }
-
-    .mobile-guide-row:last-child {
-        grid-column: 1 / -1;
-    }
-
-    .mobile-guide-done {
-        margin-top: 10px;
-        padding: 10px 16px;
-    }
-}
-
-/*
- * Keep pause at the top center on touch
- * devices so it stays independent from the
- * back, wallet and close controls.
- */
-@media (hover: none) and (pointer: coarse) {
-    #btn-pause {
-        top:
-            max(
-                8px,
-                env(
-                    safe-area-inset-top,
-                    0px
-                )
-            );
-
-        left: 50%;
-        right: auto;
-
-        width: 36px;
-        height: 36px;
-
-        transform:
-            translateX(-50%);
-    }
-
-    #btn-pause:hover {
-        transform:
-            translateX(-50%);
-    }
-
-    #btn-pause:active {
-        transform:
-            translateX(-50%)
-            translateY(1px)
-            scale(0.96);
-    }
-}
+/* LEGACY GAME: inactive; original lines JSON-encoded below. */
+/* legacy-line: "@import url('https:\u002f\u002ffonts.googleapis.com\u002fcss2?family=Fredoka:wght@300;400;500;600;700&display=swap');\r" */
+/* legacy-line: ":root {\r" */
+/* legacy-line: "    \u002d\u002dcell: 28px;\r" */
+/* legacy-line: "    \u002d\u002dcols: 10;\r" */
+/* legacy-line: "    \u002d\u002drows: 20\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "html,\r" */
+/* legacy-line: "body {\r" */
+/* legacy-line: "    min\u002dheight: 100%;\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    font\u002dfamily: Inter, system\u002dui, Arial;\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #0f172a, #071024);\r" */
+/* legacy-line: "    color: #e6eef8;\r" */
+/* legacy-line: "    overflow\u002dx: hidden;\r" */
+/* legacy-line: "    overflow\u002dy: auto;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".wrap {\r" */
+/* legacy-line: "    min\u002dheight: 100vh;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "    padding: 20px;\r" */
+/* legacy-line: "    box\u002dsizing: border\u002dbox;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".game\u002dtitle {\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    top: 35px;\r" */
+/* legacy-line: "    left: 12px;\r" */
+/* legacy-line: "    right: 12px;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    gap: 10px;\r" */
+/* legacy-line: "    font\u002dfamily: 'Press Start 2P', cursive;\r" */
+/* legacy-line: "    font\u002dsize: 34px;\r" */
+/* legacy-line: "    pointer\u002devents: none;\r" */
+/* legacy-line: "    z\u002dindex: 1001;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".title\u002drow {\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    text\u002dalign: center;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".game\u002dtitle span {\r" */
+/* legacy-line: "    display: inline\u002dblock;\r" */
+/* legacy-line: "    text\u002dshadow:\r" */
+/* legacy-line: "        0 0 10px rgba(0, 0, 0, 0.8),\r" */
+/* legacy-line: "        2px 2px 0px rgba(0, 0, 0, 0.9);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".board {\r" */
+/* legacy-line: "    display: grid;\r" */
+/* legacy-line: "    grid\u002dtemplate\u002dcolumns: 260px 1fr 260px;\r" */
+/* legacy-line: "    gap: 20px;\r" */
+/* legacy-line: "    align\u002ditems: center\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".game {\r" */
+/* legacy-line: "    background: #061025;\r" */
+/* legacy-line: "    padding: 12px;\r" */
+/* legacy-line: "    border\u002dradius: 12px;\r" */
+/* legacy-line: "    box\u002dshadow: 0 8px 30px rgba(2, 6, 23, .7);\r" */
+/* legacy-line: "    position: relative;\r" */
+/* legacy-line: "    width: fit\u002dcontent;\r" */
+/* legacy-line: "    height: fit\u002dcontent;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "canvas#tetris {\r" */
+/* legacy-line: "    background: #041024;\r" */
+/* legacy-line: "    border: 3px solid #00b4ff;\r" */
+/* legacy-line: "    box\u002dshadow: 0 0 15px rgba(0, 180, 255, 0.4) inset, 0 0 10px rgba(0, 180, 255, 0.3);\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "    display: block\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".overlay {\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    top: 12px;\r" */
+/* legacy-line: "    left: 12px;\r" */
+/* legacy-line: "    right: 12px;\r" */
+/* legacy-line: "    bottom: 12px;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    padding\u002dtop: 140px;\r" */
+/* legacy-line: "    padding\u002dbottom: 80px;\r" */
+/* legacy-line: "    justify\u002dcontent: space\u002dbetween;\r" */
+/* legacy-line: "    pointer\u002devents: auto;\r" */
+/* legacy-line: "    z\u002dindex: 1000;\r" */
+/* legacy-line: "    background: rgba(6, 16, 37, 0.85);\r" */
+/* legacy-line: "    backdrop\u002dfilter: blur(4px);\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".overlay.centered\u002dmode {\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "    padding\u002dtop: 20px;\r" */
+/* legacy-line: "    padding\u002dbottom: 20px;\r" */
+/* legacy-line: "    gap: 30px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dbuttons {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    gap: 12px;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f* Box removed as per user request *\u002f\r" */
+/* legacy-line: ".overlay h2 {\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    margin\u002dbottom: 10px;\r" */
+/* legacy-line: "    font\u002dfamily: 'Press Start 2P', cursive;\r" */
+/* legacy-line: "    font\u002dsize: 26px;\r" */
+/* legacy-line: "    color: #00f0f0;\r" */
+/* legacy-line: "    text\u002dshadow: 0 0 15px rgba(0, 240, 240, 0.5);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".overlay h2.huge\u002dtitle {\r" */
+/* legacy-line: "    font\u002dsize: 80px;\r" */
+/* legacy-line: "    margin\u002dbottom: 20px;\r" */
+/* legacy-line: "    text\u002dtransform: uppercase;\r" */
+/* legacy-line: "    color: #ffffff;\r" */
+/* legacy-line: "    text\u002dshadow: 0 0 30px rgba(255, 255, 255, 0.4);\r" */
+/* legacy-line: "    text\u002dalign: center;\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    white\u002dspace: nowrap;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dmsg {\r" */
+/* legacy-line: "    width: 90%;\r" */
+/* legacy-line: "    max\u002dwidth: 240px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dsettings\u002dpanel,\r" */
+/* legacy-line: "#overlay\u002dcontrols\u002dpanel {\r" */
+/* legacy-line: "    width: 90%;\r" */
+/* legacy-line: "    max\u002dwidth: 240px;\r" */
+/* legacy-line: "    background: transparent;\r" */
+/* legacy-line: "    padding: 0;\r" */
+/* legacy-line: "    border: none;\r" */
+/* legacy-line: "    margin\u002dtop: auto;\r" */
+/* legacy-line: "    margin\u002dbottom: auto;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".setting\u002ditem span {\r" */
+/* legacy-line: "    text\u002dshadow: 0 0 10px rgba(0, 0, 0, 0.8), 1px 1px 2px rgba(0, 0, 0, 0.9);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".leaderboard\u002dcontainer {\r" */
+/* legacy-line: "    width: 220px;\r" */
+/* legacy-line: "    background: #000;\r" */
+/* legacy-line: "    border: 2px solid #fff;\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "    padding: 2px;\r" */
+/* legacy-line: "    margin\u002dbottom: 20px;\r" */
+/* legacy-line: "    box\u002dshadow: 0 0 15px rgba(0, 0, 0, 0.5);\r" */
+/* legacy-line: "    margin\u002dtop: 40px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".leaderboard\u002dheader {\r" */
+/* legacy-line: "    background: #000;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    font\u002dsize: 18px;\r" */
+/* legacy-line: "    font\u002dweight: 800;\r" */
+/* legacy-line: "    padding: 8px 0;\r" */
+/* legacy-line: "    text\u002dalign: center;\r" */
+/* legacy-line: "    letter\u002dspacing: 1px;\r" */
+/* legacy-line: "    border\u002dbottom: 2px solid #fff;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".leaderboard\u002drow {\r" */
+/* legacy-line: "    background: #1a1a1a;\r" */
+/* legacy-line: "    border\u002dbottom: 1px solid #333;\r" */
+/* legacy-line: "    padding: 10px 15px;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    justify\u002dcontent: flex\u002dend;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".leaderboard\u002drow:last\u002dchild {\r" */
+/* legacy-line: "    border\u002dbottom: none;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".score\u002dval {\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    font\u002dsize: 20px;\r" */
+/* legacy-line: "    font\u002dweight: 700;\r" */
+/* legacy-line: "    font\u002dfamily: 'Inter', sans\u002dserif;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".control\u002dlist {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    gap: 10px;\r" */
+/* legacy-line: "    margin\u002dbottom: 16px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".control\u002drow {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: space\u002dbetween;\r" */
+/* legacy-line: "    gap: 46px;\r" */
+/* legacy-line: "    background: rgba(255, 255, 255, 0.03);\r" */
+/* legacy-line: "    padding: 8px 15px;\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "    border: 1px solid rgba(255, 255, 255, 0.05);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".keys {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    gap: 7px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".key {\r" */
+/* legacy-line: "    background: transparent;\r" */
+/* legacy-line: "    border: 2px solid #ffffff;\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "    width: 25px;\r" */
+/* legacy-line: "    height: 25px;\r" */
+/* legacy-line: "    font\u002dsize: 16px;\r" */
+/* legacy-line: "    color: #ffffff;\r" */
+/* legacy-line: "    display: inline\u002dflex;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "    box\u002dshadow: 0 0 10px rgba(255, 255, 255, 0.1);\r" */
+/* legacy-line: "    transition: all 0.2s;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".key i {\r" */
+/* legacy-line: "    font\u002dsize: 15px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".key.wide {\r" */
+/* legacy-line: "    min\u002dwidth: 65px;\r" */
+/* legacy-line: "    padding: 0 12px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".action {\r" */
+/* legacy-line: "    font\u002dsize: 14px;\r" */
+/* legacy-line: "    color: #ffffff;\r" */
+/* legacy-line: "    font\u002dweight: 500;\r" */
+/* legacy-line: "    text\u002dalign: left;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dstart,\r" */
+/* legacy-line: "#overlay\u002drestart,\r" */
+/* legacy-line: "#overlay\u002dclose,\r" */
+/* legacy-line: "#overlay\u002dsettings,\r" */
+/* legacy-line: "#btn\u002dsettings\u002dback,\r" */
+/* legacy-line: "#btn\u002dcontrols\u002dback,\r" */
+/* legacy-line: "#overlay\u002dquit,\r" */
+/* legacy-line: "#overlay\u002dhome,\r" */
+/* legacy-line: "#overlay\u002dhelp {\r" */
+/* legacy-line: "    border: none;\r" */
+/* legacy-line: "    padding: 14px 32px;\r" */
+/* legacy-line: "    font\u002dfamily: 'Press Start 2P', cursive;\r" */
+/* legacy-line: "    font\u002dsize: 11px;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    border\u002dradius: 12px;\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "    transition: all 0.2s cubic\u002dbezier(0.4, 0, 0.2, 1);\r" */
+/* legacy-line: "    width: 220px;\r" */
+/* legacy-line: "    text\u002dtransform: uppercase;\r" */
+/* legacy-line: "    letter\u002dspacing: 1px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f* Specific button colors *\u002f\r" */
+/* legacy-line: "#overlay\u002dstart,\r" */
+/* legacy-line: "#overlay\u002dclose {\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #10b981, #059669);\r" */
+/* legacy-line: "    \u002f* Emerald Green *\u002f\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #065f46, 0 8px 15px rgba(16, 185, 129, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002drestart {\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #f59e0b, #d97706);\r" */
+/* legacy-line: "    \u002f* Amber *\u002f\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #92400e, 0 8px 15px rgba(245, 158, 11, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dsettings,\r" */
+/* legacy-line: "#btn\u002dsettings\u002dback,\r" */
+/* legacy-line: "#btn\u002dcontrols\u002dback {\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #6366f1, #4f46e5);\r" */
+/* legacy-line: "    \u002f* Indigo *\u002f\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #3730a3, 0 8px 15px rgba(99, 102, 241, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dhelp {\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #64748b, #475569);\r" */
+/* legacy-line: "    \u002f* Slate *\u002f\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #1e293b, 0 8px 15px rgba(100, 116, 139, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dhome {\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #64748b, #475569);\r" */
+/* legacy-line: "    \u002f* Slate *\u002f\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #1e293b, 0 8px 15px rgba(100, 116, 139, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dquit {\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #ef4444, #dc2626);\r" */
+/* legacy-line: "    \u002f* Red *\u002f\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #991b1b, 0 8px 15px rgba(239, 68, 68, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dstart:hover,\r" */
+/* legacy-line: "#overlay\u002drestart:hover,\r" */
+/* legacy-line: "#overlay\u002dsettings:hover,\r" */
+/* legacy-line: "#btn\u002dsettings\u002dback:hover,\r" */
+/* legacy-line: "#btn\u002dcontrols\u002dback:hover,\r" */
+/* legacy-line: "#overlay\u002dquit:hover,\r" */
+/* legacy-line: "#overlay\u002dhome:hover,\r" */
+/* legacy-line: "#overlay\u002dhelp:hover {\r" */
+/* legacy-line: "    transform: translateY(\u002d2px);\r" */
+/* legacy-line: "    filter: brightness(1.1);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dstart:hover,\r" */
+/* legacy-line: "#overlay\u002dclose:hover {\r" */
+/* legacy-line: "    box\u002dshadow: 0 6px 0 #065f46, 0 12px 20px rgba(16, 185, 129, 0.4);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002drestart:hover {\r" */
+/* legacy-line: "    box\u002dshadow: 0 6px 0 #92400e, 0 12px 20px rgba(245, 158, 11, 0.4);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dsettings:hover,\r" */
+/* legacy-line: "#btn\u002dsettings\u002dback:hover,\r" */
+/* legacy-line: "#btn\u002dcontrols\u002dback:hover,\r" */
+/* legacy-line: "#overlay\u002dhome:hover,\r" */
+/* legacy-line: "#overlay\u002dhelp:hover {\r" */
+/* legacy-line: "    box\u002dshadow: 0 6px 0 #3730a3, 0 12px 20px rgba(99, 102, 241, 0.4);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dquit:hover {\r" */
+/* legacy-line: "    box\u002dshadow: 0 6px 0 #991b1b, 0 12px 20px rgba(239, 68, 68, 0.4);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dstart:active,\r" */
+/* legacy-line: "#overlay\u002drestart:active,\r" */
+/* legacy-line: "#overlay\u002dclose:active,\r" */
+/* legacy-line: "#overlay\u002dsettings:active,\r" */
+/* legacy-line: "#btn\u002dsettings\u002dback:active,\r" */
+/* legacy-line: "#btn\u002dcontrols\u002dback:active,\r" */
+/* legacy-line: "#overlay\u002dquit:active,\r" */
+/* legacy-line: "#overlay\u002dhome:active,\r" */
+/* legacy-line: "#overlay\u002dhelp:active {\r" */
+/* legacy-line: "    transform: translateY(2px);\r" */
+/* legacy-line: "    filter: brightness(0.9);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dstart:active,\r" */
+/* legacy-line: "#overlay\u002dclose:active {\r" */
+/* legacy-line: "    box\u002dshadow: 0 2px 0 #065f46, 0 4px 8px rgba(16, 185, 129, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002drestart:active {\r" */
+/* legacy-line: "    box\u002dshadow: 0 2px 0 #92400e, 0 4px 8px rgba(245, 158, 11, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dquit:active {\r" */
+/* legacy-line: "    box\u002dshadow: 0 2px 0 #991b1b, 0 4px 8px rgba(239, 68, 68, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#overlay\u002dsettings:active,\r" */
+/* legacy-line: "#btn\u002dsettings\u002dback:active,\r" */
+/* legacy-line: "#btn\u002dcontrols\u002dback:active,\r" */
+/* legacy-line: "#overlay\u002dhelp:active {\r" */
+/* legacy-line: "    box\u002dshadow: 0 2px 0 #3730a3, 0 4px 8px rgba(99, 102, 241, 0.3);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Pause button stays outside the scaled stage.\r" */
+/* legacy-line: " * Place it at the top center of the iframe so it\r" */
+/* legacy-line: " * cannot be clipped on narrow mobile screens.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#btn\u002dpause {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    top:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            10px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dtop, 0px)\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    left: 50%;\r" */
+/* legacy-line: "    right: auto;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    width:\r" */
+/* legacy-line: "        clamp(\r" */
+/* legacy-line: "            40px,\r" */
+/* legacy-line: "            8vmin,\r" */
+/* legacy-line: "            46px\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    height:\r" */
+/* legacy-line: "        clamp(\r" */
+/* legacy-line: "            40px,\r" */
+/* legacy-line: "            8vmin,\r" */
+/* legacy-line: "            46px\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    padding: 0;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    transform:\r" */
+/* legacy-line: "        translateX(\u002d50%);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    font\u002dsize:\r" */
+/* legacy-line: "        clamp(\r" */
+/* legacy-line: "            15px,\r" */
+/* legacy-line: "            3vmin,\r" */
+/* legacy-line: "            18px\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    background:\r" */
+/* legacy-line: "        rgba(7, 18, 37, 0.78);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    backdrop\u002dfilter:\r" */
+/* legacy-line: "        blur(8px);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    \u002dwebkit\u002dbackdrop\u002dfilter:\r" */
+/* legacy-line: "        blur(8px);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    border:\r" */
+/* legacy-line: "        1px solid\r" */
+/* legacy-line: "        rgba(255, 255, 255, 0.3);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    border\u002dradius: 12px;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    box\u002dshadow:\r" */
+/* legacy-line: "        0 6px 18px\r" */
+/* legacy-line: "        rgba(0, 0, 0, 0.35);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    z\u002dindex: 6200;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    touch\u002daction: manipulation;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    \u002dwebkit\u002dtap\u002dhighlight\u002dcolor:\r" */
+/* legacy-line: "        transparent;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    transition:\r" */
+/* legacy-line: "        transform 0.2s ease,\r" */
+/* legacy-line: "        background 0.2s ease,\r" */
+/* legacy-line: "        border\u002dcolor 0.2s ease;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#btn\u002dpause:hover {\r" */
+/* legacy-line: "    transform:\r" */
+/* legacy-line: "        translateX(\u002d50%)\r" */
+/* legacy-line: "        translateY(\u002d2px);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    background:\r" */
+/* legacy-line: "        rgba(30, 41, 59, 0.94);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    border\u002dcolor:\r" */
+/* legacy-line: "        rgba(255, 255, 255, 0.5);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#btn\u002dpause:active {\r" */
+/* legacy-line: "    transform:\r" */
+/* legacy-line: "        translateX(\u002d50%)\r" */
+/* legacy-line: "        translateY(1px)\r" */
+/* legacy-line: "        scale(0.96);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    background:\r" */
+/* legacy-line: "        rgba(7, 18, 37, 0.9);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".side {\r" */
+/* legacy-line: "    width: 260px\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "h1 {\r" */
+/* legacy-line: "    font\u002dfamily: 'Press Start 2P', cursive;\r" */
+/* legacy-line: "    font\u002dsize: 46px;\r" */
+/* legacy-line: "    margin: 30px 0 30px 0;\r" */
+/* legacy-line: "    text\u002dalign: center;\r" */
+/* legacy-line: "    text\u002dshadow: 2px 2px 0px rgba(0, 0, 0, 0.5);\r" */
+/* legacy-line: "    letter\u002dspacing: 2px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".panel {\r" */
+/* legacy-line: "    background: rgba(15, 23, 42, 0.6);\r" */
+/* legacy-line: "    backdrop\u002dfilter: blur(12px);\r" */
+/* legacy-line: "    \u002dwebkit\u002dbackdrop\u002dfilter: blur(12px);\r" */
+/* legacy-line: "    padding: 20px;\r" */
+/* legacy-line: "    border\u002dradius: 20px;\r" */
+/* legacy-line: "    margin\u002dbottom: 15px;\r" */
+/* legacy-line: "    color: #f1f5f9;\r" */
+/* legacy-line: "    border: 1px solid rgba(255, 255, 255, 0.1);\r" */
+/* legacy-line: "    box\u002dshadow:\r" */
+/* legacy-line: "        0 8px 32px rgba(0, 0, 0, 0.4),\r" */
+/* legacy-line: "        inset 0 0 0 1px rgba(255, 255, 255, 0.05);\r" */
+/* legacy-line: "    position: relative;\r" */
+/* legacy-line: "    overflow: hidden;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".panel::before {\r" */
+/* legacy-line: "    content: '';\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    top: 0;\r" */
+/* legacy-line: "    left: 0;\r" */
+/* legacy-line: "    right: 0;\r" */
+/* legacy-line: "    height: 1px;\r" */
+/* legacy-line: "    background: linear\u002dgradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".panel\u002dtitle {\r" */
+/* legacy-line: "    font\u002dfamily: 'Inter', sans\u002dserif;\r" */
+/* legacy-line: "    font\u002dweight: 700;\r" */
+/* legacy-line: "    font\u002dsize: 14px;\r" */
+/* legacy-line: "    color: #94a3b8;\r" */
+/* legacy-line: "    text\u002dtransform: uppercase;\r" */
+/* legacy-line: "    letter\u002dspacing: 1.5px;\r" */
+/* legacy-line: "    margin\u002dbottom: 16px;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    gap: 8px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".stat\u002dcard {\r" */
+/* legacy-line: "    background: rgba(255, 255, 255, 0.03);\r" */
+/* legacy-line: "    border\u002dradius: 12px;\r" */
+/* legacy-line: "    padding: 12px;\r" */
+/* legacy-line: "    margin\u002dbottom: 8px;\r" */
+/* legacy-line: "    transition: all 0.3s ease;\r" */
+/* legacy-line: "    border: 1px solid rgba(255, 255, 255, 0.03);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".stat\u002dcard:hover {\r" */
+/* legacy-line: "    background: rgba(255, 255, 255, 0.06);\r" */
+/* legacy-line: "    transform: translateX(4px);\r" */
+/* legacy-line: "    border\u002dcolor: rgba(255, 255, 255, 0.1);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".stat\u002dlabel {\r" */
+/* legacy-line: "    font\u002dsize: 12px;\r" */
+/* legacy-line: "    color: #64748b;\r" */
+/* legacy-line: "    margin\u002dbottom: 4px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".stat\u002dvalue {\r" */
+/* legacy-line: "    font\u002dfamily: 'Inter', sans\u002dserif;\r" */
+/* legacy-line: "    font\u002dweight: 700;\r" */
+/* legacy-line: "    font\u002dsize: 20px;\r" */
+/* legacy-line: "    color: #f8fafc;\r" */
+/* legacy-line: "    text\u002dshadow: 0 0 20px rgba(248, 250, 252, 0.2);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".highscore\u002dvalue {letter\u002dspacing: 0.14em;\r" */
+/* legacy-line: "    \r" */
+/* legacy-line: "    font\u002dsize: 32px;\r" */
+/* legacy-line: "    color: #fcd34d;\r" */
+/* legacy-line: "    \u002f* Golden color for high score *\u002f\r" */
+/* legacy-line: "    text\u002dshadow: 0 0 25px rgba(252, 211, 77, 0.4);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f* Premium Preview Box Design *\u002f\r" */
+/* legacy-line: ".preview\u002dbox {\r" */
+/* legacy-line: "    background: conic\u002dgradient(from 0deg at 50% 50%,\r" */
+/* legacy-line: "            #e2e8f0 0deg,\r" */
+/* legacy-line: "            #94a3b8 90deg,\r" */
+/* legacy-line: "            #f8fafc 180deg,\r" */
+/* legacy-line: "            #94a3b8 270deg,\r" */
+/* legacy-line: "            #e2e8f0 360deg);\r" */
+/* legacy-line: "    padding: 4px;\r" */
+/* legacy-line: "    border\u002dradius: 26px;\r" */
+/* legacy-line: "    box\u002dshadow:\r" */
+/* legacy-line: "        0 10px 25px rgba(0, 0, 0, 0.5),\r" */
+/* legacy-line: "        inset 0 4px 6px rgba(255, 255, 255, 0.8),\r" */
+/* legacy-line: "        inset 0 \u002d6px 10px rgba(0, 0, 0, 0.3);\r" */
+/* legacy-line: "    border: 2px solid #cbd5e1;\r" */
+/* legacy-line: "    position: relative;\r" */
+/* legacy-line: "    max\u002dwidth: 200px;\r" */
+/* legacy-line: "    margin: 0 auto;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".preview\u002dinner {\r" */
+/* legacy-line: "    background: linear\u002dgradient(145deg, #0f172a, #1e293b);\r" */
+/* legacy-line: "    border\u002dradius: 26px;\r" */
+/* legacy-line: "    padding: 10px;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    position: relative;\r" */
+/* legacy-line: "    box\u002dshadow:\r" */
+/* legacy-line: "        inset 0 8px 16px rgba(0, 0, 0, 0.7),\r" */
+/* legacy-line: "        0 1px 1px rgba(255, 255, 255, 0.1);\r" */
+/* legacy-line: "    border: 1px solid rgba(0, 0, 0, 0.5);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".preview\u002dlabel {\r" */
+/* legacy-line: "    font\u002dfamily: 'Inter', sans\u002dserif;\r" */
+/* legacy-line: "    font\u002dweight: 700;\r" */
+/* legacy-line: "    font\u002dsize: 18px;\r" */
+/* legacy-line: "    color: #f8fafc;\r" */
+/* legacy-line: "    text\u002dshadow: 0 2px 4px rgba(0, 0, 0, 0.5);\r" */
+/* legacy-line: "    margin\u002dbottom: 8px;\r" */
+/* legacy-line: "    letter\u002dspacing: 1px;\r" */
+/* legacy-line: "    text\u002dtransform: uppercase;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".preview\u002dglare {\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    top: 10px;\r" */
+/* legacy-line: "    left: 12px;\r" */
+/* legacy-line: "    width: 20px;\r" */
+/* legacy-line: "    height: 10px;\r" */
+/* legacy-line: "    background: rgba(255, 255, 255, 0.2);\r" */
+/* legacy-line: "    border\u002dradius: 50%;\r" */
+/* legacy-line: "    transform: rotate(\u002d30deg);\r" */
+/* legacy-line: "    filter: blur(1px);\r" */
+/* legacy-line: "    pointer\u002devents: none;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".hold\u002dcanvas,\r" */
+/* legacy-line: ".next\u002dcanvas {\r" */
+/* legacy-line: "    background: transparent;\r" */
+/* legacy-line: "    display: block;\r" */
+/* legacy-line: "    margin: 0 auto;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".small {\r" */
+/* legacy-line: "    font\u002dsize: 13px;\r" */
+/* legacy-line: "    color: #9fc6ff\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".controls {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    gap: 8px;\r" */
+/* legacy-line: "    flex\u002dwrap: wrap\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "button {\r" */
+/* legacy-line: "    background: #0b2640;\r" */
+/* legacy-line: "    border: 1px solid rgba(255, 255, 255, 0.04);\r" */
+/* legacy-line: "    color: #dff0ff;\r" */
+/* legacy-line: "    padding: 8px 12px;\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "    transition: all 0.2s\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "button:hover {\r" */
+/* legacy-line: "    background: #0d3050;\r" */
+/* legacy-line: "    transform: translateY(\u002d1px)\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "button:active {\r" */
+/* legacy-line: "    transform: translateY(0)\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "button:disabled {\r" */
+/* legacy-line: "    opacity: 0.5;\r" */
+/* legacy-line: "    cursor: not\u002dallowed\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".hint {\r" */
+/* legacy-line: "    font\u002dsize: 13px;\r" */
+/* legacy-line: "    color: #9fb9d6;\r" */
+/* legacy-line: "    margin\u002dtop: 6px\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".next\u002dcanvas,\r" */
+/* legacy-line: ".hold\u002dcanvas {\r" */
+/* legacy-line: "    background: #041024;\r" */
+/* legacy-line: "    border\u002dradius: 8px;\r" */
+/* legacy-line: "    display: block;\r" */
+/* legacy-line: "    margin\u002dtop: 8px;\r" */
+/* legacy-line: "    border: 2px solid #555\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "footer {\r" */
+/* legacy-line: "    font\u002dsize: 12px;\r" */
+/* legacy-line: "    color: #8fb4d9;\r" */
+/* legacy-line: "    margin\u002dtop: 6px;\r" */
+/* legacy-line: "    text\u002dalign: center\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".setting\u002ditem {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    justify\u002dcontent: space\u002dbetween;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    margin: 8px 0\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".toggle {\r" */
+/* legacy-line: "    width: 48px;\r" */
+/* legacy-line: "    height: 24px;\r" */
+/* legacy-line: "    background: #334;\r" */
+/* legacy-line: "    border\u002dradius: 12px;\r" */
+/* legacy-line: "    position: relative;\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "    transition: background 0.3s\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".toggle.active {\r" */
+/* legacy-line: "    background: #0a84ff\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".toggle span {\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    width: 20px;\r" */
+/* legacy-line: "    height: 20px;\r" */
+/* legacy-line: "    background: #fff;\r" */
+/* legacy-line: "    border\u002dradius: 50%;\r" */
+/* legacy-line: "    top: 2px;\r" */
+/* legacy-line: "    left: 2px;\r" */
+/* legacy-line: "    transition: left 0.3s\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".toggle.active span {\r" */
+/* legacy-line: "    left: 26px\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".stat\u002drow {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    justify\u002dcontent: space\u002dbetween;\r" */
+/* legacy-line: "    margin: 4px 0;\r" */
+/* legacy-line: "    font\u002dsize: 13px\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".touch\u002dcontrols {\r" */
+/* legacy-line: "    display: none;\r" */
+/* legacy-line: "    margin\u002dtop: 12px\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@media(max\u002dwidth:768px) {\r" */
+/* legacy-line: "    .touch\u002dcontrols {\r" */
+/* legacy-line: "        display: grid;\r" */
+/* legacy-line: "        grid\u002dtemplate\u002dcolumns: repeat(3, 1fr);\r" */
+/* legacy-line: "        gap: 8px\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".touch\u002dbtn {\r" */
+/* legacy-line: "    padding: 16px;\r" */
+/* legacy-line: "    font\u002dsize: 18px;\r" */
+/* legacy-line: "    touch\u002daction: manipulation\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@keyframes lineClear {\r" */
+/* legacy-line: "    0% {\r" */
+/* legacy-line: "        opacity: 1;\r" */
+/* legacy-line: "        background: rgba(255, 255, 255, 0.8)\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    100% {\r" */
+/* legacy-line: "        opacity: 0\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".clearing\u002dline {\r" */
+/* legacy-line: "    animation: lineClear 0.3s ease\u002dout\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".ghost\u002dpiece {\r" */
+/* legacy-line: "    opacity: 0.3\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Tetris responsive landscape viewport.\r" */
+/* legacy-line: " * Keep one fixed three\u002dcolumn design and scale the\r" */
+/* legacy-line: " * complete stage uniformly on every device.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: ":root {\r" */
+/* legacy-line: "    \u002d\u002dtetris\u002dscale: 1;\r" */
+/* legacy-line: "    \u002d\u002dtetris\u002dstage\u002dwidth: 870px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "html,\r" */
+/* legacy-line: "body {\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    height: 100%;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    padding: 0;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    overflow: hidden !important;\r" */
+/* legacy-line: "    overscroll\u002dbehavior: none;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    background: #071225;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "html {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "    inset: 0;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "body {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "    inset: 0;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    touch\u002daction: none;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    user\u002dselect: none;\r" */
+/* legacy-line: "    \u002dwebkit\u002duser\u002dselect: none;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * GamePage.tsx already reserves the upper toolbar area.\r" */
+/* legacy-line: " * This viewport only keeps a small safe margin around\r" */
+/* legacy-line: " * the Tetris stage.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#tetris\u002dviewport {\r" */
+/* legacy-line: "    position: fixed !important;\r" */
+/* legacy-line: "    inset: 0 !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    width: 100% !important;\r" */
+/* legacy-line: "    height: 100% !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    min\u002dwidth: 0 !important;\r" */
+/* legacy-line: "    min\u002dheight: 0 !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    margin: 0 !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    padding\u002dtop:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            8px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dtop, 0px)\r" */
+/* legacy-line: "        ) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    padding\u002dright:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            12px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dright, 0px)\r" */
+/* legacy-line: "        ) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    padding\u002dbottom:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            8px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dbottom, 0px)\r" */
+/* legacy-line: "        ) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    padding\u002dleft:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            12px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dleft, 0px)\r" */
+/* legacy-line: "        ) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    display: block !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    box\u002dsizing: border\u002dbox;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    overflow: hidden !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Use one fixed desktop\u002dstyle stage on every device.\r" */
+/* legacy-line: " * JavaScript scales this complete 870 × 590 layout.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#tetris\u002dstage {\r" */
+/* legacy-line: "    position: absolute !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    left: 50% !important;\r" */
+/* legacy-line: "    top: 50% !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    width:\r" */
+/* legacy-line: "        var(\u002d\u002dtetris\u002dstage\u002dwidth) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    \u002f*\r" */
+/* legacy-line: "    * Allow the stage height to follow the tallest column.\r" */
+/* legacy-line: "    * The main game canvas still guarantees a minimum height\r" */
+/* legacy-line: "    * of 590px.\r" */
+/* legacy-line: "    *\u002f\r" */
+/* legacy-line: "    height: auto !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    min\u002dwidth:\r" */
+/* legacy-line: "        var(\u002d\u002dtetris\u002dstage\u002dwidth) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    min\u002dheight: 590px !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    max\u002dwidth: none !important;\r" */
+/* legacy-line: "    max\u002dheight: none !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    margin: 0 !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    display: grid !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    grid\u002dtemplate\u002dcolumns:\r" */
+/* legacy-line: "        260px\r" */
+/* legacy-line: "        310px\r" */
+/* legacy-line: "        260px !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    \u002f*\r" */
+/* legacy-line: "    * Let the grid row grow when either side panel is taller\r" */
+/* legacy-line: "    * than the main game canvas.\r" */
+/* legacy-line: "    *\u002f\r" */
+/* legacy-line: "    grid\u002dtemplate\u002drows:\r" */
+/* legacy-line: "        max\u002dcontent !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    gap: 20px !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    overflow: visible !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    align\u002ditems: center !important;\r" */
+/* legacy-line: "    justify\u002ditems: stretch !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    transform:\r" */
+/* legacy-line: "        translate(\u002d50%, \u002d50%)\r" */
+/* legacy-line: "        scale(var(\u002d\u002dtetris\u002dscale)) !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    transform\u002dorigin:\r" */
+/* legacy-line: "        center center !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    will\u002dchange: transform;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Keep both side panels at their original dimensions.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#tetris\u002dstage > .side {\r" */
+/* legacy-line: "    width: 260px !important;\r" */
+/* legacy-line: "    max\u002dwidth: none !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * The game section contains:\r" */
+/* legacy-line: " * 280px canvas\r" */
+/* legacy-line: " * + 6px canvas border\r" */
+/* legacy-line: " * + 24px game padding\r" */
+/* legacy-line: " * = 310px total width.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#tetris\u002dstage > .game {\r" */
+/* legacy-line: "    width: 286px !important;\r" */
+/* legacy-line: "    max\u002dwidth: none !important;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    box\u002dsizing: content\u002dbox;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Prevent browser scrolling, zoom gestures and text selection\r" */
+/* legacy-line: " * while the user controls Tetris.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#tetris\u002dviewport,\r" */
+/* legacy-line: "#tetris\u002dstage,\r" */
+/* legacy-line: "#tetris {\r" */
+/* legacy-line: "    touch\u002daction: none;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    user\u002dselect: none;\r" */
+/* legacy-line: "    \u002dwebkit\u002duser\u002dselect: none;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    \u002dwebkit\u002dtouch\u002dcallout: none;\r" */
+/* legacy-line: "    \u002dwebkit\u002dtap\u002dhighlight\u002dcolor: transparent;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Mobile replacement for the keyboard C key.\r" */
+/* legacy-line: " *\r" */
+/* legacy-line: " * The button is outside #tetris\u002dstage, so it does not become\r" */
+/* legacy-line: " * too small when the complete game layout is scaled.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#mobile\u002dhold\u002dbutton {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    right:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            10px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dright, 0px)\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    bottom:\r" */
+/* legacy-line: "        max(\r" */
+/* legacy-line: "            10px,\r" */
+/* legacy-line: "            env(safe\u002darea\u002dinset\u002dbottom, 0px)\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    z\u002dindex: 6000;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    display: none;\r" */
+/* legacy-line: "    flex\u002ddirection: column;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    width:\r" */
+/* legacy-line: "        clamp(\r" */
+/* legacy-line: "            54px,\r" */
+/* legacy-line: "            11vmin,\r" */
+/* legacy-line: "            70px\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    aspect\u002dratio: 1;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    padding: 6px;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    border:\r" */
+/* legacy-line: "        2px solid\r" */
+/* legacy-line: "        rgba(255, 255, 255, 0.55);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    border\u002dradius: 50%;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    color: #ffffff;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    background:\r" */
+/* legacy-line: "        linear\u002dgradient(\r" */
+/* legacy-line: "            180deg,\r" */
+/* legacy-line: "            rgba(99, 102, 241, 0.96),\r" */
+/* legacy-line: "            rgba(79, 70, 229, 0.96)\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    box\u002dshadow:\r" */
+/* legacy-line: "        0 5px 0 #312e81,\r" */
+/* legacy-line: "        0 10px 24px\r" */
+/* legacy-line: "            rgba(0, 0, 0, 0.4);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    font\u002dfamily:\r" */
+/* legacy-line: "        'Fredoka',\r" */
+/* legacy-line: "        system\u002dui,\r" */
+/* legacy-line: "        sans\u002dserif;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    font\u002dsize:\r" */
+/* legacy-line: "        clamp(\r" */
+/* legacy-line: "            10px,\r" */
+/* legacy-line: "            2.4vmin,\r" */
+/* legacy-line: "            13px\r" */
+/* legacy-line: "        );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    font\u002dweight: 800;\r" */
+/* legacy-line: "    line\u002dheight: 1;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    letter\u002dspacing: 0.06em;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    touch\u002daction: manipulation;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    user\u002dselect: none;\r" */
+/* legacy-line: "    \u002dwebkit\u002duser\u002dselect: none;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    \u002dwebkit\u002dtap\u002dhighlight\u002dcolor:\r" */
+/* legacy-line: "        transparent;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#mobile\u002dhold\u002dbutton small {\r" */
+/* legacy-line: "    margin\u002dtop: 4px;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    font\u002dsize: 0.72em;\r" */
+/* legacy-line: "    font\u002dweight: 700;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    opacity: 0.72;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#mobile\u002dhold\u002dbutton:active {\r" */
+/* legacy-line: "    transform:\r" */
+/* legacy-line: "        translateY(3px)\r" */
+/* legacy-line: "        scale(0.96);\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    box\u002dshadow:\r" */
+/* legacy-line: "        0 2px 0 #312e81,\r" */
+/* legacy-line: "        0 5px 12px\r" */
+/* legacy-line: "            rgba(0, 0, 0, 0.35);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Show the HOLD button only on devices whose primary\r" */
+/* legacy-line: " * input is touch\u002doriented.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "@media (hover: none) and (pointer: coarse) {\r" */
+/* legacy-line: "    #mobile\u002dhold\u002dbutton.is\u002dgameplay\u002dvisible {\r" */
+/* legacy-line: "        display: flex;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Mobile Tetris guide.\r" */
+/* legacy-line: " * The button only appears on touch devices.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#mobile\u002dguide\u002dbutton {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "    left: max(10px, env(safe\u002darea\u002dinset\u002dleft, 0px));\r" */
+/* legacy-line: "    bottom: max(10px, env(safe\u002darea\u002dinset\u002dbottom, 0px));\r" */
+/* legacy-line: "    z\u002dindex: 6100;\r" */
+/* legacy-line: "    display: none;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "    gap: 7px;\r" */
+/* legacy-line: "    min\u002dheight: 46px;\r" */
+/* legacy-line: "    padding: 0 14px;\r" */
+/* legacy-line: "    border: 2px solid rgba(255, 255, 255, 0.5);\r" */
+/* legacy-line: "    border\u002dradius: 999px;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #0ea5e9, #0284c7);\r" */
+/* legacy-line: "    box\u002dshadow: 0 5px 0 #075985, 0 10px 24px rgba(0, 0, 0, 0.4);\r" */
+/* legacy-line: "    font\u002dfamily: 'Fredoka', system\u002dui, sans\u002dserif;\r" */
+/* legacy-line: "    font\u002dsize: clamp(10px, 2.4vmin, 13px);\r" */
+/* legacy-line: "    font\u002dweight: 800;\r" */
+/* legacy-line: "    letter\u002dspacing: 0.06em;\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "    touch\u002daction: manipulation;\r" */
+/* legacy-line: "    \u002dwebkit\u002dtap\u002dhighlight\u002dcolor: transparent;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#mobile\u002dguide\u002dbutton i {\r" */
+/* legacy-line: "    font\u002dsize: 1.15em;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#mobile\u002dguide\u002dbutton:active {\r" */
+/* legacy-line: "    transform: translateY(3px) scale(0.97);\r" */
+/* legacy-line: "    box\u002dshadow: 0 2px 0 #075985, 0 5px 12px rgba(0, 0, 0, 0.35);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dmodal[hidden] {\r" */
+/* legacy-line: "    display: none !important;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dmodal {\r" */
+/* legacy-line: "    position: fixed;\r" */
+/* legacy-line: "    inset: 0;\r" */
+/* legacy-line: "    z\u002dindex: 7000;\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    justify\u002dcontent: center;\r" */
+/* legacy-line: "    padding:\r" */
+/* legacy-line: "        max(14px, env(safe\u002darea\u002dinset\u002dtop, 0px))\r" */
+/* legacy-line: "        max(14px, env(safe\u002darea\u002dinset\u002dright, 0px))\r" */
+/* legacy-line: "        max(14px, env(safe\u002darea\u002dinset\u002dbottom, 0px))\r" */
+/* legacy-line: "        max(14px, env(safe\u002darea\u002dinset\u002dleft, 0px));\r" */
+/* legacy-line: "    box\u002dsizing: border\u002dbox;\r" */
+/* legacy-line: "    touch\u002daction: manipulation;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dbackdrop {\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    inset: 0;\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    height: 100%;\r" */
+/* legacy-line: "    padding: 0;\r" */
+/* legacy-line: "    border: 0;\r" */
+/* legacy-line: "    background: rgba(2, 6, 23, 0.8);\r" */
+/* legacy-line: "    backdrop\u002dfilter: blur(5px);\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dcard {\r" */
+/* legacy-line: "    position: relative;\r" */
+/* legacy-line: "    z\u002dindex: 1;\r" */
+/* legacy-line: "    width: min(430px, 92vw);\r" */
+/* legacy-line: "    max\u002dheight: calc(100dvh \u002d 28px);\r" */
+/* legacy-line: "    overflow\u002dy: auto;\r" */
+/* legacy-line: "    box\u002dsizing: border\u002dbox;\r" */
+/* legacy-line: "    padding: clamp(16px, 4vmin, 24px);\r" */
+/* legacy-line: "    border: 2px solid rgba(125, 211, 252, 0.65);\r" */
+/* legacy-line: "    border\u002dradius: 18px;\r" */
+/* legacy-line: "    color: #e6eef8;\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #10223d, #071225);\r" */
+/* legacy-line: "    box\u002dshadow: 0 24px 70px rgba(0, 0, 0, 0.55);\r" */
+/* legacy-line: "    overscroll\u002dbehavior: contain;\r" */
+/* legacy-line: "    \u002dwebkit\u002doverflow\u002dscrolling: touch;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dheader {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    align\u002ditems: flex\u002dstart;\r" */
+/* legacy-line: "    justify\u002dcontent: space\u002dbetween;\r" */
+/* legacy-line: "    gap: 16px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dkicker {\r" */
+/* legacy-line: "    margin\u002dbottom: 5px;\r" */
+/* legacy-line: "    color: #7dd3fc;\r" */
+/* legacy-line: "    font\u002dsize: 10px;\r" */
+/* legacy-line: "    font\u002dweight: 800;\r" */
+/* legacy-line: "    letter\u002dspacing: 0.16em;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dheader h2 {\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    font\u002dsize: clamp(22px, 5vmin, 30px);\r" */
+/* legacy-line: "    line\u002dheight: 1.1;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dclose {\r" */
+/* legacy-line: "    flex: 0 0 auto;\r" */
+/* legacy-line: "    display: grid;\r" */
+/* legacy-line: "    place\u002ditems: center;\r" */
+/* legacy-line: "    width: 38px;\r" */
+/* legacy-line: "    height: 38px;\r" */
+/* legacy-line: "    padding: 0;\r" */
+/* legacy-line: "    border: 1px solid rgba(255, 255, 255, 0.16);\r" */
+/* legacy-line: "    border\u002dradius: 50%;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    background: rgba(255, 255, 255, 0.08);\r" */
+/* legacy-line: "    font\u002dsize: 18px;\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "    touch\u002daction: manipulation;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dintro {\r" */
+/* legacy-line: "    margin: 12px 0 14px;\r" */
+/* legacy-line: "    color: #b9d3ed;\r" */
+/* legacy-line: "    font\u002dsize: 13px;\r" */
+/* legacy-line: "    line\u002dheight: 1.45;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dlist {\r" */
+/* legacy-line: "    display: grid;\r" */
+/* legacy-line: "    gap: 8px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002drow {\r" */
+/* legacy-line: "    display: flex;\r" */
+/* legacy-line: "    align\u002ditems: center;\r" */
+/* legacy-line: "    gap: 12px;\r" */
+/* legacy-line: "    padding: 10px 12px;\r" */
+/* legacy-line: "    border: 1px solid rgba(255, 255, 255, 0.08);\r" */
+/* legacy-line: "    border\u002dradius: 12px;\r" */
+/* legacy-line: "    background: rgba(255, 255, 255, 0.045);\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002dicon {\r" */
+/* legacy-line: "    flex: 0 0 auto;\r" */
+/* legacy-line: "    display: grid;\r" */
+/* legacy-line: "    place\u002ditems: center;\r" */
+/* legacy-line: "    width: 36px;\r" */
+/* legacy-line: "    height: 36px;\r" */
+/* legacy-line: "    border\u002dradius: 10px;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    background: rgba(14, 165, 233, 0.22);\r" */
+/* legacy-line: "    font\u002dsize: 16px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002drow div {\r" */
+/* legacy-line: "    min\u002dwidth: 0;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002drow strong,\r" */
+/* legacy-line: ".mobile\u002dguide\u002drow small {\r" */
+/* legacy-line: "    display: block;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002drow strong {\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    font\u002dsize: 13px;\r" */
+/* legacy-line: "    line\u002dheight: 1.2;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002drow small {\r" */
+/* legacy-line: "    margin\u002dtop: 3px;\r" */
+/* legacy-line: "    color: #9fc6e8;\r" */
+/* legacy-line: "    font\u002dsize: 11px;\r" */
+/* legacy-line: "    line\u002dheight: 1.25;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002ddone {\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    margin\u002dtop: 14px;\r" */
+/* legacy-line: "    padding: 12px 18px;\r" */
+/* legacy-line: "    border: 0;\r" */
+/* legacy-line: "    border\u002dradius: 11px;\r" */
+/* legacy-line: "    color: #fff;\r" */
+/* legacy-line: "    background: linear\u002dgradient(180deg, #10b981, #059669);\r" */
+/* legacy-line: "    box\u002dshadow: 0 4px 0 #065f46;\r" */
+/* legacy-line: "    font\u002dfamily: 'Fredoka', system\u002dui, sans\u002dserif;\r" */
+/* legacy-line: "    font\u002dsize: 13px;\r" */
+/* legacy-line: "    font\u002dweight: 800;\r" */
+/* legacy-line: "    cursor: pointer;\r" */
+/* legacy-line: "    touch\u002daction: manipulation;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: ".mobile\u002dguide\u002ddone:active {\r" */
+/* legacy-line: "    transform: translateY(2px);\r" */
+/* legacy-line: "    box\u002dshadow: 0 2px 0 #065f46;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f* GUIDE only appears on touch\u002doriented devices. *\u002f\r" */
+/* legacy-line: "@media (hover: none) and (pointer: coarse) {\r" */
+/* legacy-line: "    #mobile\u002dguide\u002dbutton {\r" */
+/* legacy-line: "        display: flex;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f* Make the instructions more compact in mobile landscape. *\u002f\r" */
+/* legacy-line: "@media (max\u002dheight: 470px) and (orientation: landscape) {\r" */
+/* legacy-line: "    .mobile\u002dguide\u002dcard {\r" */
+/* legacy-line: "        width: min(620px, 88vw);\r" */
+/* legacy-line: "        padding: 14px 16px;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    .mobile\u002dguide\u002dintro {\r" */
+/* legacy-line: "        margin: 8px 0 10px;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    .mobile\u002dguide\u002dlist {\r" */
+/* legacy-line: "        grid\u002dtemplate\u002dcolumns: repeat(2, minmax(0, 1fr));\r" */
+/* legacy-line: "        gap: 7px;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    .mobile\u002dguide\u002drow {\r" */
+/* legacy-line: "        padding: 8px 10px;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    .mobile\u002dguide\u002drow:last\u002dchild {\r" */
+/* legacy-line: "        grid\u002dcolumn: 1 \u002f \u002d1;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    .mobile\u002dguide\u002ddone {\r" */
+/* legacy-line: "        margin\u002dtop: 10px;\r" */
+/* legacy-line: "        padding: 10px 16px;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Keep pause at the top center on touch\r" */
+/* legacy-line: " * devices so it stays independent from the\r" */
+/* legacy-line: " * back, wallet and close controls.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "@media (hover: none) and (pointer: coarse) {\r" */
+/* legacy-line: "    #btn\u002dpause {\r" */
+/* legacy-line: "        top:\r" */
+/* legacy-line: "            max(\r" */
+/* legacy-line: "                8px,\r" */
+/* legacy-line: "                env(\r" */
+/* legacy-line: "                    safe\u002darea\u002dinset\u002dtop,\r" */
+/* legacy-line: "                    0px\r" */
+/* legacy-line: "                )\r" */
+/* legacy-line: "            );\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "        left: 50%;\r" */
+/* legacy-line: "        right: auto;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "        width: 36px;\r" */
+/* legacy-line: "        height: 36px;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "        transform:\r" */
+/* legacy-line: "            translateX(\u002d50%);\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    #btn\u002dpause:hover {\r" */
+/* legacy-line: "        transform:\r" */
+/* legacy-line: "            translateX(\u002d50%);\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    #btn\u002dpause:active {\r" */
+/* legacy-line: "        transform:\r" */
+/* legacy-line: "            translateX(\u002d50%)\r" */
+/* legacy-line: "            translateY(1px)\r" */
+/* legacy-line: "            scale(0.96);\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}" */
