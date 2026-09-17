@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Mail } from 'lucide-react';
-import { SharedMolarAI } from 'pet-function/ai';
+import { SharedMolarAI } from '@mrburdeveloperteam/pet-function/ai';
 import { supabase } from '../lib/supabase';
 import { useElearningDataChatSources } from '../aiExperience/dataChat/hooks/useElearningDataChatSources';
 import { createElearningMolarAdapter } from '../aiExperience/elearningMolarAdapter';
@@ -53,7 +53,7 @@ const FALLBACK_PROMPTS = [
 ];
 
 /**
- * Thin host wrapper around `pet-function/ai`'s
+ * Thin host wrapper around `@mrburdeveloperteam/pet-function/ai`'s
  * <SharedMolarAI>. All generic chat UI lifecycle (open/close, history,
  * input draft, loading/error presentation, submit mechanics, scroll,
  * clear/reset, Markdown rendering) now lives in the shared package. This

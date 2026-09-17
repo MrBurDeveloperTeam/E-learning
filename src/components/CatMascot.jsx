@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { normalizePetId } from '../VirtualPet/petOptions';
 import { usePersonalizedInsightBridge } from '../aiExperience/petDialogue/PersonalizedInsightBridge';
 import { CAT_SPRITE_SHEET_URLS } from '../aiExperience/molarExperienceAssets';
-import { useSharedCatDialogueRuntime, SharedCatMascot } from 'pet-function/cat';
+import { useSharedCatDialogueRuntime, SharedCatMascot } from '@mrburdeveloperteam/pet-function/cat';
 
 const PET_SLEEPING_KEY = 'pet_is_sleeping';
 const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
@@ -28,7 +28,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   // component no longer decides WHICH dialogue type shows or WHEN
   // (mount-scoped shown-tracking, dismissal persistence, cross-tab sync,
   // exact-adopted-candidate binding, one-activation/no-cascade, readiness
-  // arbitration all live in pet-function's
+  // arbitration all live in @mrburdeveloperteam/pet-function's
   // useSharedCatDialogueRuntime — unchanged since Phase 6B). This file
   // keeps only what's genuinely E-Learning-specific: fetching Intro/Welcome
   // Back CONTENT from Supabase, and reading the already-resolved Phase-2B

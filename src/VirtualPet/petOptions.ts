@@ -1,4 +1,4 @@
-export * from 'pet-function/options';
+export * from '@mrburdeveloperteam/pet-function/options';
 
 
 // LEGACY LOCAL IMPLEMENTATION — inactive; shared implementation is imported above.

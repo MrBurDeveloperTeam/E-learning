@@ -1,4 +1,4 @@
-export * from 'pet-function/resources';
+export * from '@mrburdeveloperteam/pet-function/resources';
 
 
 // LEGACY LOCAL IMPLEMENTATION — inactive; shared implementation is imported above.
