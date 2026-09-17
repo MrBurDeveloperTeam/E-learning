@@ -25,7 +25,12 @@ export function useResolveCommunityReport() {
       queryClient.invalidateQueries({ queryKey: ['admin-community-reports'] })
       queryClient.invalidateQueries({ queryKey: ['community-posts'] })
       queryClient.invalidateQueries({ queryKey: ['community-directory'] })
+      queryClient.invalidateQueries({ queryKey: ['community-post'] })
       queryClient.invalidateQueries({ queryKey: ['community-comments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-community-reports'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-community-comments'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-community-groups'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-community-audit'] })
     },
   })
 }

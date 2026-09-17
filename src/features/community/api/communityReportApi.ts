@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { COMMUNITY_TABLES, CommunityBackendUnavailableError } from '@/features/community/api/communityContract'
+import { COMMUNITY_TABLES } from '@/features/community/api/communityContract'
 
 export type CommunityReportReason = 'patient_privacy' | 'misinformation' | 'harassment' | 'spam' | 'copyright' | 'other'
 
@@ -97,8 +97,16 @@ export async function fetchCommunityReports() {
   }).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)) as CommunityReportRow[]
 }
 
-export async function resolveCommunityReport(_id: string, _action: 'dismiss' | 'resolve' | 'hide'): Promise<void> {
-  throw new CommunityBackendUnavailableError('Community report resolution')
+export async function resolveCommunityReport(id: string, action: 'dismiss' | 'resolve' | 'hide'): Promise<void> {
+  const { data, error } = await supabase.rpc('community_resolve_report', {
+    target_report_id: id,
+    decision: action,
+  })
+  if (error) {
+    if (error.code === 'PGRST202') throw new Error('Report moderation is not configured on this database yet.')
+    throw new Error(error.message || 'Report could not be processed.')
+  }
+  if (!Number.isInteger(data) || data < 1) throw new Error('No pending reports were updated. Refresh the queue and try again.')
 }
 
 export async function fetchMyCommunityReports(userId: string) {
