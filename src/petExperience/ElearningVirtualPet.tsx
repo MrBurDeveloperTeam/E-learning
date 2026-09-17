@@ -1,4 +1,4 @@
-import { SharedHostedVirtualPet, type ExtraGame } from 'pet-function/pet';
+import { SharedHostedVirtualPet, type ExtraGame } from '@mrburdeveloperteam/pet-function/pet';
 import { supabase } from '../lib/supabase';
 import { elearningPetRepository } from './elearningPetRepository';
 
@@ -14,7 +14,7 @@ export default function ElearningVirtualPet(props: {
 // LEGACY LOCAL IMPLEMENTATION — inactive; shared implementation is imported above.
 // Retained as line comments for reference. Do not uncomment alongside the shared implementation.
 // // PHASE 6E (Virtual Pet migration): thin host wrapper around
-// // `pet-function/pet`'s <SharedVirtualPet>.
+// // `@mrburdeveloperteam/pet-function/pet`'s <SharedVirtualPet>.
 // //
 // // Everything generic (room UI, adoption UI, shop/inventory UI, stat
 // // runtime/decay tick, XP/level/coin arithmetic, mini-game embedding shell,
@@ -44,7 +44,7 @@ export default function ElearningVirtualPet(props: {
 // // too would just be a redundant second write to the same style property,
 // // not a behavior difference.
 // import { useEffect, useRef, useState } from 'react';
-// import { SharedVirtualPet, type ExtraGame } from 'pet-function/pet';
+// import { SharedVirtualPet, type ExtraGame } from '@mrburdeveloperteam/pet-function/pet';
 // import { supabase } from '../lib/supabase';
 // import { elearningPetRepository } from './elearningPetRepository';
 // import { PET_ASSET_URLS } from '../aiExperience/molarExperienceAssets';

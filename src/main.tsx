@@ -15,7 +15,7 @@ import './index.css'
 // (plain text asset), so the already-compiled CSS is injected verbatim,
 // unreprocessed — identical runtime styling to a normal import, just
 // loaded through a path that no longer collides with Tailwind v3.
-import molarExperienceStyles from 'pet-function/styles.css?raw'
+import molarExperienceStyles from '@mrburdeveloperteam/pet-function/styles.css?raw'
 
 // PHASE 2B-GAP-3: strips TOP-LEVEL native CSS cascade-layer wrappers
 // (`@layer <name>;` and `@layer <name> { ... }`) from the raw-imported
@@ -154,7 +154,7 @@ function flattenTopLevelCascadeLayers(css: string): string {
 }
 
 const molarExperienceStyleEl = document.createElement('style')
-molarExperienceStyleEl.setAttribute('data-source', 'pet-function')
+molarExperienceStyleEl.setAttribute('data-source', '@mrburdeveloperteam/pet-function')
 molarExperienceStyleEl.textContent = flattenTopLevelCascadeLayers(molarExperienceStyles)
 document.head.appendChild(molarExperienceStyleEl)
 

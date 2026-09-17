@@ -1,4 +1,4 @@
-import { SharedMeowdokuLauncher } from 'pet-function/pet';
+import { SharedMeowdokuLauncher } from '@mrburdeveloperteam/pet-function/pet';
 import { supabase } from '../lib/supabase';
 import { elearningPetRepository } from '../petExperience/elearningPetRepository';
 
@@ -9,7 +9,7 @@ export default function MeowdokuLauncher(props: { isOpen: boolean; onClose: () =
 
 // LEGACY LOCAL IMPLEMENTATION — inactive; shared implementation is imported above.
 // Retained as line comments for reference. Do not uncomment alongside the shared implementation.
-// // Meowdoku predates the shared `pet-function`
+// // Meowdoku predates the shared `@mrburdeveloperteam/pet-function`
 // // package and isn't one of its 3 built-in games (flappy-cat/pac-cat/
 // // tetris — those are now handled entirely inside the shared package's
 // // own Pet UI). This is an E-learning-local launcher extracted from the
