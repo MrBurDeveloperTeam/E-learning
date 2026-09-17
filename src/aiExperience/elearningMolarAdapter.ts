@@ -1,5 +1,5 @@
 // PHASE 6D (Molar AI migration): the LOCAL orchestration adapter connecting
-// the shared `@mrburdeveloperteam/molar-experience/ai` chat UI runtime to
+// the shared `pet-function/ai` chat UI runtime to
 // E-Learning's own General Chat + Data-Driven Chat pipelines. The shared
 // package only ever calls `sendMessage` and renders the returned
 // `AIResponse.text` — every business decision below (mutation guard,
@@ -21,7 +21,7 @@
 // `window.__MOLAR_ACTIONS__` anywhere in this repo, and its only defined
 // actions were navigation-only (OPEN_LESSON/OPEN_CATEGORY/OPEN_SEARCH), so
 // it was dead code, safely removed rather than ported.
-import type { AIAdapter, AIMessage, AIRequest, AIResponse } from '@mrburdeveloperteam/molar-experience/contracts';
+import type { AIAdapter, AIMessage, AIRequest, AIResponse } from 'pet-function/contracts';
 import { supabase } from '../lib/supabase';
 import { chatWithMolarAI, chatWithGroundedElearningFacts } from '../services/geminiService';
 import { isElearningMutationRequest } from './dataChat/router/isElearningMutationRequest';

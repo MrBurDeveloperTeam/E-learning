@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
-::-webkit-scrollbar { 
-	width: 16px;
+::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 ::-webkit-scrollbar-track { 
 	background-color: #333;
@@ -12,27 +13,40 @@
 	background-color: #8295d5;
 }
 
-* { 
-	font-family: 'Fredoka', system-ui, sans-serif;
+@font-face {
+	font-family: 'Quadrit';
+	src: url('../css/Quadrit.ttf');
+}
+
+* {
+	font-family: Quadrit, sans-serif;
 	font-size: 20px;
 	color: #fff;
 }
 
-html, body { 
-	margin: 0px 0px 0px 0px;
-	padding: 0px 0px 0px 0px;
-	width: 100%;
-	height: 100%;
-	overflow: hidden;
-	overscroll-behavior: none;
-	touch-action: none;
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    background-color: #000;
 }
-html  { 
-	background-color: #000;
+
+html {
+    position: fixed;
+    inset: 0;
 }
-body { 
-	position: fixed;
-	inset: 0;
+
+body {
+    position: fixed;
+    inset: 0;
+
+    touch-action: none;
+    -webkit-overflow-scrolling: auto;
 }
 
 
@@ -188,44 +202,28 @@ span.combo, span.fruits {
 	background-image: url('../img/move-right.png');
 }
 
-#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-	position: absolute;
-	opacity: 0.2;
-	margin: auto;
-	padding: 0px;
-	display: none;
-	background-size: 98px;
-	z-index: 999999;
+/*
+ * Direction button images.
+ * Size and position are controlled by mobile-controls-v2.css.
+ */
+#control-up-big {
+    background-image:
+        url('../img/move-up-big.png');
 }
-#control-up-big { 
-	bottom: 10px;
-	left: 0px;
-	right: 0px;
-	width: 125px;
-	height: 125px;
-	background-image: url('../img/move-up-big.png');
+
+#control-down-big {
+    background-image:
+        url('../img/move-down-big.png');
 }
-#control-down-big { 
-	bottom: -120px;
-	left: 0px;
-	right: 0px;
-	width: 125px;
-	height: 125px;
-	background-image: url('../img/move-down-big.png');
+
+#control-left-big {
+    background-image:
+        url('../img/move-left-big.png');
 }
-#control-left-big { 
-	left: 80px;
-	bottom: -90px;
-	width: 125px;
-	height: 175px;
-	background-image: url('../img/move-left-big.png');
-}
-#control-right-big { 
-	right: 80px;
-	bottom: -90px;
-	width: 125px;
-	height: 175px;
-	background-image: url('../img/move-right-big.png');
+
+#control-right-big {
+    background-image:
+        url('../img/move-right-big.png');
 }
 
 
@@ -375,22 +373,17 @@ h3 {
 	#panel, #home { 
 		zoom: 105%;
 	}
-	#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-		display: inline; 
-	} 
+
 
 }
 @media screen and (max-height:640px), screen and (min-device-height : 480px) and (max-device-height : 640px) and (-webkit-device-pixel-ratio: 3) { 
 	#panel, #home { 
 		zoom: 60%;
 	}
-	#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-		display: inline; 
-	} 
 	#home .help-button, #panel .help-button, #home .github, #sound, .sound { 
 		display: none;
 	}
-	#canvas-panel-title-pacman {
+	h1, #canvas-panel-title-pacman { 
 		visibility: hidden;
 	}
 }
@@ -398,10 +391,7 @@ h3 {
 	#panel, #home { 
 		zoom: 55%;
 	}
-	#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-		display: inline; 
-	} 
-	#canvas-panel-title-pacman, #control-up-second, #control-down-second, #home .help-button, #panel .help-button, #home .github, #sound, .sound {
+	h1, #canvas-panel-title-pacman, #control-up-second, #control-down-second, #home .help-button, #panel .help-button, #home .github, #sound, .sound { 
 		display: none;
 	}
 	#score, #highscore { 
@@ -431,69 +421,82 @@ h3 {
 	}
 }
 
-#panel {
-	zoom: 1 !important;
-	top: 10px;
-	left: 50%;
-	right: auto;
-	width: 930px;
-	height: 710px;
-	margin: 0;
-	padding: 0;
-	overflow: visible;
-	transform: translateX(-50%) scale(var(--pac-cat-stage-scale, 1));
-	transform-origin: top center;
+/*
+ * Modern responsive PAC-CAT viewport.
+ * Override the old zoom-based mobile layout.
+ */
+:root {
+    --pac-cat-scale: 1;
+    --pac-cat-center-x: 50vw;
+    --pac-cat-center-y: 50vh;
 }
-#panel > h1 {
-	position: absolute;
-	top: 0;
-	left: 190px;
-	width: 250px;
-	height: 32px;
-	margin: 0;
-	font-size: 24px;
-	line-height: 32px;
-	text-align: left;
-	visibility: visible !important;
-	display: block !important;
+
+#panel,
+#home {
+    box-sizing: content-box;
+
+    width: 550px !important;
+    height: 690px !important;
+
+    position: fixed !important;
+    left: var(--pac-cat-center-x) !important;
+    top: var(--pac-cat-center-y) !important;
+    right: auto !important;
+    bottom: auto !important;
+
+    margin: 0 !important;
+    margin-top: 0 !important;
+    padding: 5px 10px 10px !important;
+
+    zoom: 1 !important;
+
+    transform:
+        translate(-50%, -50%)
+        scale(var(--pac-cat-scale));
+
+    transform-origin: center center;
+    will-change: transform;
+
+    overflow: visible;
 }
-#panel #score, #panel #highscore { top: 38px; width: 150px; height: 48px; }
-#panel #score { left: 190px; }
-#panel #highscore { left: 345px; }
-#panel #score h2, #panel #score span, #panel #highscore h2, #panel #highscore span { text-align: left; padding-right: 0; }
-#panel #board { position: absolute; top: 92px; left: 190px; width: 550px; height: 550px; margin: 0; }
-#panel #canvas-lifes, #panel #canvas-level-fruits { top: 650px; height: 30px; }
-#panel #canvas-lifes { left: 190px; width: 120px; }
-#panel #canvas-level-fruits { left: 475px; right: auto; width: 265px; }
-#panel #message { top: 395px; left: 360px; }
-#panel #control {
-	display: block;
-	top: var(--pac-cat-control-top, 494px);
-	right: auto;
-	bottom: auto;
-	left: var(--pac-cat-control-left, 744px);
-	width: 174px;
-	height: 174px;
-	margin: 0;
-	background: transparent;
-	opacity: 1;
+
+/*
+ * Restore elements hidden or repositioned by the old
+ * max-height mobile media queries.
+ */
+#home h1,
+#panel h1 {
+    display: block !important;
+    visibility: visible !important;
 }
-#panel #control-up, #panel #control-down, #panel #control-left, #panel #control-right {
-	display: block;
-	box-sizing: border-box;
-	width: 56px;
-	height: 56px;
-	padding: 0;
-	border: 2px solid #d7dbe0;
-	border-radius: 50%;
-	background-color: #f7f7f7;
-	background-size: 42px;
-	box-shadow: 0 3px 0 #858b94, 0 5px 10px rgba(0, 0, 0, 0.35);
-	opacity: 1;
+
+#canvas-panel-title-pacman {
+    display: block !important;
+    visibility: visible !important;
 }
-#panel #control-up { top: 0; left: 59px; right: auto; bottom: auto; }
-#panel #control-down { top: auto; left: 59px; right: auto; bottom: 0; }
-#panel #control-left { top: 59px; left: 0; right: auto; bottom: auto; }
-#panel #control-right { top: 59px; right: 0; left: auto; bottom: auto; }
-#panel #control-up-second, #panel #control-down-second, #panel #control-up-big,
-#panel #control-down-big, #panel #control-left-big, #panel #control-right-big { display: none !important; }
+
+#score,
+#highscore {
+    top: 70px !important;
+}
+
+#message {
+    top: 413px !important;
+}
+
+#canvas-lifes,
+#canvas-level-fruits {
+    top: 670px !important;
+}
+
+/*
+ * The old lower control bar is no longer used.
+ */
+#control {
+    display: none !important;
+}
+#canvas-home-title-pacman,
+#canvas-panel-title-pacman {
+  display: none !important;
+  visibility: hidden !important;
+}

@@ -84,32 +84,6 @@
 	color: #f99c00;
 }
 
-#home-start-notification {
-	position: absolute;
-	top: 455px;
-	left: 50%;
-	z-index: 20;
-	display: flex;
-	width: max-content;
-	max-width: calc(100% - 40px);
-	transform: translateX(-50%);
-	align-items: center;
-	text-align: center;
-	pointer-events: none;
-}
-#home-start-notification span {
-	font-size: 17px;
-	font-weight: 800;
-	letter-spacing: 1.5px;
-	text-transform: uppercase;
-	color: #f6d64a;
-	animation: pac-cat-start-pulse 1.2s ease-in-out infinite;
-}
-@keyframes pac-cat-start-pulse {
-	0%, 100% { opacity: 0.55; }
-	50% { opacity: 1; }
-}
-
 #trailer { 
 	position: absolute;
 	margin: auto;
@@ -139,4 +113,47 @@
 }
 @media screen and (max-height:480px), screen and (min-device-height : 320px) and (max-device-height : 480px) { 
 
+}
+
+/*
+ * Display the start notice directly below the final
+ * character and nickname row.
+ */
+#start-notice {
+    position: absolute;
+    top: 238px;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    z-index: 500;
+
+    width: 100%;
+    margin: 0;
+
+    color: #fff200;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    line-height: 1.5;
+    text-align: center;
+    text-transform: uppercase;
+
+    pointer-events: none;
+
+    animation:
+        start-notice-pulse
+        1.1s
+        ease-in-out
+        infinite;
+}
+
+@keyframes start-notice-pulse {
+    0%,
+    100% {
+        opacity: 0.45;
+    }
+
+    50% {
+        opacity: 1;
+    }
 }

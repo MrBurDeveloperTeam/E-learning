@@ -1,111 +1,851 @@
-/* Mobile Tetris controls: swipe, tap, double tap, long press and HOLD C. */
+/*
+ * Mobile gesture controls for Tetris.
+ *
+ * Gesture mapping:
+ * - Horizontal swipe: ArrowLeft / ArrowRight
+ * - Single tap: Space
+ * - Double tap: ArrowUp
+ * - Long press: Hold ArrowDown
+ * - HOLD button: C
+ */
 (function () {
-    var viewport = document.getElementById('tetris-viewport');
-    var overlay = document.getElementById('overlay');
-    var holdButton = document.getElementById('mobile-hold-button');
-    var guideButton = document.getElementById('mobile-guide-button');
-    var guideModal = document.getElementById('mobile-guide-modal');
-    var closeButtons = document.querySelectorAll('[data-mobile-guide-close]');
-    if (!viewport) return;
+    var viewport =
+        document.getElementById(
+            'tetris-viewport'
+        );
 
-    var isTouch = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
-    var pointerId = null, startX = 0, startY = 0, startAt = 0, horizontalStep = 0;
-    var moved = false, longPressed = false, longTimer = 0, downTimer = 0, tapTimer = 0;
-    var lastTapAt = 0, lastTapX = 0, lastTapY = 0;
-    var SWIPE_STEP = 28, MOVE_LIMIT = 14, LONG_DELAY = 380, DOUBLE_DELAY = 240;
+    var holdButton =
+        document.getElementById(
+            'mobile-hold-button'
+        );
 
-    function key(type, code, repeat) {
-        var values = { ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], Space: [' ', 32], KeyC: ['c', 67] };
-        var value = values[code];
-        if (!value) return;
-        var event = new KeyboardEvent(type, { key: value[0], code: code, bubbles: true, cancelable: true, repeat: !!repeat });
-        try {
-            Object.defineProperty(event, 'keyCode', { get: function () { return value[1]; } });
-            Object.defineProperty(event, 'which', { get: function () { return value[1]; } });
-        } catch (_) {}
-        document.body.dispatchEvent(event);
+    var guideButton =
+        document.getElementById(
+            'mobile-guide-button'
+        );
+
+    var guideModal =
+        document.getElementById(
+            'mobile-guide-modal'
+        );
+
+    var guideCloseButtons =
+        document.querySelectorAll(
+            '[data-mobile-guide-close]'
+        );
+
+    if (!viewport) {
+        return;
     }
-    function press(code) { key('keydown', code, false); key('keyup', code, false); }
-    function overlayVisible() {
-        return (guideModal && !guideModal.hidden) || (overlay && getComputedStyle(overlay).display !== 'none');
+
+    /*
+     * Do not install gesture controls on normal desktop
+     * devices without touch support.
+     */
+    var isTouchDevice =
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia(
+            '(pointer: coarse)'
+        ).matches;
+
+    if (!isTouchDevice) {
+        return;
     }
-    function interactive(target) { return target instanceof Element && !!target.closest('button,a,input,select,textarea'); }
-    function horizontal(direction) {
-        var api = window.tetrisMobileApi;
-        if (!api) return;
-        if (direction < 0 && api.moveLeft) api.moveLeft();
-        if (direction > 0 && api.moveRight) api.moveRight();
-    }
-    function startDown() {
-        if (downTimer) return;
-        key('keydown', 'ArrowDown', false);
-        downTimer = setInterval(function () { key('keydown', 'ArrowDown', true); }, 70);
-    }
-    function stopDown() {
-        if (downTimer) clearInterval(downTimer);
-        downTimer = 0;
-        key('keyup', 'ArrowDown', false);
-    }
-    function reset() {
-        if (longTimer) clearTimeout(longTimer);
-        pointerId = null; longTimer = 0; moved = false; longPressed = false; horizontalStep = 0;
-        stopDown();
-    }
-    function tap(x, y) {
-        var now = Date.now();
-        var near = Math.hypot(x - lastTapX, y - lastTapY) <= 48;
-        if (tapTimer && now - lastTapAt <= DOUBLE_DELAY && near) {
-            clearTimeout(tapTimer); tapTimer = 0; lastTapAt = 0; press('ArrowUp'); return;
+
+    var overlay =
+        document.getElementById(
+            'overlay'
+        );
+
+    var KEYBOARD_KEYS = {
+        ArrowLeft: {
+            key: 'ArrowLeft',
+            code: 'ArrowLeft',
+            keyCode: 37
+        },
+
+        ArrowUp: {
+            key: 'ArrowUp',
+            code: 'ArrowUp',
+            keyCode: 38
+        },
+
+        ArrowRight: {
+            key: 'ArrowRight',
+            code: 'ArrowRight',
+            keyCode: 39
+        },
+
+        ArrowDown: {
+            key: 'ArrowDown',
+            code: 'ArrowDown',
+            keyCode: 40
+        },
+
+        Space: {
+            key: ' ',
+            code: 'Space',
+            keyCode: 32
+        },
+
+        KeyC: {
+            key: 'c',
+            code: 'KeyC',
+            keyCode: 67
         }
-        if (tapTimer) { clearTimeout(tapTimer); press('Space'); }
-        lastTapAt = now; lastTapX = x; lastTapY = y;
-        tapTimer = setTimeout(function () { tapTimer = 0; lastTapAt = 0; press('Space'); }, DOUBLE_DELAY);
+    };
+
+    /*
+    * Approximately one horizontal gesture step per Tetris cell.
+    */
+    var SWIPE_STEP_PX = 28;
+    var TAP_MOVE_LIMIT_PX = 14;
+    var DOUBLE_TAP_DISTANCE_PX = 48;
+    var DOUBLE_TAP_DELAY_MS = 240;
+    var LONG_PRESS_DELAY_MS = 380;
+    var SOFT_DROP_REPEAT_MS = 70;
+
+    var activePointerId = null;
+
+    var startX = 0;
+    var startY = 0;
+    var startTime = 0;
+
+    var lastHorizontalStep = 0;
+
+    var gestureMoved = false;
+    var longPressActivated = false;
+
+    var longPressTimer = 0;
+    var softDropTimer = 0;
+
+    var pendingTapTimer = 0;
+    var lastTapTime = 0;
+    var lastTapX = 0;
+    var lastTapY = 0;
+
+    /*
+     * Create a keyboard event that supports both modern
+     * event.code checks and older event.keyCode checks.
+     */
+    function dispatchKeyboardEvent(
+        type,
+        keyName,
+        repeat
+    ) {
+        var keyConfig =
+            KEYBOARD_KEYS[keyName];
+
+        if (!keyConfig) {
+            return;
+        }
+
+        var keyboardEvent =
+            new KeyboardEvent(
+                type,
+                {
+                    key: keyConfig.key,
+                    code: keyConfig.code,
+                    bubbles: true,
+                    cancelable: true,
+                    repeat: Boolean(repeat)
+                }
+            );
+
+        /*
+         * Some older Tetris keyboard handlers still read
+         * keyCode or which.
+         */
+        try {
+            Object.defineProperty(
+                keyboardEvent,
+                'keyCode',
+                {
+                    get: function () {
+                        return keyConfig.keyCode;
+                    }
+                }
+            );
+
+            Object.defineProperty(
+                keyboardEvent,
+                'which',
+                {
+                    get: function () {
+                        return keyConfig.keyCode;
+                    }
+                }
+            );
+        } catch (error) {
+            /*
+             * Modern key and code properties are still present.
+             */
+        }
+
+        document.body.dispatchEvent(
+            keyboardEvent
+        );
     }
 
-    if (isTouch) {
-        viewport.addEventListener('pointerdown', function (event) {
-            if (pointerId !== null || overlayVisible() || interactive(event.target)) return;
-            event.preventDefault(); pointerId = event.pointerId; startX = event.clientX; startY = event.clientY;
-            startAt = Date.now(); horizontalStep = 0; moved = false; longPressed = false;
-            try { viewport.setPointerCapture(pointerId); } catch (_) {}
-            longTimer = setTimeout(function () { if (pointerId === event.pointerId && !moved) { longPressed = true; startDown(); } }, LONG_DELAY);
-        }, { passive: false });
-        viewport.addEventListener('pointermove', function (event) {
-            if (event.pointerId !== pointerId) return;
-            event.preventDefault();
-            var dx = event.clientX - startX, dy = event.clientY - startY;
-            if (Math.abs(dx) > MOVE_LIMIT || Math.abs(dy) > MOVE_LIMIT) {
-                moved = true; if (longTimer) clearTimeout(longTimer); longTimer = 0;
-                if (longPressed) { longPressed = false; stopDown(); }
-            }
-            if (Math.abs(dx) > Math.abs(dy) * 1.15) {
-                var target = Math.trunc(dx / SWIPE_STEP);
-                while (horizontalStep < target) { horizontal(1); horizontalStep++; }
-                while (horizontalStep > target) { horizontal(-1); horizontalStep--; }
-            }
-        }, { passive: false });
-        viewport.addEventListener('pointerup', function (event) {
-            if (event.pointerId !== pointerId) return;
-            event.preventDefault();
-            var distance = Math.hypot(event.clientX - startX, event.clientY - startY);
-            var wasLong = longPressed, usedSwipe = horizontalStep !== 0;
-            if (!wasLong && !usedSwipe && distance <= MOVE_LIMIT && Date.now() - startAt < LONG_DELAY) tap(event.clientX, event.clientY);
-            reset();
-        }, { passive: false });
-        viewport.addEventListener('pointercancel', reset, { passive: false });
-        viewport.addEventListener('contextmenu', function (event) { event.preventDefault(); });
+    /*
+     * Simulate one normal keyboard press.
+     */
+    function pressKey(keyName) {
+        dispatchKeyboardEvent(
+            'keydown',
+            keyName,
+            false
+        );
+
+        dispatchKeyboardEvent(
+            'keyup',
+            keyName,
+            false
+        );
     }
 
-    function syncHold() {
-        if (holdButton) holdButton.classList.toggle('is-gameplay-visible', isTouch && !overlayVisible());
+    /*
+    * Move horizontally through the explicit mobile API.
+    * ArrowLeft and ArrowRight cannot use pressKey() because
+    * the Tetris keyboard system expects the key state to remain
+    * active until a later animation frame.
+    */
+    function moveHorizontal(direction) {
+        var api =
+            window.tetrisMobileApi;
+
+        if (!api) {
+            return;
+        }
+
+        if (
+            direction < 0 &&
+            typeof api.moveLeft ===
+                'function'
+        ) {
+            api.moveLeft();
+        } else if (
+            direction > 0 &&
+            typeof api.moveRight ===
+                'function'
+        ) {
+            api.moveRight();
+        }
     }
-    function openGuide() { if (!guideModal) return; reset(); guideModal.hidden = false; guideButton.setAttribute('aria-expanded', 'true'); syncHold(); }
-    function closeGuide() { if (!guideModal) return; guideModal.hidden = true; guideButton.setAttribute('aria-expanded', 'false'); syncHold(); }
-    if (guideButton) guideButton.addEventListener('click', function (event) { event.stopPropagation(); openGuide(); });
-    closeButtons.forEach(function (button) { button.addEventListener('click', function (event) { event.stopPropagation(); closeGuide(); }); });
-    if (holdButton) holdButton.addEventListener('click', function (event) { event.stopPropagation(); press('KeyC'); });
-    syncHold();
-    if (overlay && window.MutationObserver) new MutationObserver(syncHold).observe(overlay, { attributes: true, attributeFilter: ['style', 'class'] });
-    window.addEventListener('blur', reset);
-    document.addEventListener('visibilitychange', function () { if (document.hidden) reset(); });
+
+    /*
+     * Begin accelerated downward movement.
+     *
+     * The first keydown supports games that track held keys.
+     * The repeating keydown events support games that move
+     * once for every keyboard event.
+     */
+    function startSoftDrop() {
+        if (softDropTimer) {
+            return;
+        }
+
+        dispatchKeyboardEvent(
+            'keydown',
+            'ArrowDown',
+            false
+        );
+
+        softDropTimer =
+            window.setInterval(
+                function () {
+                    dispatchKeyboardEvent(
+                        'keydown',
+                        'ArrowDown',
+                        true
+                    );
+                },
+                SOFT_DROP_REPEAT_MS
+            );
+    }
+
+    /*
+     * Stop accelerated downward movement immediately when
+     * the user releases their finger.
+     */
+    function stopSoftDrop() {
+        if (softDropTimer) {
+            window.clearInterval(
+                softDropTimer
+            );
+
+            softDropTimer = 0;
+        }
+
+        dispatchKeyboardEvent(
+            'keyup',
+            'ArrowDown',
+            false
+        );
+    }
+
+    function cancelLongPressTimer() {
+        if (!longPressTimer) {
+            return;
+        }
+
+        window.clearTimeout(
+            longPressTimer
+        );
+
+        longPressTimer = 0;
+    }
+
+    /*
+     * The gesture surface must not control Tetris when the
+     * menu, pause screen, settings or leaderboard overlay
+     * is currently visible.
+     */
+    function isGuideOpen() {
+        return Boolean(
+            guideModal &&
+            !guideModal.hidden
+        );
+    }
+
+    function isOverlayVisible() {
+        if (isGuideOpen()) {
+            return true;
+        }
+
+        if (!overlay) {
+            return false;
+        }
+
+        return (
+            window.getComputedStyle(
+                overlay
+            ).display !== 'none'
+        );
+    }
+
+    /*
+     * Ignore normal buttons and other interactive controls.
+     */
+    function isInteractiveTarget(target) {
+        if (!(target instanceof Element)) {
+            return false;
+        }
+
+        return Boolean(
+            target.closest(
+                [
+                    '#mobile-hold-button',
+                    'button',
+                    'a',
+                    'input',
+                    'select',
+                    'textarea'
+                ].join(',')
+            )
+        );
+    }
+
+    function distanceBetween(
+        x1,
+        y1,
+        x2,
+        y2
+    ) {
+        return Math.hypot(
+            x2 - x1,
+            y2 - y1
+        );
+    }
+
+    /*
+     * Delay Space briefly so a second tap can cancel it
+     * and become ArrowUp instead.
+     */
+    function registerTap(x, y) {
+        var now = Date.now();
+
+        var isSecondTap =
+            pendingTapTimer &&
+            now - lastTapTime <=
+                DOUBLE_TAP_DELAY_MS &&
+            distanceBetween(
+                lastTapX,
+                lastTapY,
+                x,
+                y
+            ) <= DOUBLE_TAP_DISTANCE_PX;
+
+        if (isSecondTap) {
+            window.clearTimeout(
+                pendingTapTimer
+            );
+
+            pendingTapTimer = 0;
+            lastTapTime = 0;
+
+            /*
+             * Double tap: rotate the active piece.
+             */
+            pressKey('ArrowUp');
+
+            return;
+        }
+
+        /*
+         * A previous tap occurred somewhere else.
+         * Complete that first tap as a hard drop.
+         */
+        if (pendingTapTimer) {
+            window.clearTimeout(
+                pendingTapTimer
+            );
+
+            pendingTapTimer = 0;
+
+            pressKey('Space');
+        }
+
+        lastTapTime = now;
+        lastTapX = x;
+        lastTapY = y;
+
+        pendingTapTimer =
+            window.setTimeout(
+                function () {
+                    pendingTapTimer = 0;
+                    lastTapTime = 0;
+
+                    /*
+                     * Single tap: hard drop.
+                     */
+                    pressKey('Space');
+                },
+                DOUBLE_TAP_DELAY_MS
+            );
+    }
+
+    function resetPointerState() {
+        activePointerId = null;
+
+        startX = 0;
+        startY = 0;
+        startTime = 0;
+
+        lastHorizontalStep = 0;
+
+        gestureMoved = false;
+        longPressActivated = false;
+
+        cancelLongPressTimer();
+        stopSoftDrop();
+    }
+
+    viewport.addEventListener(
+        'pointerdown',
+        function (event) {
+            if (
+                activePointerId !== null ||
+                isOverlayVisible() ||
+                isInteractiveTarget(
+                    event.target
+                )
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+
+            activePointerId =
+                event.pointerId;
+
+            startX = event.clientX;
+            startY = event.clientY;
+            startTime = Date.now();
+
+            lastHorizontalStep = 0;
+
+            gestureMoved = false;
+            longPressActivated = false;
+
+            try {
+                viewport.setPointerCapture(
+                    event.pointerId
+                );
+            } catch (error) {
+                /*
+                 * Pointer capture is optional.
+                 */
+            }
+
+            /*
+             * The body already has tabindex="0".
+             */
+            try {
+                document.body.focus({
+                    preventScroll: true
+                });
+            } catch (error) {
+                document.body.focus();
+            }
+
+            longPressTimer =
+                window.setTimeout(
+                    function () {
+                        if (
+                            activePointerId ===
+                                event.pointerId &&
+                            !gestureMoved
+                        ) {
+                            longPressActivated = true;
+
+                            /*
+                             * Long press: accelerated fall.
+                             */
+                            startSoftDrop();
+                        }
+                    },
+                    LONG_PRESS_DELAY_MS
+                );
+        },
+        {
+            passive: false
+        }
+    );
+
+    viewport.addEventListener(
+        'pointermove',
+        function (event) {
+            if (
+                event.pointerId !==
+                activePointerId
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var deltaX =
+                event.clientX - startX;
+
+            var deltaY =
+                event.clientY - startY;
+
+            var absoluteX =
+                Math.abs(deltaX);
+
+            var absoluteY =
+                Math.abs(deltaY);
+
+            if (
+                absoluteX >
+                    TAP_MOVE_LIMIT_PX ||
+                absoluteY >
+                    TAP_MOVE_LIMIT_PX
+            ) {
+                gestureMoved = true;
+
+                cancelLongPressTimer();
+
+                if (longPressActivated) {
+                    longPressActivated = false;
+                    stopSoftDrop();
+                }
+            }
+
+            /*
+             * Only treat mainly-horizontal movement as
+             * left or right Tetris input.
+             */
+            if (
+                absoluteX >
+                absoluteY * 1.15
+            ) {
+                var targetStep =
+                    Math.trunc(
+                        deltaX /
+                        SWIPE_STEP_PX
+                    );
+
+                /*
+                * Move once for every additional horizontal swipe step.
+                */
+                while (
+                    lastHorizontalStep <
+                    targetStep
+                ) {
+                    moveHorizontal(1);
+                    lastHorizontalStep++;
+                }
+
+                while (
+                    lastHorizontalStep >
+                    targetStep
+                ) {
+                    moveHorizontal(-1);
+                    lastHorizontalStep--;
+                }
+            }
+        },
+        {
+            passive: false
+        }
+    );
+
+    function finishPointer(event) {
+        if (
+            event.pointerId !==
+            activePointerId
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+
+        cancelLongPressTimer();
+
+        var endX = event.clientX;
+        var endY = event.clientY;
+
+        var totalDistance =
+            distanceBetween(
+                startX,
+                startY,
+                endX,
+                endY
+            );
+
+        var pressDuration =
+            Date.now() -
+            startTime;
+
+        var wasLongPress =
+            longPressActivated;
+
+        var usedHorizontalSwipe =
+            lastHorizontalStep !== 0;
+
+        stopSoftDrop();
+
+        /*
+         * A short stationary release is a tap.
+         */
+        if (
+            !wasLongPress &&
+            !usedHorizontalSwipe &&
+            totalDistance <=
+                TAP_MOVE_LIMIT_PX &&
+            pressDuration <
+                LONG_PRESS_DELAY_MS
+        ) {
+            registerTap(
+                endX,
+                endY
+            );
+        }
+
+        resetPointerState();
+    }
+
+    viewport.addEventListener(
+        'pointerup',
+        finishPointer,
+        {
+            passive: false
+        }
+    );
+
+    viewport.addEventListener(
+        'pointercancel',
+        function (event) {
+            if (
+                event.pointerId ===
+                activePointerId
+            ) {
+                resetPointerState();
+            }
+        },
+        {
+            passive: false
+        }
+    );
+
+    /*
+     * Prevent the browser context menu from appearing after
+     * a prolonged touch.
+     */
+    viewport.addEventListener(
+        'contextmenu',
+        function (event) {
+            event.preventDefault();
+        }
+    );
+
+    function openMobileGuide() {
+        if (!guideModal || !guideButton) {
+            return;
+        }
+
+        resetPointerState();
+        guideModal.hidden = false;
+        guideButton.setAttribute(
+            'aria-expanded',
+            'true'
+        );
+
+        syncHoldButtonVisibility();
+
+        var closeButton =
+            document.getElementById(
+                'mobile-guide-close'
+            );
+
+        if (closeButton) {
+            closeButton.focus();
+        }
+    }
+
+    function closeMobileGuide() {
+        if (!guideModal || !guideButton) {
+            return;
+        }
+
+        guideModal.hidden = true;
+        guideButton.setAttribute(
+            'aria-expanded',
+            'false'
+        );
+
+        syncHoldButtonVisibility();
+        guideButton.focus();
+    }
+
+    if (guideButton && guideModal) {
+        guideButton.addEventListener(
+            'pointerdown',
+            function (event) {
+                event.stopPropagation();
+            }
+        );
+
+        guideButton.addEventListener(
+            'click',
+            function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                openMobileGuide();
+            }
+        );
+
+        guideCloseButtons.forEach(
+            function (button) {
+                button.addEventListener(
+                    'pointerdown',
+                    function (event) {
+                        event.stopPropagation();
+                    }
+                );
+
+                button.addEventListener(
+                    'click',
+                    function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeMobileGuide();
+                    }
+                );
+            }
+        );
+
+        document.addEventListener(
+            'keydown',
+            function (event) {
+                if (
+                    event.key === 'Escape' &&
+                    isGuideOpen()
+                ) {
+                    closeMobileGuide();
+                }
+            }
+        );
+    }
+
+    /*
+    * Mobile HOLD button: keyboard C.
+    */
+    if (holdButton) {
+        holdButton.addEventListener(
+            'pointerdown',
+            function (event) {
+                event.stopPropagation();
+            }
+        );
+
+        holdButton.addEventListener(
+            'click',
+            function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                pressKey('KeyC');
+            }
+        );
+    }
+
+    /*
+     * Show the HOLD button only while actual gameplay is
+     * visible. Hide it on the start, pause, settings and
+     * game-over overlays.
+     */
+    function syncHoldButtonVisibility() {
+        if (!holdButton) {
+            return;
+        }
+
+        holdButton.classList.toggle(
+            'is-gameplay-visible',
+            !isOverlayVisible()
+        );
+    }
+
+    syncHoldButtonVisibility();
+
+    if (
+        overlay &&
+        'MutationObserver' in window
+    ) {
+        var overlayObserver =
+            new MutationObserver(
+                syncHoldButtonVisibility
+            );
+
+        overlayObserver.observe(
+            overlay,
+            {
+                attributes: true,
+                attributeFilter: [
+                    'style',
+                    'class'
+                ]
+            }
+        );
+    }
+
+    /*
+     * Ensure a held ArrowDown state cannot remain active
+     * after switching apps or hiding the browser.
+     */
+    window.addEventListener(
+        'blur',
+        resetPointerState
+    );
+
+    document.addEventListener(
+        'visibilitychange',
+        function () {
+            if (document.hidden) {
+                resetPointerState();
+            }
+        }
+    );
 })();
