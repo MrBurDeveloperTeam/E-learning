@@ -7,7 +7,8 @@ import { CategoryBadge } from '@/components/CategoryBadge'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
-import { getAdvertisementForVideo, getAdvertisementFrequency, type VideoAdvertisement } from '@/lib/videoAdvertisements'
+import { selectAdvertisement } from '@/lib/advertisementRotation'
+import { getAdvertisementsForVideo, getAdvertisementFrequency, type VideoAdvertisement } from '@/lib/videoAdvertisements'
 import type { AdjacentDentalVideos, DentalVideo } from '@/types/dentalVideo'
 
 function formatPublishedDate(dateString: string): string {
@@ -118,6 +119,8 @@ export function DentalVideoDetail() {
     useState<AdjacentDentalVideos>(emptyAdjacentVideos)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const advertisementsRef = useRef<VideoAdvertisement[]>([])
+  const [deliveryAdvertisement, setDeliveryAdvertisement] = useState<VideoAdvertisement | null>(null)
   const [advertisement, setAdvertisement] = useState<VideoAdvertisement | null>(null)
   const [isEntryAdvertisementPlaying, setIsEntryAdvertisementPlaying] = useState(false)
   const [isAdvertisementPlaying, setIsAdvertisementPlaying] = useState(false)
@@ -180,9 +183,11 @@ export function DentalVideoDetail() {
     }
 
     setIsAdvertisementResolving(true)
-    Promise.all([getAdvertisementForVideo(video), getAdvertisementFrequency()])
-      .then(([matchedAdvertisement, frequency]) => {
+    Promise.all([getAdvertisementsForVideo(video), getAdvertisementFrequency()])
+      .then(([matchedAdvertisements, frequency]) => {
+        const matchedAdvertisement = matchedAdvertisements[0] ?? null
         if (!cancelled) {
+          advertisementsRef.current = matchedAdvertisements
           if (!matchedAdvertisement) {
             setAdvertisement(null)
             setIsEntryAdvertisementPlaying(false)
@@ -196,6 +201,7 @@ export function DentalVideoDetail() {
           // frequency-based entry popup are intentionally separate. Long
           // videos can schedule a mid-roll even when the popup is not due.
           setAdvertisement(matchedAdvertisement)
+          if (shouldShow) setDeliveryAdvertisement(selectAdvertisement(matchedAdvertisements))
           setIsEntryAdvertisementPlaying(shouldShow)
           entryAdvertisementPlayingRef.current = shouldShow
           if (!shouldShow) {
@@ -252,6 +258,7 @@ export function DentalVideoDetail() {
       midrollShownForVideoRef.current = video.id
       advertisementPlayingRef.current = true
       target.pauseVideo()
+      setDeliveryAdvertisement(selectAdvertisement(advertisementsRef.current))
       setIsAdvertisementPlaying(true)
       return true
     }
@@ -361,9 +368,9 @@ export function DentalVideoDetail() {
     <>
       <Navbar />
 
-      {advertisement && isEntryAdvertisementPlaying ? (
+      {deliveryAdvertisement && isEntryAdvertisementPlaying ? (
         <AdvertisementOverlay
-          advertisement={advertisement}
+          advertisement={deliveryAdvertisement}
           onComplete={completeEntryAdvertisement}
         />
       ) : null}
@@ -468,9 +475,9 @@ export function DentalVideoDetail() {
                 className="absolute inset-0 h-full w-full"
                 aria-label={video.title}
               />
-              {advertisement && isAdvertisementPlaying ? (
+              {deliveryAdvertisement && isAdvertisementPlaying ? (
                 <AdvertisementOverlay
-                  advertisement={advertisement}
+                  advertisement={deliveryAdvertisement}
                   embedded
                   onComplete={completeAdvertisement}
                 />
