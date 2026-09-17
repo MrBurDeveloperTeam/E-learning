@@ -80,8 +80,6 @@ type Advertisement = {
   target_category: string | null
   target_video_type: TargetVideoType
   target_language: string | null
-  priority: number
-  weight: number
   display_duration_seconds: number
   skip_after_seconds: number
   cta_label: string | null
@@ -106,8 +104,6 @@ type FormState = {
   category: string
   videoType: string
   language: string
-  priority: string
-  weight: string
   skipAfter: string
   ctaEnabled: boolean
   ctaLabel: string
@@ -127,8 +123,6 @@ const emptyForm: FormState = {
   category: 'all',
   videoType: 'all',
   language: 'all',
-  priority: '100',
-  weight: '100',
   skipAfter: '5',
   ctaEnabled: true,
   ctaLabel: 'Learn more',
@@ -235,7 +229,7 @@ function AdvertisementPreview({
           ['Advertisement', form.campaignName || '—'],
           ['Target', `${form.category === 'all' ? 'All categories' : form.category} · ${form.language === 'all' ? 'All languages' : getVideoLanguageLabel(form.language)}`],
           ['Video type', form.videoType === 'all' ? 'All video types' : form.videoType === 'short_video' ? 'Short video' : 'Video'],
-          ['Delivery', `Priority ${form.priority || '—'} · Weight ${form.weight || '—'}`],
+          ['Delivery', 'Random rotation without repeats'],
         ].map(([term, detail]) => (
           <div key={term} className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">{term}</dt><dd className="text-right font-medium text-foreground">{detail}</dd></div>
         ))}
@@ -359,11 +353,7 @@ export function AdvertisementManagement() {
     if (!form.altText.trim()) next.altText = 'Add accessible text for this media.'
     if (form.mediaSource === 'external' && !isHttpsUrl(form.externalUrl)) next.externalUrl = 'Enter a valid HTTPS media URL.'
     if (form.mediaSource === 'upload' && !selectedFile && !editingAd?.media_storage_path) next.media = 'Choose a media file to upload.'
-    const priority = Number(form.priority)
-    const weight = Number(form.weight)
     const skip = Number(form.skipAfter)
-    if (!Number.isInteger(priority) || priority < 0 || priority > 1000) next.priority = 'Use a whole number from 0 to 1000.'
-    if (!Number.isInteger(weight) || weight < 1 || weight > 1000) next.weight = 'Use a whole number from 1 to 1000.'
     if (!Number.isInteger(skip) || skip < 0 || skip > 300) next.skipAfter = 'Use a whole number from 0 to 300.'
     if (form.mediaType === 'video' && detectedVideoDuration === null) next.media = 'Wait for the video duration to be detected before saving.'
     if (form.mediaType === 'video' && detectedVideoDuration !== null && skip > detectedVideoDuration) next.skipAfter = `This video is ${detectedVideoDuration} seconds long. Choose a shorter skip time.`
@@ -409,7 +399,8 @@ export function AdvertisementManagement() {
         target_category: form.category === 'all' ? null : form.category,
         target_video_type: form.videoType === 'all' ? null : form.videoType,
         target_language: form.language === 'all' ? null : form.language,
-        priority: Number(form.priority), weight: Number(form.weight),
+        // Legacy database fields remain neutral and do not affect delivery.
+        priority: 100, weight: 100,
         // The database column remains for compatibility. Video duration is
         // detected from the media; image delivery is governed by the skip rule.
         display_duration_seconds: form.mediaType === 'video'
@@ -451,7 +442,7 @@ export function AdvertisementManagement() {
       campaignName: ad.campaign_name || '', advertiserName: ad.advertiser_name || '',
       mediaType: ad.media_type, mediaSource: ad.media_source, externalUrl: ad.media_source === 'external' ? ad.media_url || '' : '', altText: ad.alt_text || '',
       category: ad.target_category || 'all', videoType: ad.target_video_type || 'all', language: ad.target_language || 'all',
-      priority: String(ad.priority), weight: String(ad.weight), skipAfter: String(ad.skip_after_seconds),
+      skipAfter: String(ad.skip_after_seconds),
       ctaEnabled: Boolean(ad.cta_label && ad.click_url), ctaLabel: ad.cta_label || '', clickUrl: ad.click_url || '', openInNewTab: ad.open_in_new_tab,
     })
     window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
@@ -573,9 +564,8 @@ export function AdvertisementManagement() {
                 <FormField label="Language"><Select value={form.language} onValueChange={(value) => updateForm('language', value ?? 'all')}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent>{VIDEO_LANGUAGE_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value.toLowerCase()}>{item.label}</SelectItem>)}</SelectContent></Select></FormField>
                 <FormField label="Video type"><Select value={form.videoType} onValueChange={(value) => updateForm('videoType', value ?? 'all')}><SelectTrigger className={selectClass}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All video types</SelectItem><SelectItem value="video">Video</SelectItem><SelectItem value="short_video">Short video</SelectItem></SelectContent></Select></FormField>
               </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">Eligible advertisements play in random order without repeats until every eligible ad has played. Each new round avoids repeating the previous ad when alternatives are available.</p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <FormField label="Priority (higher wins)" error={errors.priority}><Input data-field="priority" type="number" min="0" max="1000" value={form.priority} onChange={(e) => updateForm('priority', e.target.value)} className={fieldClass} /><p className="text-xs leading-relaxed text-muted-foreground">Matching advertisements with a higher priority are considered first. Lower-priority ads are used only when no higher-priority ad is eligible.</p></FormField>
-                <FormField label="Weight" error={errors.weight}><Input data-field="weight" type="number" min="1" max="1000" value={form.weight} onChange={(e) => updateForm('weight', e.target.value)} className={fieldClass} /><p className="text-xs leading-relaxed text-muted-foreground">Controls how often this ad is selected among eligible ads with the same priority. A higher weight gives it a larger share of appearances.</p></FormField>
                 <FormField label="Allow skip after (seconds)" error={errors.skipAfter}><Input data-field="skipAfter" type="number" min="0" max="300" value={form.skipAfter} onChange={(e) => updateForm('skipAfter', e.target.value)} className={fieldClass} /><p className="text-xs text-muted-foreground">{form.mediaType === 'video' ? detectedVideoDuration ? `Video duration detected: ${detectedVideoDuration} seconds.` : 'Video duration will be detected automatically.' : 'The image remains visible until the viewer can skip it.'}</p></FormField>
               </div>
             </div>
@@ -609,7 +599,7 @@ export function AdvertisementManagement() {
             const ctr = stat.impressions ? ((stat.clicks / stat.impressions) * 100).toFixed(2) : '0.00'
             return <article key={ad.id} className="grid gap-4 bg-card p-4 transition-colors hover:bg-muted/20 dark:bg-card/80 dark:hover:bg-muted/35 lg:grid-cols-[92px_minmax(0,1fr)_auto] lg:items-center">
               <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-muted">{ad.media_url ? (ad.media_type === 'image' ? <img src={ad.media_url} alt="" className="h-full w-full object-cover" /> : <video src={ad.media_url} muted preload="metadata" className="h-full w-full object-cover" />) : <FileImage className="h-6 w-6 text-muted-foreground" />}</div>
-              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold text-foreground">{ad.campaign_name || 'Untitled advertisement'}</h3><AdminStatusBadge label={ad.status[0].toUpperCase() + ad.status.slice(1)} tone={statusTone[ad.status]} dot /></div><p className="mt-1 text-sm text-muted-foreground">{ad.advertiser_name || 'Advertiser not set'} · {ad.target_category || 'All categories'} · {ad.target_language ? getVideoLanguageLabel(ad.target_language) : 'All languages'} · Priority {ad.priority}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" />Updated {new Date(ad.updated_at).toLocaleDateString()}</p></div>
+              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold text-foreground">{ad.campaign_name || 'Untitled advertisement'}</h3><AdminStatusBadge label={ad.status[0].toUpperCase() + ad.status.slice(1)} tone={statusTone[ad.status]} dot /></div><p className="mt-1 text-sm text-muted-foreground">{ad.advertiser_name || 'Advertiser not set'} · {ad.target_category || 'All categories'} · {ad.target_language ? getVideoLanguageLabel(ad.target_language) : 'All languages'}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" />Updated {new Date(ad.updated_at).toLocaleDateString()}</p></div>
               <div className="flex flex-wrap items-center gap-2.5 lg:justify-end"><div className="mr-1 grid grid-cols-3 gap-4 text-center text-sm"><div><p className="font-semibold text-foreground">{formatNumber(stat.impressions)}</p><p className="text-[11px] text-muted-foreground">Impressions</p></div><div><p className="font-semibold text-foreground">{formatNumber(stat.clicks)}</p><p className="text-[11px] text-muted-foreground">Clicks</p></div><div><p className="font-semibold text-primary">{ctr}%</p><p className="text-[11px] text-muted-foreground">CTR</p></div></div><Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 bg-background px-3.5 shadow-sm hover:border-primary/35 hover:bg-primary/7" onClick={() => editAd(ad)}><Pencil />Edit</Button>{ad.status === 'active' ? <Button variant="outline" size="sm" className="h-9 rounded-xl border-amber-300/60 bg-amber-50 px-3.5 text-amber-800 shadow-sm hover:bg-amber-100 dark:border-amber-700/50 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/45" onClick={() => void changeStatus(ad, 'paused')}><Pause />Pause</Button> : <Button size="sm" className="h-9 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_6px_16px_rgba(45,110,106,0.18)] hover:bg-primary/85" onClick={() => void changeStatus(ad, 'active')}><Play />Activate</Button>}{ad.status !== 'hidden' && <Button variant="ghost" size="icon-sm" className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/8 hover:text-destructive" aria-label={`Hide ${ad.campaign_name || 'untitled advertisement'}`} onClick={() => setHideTarget(ad)}><Trash2 /></Button>}</div>
             </article>
           })}
