@@ -1,159 +1,160 @@
-#home h1 { 
-	text-align: center;
-	font-size: 78px;
-}
-#canvas-home-title-pacman { 
-	display: none;
-}
-#canvas-panel-title-pacman { 
-	background-color: #000;
-	position: absolute;
-	top: 6px;
-	left: 47px;
-	height: 32px;
-	width: 38px;
-}
-
-#presentation { 
-	position: absolute;
-	margin: auto;
-	padding: 0px;
-	left: 0px;
-	right: 0px;
-	top: 200px;
-	width: 500px;
-	height: 250px;
-}
-#presentation-titles { 
-	position: absolute;
-	width: 360px;
-	height: 28px;
-	top: 10px;
-	left: 117px;
-	letter-spacing: 2px;
-	font-size: 20px;
-	text-transform: uppercase;
-	color: #fff;
-}
-#canvas-presentation-blinky, #canvas-presentation-pinky, #canvas-presentation-inky, #canvas-presentation-clyde { 
-	position: absolute;
-	width: 50px;
-	height: 50px;
-	left: 35px;
-}
-#canvas-presentation-blinky { 
-	top: 40px;
-}
-#canvas-presentation-pinky { 
-	top: 90px;
-}
-#canvas-presentation-inky { 
-	top: 140px;
-}
-#canvas-presentation-clyde { 
-	top: 190px;
-}
-#presentation-character-blinky, #presentation-character-pinky, #presentation-character-inky, #presentation-character-clyde, 
-#presentation-name-blinky, #presentation-name-pinky, #presentation-name-inky, #presentation-name-clyde { 
-	position: absolute;
-	width: 180px;
-	height: 28px;
-	left: 120px;
-	letter-spacing: 2px;
-	font-size: 20px;
-	text-transform: uppercase;
-}
-#presentation-name-blinky, #presentation-name-pinky, #presentation-name-inky, #presentation-name-clyde { 
-	left: 310px;
-	width: 180px;
-}
-#presentation-character-blinky, #presentation-name-blinky { 
-	top: 50px;
-	color: #ed1b24;
-}
-#presentation-character-pinky, #presentation-name-pinky { 
-	top: 100px;
-	color: #feaec9;
-}
-#presentation-character-inky, #presentation-name-inky { 
-	top: 150px;
-	color: #4adecb;
-}
-#presentation-character-clyde, #presentation-name-clyde { 
-	top: 200px;
-	color: #f99c00;
-}
-
-#trailer { 
-	position: absolute;
-	margin: auto;
-	padding: 0px;
-	left: 0px;
-	right: 0px;
-	bottom: 100px;
-	width: 500px;
-	height: 50px;
-}
-
-@media screen and (min-height:1200px), screen and (min-device-height : 1200px) { 
-
-}
-
-@media screen and (max-width:1024px), screen and (min-device-width : 768px) and (max-device-width : 1024px) { 
-
-	
-	#canvas-panel-title-pacman { 
-		left: 49px;
-		width: 42px;
-	}
-}
-
-@media screen and (max-height:640px), screen and (min-device-height : 480px) and (max-device-height : 640px) and (-webkit-device-pixel-ratio: 3) { 
-
-}
-@media screen and (max-height:480px), screen and (min-device-height : 320px) and (max-device-height : 480px) { 
-
-}
-
-/*
- * Display the start notice directly below the final
- * character and nickname row.
- */
-#start-notice {
-    position: absolute;
-    top: 238px;
-    left: 0;
-    right: 0;
-    bottom: auto;
-    z-index: 500;
-
-    width: 100%;
-    margin: 0;
-
-    color: #fff200;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 1.2px;
-    line-height: 1.5;
-    text-align: center;
-    text-transform: uppercase;
-
-    pointer-events: none;
-
-    animation:
-        start-notice-pulse
-        1.1s
-        ease-in-out
-        infinite;
-}
-
-@keyframes start-notice-pulse {
-    0%,
-    100% {
-        opacity: 0.45;
-    }
-
-    50% {
-        opacity: 1;
-    }
-}
+/* LEGACY GAME: inactive; original lines JSON-encoded below. */
+/* legacy-line: "#home h1 { \r" */
+/* legacy-line: "\ttext\u002dalign: center;\r" */
+/* legacy-line: "\tfont\u002dsize: 78px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dhome\u002dtitle\u002dpacman { \r" */
+/* legacy-line: "\tdisplay: none;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpanel\u002dtitle\u002dpacman { \r" */
+/* legacy-line: "\tbackground\u002dcolor: #000;\r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\ttop: 6px;\r" */
+/* legacy-line: "\tleft: 47px;\r" */
+/* legacy-line: "\theight: 32px;\r" */
+/* legacy-line: "\twidth: 38px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#presentation { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\tleft: 0px;\r" */
+/* legacy-line: "\tright: 0px;\r" */
+/* legacy-line: "\ttop: 200px;\r" */
+/* legacy-line: "\twidth: 500px;\r" */
+/* legacy-line: "\theight: 250px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dtitles { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\twidth: 360px;\r" */
+/* legacy-line: "\theight: 28px;\r" */
+/* legacy-line: "\ttop: 10px;\r" */
+/* legacy-line: "\tleft: 117px;\r" */
+/* legacy-line: "\tletter\u002dspacing: 2px;\r" */
+/* legacy-line: "\tfont\u002dsize: 20px;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "\tcolor: #fff;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpresentation\u002dblinky, #canvas\u002dpresentation\u002dpinky, #canvas\u002dpresentation\u002dinky, #canvas\u002dpresentation\u002dclyde { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\twidth: 50px;\r" */
+/* legacy-line: "\theight: 50px;\r" */
+/* legacy-line: "\tleft: 35px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpresentation\u002dblinky { \r" */
+/* legacy-line: "\ttop: 40px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpresentation\u002dpinky { \r" */
+/* legacy-line: "\ttop: 90px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpresentation\u002dinky { \r" */
+/* legacy-line: "\ttop: 140px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#canvas\u002dpresentation\u002dclyde { \r" */
+/* legacy-line: "\ttop: 190px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dcharacter\u002dblinky, #presentation\u002dcharacter\u002dpinky, #presentation\u002dcharacter\u002dinky, #presentation\u002dcharacter\u002dclyde, \r" */
+/* legacy-line: "#presentation\u002dname\u002dblinky, #presentation\u002dname\u002dpinky, #presentation\u002dname\u002dinky, #presentation\u002dname\u002dclyde { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\twidth: 180px;\r" */
+/* legacy-line: "\theight: 28px;\r" */
+/* legacy-line: "\tleft: 120px;\r" */
+/* legacy-line: "\tletter\u002dspacing: 2px;\r" */
+/* legacy-line: "\tfont\u002dsize: 20px;\r" */
+/* legacy-line: "\ttext\u002dtransform: uppercase;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dname\u002dblinky, #presentation\u002dname\u002dpinky, #presentation\u002dname\u002dinky, #presentation\u002dname\u002dclyde { \r" */
+/* legacy-line: "\tleft: 310px;\r" */
+/* legacy-line: "\twidth: 180px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dcharacter\u002dblinky, #presentation\u002dname\u002dblinky { \r" */
+/* legacy-line: "\ttop: 50px;\r" */
+/* legacy-line: "\tcolor: #ed1b24;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dcharacter\u002dpinky, #presentation\u002dname\u002dpinky { \r" */
+/* legacy-line: "\ttop: 100px;\r" */
+/* legacy-line: "\tcolor: #feaec9;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dcharacter\u002dinky, #presentation\u002dname\u002dinky { \r" */
+/* legacy-line: "\ttop: 150px;\r" */
+/* legacy-line: "\tcolor: #4adecb;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "#presentation\u002dcharacter\u002dclyde, #presentation\u002dname\u002dclyde { \r" */
+/* legacy-line: "\ttop: 200px;\r" */
+/* legacy-line: "\tcolor: #f99c00;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "#trailer { \r" */
+/* legacy-line: "\tposition: absolute;\r" */
+/* legacy-line: "\tmargin: auto;\r" */
+/* legacy-line: "\tpadding: 0px;\r" */
+/* legacy-line: "\tleft: 0px;\r" */
+/* legacy-line: "\tright: 0px;\r" */
+/* legacy-line: "\tbottom: 100px;\r" */
+/* legacy-line: "\twidth: 500px;\r" */
+/* legacy-line: "\theight: 50px;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@media screen and (min\u002dheight:1200px), screen and (min\u002ddevice\u002dheight : 1200px) { \r" */
+/* legacy-line: "\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@media screen and (max\u002dwidth:1024px), screen and (min\u002ddevice\u002dwidth : 768px) and (max\u002ddevice\u002dwidth : 1024px) { \r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\t\r" */
+/* legacy-line: "\t#canvas\u002dpanel\u002dtitle\u002dpacman { \r" */
+/* legacy-line: "\t\tleft: 49px;\r" */
+/* legacy-line: "\t\twidth: 42px;\r" */
+/* legacy-line: "\t}\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@media screen and (max\u002dheight:640px), screen and (min\u002ddevice\u002dheight : 480px) and (max\u002ddevice\u002dheight : 640px) and (\u002dwebkit\u002ddevice\u002dpixel\u002dratio: 3) { \r" */
+/* legacy-line: "\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "@media screen and (max\u002dheight:480px), screen and (min\u002ddevice\u002dheight : 320px) and (max\u002ddevice\u002dheight : 480px) { \r" */
+/* legacy-line: "\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "\u002f*\r" */
+/* legacy-line: " * Display the start notice directly below the final\r" */
+/* legacy-line: " * character and nickname row.\r" */
+/* legacy-line: " *\u002f\r" */
+/* legacy-line: "#start\u002dnotice {\r" */
+/* legacy-line: "    position: absolute;\r" */
+/* legacy-line: "    top: 238px;\r" */
+/* legacy-line: "    left: 0;\r" */
+/* legacy-line: "    right: 0;\r" */
+/* legacy-line: "    bottom: auto;\r" */
+/* legacy-line: "    z\u002dindex: 500;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    width: 100%;\r" */
+/* legacy-line: "    margin: 0;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    color: #fff200;\r" */
+/* legacy-line: "    font\u002dsize: 16px;\r" */
+/* legacy-line: "    font\u002dweight: 700;\r" */
+/* legacy-line: "    letter\u002dspacing: 1.2px;\r" */
+/* legacy-line: "    line\u002dheight: 1.5;\r" */
+/* legacy-line: "    text\u002dalign: center;\r" */
+/* legacy-line: "    text\u002dtransform: uppercase;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    pointer\u002devents: none;\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    animation:\r" */
+/* legacy-line: "        start\u002dnotice\u002dpulse\r" */
+/* legacy-line: "        1.1s\r" */
+/* legacy-line: "        ease\u002din\u002dout\r" */
+/* legacy-line: "        infinite;\r" */
+/* legacy-line: "}\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "@keyframes start\u002dnotice\u002dpulse {\r" */
+/* legacy-line: "    0%,\r" */
+/* legacy-line: "    100% {\r" */
+/* legacy-line: "        opacity: 0.45;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "\r" */
+/* legacy-line: "    50% {\r" */
+/* legacy-line: "        opacity: 1;\r" */
+/* legacy-line: "    }\r" */
+/* legacy-line: "}" */
