@@ -124,6 +124,8 @@ function InnerApp() {
           <CatMascot
             key={session?.user?.id ?? 'guest'}
             disabled={isLoading || !session?.user}
+            userId={session?.user?.id ?? null}
+            authStatus={isLoading ? 'loading' : session?.user ? 'authenticated' : 'guest'}
             onCatClick={() => setIsVirtualPetOpen(true)}
           />
           <MolarAIFloat
