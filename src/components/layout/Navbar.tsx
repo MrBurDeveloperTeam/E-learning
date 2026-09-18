@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut, LifeBuoy } from 'lucide-react'
+import { Mail, Phone, ChevronRight, Video, CreditCard, LogOut } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -415,9 +415,6 @@ export function Navbar() {
                             onClick={() => setMenuOpen(false)}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                              <Tv className="h-3.5 w-3.5 text-primary" />
-                            </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">My Channel</p>
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">Manage your channel</p>
@@ -448,9 +445,6 @@ export function Navbar() {
                             onClick={() => void openAppLink('reward', 'https://reward.snabbb.com')}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
-                              <Wallet className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                            </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">Snabbb Credit</p>
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">
@@ -473,9 +467,6 @@ export function Navbar() {
                               onClick={() => void openSupportTickets()}
                               className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                             >
-                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-                                <LifeBuoy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                              </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-bold leading-tight text-foreground">{canAccessAdmin ? 'Admin Dashboard' : 'User Dashboard'}</p>
                                 <p className="truncate text-[11px] font-semibold text-muted-foreground">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
@@ -489,9 +480,6 @@ export function Navbar() {
                             onClick={() => setMenuOpen(false)}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-muted">
-                              <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                            </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">Settings</p>
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">Account & preferences</p>
