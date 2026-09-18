@@ -17,3 +17,4 @@ supabase/.branches/
 # Local-only database backups and fake data
 local-db-backups/
 supabase/seed.sql
+/public/pet-function/
