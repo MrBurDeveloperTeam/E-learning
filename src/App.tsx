@@ -123,7 +123,7 @@ function InnerApp() {
     <PersonalizedInsightBridgeProvider>
       <RouterProvider router={router} />
       {!isAuthRoute && (
-        <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <div className={`${isVirtualPetOpen ? 'hidden' : 'contents'} ${currentPath === '/community' || currentPath.startsWith('/community/') ? 'community-ai-dock' : ''}`}>
           {/* key forces remount when auth state changes: 'guest' → userId
               This makes the entry-walk animation play after login, not before. */}
           <CatMascot

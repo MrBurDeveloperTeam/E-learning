@@ -384,3 +384,23 @@
 .elearning-support-link:hover .elearning-support-title {
   color: hsl(var(--foreground));
 }
+
+/* Keep the SNAI launcher discoverable without covering Community chat controls. */
+.community-ai-dock .snabbb-molar-experience .molar-ai-trigger-wrapper {
+  right: 0;
+  left: auto;
+  bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(1.5rem);
+  transition: transform 200ms ease;
+}
+
+.community-ai-dock .snabbb-molar-experience .molar-ai-trigger-wrapper:hover,
+.community-ai-dock .snabbb-molar-experience .molar-ai-trigger-wrapper:focus-within {
+  transform: translateX(0);
+}
+
+.community-ai-dock .snabbb-molar-experience .molar-ai-badge-slot {
+  right: 1.5rem;
+  left: auto;
+  transform: none;
+}
