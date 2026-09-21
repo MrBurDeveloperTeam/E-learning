@@ -205,16 +205,27 @@ export function CommunityPostCard({
             </div>
           )}
         <header className="flex items-start gap-3">
-          <UserAvatar
-            name={authorName}
-            avatarUrl={post.profiles?.avatar_url}
-            size={42}
-          />
+          <Link
+            to="/profile/$userId"
+            params={{ userId: post.author_id }}
+            aria-label={`View ${authorName}'s profile`}
+            className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <UserAvatar
+              name={authorName}
+              avatarUrl={post.profiles?.avatar_url}
+              size={42}
+            />
+          </Link>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
-              <p className="truncate text-sm font-semibold text-foreground">
+              <Link
+                to="/profile/$userId"
+                params={{ userId: post.author_id }}
+                className="truncate rounded-sm text-sm font-semibold text-foreground outline-none hover:text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 {authorName}
-              </p>
+              </Link>
               {showCommunityBadge && post.community_id && post.communities?.name && (
                 <span className="inline-flex max-w-48 items-center rounded-full border border-primary/20 bg-primary/8 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
                   <span className="truncate">{post.communities.name}</span>

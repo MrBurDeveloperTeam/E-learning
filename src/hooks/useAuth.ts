@@ -387,31 +387,38 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }
 
   async function signOutUser() {
+    // Stop authenticated Community queries and subscriptions before waiting for
+    // the SSO endpoint. The endpoint may be slow or unreachable, but it must
+    // not keep the user on a busy authenticated page indefinitely.
+    clearStore()
+    queryClient.clear()
+
+    const logoutController = new AbortController()
+    const logoutTimeout = window.setTimeout(() => logoutController.abort(), 5000)
     try {
-      // Step 1: Call worker logout endpoint to clear SSO cookies and Odoo session
       await fetch(getApiUrl('/api/logout'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        signal: logoutController.signal,
       })
     } catch (error) {
-      // Continue with local logout even if worker logout fails
       console.warn('[useAuth] Worker logout failed:', error)
+    } finally {
+      window.clearTimeout(logoutTimeout)
     }
 
-    // Step 2: Sign out from Supabase locally
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-
-    // Step 3: Clear local session data
-    clearPersistedSupabaseSession()
-    clearStore()
-    setIsLoading(false)
-    queryClient.clear()
-
-    // Step 4: Redirect to Snabbb main app
-    window.location.href = 'https://app.snabbb.com/'
-
-    if (error) throw error
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (error) console.warn('[useAuth] Supabase local sign out failed:', error)
+    } catch (error) {
+      console.warn('[useAuth] Supabase local sign out failed:', error)
+    } finally {
+      clearPersistedSupabaseSession()
+      clearStore()
+      queryClient.clear()
+      window.location.replace('https://app.snabbb.com/')
+    }
   }
 
   return {
