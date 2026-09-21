@@ -47,12 +47,17 @@ function isCloudflarePagesPreview() {
 
 async function fetchSsoExchange(token?: string | null) {
   try {
-    const exchangePath = token
-      ? `/api/sso/exchange?token=${encodeURIComponent(token)}`
-      : '/api/sso/exchange'
-    const response = await fetch(getApiUrl(exchangePath), {
+    // Exchange directly with the central SSO Worker. Going through the
+    // E-learning Pages proxy adds another deployment/configuration layer and
+    // can leave a fresh browser on the landing page even though it received
+    // a valid per-launch token.
+    const exchangeUrl = token
+      ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(token)}`
+      : 'https://sso.snabbb.com/api/sso/exchange'
+    const response = await fetch(exchangeUrl, {
       method: 'GET',
       credentials: 'include',
+      cache: 'no-store',
     })
 
     // Only return if we got a valid JSON response
@@ -63,6 +68,8 @@ async function fetchSsoExchange(token?: string | null) {
       }
     }
 
+    const errorBody = await response.text().catch(() => '')
+    console.warn('[useAuth] SSO exchange rejected:', response.status, errorBody)
     return null
   } catch (error) {
     console.warn('[useAuth] fetchSsoExchange error:', error)
@@ -88,13 +95,12 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
 
     let mounted = true
 
-    // Safety timeout: if auth init takes too long (e.g. network issues,
-    // Supabase is unreachable), force the app out of loading state so the
-    // user can still interact with public pages.
+    // Never reveal a public/member/admin route while authorization is still
+    // unresolved. A timeout may report diagnostics, but must not turn the
+    // loading gate off and expose a route based on stale/null profile state.
     const safetyTimer = window.setTimeout(() => {
       if (mounted && useAuthStore.getState().isLoading) {
-        console.warn('[useAuth] auth init timed out – forcing isLoading=false')
-        setIsLoading(false)
+        console.warn('[useAuth] auth init is taking longer than expected')
       }
     }, 8000)
 
@@ -114,6 +120,8 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         }
 
         if (currentSession?.user) {
+          setIsLoading(true)
+          setProfile(null)
           setUser(currentSession.user)
           setSession(currentSession)
           try {
@@ -126,7 +134,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
           // Attempt seamless SSO if no Supabase session exists
           try {
             const searchParams = new URLSearchParams(window.location.search)
-            const appLinkToken = searchParams.get('token')
+            const appLinkToken = searchParams.get('sso_token') || searchParams.get('token')
             const ssoRes = await fetchSsoExchange(appLinkToken)
             if (!ssoRes) {
               clearStore()
@@ -137,7 +145,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
               const data = await ssoRes.json()
               if (data.access_token && data.refresh_token) {
                 // Set the generated Supabase session
-                const { error: setSessionError } = await supabase.auth.setSession({
+                const { data: installedSessionData, error: setSessionError } = await supabase.auth.setSession({
                   access_token: data.access_token,
                   refresh_token: data.refresh_token,
                 })
@@ -147,7 +155,20 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
                 } else if (appLinkToken) {
                   // Remove the one-time JWT from browser history/address bar
                   // after it has been exchanged successfully.
-                  window.history.replaceState({}, '', '/')
+                  const cleanUrl = new URL(window.location.href)
+                  cleanUrl.searchParams.delete('sso_token')
+                  cleanUrl.searchParams.delete('token')
+                  window.history.replaceState({}, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`)
+                }
+
+                if (!setSessionError && installedSessionData.session?.user) {
+                  const installedSession = installedSessionData.session
+                  setIsLoading(true)
+                  setProfile(null)
+                  setUser(installedSession.user)
+                  setSession(installedSession)
+                  const p = await fetchProfile(installedSession.user.id)
+                  if (mounted) setProfile(p)
                 }
               } else {
                 clearStore()
@@ -176,6 +197,8 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       if (!mounted) return
 
       if (event === 'SIGNED_IN' && newSession?.user) {
+        setIsLoading(true)
+        setProfile(null)
         setUser(newSession.user)
         setSession(newSession)
         // Fetch profile outside the callback to avoid blocking the

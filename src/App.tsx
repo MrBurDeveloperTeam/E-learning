@@ -64,13 +64,8 @@ function InnerApp() {
   const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false)
   const isAuthRoute = currentPath === '/login' || currentPath === '/register'
 
-  // Meowdoku predates molar-experience and isn't one of its 3 built-in
-  // games (flappy-cat/pac-cat/tetris), so it's passed in as a host-local
-  // extra game (0.9.5's SharedVirtualPetProps.extraGames) rather than
-  // living inside the shared package. The shared Games selector renders
-  // this as its 4th card; onSelect just flips local isMeowdokuOpen —
-  // MeowdokuLauncher (rendered below, outside the Pet's own overlay so it
-  // can stack on top of it) owns everything about actually playing it.
+  // All four games live in pet-function. E-learning only wires the
+  // Meowdoku selector card to its shared launcher and owns open/close state.
   const extraGames = useMemo(
     () => [
       {
@@ -129,6 +124,8 @@ function InnerApp() {
           <CatMascot
             key={session?.user?.id ?? 'guest'}
             disabled={isLoading || !session?.user}
+            userId={session?.user?.id ?? null}
+            authStatus={isLoading ? 'loading' : session?.user ? 'authenticated' : 'guest'}
             onCatClick={() => setIsVirtualPetOpen(true)}
           />
           <MolarAIFloat

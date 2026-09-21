@@ -1,5 +1,6 @@
 import { Pencil } from 'lucide-react'
 import { Link, useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { FollowButton } from '@/components/creator/FollowButton'
 import { Navbar } from '@/components/layout/Navbar'
@@ -11,6 +12,7 @@ import { useProfile, usePublicCreatorProfile } from '@/hooks/useProfile'
 import { useProfileImage } from '@/hooks/useProfileImage'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
+import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 import { useAuthStore } from '@/store/authStore'
 
 export function Channel() {
@@ -20,18 +22,32 @@ export function Channel() {
   const isOwnChannel = currentProfile?.user_id === userId || user?.id === userId
   const { profileImageUrl } = useProfileImage(Boolean(user))
   const ownProfileQuery = useProfile(userId, isOwnChannel)
+  const accountProfileQuery = useQuery({
+    queryKey: ['snabbb-account-profile', user?.id],
+    queryFn: fetchAccountProfile,
+    enabled: Boolean(user && isOwnChannel),
+    staleTime: 60_000,
+  })
   const publicCreatorProfileQuery = usePublicCreatorProfile(userId, !isOwnChannel)
   const videosQuery = useCreatorVideos(userId)
   const profile = isOwnChannel
     ? ownProfileQuery.data ?? currentProfile
     : publicCreatorProfileQuery.data
-  const profileName = getDisplayName(profile, 'Unknown creator')
+  // My Channel uses the same Odoo account details as Settings and the avatar menu.
+  const accountProfile = isOwnChannel ? accountProfileQuery.data : null
+  const accountFullName = accountProfile
+    ? `${accountProfile.firstName} ${accountProfile.lastName}`.trim()
+    : ''
+  const profileName = accountFullName || getDisplayName(profile, 'Unknown creator')
+  const profileSpecialty = accountProfile?.categoryIds[0]
+    ? ACCOUNT_SPECIALTY_NAMES[accountProfile.categoryIds[0]]
+    : profile?.specialty
   const videos = videosQuery.data ?? []
   const videoCount = videos.length
   const isLoading =
     (isOwnChannel
       ? ownProfileQuery.isLoading
-      : publicCreatorProfileQuery.isLoading) || videosQuery.isLoading
+      : publicCreatorProfileQuery.isLoading) || videosQuery.isLoading || (isOwnChannel && accountProfileQuery.isLoading)
   const isError =
     (isOwnChannel
       ? ownProfileQuery.isError
@@ -113,8 +129,8 @@ export function Channel() {
                   <UserAvatar
                     name={profileName}
                     avatarUrl={
-                      isOwnChannel && profileImageUrl
-                        ? profileImageUrl
+                      isOwnChannel && (accountProfile?.imageUrl || profileImageUrl)
+                        ? accountProfile?.imageUrl || profileImageUrl
                         : profile.avatar_url
                     }
                     size={64}
@@ -145,7 +161,7 @@ export function Channel() {
                 </div>
 
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {profile.specialty ?? 'Dental professional'}
+                  {profileSpecialty ?? 'Dental professional'}
                   {profile.institution ? ` - ${profile.institution}` : ''}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-4">

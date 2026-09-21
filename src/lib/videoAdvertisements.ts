@@ -11,8 +11,6 @@ export type VideoAdvertisement = {
   target_category: string | null
   target_video_type: string | null
   target_language: string | null
-  priority: number
-  weight: number
   skip_after_seconds: number
   cta_label: string | null
   click_url: string | null
@@ -27,24 +25,29 @@ function matches(target: string | null, value: string | null) {
   return target === null || normalize(target) === normalize(value)
 }
 
-export async function getAdvertisementForVideo(video: DentalVideo) {
-  const { data, error } = await supabase
-    .from('video_advertisements')
-    .select('id,campaign_name,advertiser_name,media_type,media_url,alt_text,target_category,target_video_type,target_language,priority,weight,skip_after_seconds,cta_label,click_url,open_in_new_tab')
-    .eq('status', 'active')
-    .order('priority', { ascending: false })
-    .limit(100)
+export async function getAdvertisementsForVideo(video: DentalVideo) {
+  const activeAdvertisements: VideoAdvertisement[] = []
+  // Fetch every active ad so large inventories are not silently excluded.
+  const pageSize = 500
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('video_advertisements')
+      .select('id,campaign_name,advertiser_name,media_type,media_url,alt_text,target_category,target_video_type,target_language,skip_after_seconds,cta_label,click_url,open_in_new_tab')
+      .eq('status', 'active')
+      .order('id')
+      .range(offset, offset + pageSize - 1)
+    if (error) throw error
+    activeAdvertisements.push(...data as VideoAdvertisement[])
+    if (data.length < pageSize) break
+  }
 
-  if (error) throw error
-
-  const activeAdvertisements = data as VideoAdvertisement[]
   const exactOrGlobalMatches = activeAdvertisements.filter((advertisement) =>
     matches(advertisement.target_category, video.category) &&
     matches(advertisement.target_video_type, video.video_type) &&
     matches(advertisement.target_language, video.language)
   )
 
-  if (!activeAdvertisements.length) return null
+  if (!activeAdvertisements.length) return []
 
   // Prefer ads whose targeting is fully compatible with the video. If none
   // exists, fall back to the active ads sharing the most target attributes so
@@ -59,17 +62,7 @@ export async function getAdvertisementForVideo(video: DentalVideo) {
     ? exactOrGlobalMatches
     : activeAdvertisements.filter((advertisement) => targetingScore(advertisement) === bestFallbackScore)
 
-  const highestPriority = Math.max(...matchesForVideo.map((advertisement) => advertisement.priority))
-  const candidates = matchesForVideo.filter((advertisement) => advertisement.priority === highestPriority)
-  const totalWeight = candidates.reduce((total, advertisement) => total + Math.max(advertisement.weight, 1), 0)
-  let draw = Math.random() * totalWeight
-
-  for (const candidate of candidates) {
-    draw -= Math.max(candidate.weight, 1)
-    if (draw <= 0) return candidate
-  }
-
-  return candidates[0]
+  return matchesForVideo
 }
 
 export async function getAdvertisementFrequency() {

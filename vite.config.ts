@@ -1,9 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+// @ts-ignore Local shared build integration is JavaScript.
+import { sharedGamesPlugin } from "./node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), sharedGamesPlugin()],
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
       "@": "/src"
     }

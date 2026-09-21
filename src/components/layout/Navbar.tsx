@@ -9,13 +9,14 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, Wallet, Video, CreditCard, Settings as SettingsIcon, Tv, LogOut, LifeBuoy } from 'lucide-react'
+import { Mail, Phone, ChevronRight, Video, CreditCard, LogOut } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { submitCreatorApplication } from '@/lib/creatorApplications'
 import type { CreatorApplication } from '@/types'
+import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -25,11 +26,23 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
   { label: 'Categories', path: '/category' },
 ]
 
+const SHOW_SUPPORT_TICKETS = true
+
 export function Navbar() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
-  const avatarSrc = profileImageUrl || profile?.avatar_url
+  const accountProfileQuery = useQuery({
+    queryKey: ['snabbb-account-profile', user?.id],
+    queryFn: fetchAccountProfile,
+    enabled: !!user,
+    staleTime: 60_000,
+  })
+  const accountProfile = accountProfileQuery.data
+  const accountFullName = accountProfile
+    ? `${accountProfile.firstName} ${accountProfile.lastName}`.trim()
+    : ''
+  const avatarSrc = accountProfile?.imageUrl || profileImageUrl || profile?.avatar_url
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const router = useRouterState()
@@ -44,8 +57,11 @@ export function Navbar() {
   const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false)
   const [isRequestingCreatorAccess, setIsRequestingCreatorAccess] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const avatarLabel = profile?.full_name ?? profile?.name ?? user?.email?.split('@')[0] ?? null
-  const badgeLabel = profile?.position || profile?.company_name
+  // Profile Info uses the same Odoo account source as Settings; Supabase is only a fallback while it loads.
+  const avatarLabel = accountFullName || profile?.full_name || profile?.name || user?.email?.split('@')[0] || null
+  const badgeLabel = accountProfile?.categoryIds[0]
+    ? ACCOUNT_SPECIALTY_NAMES[accountProfile.categoryIds[0]]
+    : profile?.specialty || null
   const canAccessCreatorTools = isCreatorProfile(profile)
   const canAccessAdmin = isAdminProfile(profile)
   const hasCreatorAccount = profile?.is_creator === true || profile?.role === 'creator'
@@ -173,31 +189,14 @@ export function Navbar() {
     }
   }
 
-  async function openSupportTickets() {
+  function openSupportTickets() {
     if (isOpeningSupportTickets) return
 
     setMenuOpen(false)
     setMobileMenuOpen(false)
     setIsOpeningSupportTickets(true)
-
-    try {
-      const response = await fetch('/api/ticketing/sso', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok || !data?.redirectUrl) {
-        throw new Error(data?.error || 'Unable to open the support portal.')
-      }
-
-      window.location.assign(data.redirectUrl)
-    } catch (error) {
-      console.error('Ticketing SSO failed:', error)
-      toast.error('Unable to open Support Tickets. Please try again.')
-      setIsOpeningSupportTickets(false)
-    }
+    const dashboardPath = canAccessAdmin ? '/admin/dashboard' : '/user/dashboard'
+    window.location.assign(`https://app.snabbb.com${dashboardPath}`)
   }
 
   useEffect(() => {
@@ -382,7 +381,7 @@ export function Navbar() {
                           <div className="flex flex-col gap-3">
                             <div>
                               <p className="truncate text-base font-bold leading-tight text-foreground">
-                                {profile?.full_name ?? profile?.name ?? 'User'}
+                                {avatarLabel || 'User'}
                               </p>
 
                               {badgeLabel && (
@@ -395,13 +394,13 @@ export function Navbar() {
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Mail className="h-3 w-3 shrink-0" />
-                                <p className="truncate text-xs font-semibold">{user?.email}</p>
+                                <p className="truncate text-xs font-semibold">{accountProfile?.email || user?.email}</p>
                               </div>
 
-                              {profile?.phone && (
+                              {(accountProfile?.phone || profile?.phone) && (
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <Phone className="h-3 w-3 shrink-0" />
-                                  <p className="truncate text-xs font-semibold">{profile.phone}</p>
+                                  <p className="truncate text-xs font-semibold">{accountProfile?.phone || profile?.phone}</p>
                                 </div>
                               )}
                             </div>
@@ -416,9 +415,6 @@ export function Navbar() {
                             onClick={() => setMenuOpen(false)}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                              <Tv className="h-3.5 w-3.5 text-primary" />
-                            </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">My Channel</p>
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">Manage your channel</p>
@@ -449,9 +445,6 @@ export function Navbar() {
                             onClick={() => void openAppLink('reward', 'https://reward.snabbb.com')}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
-                              <Wallet className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                            </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">Snabbb Credit</p>
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">
@@ -467,30 +460,26 @@ export function Navbar() {
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </button>
 
-                          <button
-                            type="button"
-                            disabled={isOpeningSupportTickets}
-                            onClick={() => void openSupportTickets()}
-                            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
-                          >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-                              <LifeBuoy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-bold leading-tight text-foreground">Support Tickets</p>
-                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Create and track your support tickets</p>
-                            </div>
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
-                          </button>
+                          {SHOW_SUPPORT_TICKETS && (
+                            <button
+                              type="button"
+                              disabled={isOpeningSupportTickets}
+                              onClick={() => void openSupportTickets()}
+                              className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold leading-tight text-foreground">{canAccessAdmin ? 'Admin Dashboard' : 'User Dashboard'}</p>
+                                <p className="truncate text-[11px] font-semibold text-muted-foreground">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
+                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+                            </button>
+                          )}
 
                           <Link
                             to="/settings"
                             onClick={() => setMenuOpen(false)}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-muted">
-                              <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                            </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold leading-tight text-foreground">Settings</p>
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">Account & preferences</p>
@@ -498,7 +487,7 @@ export function Navbar() {
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </Link>
 
-                          <Link
+                          {/* <Link
                             to="/billing"
                             onClick={() => setMenuOpen(false)}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
@@ -511,7 +500,7 @@ export function Navbar() {
                               <p className="truncate text-[11px] font-semibold text-muted-foreground">Plans & payment history</p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
-                          </Link>
+                          </Link> */}
                         </div>
 
                         {/* Log Out */}
@@ -640,7 +629,7 @@ export function Navbar() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1E3333]">
-                    {profile?.full_name ?? 'DentalLearn User'}
+                    {avatarLabel || 'DentalLearn User'}
                   </p>
                   <p className="text-xs capitalize text-[#9BB5B5]">
                     {profile?.role ?? 'member'}
@@ -683,13 +672,13 @@ export function Navbar() {
               >
                 Settings
               </Link>
-              <Link
+              {/* <Link
                 to="/billing"
                 onClick={closeMobileMenu}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
               >
                 Billing
-              </Link>
+              </Link> */}
 
               <div className="my-2 h-px bg-border" />
 
