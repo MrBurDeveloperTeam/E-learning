@@ -389,8 +389,8 @@
 .community-ai-dock .snabbb-molar-experience .molar-ai-trigger-wrapper {
   right: 0;
   left: auto;
-  bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-  transform: translateX(1.5rem);
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(2.25rem);
   transition: transform 200ms ease;
 }
 
