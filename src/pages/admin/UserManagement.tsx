@@ -57,6 +57,14 @@ type CreatorApplicationRow = Profile & {
 
 type PendingCreatorApplicationRow = CreatorApplicationRow
 
+function managedUserName(user: Pick<Profile, 'full_name' | 'name' | 'username' | 'email'>) {
+  for (const value of [user.full_name, user.name, user.username]) {
+    const name = value?.trim()
+    if (name && name.toLowerCase() !== 'new user') return name
+  }
+  return user.email.split('@')[0]
+}
+
 function normalizeApplicationProfile(
   value: Profile | Profile[] | null
 ): Profile | null {
@@ -90,7 +98,9 @@ function matchesApplicationSearch(
 
   const query = searchQuery.toLowerCase()
   return (
-    (user.full_name ?? '').toLowerCase().includes(query) ||
+    managedUserName(user).toLowerCase().includes(query) ||
+    (user.name ?? '').toLowerCase().includes(query) ||
+    (user.username ?? '').toLowerCase().includes(query) ||
     user.email.toLowerCase().includes(query) ||
     (user.specialty ?? '').toLowerCase().includes(query) ||
     (user.institution ?? '').toLowerCase().includes(query)
@@ -418,7 +428,7 @@ export function UserManagement() {
                           <div className="flex flex-col gap-4 p-1 lg:flex-row lg:items-start lg:justify-between">
                             <div className="flex items-start gap-4">
                               <UserAvatar
-                                name={user.full_name ?? user.email}
+                                name={managedUserName(user)}
                                 avatarUrl={user.avatar_url}
                                 size={48}
                                 className="bg-primary/10 text-primary"
@@ -426,7 +436,7 @@ export function UserManagement() {
                               <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="text-base font-semibold text-foreground">
-                                    {user.full_name ?? 'Unnamed user'}
+                                    {managedUserName(user)}
                                   </p>
                                   <AdminStatusBadge
                                     label="Pending verification"
@@ -560,14 +570,14 @@ export function UserManagement() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <UserAvatar
-                            name={creator.full_name ?? creator.email}
+                            name={managedUserName(creator)}
                             avatarUrl={creator.avatar_url}
                             size={42}
                           />
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold text-foreground">
-                                {creator.full_name ?? creator.email}
+                                {managedUserName(creator)}
                               </p>
                               <AdminStatusBadge label="Verified" tone="success" />
                             </div>
@@ -647,13 +657,13 @@ export function UserManagement() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <UserAvatar
-                            name={member.full_name ?? member.email}
+                            name={managedUserName(member)}
                             avatarUrl={member.avatar_url}
                             size={42}
                           />
                           <div>
                             <p className="text-sm font-semibold text-foreground">
-                              {member.full_name ?? member.email}
+                              {managedUserName(member)}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {member.email}
@@ -715,14 +725,14 @@ export function UserManagement() {
               <div className="space-y-5 px-6 py-6">
                 <div className="flex items-center gap-4">
                   <UserAvatar
-                    name={detailUser.full_name ?? detailUser.email}
+                    name={managedUserName(detailUser)}
                     avatarUrl={detailUser.avatar_url}
                     size={60}
                     className="bg-primary/10 text-primary"
                   />
                   <div>
                     <p className="text-base font-semibold text-foreground">
-                      {detailUser.full_name ?? 'Unnamed applicant'}
+                      {managedUserName(detailUser)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {detailUser.email}
