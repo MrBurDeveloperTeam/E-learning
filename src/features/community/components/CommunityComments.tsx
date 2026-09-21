@@ -69,6 +69,7 @@ export function CommunityComments({
   postId,
   userId,
   postAuthorId,
+  ownAccountAvatarUrl,
   expanded = false,
   onRequestExpand,
   readOnly = false,
@@ -77,6 +78,7 @@ export function CommunityComments({
   postId: string;
   userId?: string;
   postAuthorId?: string;
+  ownAccountAvatarUrl?: string | null;
   expanded?: boolean;
   onRequestExpand?: () => void;
   readOnly?: boolean;
@@ -354,7 +356,7 @@ export function CommunityComments({
         <article className="flex gap-3 rounded-xl bg-muted/45 p-4">
           <UserAvatar
             name={name}
-            avatarUrl={comment.profiles?.avatar_url}
+            avatarUrl={comment.author_id === userId ? ownAccountAvatarUrl || comment.profiles?.avatar_url : comment.profiles?.avatar_url}
             size={34}
           />
           <div className="min-w-0 flex-1">
