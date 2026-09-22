@@ -16,6 +16,7 @@ import type { CommunityManagedPost, CommunityPerson } from '@/features/community
 import type { Profile } from '@/types'
 import { cn } from '@/lib/utils'
 import { useProfileImage } from '@/hooks/useProfileImage'
+import { useOwnAccountAvatar } from '@/features/community/hooks/useOwnAccountAvatar'
 import { supabase } from '@/lib/supabase'
 import { useDocumentVisibility } from '@/hooks/useDocumentVisibility'
 
@@ -43,10 +44,11 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const unfollowMutation = useRemoveCommunitySettingRelation(userId, 'following')
   const closeFriendAction = useCloseFriendAction(userId)
   const { profileImageUrl } = useProfileImage(true)
+  const ownAccountAvatarUrl = useOwnAccountAvatar(userId)
   const posts = (activityQuery.data ?? []) as CommunityManagedPost[]
   const displayName = profile?.full_name || profile?.name || profile?.username || 'Community member'
   const username = profile?.username || profile?.email?.split('@')[0] || 'member'
-  const avatarUrl = profile?.avatar_url || profileImageUrl
+  const avatarUrl = ownAccountAvatarUrl || profileImageUrl || profile?.avatar_url
   const incomingFollowRequestCount = (followRequestsQuery.data ?? []).filter(request => request.direction === 'incoming').length
 
   useEffect(() => { setBackgroundFailed(false) }, [profile?.background_url])
