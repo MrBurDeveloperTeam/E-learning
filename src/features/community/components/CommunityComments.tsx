@@ -69,6 +69,7 @@ export function CommunityComments({
   postId,
   userId,
   postAuthorId,
+  ownAccountAvatarUrl,
   expanded = false,
   onRequestExpand,
   readOnly = false,
@@ -77,6 +78,7 @@ export function CommunityComments({
   postId: string;
   userId?: string;
   postAuthorId?: string;
+  ownAccountAvatarUrl?: string | null;
   expanded?: boolean;
   onRequestExpand?: () => void;
   readOnly?: boolean;

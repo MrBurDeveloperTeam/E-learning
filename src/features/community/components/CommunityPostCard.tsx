@@ -31,6 +31,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CommunityMediaCarousel } from "@/features/community/components/CommunityMediaCarousel";
 import { EditCommunityPostDialog } from "@/features/community/components/EditCommunityPostDialog";
 import { CommunityConfirmAction } from "@/features/community/components/CommunityConfirmAction";
+import { useOwnAccountAvatar } from "@/features/community/hooks/useOwnAccountAvatar";
 
 const CommunityComments = lazy(() =>
   import("@/features/community/components/CommunityComments").then((module) => ({
@@ -72,6 +73,7 @@ export function CommunityPostCard({
   const isReadOnly = readOnly || post.communities?.moderation_status === "archived";
   const authorName =
     post.profiles?.full_name || post.profiles?.name || post.profiles?.username || "Community member";
+  const ownAccountAvatarUrl = useOwnAccountAvatar(userId, post.author_id === userId);
 
   useEffect(() => {
     const card = cardRef.current;
@@ -436,6 +438,7 @@ export function CommunityPostCard({
                 postId={post.id}
                 userId={userId}
                 postAuthorId={post.author_id}
+                ownAccountAvatarUrl={ownAccountAvatarUrl}
                 expanded={commentsExpanded}
                 onRequestExpand={() => setCommentsExpanded(true)}
                 readOnly={isReadOnly}
