@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getInitials, cn } from '@/lib/utils'
+import { getAccountAvatarUrl } from '@/lib/accountAvatar'
 
 interface UserAvatarProps {
   name: string | null | undefined
   avatarUrl?: string | null
   userId?: string | null
+  preferAvatarUrl?: boolean
   size?: number
   className?: string
   textClassName?: string
@@ -14,27 +16,25 @@ export function UserAvatar({
   name,
   avatarUrl,
   userId,
+  preferAvatarUrl = false,
   size = 36,
   className,
   textClassName,
 }: UserAvatarProps) {
-  // The production custom domain's /api/* path is intercepted by the shared
-  // SSO gateway. The Pages domain reaches this app's avatar Function directly.
-  const avatarApiOrigin = window.location.hostname === 'e-learning.snabbb.com'
-    ? 'https://e-learning-ddw.pages.dev'
-    : ''
-  const accountUrl = userId
-    ? `${avatarApiOrigin}/api/account/public-avatar?userId=${encodeURIComponent(userId)}`
-    : null
+  const accountUrl = getAccountAvatarUrl(userId)
   const [accountImageFailed, setAccountImageFailed] = useState(false)
   const [fallbackImageFailed, setFallbackImageFailed] = useState(false)
 
   useEffect(() => { setAccountImageFailed(false) }, [userId])
   useEffect(() => { setFallbackImageFailed(false) }, [avatarUrl])
 
-  const imageUrl = accountUrl && !accountImageFailed
-    ? accountUrl
-    : avatarUrl && !fallbackImageFailed ? avatarUrl : null
+  const preferredUrl = preferAvatarUrl ? avatarUrl : accountUrl
+  const alternateUrl = preferAvatarUrl ? accountUrl : avatarUrl
+  const preferredFailed = preferAvatarUrl ? fallbackImageFailed : accountImageFailed
+  const alternateFailed = preferAvatarUrl ? accountImageFailed : fallbackImageFailed
+  const imageUrl = preferredUrl && !preferredFailed
+    ? preferredUrl
+    : alternateUrl && !alternateFailed ? alternateUrl : null
 
   return (
     <div

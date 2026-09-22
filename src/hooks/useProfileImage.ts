@@ -1,5 +1,6 @@
 // src/hooks/useProfileImage.ts
 import { useState, useEffect } from "react";
+import { fetchAccountProfile } from "../lib/accountProfile";
 
 export function useProfileImage(isLoggedIn: boolean | null) {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -10,20 +11,16 @@ export function useProfileImage(isLoggedIn: boolean | null) {
       return;
     }
 
-    fetch("/api/account/profile", {
-      method: "GET",
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    })
-      .then((res) => res.json())
-      .catch(() => null)
-      .then((data) => {
-        if (!data?.ok) return;
-        const imageUrl = data.partner?.has_image
-          ? `/api/account/avatar?unique=${Date.now()}`
-          : null;
-                setProfileImageUrl(imageUrl);
-              });
+    let active = true;
+    fetchAccountProfile()
+      .then((profile) => {
+        if (active) setProfileImageUrl(profile.imageUrl);
+      })
+      .catch(() => {
+        if (active) setProfileImageUrl(null);
+      });
+
+    return () => { active = false; };
   }, [isLoggedIn]); // ← re-run when login state changes
 
   return { profileImageUrl };

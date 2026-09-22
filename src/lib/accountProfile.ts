@@ -1,4 +1,10 @@
-const ACCOUNT_PROFILE_URL = '/api/account/profile'
+import { supabase } from './supabase'
+import { getAccountAvatarUrl } from './accountAvatar'
+
+const ACCOUNT_API_ORIGIN = window.location.hostname === 'e-learning.snabbb.com'
+  ? 'https://e-learning-ddw.pages.dev'
+  : ''
+const ACCOUNT_PROFILE_URL = `${ACCOUNT_API_ORIGIN}/api/account/profile`
 
 export const ACCOUNT_SPECIALTY_NAMES: Record<string, string> = {
   '76': 'General Dentistry',
@@ -68,7 +74,7 @@ function asText(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
 
-function normalizeAccountProfile(data: AccountProfileResponse): AccountProfile {
+function normalizeAccountProfile(data: AccountProfileResponse, userId?: string): AccountProfile {
   const partner = data.partner ?? {}
   const names = asText(partner.name).trim().split(/\s+/).filter(Boolean)
   const state = relationParts(partner.state_id ?? null)
@@ -96,17 +102,23 @@ function normalizeAccountProfile(data: AccountProfileResponse): AccountProfile {
     receiveInvoices: asText(partner.invoice_sending_method) || 'email',
     electronicFormat: asText(partner.invoice_edi_format),
     imageUrl: partnerId && (partner.has_image || data.image_url)
-      ? `/api/account/avatar?unique=${Date.now()}`
+      ? getAccountAvatarUrl(userId)
       : null,
     contactId: partnerId ? `C${partnerId}` : null,
   }
 }
 
 export async function fetchAccountProfile() {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Please sign in again to load your account details')
+
   const response = await fetch(ACCOUNT_PROFILE_URL, {
     method: 'GET',
     credentials: 'include',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
   })
   const data = (await response.json().catch(() => null)) as AccountProfileResponse | null
 
@@ -114,10 +126,13 @@ export async function fetchAccountProfile() {
     throw new Error(data?.error || 'Failed to load account profile')
   }
 
-  return normalizeAccountProfile(data)
+  return normalizeAccountProfile(data, session.user.id)
 }
 
 export async function saveAccountProfile(profile: AccountProfile, photo?: File | null) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Please sign in again to save your account details')
+
   const body = new FormData()
   body.append('name', `${profile.firstName.trim()} ${profile.lastName.trim()}`.trim())
   body.append('email', profile.email)
@@ -141,6 +156,7 @@ export async function saveAccountProfile(profile: AccountProfile, photo?: File |
   const response = await fetch(ACCOUNT_PROFILE_URL, {
     method: 'POST',
     credentials: 'include',
+    headers: { Authorization: `Bearer ${session.access_token}` },
     body,
   })
   const data = (await response.json().catch(() => null)) as AccountProfileResponse | null
