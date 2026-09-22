@@ -87,7 +87,9 @@ export function getCookieOptions(req: Request, env: any, maxAge: number = 60 * 6
   const domain = configuredDomain && !isLocalHostname(configuredDomain.replace(/^\./, "")) ? configuredDomain : null
 
   return {
-    domain: local ? null : (domain || ".snabbb.com"),
+    // A Pages preview cannot set a cookie for .snabbb.com. Use a host cookie
+    // there so its own API routes can forward the central Odoo session.
+    domain: local || hostname.endsWith('.pages.dev') ? null : (domain || ".snabbb.com"),
     maxAge,
     path: "/",
     httpOnly: true,

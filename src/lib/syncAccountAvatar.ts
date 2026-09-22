@@ -8,7 +8,21 @@ export async function syncAccountAvatar(userId: string, imageUrl?: string | null
   const accountUrl = imageUrl === undefined
     ? (await fetchAccountProfile()).imageUrl
     : imageUrl
-  const avatarUrl = accountUrl || null
+  let avatarUrl: string | null = null
+  if (accountUrl) {
+    const imageResponse = await fetch('/api/account/avatar', { credentials: 'include', cache: 'no-store' })
+    if (!imageResponse.ok) throw new Error('Could not load central account photo')
+    const image = await imageResponse.blob()
+    if (!image.type.startsWith('image/')) throw new Error('Central account returned an invalid photo')
+    const extension = image.type === 'image/png' ? 'png' : image.type === 'image/gif' ? 'gif' : 'jpg'
+    const path = `${userId}/account-avatar.${extension}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, image, { contentType: image.type, upsert: true })
+    if (uploadError) throw uploadError
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    avatarUrl = `${data.publicUrl}?v=${Date.now()}`
+  }
   const { data: current, error: readError } = await supabase
     .from('profiles')
     .select('avatar_url')

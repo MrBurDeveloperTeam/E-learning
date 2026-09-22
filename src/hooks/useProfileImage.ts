@@ -10,7 +10,7 @@ export function useProfileImage(isLoggedIn: boolean | null) {
       return;
     }
 
-    fetch("https://account.snabbb.com/api/account/profile", {
+    fetch("/api/account/profile", {
       method: "GET",
       credentials: "include",
       headers: { Accept: "application/json" },
@@ -19,8 +19,8 @@ export function useProfileImage(isLoggedIn: boolean | null) {
       .catch(() => null)
       .then((data) => {
         if (!data?.ok) return;
-        const imageUrl = data.partner.has_image
-          ? `https://account.snabbb.com/web/image/res.partner/${data.partner_id}/image_128?unique=${Date.now()}`
+        const imageUrl = data.partner?.has_image
+          ? `/api/account/avatar?unique=${Date.now()}`
           : null;
                 setProfileImageUrl(imageUrl);
               });
