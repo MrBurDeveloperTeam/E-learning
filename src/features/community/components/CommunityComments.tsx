@@ -356,7 +356,8 @@ export function CommunityComments({
         <article className="flex gap-3 rounded-xl bg-muted/45 p-4">
           <UserAvatar
             name={name}
-            avatarUrl={comment.author_id === userId ? ownAccountAvatarUrl || comment.profiles?.avatar_url : comment.profiles?.avatar_url}
+            avatarUrl={comment.profiles?.avatar_url}
+            userId={comment.author_id}
             size={34}
           />
           <div className="min-w-0 flex-1">

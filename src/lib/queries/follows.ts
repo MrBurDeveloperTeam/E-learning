@@ -6,6 +6,7 @@ type FollowProfile = Pick<
   Profile,
   | 'user_id'
   | 'full_name'
+  | 'name'
   | 'username'
   | 'avatar_url'
   | 'specialty'
@@ -80,7 +81,7 @@ export async function fetchFollowers(userId: string): Promise<
       follower_id,
       created_at,
       profiles!follows_follower_id_fkey (
-        user_id, full_name, username,
+        user_id, full_name, name, username,
         avatar_url, specialty,
         is_verified, is_creator,
         follower_count, video_count
@@ -109,7 +110,7 @@ export async function fetchFollowing(userId: string): Promise<
       following_id,
       created_at,
       profiles!follows_following_id_fkey (
-        user_id, full_name, username,
+        user_id, full_name, name, username,
         avatar_url, specialty,
         is_verified, is_creator,
         follower_count, video_count

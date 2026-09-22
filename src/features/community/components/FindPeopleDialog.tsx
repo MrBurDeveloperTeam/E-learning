@@ -84,7 +84,7 @@ export function FindPeopleDialog({ userId }: { userId: string }) {
                 return (
                   <div key={person.user_id} className="flex items-center gap-3 py-3">
                     <Link to="/profile/$userId" params={{ userId: person.user_id }} onClick={() => setOpen(false)} aria-label={`View ${name}'s profile`} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring">
-                      <UserAvatar name={name} avatarUrl={person.avatar_url} size={42} />
+                      <UserAvatar name={name} avatarUrl={person.avatar_url} userId={person.user_id} size={42} />
                       <div className="min-w-0 flex-1 py-1">
                         <p className="truncate text-sm font-semibold">{name}</p>
                         {person.username && <p className="truncate text-xs text-muted-foreground">@{person.username}</p>}

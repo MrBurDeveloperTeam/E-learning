@@ -207,11 +207,19 @@ export function CommunityPostCard({
             </div>
           )}
         <header className="flex items-start gap-3">
-          <UserAvatar
-            name={authorName}
-            avatarUrl={post.author_id === userId ? ownAccountAvatarUrl || post.profiles?.avatar_url : post.profiles?.avatar_url}
-            size={42}
-          />
+          <Link
+            to="/profile/$userId"
+            params={{ userId: post.author_id }}
+            aria-label={`View ${authorName}'s profile`}
+            className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <UserAvatar
+              name={authorName}
+              avatarUrl={post.profiles?.avatar_url}
+              userId={post.author_id}
+              size={42}
+            />
+          </Link>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <Link

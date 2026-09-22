@@ -128,6 +128,7 @@ export function Channel() {
                 <div className="absolute bottom-0 left-4 translate-y-1/2 md:left-6">
                   <UserAvatar
                     name={profileName}
+                    userId={profile.user_id}
                     avatarUrl={
                       isOwnChannel && (accountProfile?.imageUrl || profileImageUrl)
                         ? accountProfile?.imageUrl || profileImageUrl

@@ -253,6 +253,7 @@ export function Home() {
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
                   avatarUrl={creator.avatar_url}
+                  userId={creator.user_id}
                   size={32}
                 />
                 <div className="min-w-0">

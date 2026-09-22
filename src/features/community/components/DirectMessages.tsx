@@ -142,7 +142,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
   return (
     <div className="mt-4 grid h-[calc(100%-1rem)] min-h-0 overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col overflow-hidden border-b border-border md:border-b-0 md:border-r">
-            <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/>{peopleSearch.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">{people.data?.map(person=><button type="button" key={person.user_id} onClick={()=>startConversation(person)} className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-muted"><UserAvatar name={person.full_name||person.name||'Community member'} avatarUrl={person.avatar_url} size={30}/><span className="truncate text-xs font-medium">{person.full_name||person.name||person.username||'Community member'}</span></button>)}</div>}</div>
+            <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/>{peopleSearch.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">{people.data?.map(person=><button type="button" key={person.user_id} onClick={()=>startConversation(person)} className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-muted"><UserAvatar name={person.full_name||person.name||'Community member'} avatarUrl={person.avatar_url} userId={person.user_id} size={30}/><span className="truncate text-xs font-medium">{person.full_name||person.name||person.username||'Community member'}</span></button>)}</div>}</div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
           {(conversations??[]).map((conversation) => {
             const name = conversation.other_user.full_name || conversation.other_user.name || 'Friend'
@@ -156,7 +156,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
                   selectedId === conversation.id ? 'bg-primary/12' : 'hover:bg-muted',
                 )}
               >
-                <UserAvatar name={name} avatarUrl={conversation.other_user.avatar_url} size={36} />
+                <UserAvatar name={name} avatarUrl={conversation.other_user.avatar_url} userId={conversation.other_user.user_id} size={36} />
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-2">
                     <p className="truncate text-sm font-semibold">{name}</p>
@@ -169,14 +169,14 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
           })}
           {suggestions.map(person=>{
             const name=person.full_name||person.name||'Community member'
-            return <button type="button" key={`suggested-${person.user_id}`} onClick={()=>startConversation(person)} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted',draftRecipient?.user_id===person.user_id&&'bg-primary/12')}><UserAvatar name={name} avatarUrl={person.avatar_url} size={36}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">Following · Start a chat</p></div></button>
+            return <button type="button" key={`suggested-${person.user_id}`} onClick={()=>startConversation(person)} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted',draftRecipient?.user_id===person.user_id&&'bg-primary/12')}><UserAvatar name={name} avatarUrl={person.avatar_url} userId={person.user_id} size={36}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">Following · Start a chat</p></div></button>
           })}
         </div>
       </aside>
 
       {activeRecipient ? <section className="flex min-h-0 flex-col overflow-hidden">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <UserAvatar name={activeRecipient.full_name || activeRecipient.name} avatarUrl={activeRecipient.avatar_url} size={34} />
+          <UserAvatar name={activeRecipient.full_name || activeRecipient.name} avatarUrl={activeRecipient.avatar_url} userId={activeRecipient.user_id} size={34} />
           <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{activeRecipient.full_name || activeRecipient.name}</p><p className="text-xs text-muted-foreground">{selected?'Private conversation':'New conversation'}</p></div>
           {selected&&<DropdownMenu><DropdownMenuTrigger className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Conversation settings"><MoreHorizontal className="size-5"/></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48"><DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={()=>setDeletingConversation(true)}><Trash2/>Delete conversation</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
         </header>

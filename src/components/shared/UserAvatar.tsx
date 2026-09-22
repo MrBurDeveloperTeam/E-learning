@@ -4,6 +4,7 @@ import { getInitials, cn } from '@/lib/utils'
 interface UserAvatarProps {
   name: string | null | undefined
   avatarUrl?: string | null
+  userId?: string | null
   size?: number
   className?: string
   textClassName?: string
@@ -12,15 +13,21 @@ interface UserAvatarProps {
 export function UserAvatar({
   name,
   avatarUrl,
+  userId,
   size = 36,
   className,
   textClassName,
 }: UserAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false)
+  const accountUrl = userId ? `/api/account/public-avatar?userId=${encodeURIComponent(userId)}` : null
+  const [accountImageFailed, setAccountImageFailed] = useState(false)
+  const [fallbackImageFailed, setFallbackImageFailed] = useState(false)
 
-  useEffect(() => {
-    setImageFailed(false)
-  }, [avatarUrl])
+  useEffect(() => { setAccountImageFailed(false) }, [userId])
+  useEffect(() => { setFallbackImageFailed(false) }, [avatarUrl])
+
+  const imageUrl = accountUrl && !accountImageFailed
+    ? accountUrl
+    : avatarUrl && !fallbackImageFailed ? avatarUrl : null
 
   return (
     <div
@@ -30,12 +37,15 @@ export function UserAvatar({
       )}
       style={{ width: size, height: size }}
     >
-      {avatarUrl && !imageFailed ? (
+      {imageUrl ? (
         <img
-          src={avatarUrl}
+          src={imageUrl}
           alt={name ? `${name} avatar` : 'User avatar'}
           className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => {
+            if (imageUrl === accountUrl) setAccountImageFailed(true)
+            else setFallbackImageFailed(true)
+          }}
         />
       ) : (
         <span className={cn('text-xs', textClassName)}>{getInitials(name)}</span>

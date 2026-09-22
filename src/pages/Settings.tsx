@@ -36,6 +36,7 @@ import { useTheme } from '../components/shared/ThemeProvider'
 import { useProfileImage } from '../hooks/useProfileImage'
 import type { CreatorApplication } from '../types'
 import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
+import { syncAccountAvatar } from '../lib/syncAccountAvatar'
 
 type SettingsTab =
   | 'profile'
@@ -342,6 +343,15 @@ export function Settings() {
       const updatedAccount = await saveAccountProfile(accountProfile, file)
       queryClient.setQueryData(['snabbb-account-profile', user?.id], updatedAccount)
       setAvatarPreviewUrl(updatedAccount.imageUrl)
+      if (user?.id) {
+        try {
+          await syncAccountAvatar(user.id, updatedAccount.imageUrl)
+        } catch (syncError) {
+          console.warn('Account photo saved, but the E-learning avatar did not refresh', syncError)
+          toast.error('Photo saved, but the E-learning avatar could not refresh yet')
+          return
+        }
+      }
       toast.success('Profile photo updated')
     } catch {
       toast.error('Failed to upload profile photo')

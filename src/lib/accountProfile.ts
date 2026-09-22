@@ -1,4 +1,4 @@
-const ACCOUNT_PROFILE_URL = 'https://account.snabbb.com/api/account/profile'
+const ACCOUNT_PROFILE_URL = '/api/account/profile'
 
 export const ACCOUNT_SPECIALTY_NAMES: Record<string, string> = {
   '76': 'General Dentistry',
@@ -95,11 +95,9 @@ function normalizeAccountProfile(data: AccountProfileResponse): AccountProfile {
     ),
     receiveInvoices: asText(partner.invoice_sending_method) || 'email',
     electronicFormat: asText(partner.invoice_edi_format),
-    imageUrl:
-      data.image_url ??
-      (partnerId && partner.has_image
-        ? `https://account.snabbb.com/web/image/res.partner/${partnerId}/image_128?unique=${Date.now()}`
-        : null),
+    imageUrl: partnerId && (partner.has_image || data.image_url)
+      ? `/api/account/avatar?unique=${Date.now()}`
+      : null,
     contactId: partnerId ? `C${partnerId}` : null,
   }
 }
