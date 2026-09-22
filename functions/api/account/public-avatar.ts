@@ -1,15 +1,29 @@
 import { createClient } from '@supabase/supabase-js'
 
-type Env = { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; ODOO_SSO_API_KEY: string; ODOO_BASE?: string }
+type Env = {
+  SUPABASE_URL?: string
+  VITE_SUPABASE_URL?: string
+  SUPABASE_SERVICE_ROLE_KEY?: string
+  ODOO_SSO_API_KEY?: string
+  SSO_API_KEY?: string
+  ODOO_BASE?: string
+}
 
 export const onRequestGet = async ({ request, env }: { request: Request; env: Env }) => {
   const userId = new URL(request.url).searchParams.get('userId')
   if (!userId || !/^[0-9a-f-]{36}$/i.test(userId)) return new Response('Invalid user', { status: 400 })
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.ODOO_SSO_API_KEY) {
-    return new Response('Avatar service unavailable', { status: 503 })
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL
+  const odooApiKey = env.ODOO_SSO_API_KEY || env.SSO_API_KEY
+  const missing = [
+    !supabaseUrl && 'SUPABASE_URL',
+    !env.SUPABASE_SERVICE_ROLE_KEY && 'SUPABASE_SERVICE_ROLE_KEY',
+    !odooApiKey && 'ODOO_SSO_API_KEY',
+  ].filter(Boolean)
+  if (missing.length) {
+    return Response.json({ error: 'Avatar service unavailable', missing }, { status: 503 })
   }
 
-  const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+  const admin = createClient(supabaseUrl!, env.SUPABASE_SERVICE_ROLE_KEY!)
   const { data: profile, error } = await admin.from('profiles').select('email').eq('user_id', userId).maybeSingle()
   if (error || !profile) return new Response('Avatar unavailable', { status: 404 })
   let email = profile.email as string | null
@@ -21,7 +35,7 @@ export const onRequestGet = async ({ request, env }: { request: Request; env: En
 
   const upstream = await fetch(`${String(env.ODOO_BASE || 'https://mrbur.odoo.com').replace(/\/$/, '')}/api/v1/account/public_avatars`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-SSO-API-KEY': env.ODOO_SSO_API_KEY },
+    headers: { 'Content-Type': 'application/json', 'X-SSO-API-KEY': odooApiKey! },
     body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { emails: [email] }, id: 1 }),
   })
   const result = await upstream.json().catch(() => null) as { result?: Record<string, string> } | null

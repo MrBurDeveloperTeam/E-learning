@@ -34,6 +34,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const [followRequestsOpen, setFollowRequestsOpen] = useState(openFollowRequests)
   const [connectionsView, setConnectionsView] = useState<'following' | 'close_friends' | null>(null)
   const [section, setSection] = useState<ProfileSection>('posts')
+  const [backgroundFailed, setBackgroundFailed] = useState(false)
   const activityQuery = useCommunitySettings(userId, section)
   const ownPostsQuery = useCommunitySettings(userId, 'posts')
   const followingQuery = useCommunitySettings(userId, 'following')
@@ -47,6 +48,8 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const username = profile?.username || profile?.email?.split('@')[0] || 'member'
   const avatarUrl = profile?.avatar_url || profileImageUrl
   const incomingFollowRequestCount = (followRequestsQuery.data ?? []).filter(request => request.direction === 'incoming').length
+
+  useEffect(() => { setBackgroundFailed(false) }, [profile?.background_url])
 
   useEffect(() => {
     if (openFollowRequests) setFollowRequestsOpen(true)
@@ -99,7 +102,16 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
 
   return <div className="mt-7">
     <section className="overflow-hidden rounded-3xl border border-border bg-card">
-      <div className="h-28 bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36" />
+      <div className="h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36">
+        {profile?.background_url && !backgroundFailed && (
+          <img
+            src={profile.background_url}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setBackgroundFailed(true)}
+          />
+        )}
+      </div>
       <div className="px-5 pb-6 sm:px-8">
         <div className="-mt-12 flex flex-col gap-5 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-w-0 items-end gap-4">
