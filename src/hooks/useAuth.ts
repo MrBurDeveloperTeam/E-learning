@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { queryClient } from '../lib/queryClient'
 import { useAuthStore } from '../store/authStore'
 import { fetchProfile } from '../lib/queries/profiles'
+import { syncAccountAvatar } from '../lib/syncAccountAvatar'
 
 interface UseAuthOptions {
   initialize?: boolean
@@ -127,6 +128,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
           try {
             const p = await fetchProfile(currentSession.user.id)
             if (mounted) setProfile(p)
+            if (p) void syncAccountAvatar(currentSession.user.id).catch((error) => console.warn('[useAuth] Avatar sync failed:', error))
           } catch {
             // profile may not exist yet
           }
@@ -169,6 +171,7 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
                   setSession(installedSession)
                   const p = await fetchProfile(installedSession.user.id)
                   if (mounted) setProfile(p)
+                  if (p) void syncAccountAvatar(installedSession.user.id).catch((error) => console.warn('[useAuth] Avatar sync failed:', error))
                 }
               } else {
                 clearStore()
@@ -204,7 +207,10 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
         // Fetch profile outside the callback to avoid blocking the
         // auth state change listener (which can cause Web Lock deadlocks).
         void fetchProfile(newSession.user.id)
-          .then((p) => { if (mounted) setProfile(p) })
+          .then((p) => {
+            if (mounted) setProfile(p)
+            if (p) void syncAccountAvatar(newSession.user.id).catch((error) => console.warn('[useAuth] Avatar sync failed:', error))
+          })
           .catch(() => { /* profile may not exist yet */ })
           .finally(() => { if (mounted) setIsLoading(false) })
       } else if (event === 'SIGNED_OUT') {
