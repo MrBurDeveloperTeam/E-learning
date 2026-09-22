@@ -393,12 +393,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
   }
 
   async function signOutUser() {
-    // Stop authenticated Community queries and subscriptions before waiting for
-    // the SSO endpoint. The endpoint may be slow or unreachable, but it must
-    // not keep the user on a busy authenticated page indefinitely.
-    clearStore()
-    queryClient.clear()
-
+    // Keep the current page mounted until navigation. Clearing auth/query state
+    // here makes Community mount a guest feed while its realtime channels are
+    // still being torn down, which can exhaust the tab's memory.
     const logoutController = new AbortController()
     const logoutTimeout = window.setTimeout(() => logoutController.abort(), 5000)
     try {
@@ -412,17 +409,9 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
       console.warn('[useAuth] Worker logout failed:', error)
     } finally {
       window.clearTimeout(logoutTimeout)
-    }
-
-    try {
-      const { error } = await supabase.auth.signOut({ scope: 'local' })
-      if (error) console.warn('[useAuth] Supabase local sign out failed:', error)
-    } catch (error) {
-      console.warn('[useAuth] Supabase local sign out failed:', error)
-    } finally {
+      // Navigation destroys the in-memory Supabase client. Remove its saved
+      // session first so the next visit cannot restore this login.
       clearPersistedSupabaseSession()
-      clearStore()
-      queryClient.clear()
       window.location.replace('https://app.snabbb.com/')
     }
   }
