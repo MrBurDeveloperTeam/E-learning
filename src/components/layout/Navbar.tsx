@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAuthStore } from '../../store/authStore'
-import { cn, getInitials } from '../../lib/utils'
+import { cn } from '../../lib/utils'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { isAdminProfile, isCreatorProfile } from '../../lib/auth'
@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase'
 import { submitCreatorApplication } from '@/lib/creatorApplications'
 import type { CreatorApplication } from '@/types'
 import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 
 const baseNavLinks: { label: string; path: string; search?: Record<string, unknown> }[] = [
   { label: 'Home', path: '/explore' },
@@ -353,15 +354,13 @@ export function Navbar() {
                     onClick={() => setMenuOpen(!menuOpen)}
                     className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-[13px] font-medium text-[#EAF4F3] transition-opacity hover:opacity-90"
                   >
-                    {avatarSrc ? (
-                      <img
-                        src={avatarSrc}
-                        alt={avatarLabel ? `${avatarLabel} avatar` : 'Profile avatar'}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      getInitials(avatarLabel)
-                    )}
+                    <UserAvatar
+                      name={avatarLabel}
+                      avatarUrl={avatarSrc}
+                      userId={user.id}
+                      size={32}
+                      className="border-0 bg-transparent shadow-none"
+                    />
                   </button>
                   <AnimatePresence>
                     {menuOpen && (
@@ -620,13 +619,14 @@ export function Navbar() {
               <div className="my-2 h-px bg-border" />
 
               <div className="flex items-center gap-3 px-3 py-2.5">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-xs font-medium text-[#EAF4F3]">
-                  {avatarSrc ? (
-                    <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    getInitials(avatarLabel)
-                  )}
-                </div>
+                <UserAvatar
+                  name={avatarLabel}
+                  avatarUrl={avatarSrc}
+                  userId={user.id}
+                  size={36}
+                  className="flex-shrink-0 border-0 bg-[#2D6E6A] text-xs text-[#EAF4F3] shadow-none"
+                  textClassName="text-xs"
+                />
                 <div>
                   <p className="text-sm font-medium text-[#1E3333]">
                     {avatarLabel || 'DentalLearn User'}

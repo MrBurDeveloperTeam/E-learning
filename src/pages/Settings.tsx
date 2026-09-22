@@ -37,6 +37,7 @@ import { useProfileImage } from '../hooks/useProfileImage'
 import type { CreatorApplication } from '../types'
 import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
 import { syncAccountAvatar } from '../lib/syncAccountAvatar'
+import { UserAvatar } from '../components/shared/UserAvatar'
 
 type SettingsTab =
   | 'profile'
@@ -585,9 +586,7 @@ export function Settings() {
         <div className="px-6 py-6">
           <div className="flex items-center gap-5 border-b border-border pb-6">
             <div className="relative flex-shrink-0">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-primary/20 text-xl font-medium text-primary">
-                {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" className="h-full w-full object-cover" /> : getInitials(watchedFullName || avatarName)}
-              </div>
+              <UserAvatar name={watchedFullName || avatarName} avatarUrl={avatarPreviewUrl} userId={user?.id} preferAvatarUrl size={64} className="border-0 text-xl shadow-none" textClassName="text-xl" />
               <label className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:opacity-90">
                 {isUploadingAvatar ? <LoadingSpinner size="sm" /> : <Pencil size={10} color='white' />}
                 <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
@@ -635,17 +634,7 @@ export function Settings() {
                 <div className="absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent" />
 
                 <div className="absolute bottom-4 left-4 flex items-end gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-background bg-primary/20 text-lg font-medium text-primary shadow-sm">
-                    {avatarPreviewUrl ? (
-                      <img
-                        src={avatarPreviewUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      getInitials(watchedFullName || avatarName)
-                    )}
-                  </div>
+                  <UserAvatar name={watchedFullName || avatarName} avatarUrl={avatarPreviewUrl} userId={user?.id} preferAvatarUrl size={56} className="border-4 border-background text-lg" textClassName="text-lg" />
                   <div className="pb-1 text-white">
                     <p className="text-sm font-medium">
                       {watchedFullName || profile?.full_name || 'Your channel'}
@@ -1026,9 +1015,7 @@ export function Settings() {
             <div className="sticky top-20 hidden self-start md:block">
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="border-b border-border p-5">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary/20 text-base font-medium text-primary">
-                    {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" className="h-full w-full object-cover" /> : getInitials(watchedFullName || avatarName)}
-                  </div>
+                  <UserAvatar name={watchedFullName || avatarName} avatarUrl={avatarPreviewUrl} userId={user?.id} preferAvatarUrl size={48} className="mb-3 border-0 text-base shadow-none" textClassName="text-base" />
                   <p className="truncate text-sm font-medium text-foreground">{watchedFullName || profile?.full_name || 'DentalLearn User'}</p>
                   <div className="mt-1 flex items-center gap-1.5">
                     <span className="text-xs capitalize text-muted-foreground">{profile?.role ?? 'member'}</span>

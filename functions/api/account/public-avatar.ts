@@ -24,13 +24,13 @@ export const onRequestGet = async ({ request, env }: { request: Request; env: En
   }
 
   const admin = createClient(supabaseUrl!, env.SUPABASE_SERVICE_ROLE_KEY!)
-  const { data: profile, error } = await admin.from('profiles').select('email').eq('user_id', userId).maybeSingle()
-  if (error || !profile) return new Response('Avatar unavailable', { status: 404 })
-  let email = profile.email as string | null
-  if (!email) {
-    const { data } = await admin.auth.admin.getUserById(userId)
-    email = data.user?.email || null
-  }
+  const [{ data: authData }, { data: profile }] = await Promise.all([
+    admin.auth.admin.getUserById(userId),
+    admin.from('profiles').select('email').eq('user_id', userId).maybeSingle(),
+  ])
+  // Auth email is the canonical Snabbb account identity. Older accounts do not
+  // always have a profiles row, so retain the profile email only as a fallback.
+  const email = authData.user?.email || (profile?.email as string | null) || null
   if (!email) return new Response('Avatar unavailable', { status: 404 })
 
   const upstream = await fetch(`${String(env.ODOO_BASE || 'https://mrbur.odoo.com').replace(/\/$/, '')}/api/v1/account/public_avatars`, {
