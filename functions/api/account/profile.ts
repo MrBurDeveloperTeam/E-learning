@@ -16,6 +16,7 @@ function cors(request: Request) {
     'Access-Control-Allow-Origin': allowed ? origin : 'https://e-learning.snabbb.com',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Credentials': 'true',
     'Cache-Control': 'private, no-store',
     Vary: 'Origin',
   }
