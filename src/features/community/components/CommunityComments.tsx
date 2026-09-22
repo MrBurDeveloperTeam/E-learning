@@ -355,6 +355,7 @@ export function CommunityComments({
           <UserAvatar
             name={name}
             avatarUrl={comment.profiles?.avatar_url}
+            userId={comment.author_id}
             size={34}
           />
           <div className="min-w-0 flex-1">

@@ -214,6 +214,7 @@ export function CommunityPostCard({
             <UserAvatar
               name={authorName}
               avatarUrl={post.profiles?.avatar_url}
+              userId={post.author_id}
               size={42}
             />
           </Link>

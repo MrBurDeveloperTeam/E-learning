@@ -225,6 +225,7 @@ export function Profile() {
             <div className="flex items-end justify-between -mt-8 mb-4 gap-4">
               <UserAvatar
                 name={profileName}
+                userId={profile.user_id}
                 avatarUrl={
                   isOwnProfile && profileImageUrl
                     ? profileImageUrl

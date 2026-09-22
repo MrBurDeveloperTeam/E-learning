@@ -77,7 +77,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
       {!query.isLoading && !query.isError && people.length > 0 && <div className="mt-5 space-y-3">{people.map((person) => {
         const name = person.full_name || person.name || 'Community member'
         return <article key={person.relation_id || person.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
-          <UserAvatar name={name} avatarUrl={person.avatar_url} size={48} />
+          <UserAvatar name={name} avatarUrl={person.avatar_url} userId={person.user_id} size={48} />
           <div className="min-w-0 flex-1"><p className="truncate font-semibold">{name}</p><p className="text-xs text-muted-foreground">{connectionsView === 'following' ? person.is_mutual ? 'Mutual follow' : 'Following' : 'Close friend · Mutual follow'}</p></div>
           <Button variant="ghost" render={<Link to="/profile/$userId" params={{ userId: person.user_id }} />}>View profile</Button>
           {connectionsView === 'following' && person.is_mutual && <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:!person.is_close_friend}).then(() => toast.success(person.is_close_friend ? 'Removed from Close friends.' : 'Added to Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><Star className="size-4" />{person.is_close_friend ? 'Remove close friend' : 'Add close friend'}</Button>}
@@ -103,7 +103,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
       <div className="px-5 pb-6 sm:px-8">
         <div className="-mt-12 flex flex-col gap-5 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-w-0 items-end gap-4">
-            <div className="rounded-full border-4 border-card bg-card shadow-sm"><UserAvatar name={displayName} avatarUrl={avatarUrl} size={104} /></div>
+            <div className="rounded-full border-4 border-card bg-card shadow-sm"><UserAvatar name={displayName} avatarUrl={avatarUrl} userId={userId} size={104} /></div>
             <div className="min-w-0 pb-1"><h3 className="truncate text-2xl font-semibold tracking-[-0.03em]">{displayName}</h3><p className="truncate text-sm text-muted-foreground">@{username}</p></div>
           </div>
           <div className="flex flex-wrap gap-2">

@@ -174,7 +174,7 @@ export function CommunitySettings({ userId }: { userId: string }) {
           {(items as CommunityPerson[]).map((person) => {
             const displayName = person.full_name || person.name || 'Community member'
             return <div key={person.relation_id || person.user_id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-              <UserAvatar name={displayName} avatarUrl={person.avatar_url} size={44} />
+              <UserAvatar name={displayName} avatarUrl={person.avatar_url} userId={person.user_id} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 truncate font-semibold">{displayName}{person.is_verified && <GraduationCap className="size-4 text-primary" aria-label="Verified professional" />}</p>
                 <p className="text-xs text-muted-foreground">{section === 'friends' ? 'Accepted friend' : 'Following'}</p>

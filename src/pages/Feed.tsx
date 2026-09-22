@@ -72,6 +72,7 @@ export function Feed() {
                       <UserAvatar
                         name={getDisplayName(creator, 'Unknown creator')}
                         avatarUrl={creator.avatar_url}
+                        userId={entry.following_id}
                         size={40}
                       />
                       <div className="min-w-0">

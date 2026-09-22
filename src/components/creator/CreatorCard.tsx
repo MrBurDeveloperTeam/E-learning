@@ -13,6 +13,7 @@ export function CreatorCard({ profile }: { profile: PublicCreatorProfile }) {
       <div className="flex items-center gap-4">
         <Link to="/channel/$userId" params={{ userId: profile.user_id }}>
           <UserAvatar
+            userId={profile.user_id}
             name={creatorName}
             avatarUrl={profile.avatar_url}
             size={56}
