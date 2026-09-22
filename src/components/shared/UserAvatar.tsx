@@ -18,7 +18,14 @@ export function UserAvatar({
   className,
   textClassName,
 }: UserAvatarProps) {
-  const accountUrl = userId ? `/api/account/public-avatar?userId=${encodeURIComponent(userId)}` : null
+  // The production custom domain's /api/* path is intercepted by the shared
+  // SSO gateway. The Pages domain reaches this app's avatar Function directly.
+  const avatarApiOrigin = window.location.hostname === 'e-learning.snabbb.com'
+    ? 'https://e-learning-ddw.pages.dev'
+    : ''
+  const accountUrl = userId
+    ? `${avatarApiOrigin}/api/account/public-avatar?userId=${encodeURIComponent(userId)}`
+    : null
   const [accountImageFailed, setAccountImageFailed] = useState(false)
   const [fallbackImageFailed, setFallbackImageFailed] = useState(false)
 
