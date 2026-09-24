@@ -399,8 +399,26 @@
   transform: translateX(0);
 }
 
+/* Match the Community SNAI dock: keep half of the cat bed visible until use. */
+.community-ai-dock .snabbb-molar-experience .molar-cat-bed {
+  right: 0 !important;
+  transform: translateX(2.375rem);
+  transition: transform 200ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.community-ai-dock .snabbb-molar-experience .molar-cat-bed:hover,
+.community-ai-dock .snabbb-molar-experience .molar-cat-bed:focus-visible {
+  transform: translateX(0) translateY(-2px) scale(1.04);
+}
+
 .community-ai-dock .snabbb-molar-experience .molar-ai-badge-slot {
   right: 1.5rem;
   left: auto;
   transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-ai-dock .snabbb-molar-experience .molar-cat-bed {
+    transition: none;
+  }
 }
