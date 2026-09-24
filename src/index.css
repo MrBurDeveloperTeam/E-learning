@@ -411,16 +411,6 @@
   transform: translateX(0) translateY(-2px) scale(1.04);
 }
 
-.community-ai-dock .snabbb-molar-experience .molar-cat-wrapper--in-bed {
-  transform: translate(calc(-50% + 2.25rem), -100%) !important;
-  transition: transform 200ms ease !important;
-}
-
-.community-ai-dock .snabbb-molar-experience .molar-cat-bed:hover + .molar-cat-wrapper--in-bed,
-.community-ai-dock .snabbb-molar-experience .molar-cat-bed:focus-visible + .molar-cat-wrapper--in-bed {
-  transform: translate(-50%, -100%) !important;
-}
-
 .community-ai-dock .snabbb-molar-experience .molar-ai-badge-slot {
   right: 1.5rem;
   left: auto;
@@ -432,7 +422,4 @@
     transition: none;
   }
 
-  .community-ai-dock .snabbb-molar-experience .molar-cat-wrapper--in-bed {
-    transition: none !important;
-  }
 }
