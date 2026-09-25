@@ -882,15 +882,15 @@ export function Settings() {
     return (
       <div className="px-6 py-6">
         {NOTIFICATION_GROUPS.map((group, groupIndex) => (
-          <div key={group.label} className={cn(groupIndex > 0 && 'border-t border-[#D6E0E0] pt-5')}>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#9BB5B5]">{group.label}</p>
+          <div key={group.label} className={cn(groupIndex > 0 && 'border-t border-border pt-5')}>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">{group.label}</p>
             {group.items.map((item) => (
-              <div key={item.key} className="flex items-start justify-between border-b border-[#EDF2F2] py-4 last:border-0">
+              <div key={item.key} className="flex items-start justify-between border-b border-border py-4 last:border-0">
                 <div className="flex-1 pr-8">
-                  <p className="text-sm font-medium text-[#1E3333]">{item.label}</p>
-                  <p className="mt-0.5 text-xs text-[#6B8E8E]">{item.description}</p>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{item.description}</p>
                 </div>
-                <Switch checked={notificationSettings[item.key]} onCheckedChange={(checked) => handleNotificationToggle(item.key, checked)} className="data-[state=checked]:bg-[#88C1BD]" />
+                <Switch checked={notificationSettings[item.key]} onCheckedChange={(checked) => handleNotificationToggle(item.key, checked)} className="data-[state=checked]:bg-primary" />
               </div>
             ))}
           </div>
@@ -1036,7 +1036,7 @@ export function Settings() {
                   ))}
                   <div>
                     <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Danger zone</p>
-                    <button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"><LogOut size={16} />Sign out</button>
+                    <button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive dark:hover:bg-red-950/50 dark:hover:text-red-300"><LogOut size={16} />Sign out</button>
                   </div>
                 </nav>
               </div>
