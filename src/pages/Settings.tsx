@@ -125,7 +125,7 @@ const NOTIFICATION_GROUPS = [
 ] as const
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{children}</p>
+  return <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">{children}</p>
 }
 
 function PlaceholderPanel({
@@ -1026,7 +1026,7 @@ export function Settings() {
                 <nav className="p-2">
                   {navGroups.map((group) => (
                     <div key={group.label}>
-                      <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{group.label}</p>
+                      <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{group.label}</p>
                       {group.items.map((item) => {
                         const Icon = item.icon
                         const active = activeTab === item.id
@@ -1034,9 +1034,8 @@ export function Settings() {
                       })}
                     </div>
                   ))}
-                  <div>
-                    <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Danger zone</p>
-                    <button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive dark:hover:bg-red-950/50 dark:hover:text-red-300"><LogOut size={16} />Sign out</button>
+                  <div className="mt-3 border-t border-border pt-2">
+                    <button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-destructive transition-colors duration-150 hover:bg-destructive/10 dark:text-red-300 dark:hover:bg-red-950/50 dark:hover:text-red-200"><LogOut size={16} />Log Out</button>
                   </div>
                 </nav>
               </div>

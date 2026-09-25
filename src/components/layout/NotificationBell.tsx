@@ -129,7 +129,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="relative rounded-lg p-2 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground transition-colors duration-150 hover:bg-muted dark:hover:bg-muted/50"
         aria-label="Notifications"
         aria-expanded={isOpen}
       >
