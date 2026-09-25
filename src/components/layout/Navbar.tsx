@@ -512,7 +512,7 @@ export function Navbar() {
                               event.stopPropagation()
                               void handleSignOut()
                             }}
-                            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-bold text-destructive transition-all hover:bg-destructive/10"
+                            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-bold text-destructive transition-all hover:bg-destructive/10 hover:text-destructive dark:text-red-300 dark:hover:bg-red-950/60 dark:hover:text-red-200"
                           >
                             <LogOut className="h-4 w-4" /> Log Out
                           </button>
@@ -686,7 +686,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#DC2626] transition-colors hover:bg-[#FEE2E2]"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10 dark:text-red-300 dark:hover:bg-red-950/60 dark:hover:text-red-200"
               >
                 Sign out
               </button>

@@ -61,14 +61,14 @@ function getNotificationMessage(notification: NotificationWithActor) {
 
 function NotificationRowSkeleton() {
   return (
-    <div className="flex items-start gap-3 px-4 py-3 border-b border-[#EDF2F2] last:border-0">
-      <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#D4E8E7]" />
-      <div className="h-8 w-8 animate-pulse rounded-full bg-[#EDF2F2]" />
+    <div className="flex items-start gap-3 border-b border-border px-4 py-3 last:border-0">
+      <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/40" />
+      <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
       <div className="flex-1 space-y-2">
-        <div className="h-3 w-4/5 animate-pulse rounded bg-[#EDF2F2]" />
-        <div className="h-2.5 w-2/5 animate-pulse rounded bg-[#EDF2F2]" />
+        <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+        <div className="h-2.5 w-2/5 animate-pulse rounded bg-muted" />
       </div>
-      <div className="h-8 w-12 animate-pulse rounded-md bg-[#EDF2F2]" />
+      <div className="h-8 w-12 animate-pulse rounded-md bg-muted" />
     </div>
   )
 }
@@ -129,7 +129,9 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="relative p-2 rounded-lg text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] transition-colors duration-150"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground transition-colors duration-150 hover:bg-muted dark:hover:bg-muted/50"
+        aria-label="Notifications"
+        aria-expanded={isOpen}
       >
         <svg
           width="20"
@@ -156,16 +158,16 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="fixed left-4 right-4 top-16 z-[120] overflow-hidden rounded-2xl border border-[#D4E8E7] bg-white shadow-lg animate-fade-in md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-[360px]">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#D4E8E7]">
-            <p className="text-sm font-medium text-[#1E3333]">
+        <div className="fixed left-4 right-4 top-16 z-[120] animate-fade-in overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-lg md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-[360px]">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <p className="text-sm font-medium text-foreground">
               Notifications
             </p>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={() => markAllRead.mutate()}
-                className="text-xs text-[#88C1BD] hover:text-[#2D6E6A] transition-colors"
+                className="text-xs text-primary transition-colors hover:text-foreground"
               >
                 Mark all read
               </button>
@@ -185,9 +187,9 @@ export function NotificationBell() {
                   height="24"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="#D4E8E7"
+                  stroke="currentColor"
                   strokeWidth="1.5"
-                  className="mx-auto"
+                  className="mx-auto text-muted-foreground"
                 >
                   <path
                     strokeLinecap="round"
@@ -195,7 +197,7 @@ export function NotificationBell() {
                     d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
                   />
                 </svg>
-                <p className="text-sm text-[#9BB5B5] mt-3">
+                <p className="mt-3 text-sm text-muted-foreground">
                   No notifications yet
                 </p>
               </div>
@@ -211,18 +213,18 @@ export function NotificationBell() {
                     onClick={() => handleNotificationClick(notification)}
                     className={cn(
                       'flex items-start gap-3 px-4 py-3 cursor-pointer',
-                      'border-b border-[#EDF2F2] last:border-0',
-                      'transition-colors hover:bg-[#F7FAFA]',
-                      !notification.is_read && 'bg-[#EAF4F3]'
+                      'border-b border-border last:border-0',
+                      'transition-colors hover:bg-muted/70',
+                      !notification.is_read && 'bg-primary/10'
                     )}
                   >
                     {!notification.is_read ? (
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#88C1BD] flex-shrink-0 mt-1.5" />
+                      <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
                     ) : (
                       <div className="w-1.5 h-1.5 flex-shrink-0" />
                     )}
 
-                    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#D4E8E7] text-[11px] font-medium text-[#2D6E6A]">
+                    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-medium text-secondary-foreground">
                       {notification.profiles?.avatar_url ? (
                         <img
                           src={notification.profiles.avatar_url}
@@ -235,23 +237,23 @@ export function NotificationBell() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#3D5C5C]">
+                      <p className="text-sm text-foreground">
                         {getNotificationMessage(notification)}
                       </p>
 
                       {notification.videos?.title && (
-                        <p className="text-xs text-[#9BB5B5] mt-0.5 truncate">
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
                           {notification.videos.title}
                         </p>
                       )}
 
-                      <p className="text-xs text-[#9BB5B5] mt-0.5">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {timeAgo(notification.created_at)}
                       </p>
                     </div>
 
                     {notification.videos && (
-                      <div className="w-12 h-8 rounded-md bg-[#EDF2F2] flex-shrink-0 overflow-hidden">
+                      <div className="h-8 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                         {notification.videos.thumbnail_url ? (
                           <img
                             src={notification.videos.thumbnail_url}
@@ -266,11 +268,11 @@ export function NotificationBell() {
               })}
           </div>
 
-          <div className="px-4 py-2.5 border-t border-[#D4E8E7] text-center">
+          <div className="border-t border-border px-4 py-2.5 text-center">
             <Link
               to="/notifications"
               onClick={() => setIsOpen(false)}
-              className="text-xs text-[#88C1BD] hover:text-[#2D6E6A] transition-colors"
+              className="text-xs text-primary transition-colors hover:text-foreground"
             >
               View all notifications
             </Link>
