@@ -38,6 +38,9 @@ for (const required of [
   'pet-function/pet/red_bed.png',
   'pet-function/pet/purple_bed.png',
   'pet-function/pets/mallow-spritesheet.webp',
+  'pet-function/items/banana-pixel.png',
+  'pet-function/items/coffee-pixel.png',
+  'pet-function/items/8-ball-pixel.png',
 ]) {
   if (!existsSync(join(host, 'public', required))) {
     throw new Error('Missing prepared pet-function resource: public/' + required);
