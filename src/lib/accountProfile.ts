@@ -114,7 +114,6 @@ export async function fetchAccountProfile() {
 
   const response = await fetch(ACCOUNT_PROFILE_URL, {
     method: 'GET',
-    credentials: 'include',
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${session.access_token}`,
@@ -155,7 +154,6 @@ export async function saveAccountProfile(profile: AccountProfile, photo?: File |
 
   const response = await fetch(ACCOUNT_PROFILE_URL, {
     method: 'POST',
-    credentials: 'include',
     headers: { Authorization: `Bearer ${session.access_token}` },
     body,
   })
