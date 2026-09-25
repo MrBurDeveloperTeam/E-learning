@@ -12,7 +12,8 @@ import ElearningVirtualPet from './petExperience/ElearningVirtualPet'
 import { PersonalizedInsightBridgeProvider } from './aiExperience/petDialogue/PersonalizedInsightBridge'
 import MeowdokuLauncher from './games/MeowdokuLauncher'
 import usePageDurationTracker, { type PageViewLogMeta } from './hooks/usePageDurationTracker'
-import { logElearningActivity } from './lib/logActivityToOdoo'
+import { logElearningActivity, logActivityToOdoo } from './lib/logActivityToOdoo'
+import useSessionDurationTracker from './hooks/useSessionDurationTracker'
 
 // Human-readable label per route, checked most-specific-prefix-first, for
 // the page_view activity description (e.g. "Viewed Watch Video page for
@@ -104,6 +105,32 @@ function InnerApp() {
       })
     }
   )
+
+  // Logs a "session_end" (with the session's total duration) when the user
+  // signs out, closes/leaves the page, or hides the tab — same event the
+  // inventory app sends. The identity is remembered by the hook, so it is
+  // still attributed correctly after sign-out has cleared the auth store.
+  // See hooks/useSessionDurationTracker.ts.
+  const sessionIdentity = useMemo(
+    () =>
+      user?.email
+        ? { email: user.email, name: profile?.full_name ?? null, id: user.id ?? null }
+        : null,
+    [user?.email, user?.id, profile?.full_name]
+  )
+  useSessionDurationTracker(sessionIdentity, (details, durationSeconds, useBeacon, who) => {
+    logActivityToOdoo({
+      logId: crypto.randomUUID(),
+      actorEmail: who.email,
+      actorName: who.name,
+      supabaseUserId: who.id,
+      action: 'session_end',
+      details,
+      occurredAt: new Date().toISOString(),
+      sessionDurationSeconds: durationSeconds,
+      useBeacon,
+    })
+  })
 
   // Scroll to top on route navigation
   useEffect(() => {

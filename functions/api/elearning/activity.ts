@@ -54,6 +54,7 @@ export const onRequestPost = async (context: any) => {
     occurred_at: occurredAt,
     page_path: pagePath = null,
     page_duration_seconds: pageDurationSeconds = null,
+    session_duration_seconds: sessionDurationSeconds = null,
   } = body || {}
 
   if (!externalRef || !actorEmail || !action || !details || !occurredAt) {
@@ -84,6 +85,7 @@ export const onRequestPost = async (context: any) => {
         occurred_at: occurredAt,
         ...(pagePath !== null && { page_path: pagePath }),
         ...(pageDurationSeconds !== null && { page_duration_seconds: pageDurationSeconds }),
+        ...(sessionDurationSeconds !== null && { session_duration_seconds: sessionDurationSeconds }),
       }),
     })
 
