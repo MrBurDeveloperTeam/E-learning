@@ -299,7 +299,7 @@ export function Home() {
                     ?? 'All video types'}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent align="start" className="rounded-xl">
+              <SelectContent align="start" className="rounded-xl bg-muted dark:bg-card">
                 {VIDEO_TYPES.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
                     {item.label}
@@ -326,7 +326,7 @@ export function Home() {
                     ?? 'All languages'}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent align="start" className="rounded-xl">
+              <SelectContent align="start" className="rounded-xl bg-muted dark:bg-card">
                 {VIDEO_LANGUAGE_OPTIONS.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
                     {item.label}

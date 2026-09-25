@@ -261,11 +261,12 @@ export function Navbar() {
                     key={link.path}
                     to={link.path}
                     {...(link.search ? { search: link.search } : {})}
+                    aria-current={active ? 'page' : undefined}
                     className={cn(
                       'relative px-4 py-1.5 text-sm transition-colors duration-150',
                       active
-                        ? 'text-[#1E3333] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-[#88C1BD]'
-                        : 'text-[#6B8E8E] hover:text-[#2D6E6A]'
+                        ? 'font-medium text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-primary'
+                        : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
                     {link.label}
