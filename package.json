@@ -25,7 +25,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/geist": "^5.2.8",
-    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.42",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.43",
     "@mux/mux-player-react": "^3.11.7",
     "@mux/upchunk": "^3.5.0",
     "@supabase/supabase-js": "^2.49.4",
@@ -62,7 +62,7 @@
     "wrangler": "^4.122.0"
   },
   "allowScripts": {
-    "github:mrburdeveloperteam/pet-function#762310cd56be6305f3933da83e09ef3cab8415d2": true,
+    "github:mrburdeveloperteam/pet-function#a59a54551c6831c773633de186b00e76214aed8b": true,
     "esbuild@0.28.2": true,
     "esbuild@0.28.1": true
   }
