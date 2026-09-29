@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import {
   Camera,
   Bell,
+  CircleAlert,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -65,6 +66,15 @@ interface ProfileFormValues {
 function splitProfileName(fullName: string | null | undefined) {
   const [firstName = '', ...lastNameParts] = (fullName ?? '').trim().split(/\s+/).filter(Boolean)
   return { first_name: firstName, last_name: lastNameParts.join(' ') }
+}
+
+function getLocalDateValue() {
+  const today = new Date()
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-')
 }
 
 const SPECIALTY_CATEGORIES = [
@@ -242,7 +252,9 @@ export function Settings() {
 
   const fallbackName = splitProfileName(profile?.full_name ?? profile?.name)
 
-  const { register, handleSubmit, reset, watch, formState: { isDirty, isSubmitting } } = useForm<ProfileFormValues>({
+  const { register, handleSubmit, reset, watch, formState: { errors, isDirty, isSubmitting } } = useForm<ProfileFormValues>({
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       first_name: fallbackName.first_name,
       last_name: fallbackName.last_name,
@@ -262,6 +274,13 @@ export function Settings() {
   })
 
   const watchedFullName = `${watch('first_name') ?? ''} ${watch('last_name') ?? ''}`.trim()
+  const invalidFieldClass = 'border-destructive ring-4 ring-destructive/10 focus:border-destructive focus:ring-destructive/15'
+  const fieldError = (message?: string) => message ? (
+    <p className="flex items-center gap-1.5 text-[11px] font-medium text-destructive" role="alert">
+      <CircleAlert size={12} aria-hidden="true" />
+      {message}
+    </p>
+  ) : null
 
   useEffect(() => {
     if (!accountProfile) return
@@ -677,15 +696,15 @@ export function Settings() {
             {accountProfileQuery.isLoading && <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground"><LoadingSpinner size="sm" />Loading your Snabbb account details...</div>}
             {accountProfileQuery.isError && <p className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">We could not load your Snabbb account details. Please sign in again and refresh this page.</p>}
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5"><label htmlFor="first_name" className="text-xs font-medium text-foreground/70">First Name</label><input id="first_name" className="input-field" {...register('first_name', { required: true })} /></div>
-              <div className="flex flex-col gap-1.5"><label htmlFor="last_name" className="text-xs font-medium text-foreground/70">Last Name</label><input id="last_name" className="input-field" {...register('last_name', { required: true })} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="first_name" className="text-xs font-medium text-foreground/70">First Name</label><input id="first_name" className={cn('input-field', errors.first_name && invalidFieldClass)} aria-invalid={!!errors.first_name} {...register('first_name', { required: 'First name is required.', validate: (value) => !/\p{N}/u.test(value) || 'First name cannot include numbers.' })} />{fieldError(errors.first_name?.message)}</div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="last_name" className="text-xs font-medium text-foreground/70">Last Name</label><input id="last_name" className={cn('input-field', errors.last_name && invalidFieldClass)} aria-invalid={!!errors.last_name} {...register('last_name', { required: 'Last name is required.', validate: (value) => !/\p{N}/u.test(value) || 'Last name cannot include numbers.' })} />{fieldError(errors.last_name?.message)}</div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="email" className="text-xs font-medium text-foreground/70">Email Address</label>
                 <input id="email" disabled value={accountProfile?.email ?? profile?.email ?? user?.email ?? ''} className="input-field cursor-not-allowed bg-muted/50 text-muted-foreground" readOnly />
                 <p className="text-[11px] text-muted-foreground/60">Email cannot be changed</p>
               </div>
-              <div className="flex flex-col gap-1.5"><label htmlFor="phone" className="text-xs font-medium text-foreground/70">Phone Number</label><input id="phone" className="input-field" {...register('phone')} /></div>
-              <div className="flex flex-col gap-1.5"><label htmlFor="date_of_birth" className="text-xs font-medium text-foreground/70">Date of Birth</label><input id="date_of_birth" type="date" className="input-field" {...register('date_of_birth')} /></div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="phone" className="text-xs font-medium text-foreground/70">Phone Number</label><input id="phone" className={cn('input-field', errors.phone && invalidFieldClass)} aria-invalid={!!errors.phone} {...register('phone', { validate: (value) => !/\p{L}/u.test(value) || 'Phone number cannot include letters.' })} />{fieldError(errors.phone?.message)}</div>
+              <div className="flex flex-col gap-1.5"><label htmlFor="date_of_birth" className="text-xs font-medium text-foreground/70">Date of Birth</label><input id="date_of_birth" type="date" max={getLocalDateValue()} className={cn('input-field', errors.date_of_birth && invalidFieldClass)} aria-invalid={!!errors.date_of_birth} {...register('date_of_birth', { validate: (value) => !value || value <= getLocalDateValue() || 'Date of birth cannot be in the future.' })} />{fieldError(errors.date_of_birth?.message)}</div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
                 <label htmlFor="specialty" className="text-xs font-medium text-foreground/70">Your Specialty</label>
                 <div className="relative"><select id="specialty" className="input-field appearance-none bg-transparent pr-9" {...register('specialty')}><option value="">+ Add specialty...</option>{SPECIALTY_CATEGORIES.map((specialty) => <option key={specialty.id} value={specialty.id}>{specialty.name}</option>)}</select><ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" /></div>
