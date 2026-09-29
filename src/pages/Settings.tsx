@@ -274,10 +274,10 @@ export function Settings() {
   })
 
   const watchedFullName = `${watch('first_name') ?? ''} ${watch('last_name') ?? ''}`.trim()
-  const invalidFieldClass = 'border-destructive ring-4 ring-destructive/10 focus:border-destructive focus:ring-destructive/15'
+  const invalidFieldClass = 'border-destructive ring-4 ring-destructive/10 focus:border-destructive focus:ring-destructive/15 dark:border-red-400 dark:ring-red-400/20 dark:focus:border-red-300 dark:focus:ring-red-400/25'
   const fieldError = (message?: string) => message ? (
-    <p className="flex items-center gap-1.5 text-[11px] font-medium text-destructive" role="alert">
-      <CircleAlert size={12} aria-hidden="true" />
+    <p className="flex items-center gap-1.5 text-[11px] font-semibold text-destructive dark:text-red-300" role="alert">
+      <CircleAlert size={12} className="shrink-0 dark:text-red-300" aria-hidden="true" />
       {message}
     </p>
   ) : null
