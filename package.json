@@ -10,8 +10,12 @@
     "prebuild:frontend": "node scripts/prepare-pet.mjs",
     "dev": "vite",
     "dev:frontend": "vite",
+    "predev:local-pet": "npm --prefix ../pet-function run build",
+    "dev:local-pet": "vite --host 127.0.0.1 --mode production --force",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/compress-cloudflare-games.mjs",
     "build:frontend": "tsc -b && vite build",
+    "postbuild:frontend": "node scripts/compress-cloudflare-games.mjs",
     "preview": "vite preview",
     "deploy": "wrangler pages deploy dist --project-name e-learning",
     "deploy:frontend": "wrangler pages deploy dist --project-name e-learning",
@@ -23,7 +27,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/geist": "^5.2.8",
-    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.37",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.44",
     "@mux/mux-player-react": "^3.11.7",
     "@mux/upchunk": "^3.5.0",
     "@supabase/supabase-js": "^2.49.4",
@@ -60,7 +64,7 @@
     "wrangler": "^4.122.0"
   },
   "allowScripts": {
-    "github:mrburdeveloperteam/pet-function#dd9ba28ae8bcf506d755cf04247c590a0321e7e2": true,
+    "github:mrburdeveloperteam/pet-function#a59a54551c6831c773633de186b00e76214aed8b": true,
     "esbuild@0.28.2": true,
     "esbuild@0.28.1": true
   }

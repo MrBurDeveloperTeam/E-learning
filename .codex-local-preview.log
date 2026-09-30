@@ -1,0 +1,695 @@
+
+> dental-learn@0.1.0 predev:local-pet
+> npm --prefix ../pet-function run build
+
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+ESM dist\contracts.js                         0 B
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\apps.js                              46.55 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\todo.js                              382.47 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\inventory.js                         392.61 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\resources.js                         1.11 KB
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\mallow-spritesheet-FVQ6GEUP.webp     1.80 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\munchkinspritesheet-6P6LCRAA.webp    2.18 MB
+ESM dist\mochi-spritesheet-QLJUSGPE.webp      1.80 MB
+ESM dist\silverbelt-spritesheet-OBRHZ3U4.webp 2.19 MB
+ESM dist\fastrat-spritesheet-7NYJLDRI.webp    2.34 MB
+ESM dist\gulu-spritesheet-57CQWOPR.webp       2.20 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM ⚡️ Build success in 221ms
+DTS Build start
+DTS ⚡️ Build success in 16260ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+[postbuild] prepended "use client" to pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+[postbuild] prepended "use client" to elearning.js
+[postbuild] superapp.js already has "use client", skipping
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+
+> dental-learn@0.1.0 dev:local-pet
+> vite --host 127.0.0.1 --mode production --force
+
+1:25:00 pm [vite] (client) Forced re-optimization of dependencies
+
+  VITE v7.3.6   production   ready in 348 ms
+
+  ➜  Local:   http://127.0.0.1:3000/
+  ➜  press h + enter to show help
+1:29:01 pm [vite] vite.config.ts changed, restarting server...
+1:29:02 pm [vite] (client) Forced re-optimization of dependencies
+1:29:02 pm [vite] server restarted.
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+1:33:06 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:33:06 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:33:06 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:33:06 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:33:06 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:33:06 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:33:06 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+ESM dist\mallow-spritesheet-55DNWN2R.webp     0 B
+ESM dist\contracts.js                         0 B
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\apps.js                              46.55 KB
+ESM dist\inventory.js                         392.61 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\todo.js                              382.47 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\resources.js                         1.11 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\mochi-spritesheet-QLJUSGPE.webp      1.80 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\silverbelt-spritesheet-OBRHZ3U4.webp 2.19 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\gulu-spritesheet-57CQWOPR.webp       2.20 MB
+ESM dist\fastrat-spritesheet-7NYJLDRI.webp    2.34 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM dist\munchkinspritesheet-6P6LCRAA.webp    2.18 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM ⚡️ Build success in 260ms
+DTS Build start
+DTS ⚡️ Build success in 13318ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+[postbuild] prepended "use client" to pet.js
+1:33:20 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+[postbuild] prepended "use client" to elearning.js
+[postbuild] superapp.js already has "use client", skipping
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:33:21 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:33:21 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:33:21 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:33:21 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:33:21 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[local-pet] Local pet-function rebuilt; refreshing preview.
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+1:33:22 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:33:22 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:33:22 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:33:22 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:33:22 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:33:22 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:33:22 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+ESM dist\contracts.js                         0 B
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\apps.js                              46.55 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\inventory.js                         392.61 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\todo.js                              382.47 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\resources.js                         1.11 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\mallow-spritesheet-NE7HOA2U.webp     1.80 MB
+ESM dist\mochi-spritesheet-327FPEXP.webp      1.80 MB
+ESM dist\silverbelt-spritesheet-BNGLZTHP.webp 2.20 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\gulu-spritesheet-MROW2YFP.webp       2.20 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM dist\munchkinspritesheet-AFV3NZEN.webp    2.18 MB
+ESM dist\fastrat-spritesheet-LZ6PI44L.webp    2.34 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM ⚡️ Build success in 376ms
+DTS Build start
+1:33:23 pm [vite] (client) hmr invalidate /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js Could not Fast Refresh ("ELEARNING_CAPABILITIES" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:33:23 pm [vite] (client) hmr update /src/App.tsx, /src/pages/Home.tsx
+1:33:23 pm [vite] (client) hmr invalidate /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js Could not Fast Refresh ("detectAndLogPetVisit" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:33:23 pm [vite] (client) hmr update /src/games/MeowdokuLauncher.tsx
+DTS ⚡️ Build success in 12433ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+1:33:36 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+[postbuild] prepended "use client" to pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+[postbuild] prepended "use client" to elearning.js
+1:33:36 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+[postbuild] superapp.js already has "use client", skipping
+1:33:36 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:33:36 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[local-pet] Local pet-function rebuilt; refreshing preview.
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+1:34:39 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:34:39 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:34:39 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:34:39 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+ESM dist\munchkinspritesheet-55DNWN2R.webp    0 B
+ESM dist\contracts.js                         0 B
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\apps.js                              46.55 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\inventory.js                         392.61 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\todo.js                              382.47 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\resources.js                         1.11 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\mallow-spritesheet-NE7HOA2U.webp     1.80 MB
+ESM dist\mochi-spritesheet-327FPEXP.webp      1.80 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\silverbelt-spritesheet-BNGLZTHP.webp 2.20 MB
+ESM dist\fastrat-spritesheet-LZ6PI44L.webp    2.34 MB
+ESM dist\gulu-spritesheet-MROW2YFP.webp       2.20 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM ⚡️ Build success in 242ms
+1:34:39 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:34:39 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:34:39 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+DTS Build start
+1:34:40 pm [vite] (client) hmr invalidate /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js Could not Fast Refresh ("detectAndLogPetVisit" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:34:40 pm [vite] (client) hmr update /src/games/MeowdokuLauncher.tsx
+1:34:40 pm [vite] (client) hmr invalidate /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js Could not Fast Refresh ("ELEARNING_CAPABILITIES" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:34:40 pm [vite] (client) hmr update /src/App.tsx, /src/pages/Home.tsx
+DTS ⚡️ Build success in 12315ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+[postbuild] prepended "use client" to pet.js
+1:34:51 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+[postbuild] prepended "use client" to elearning.js
+[postbuild] superapp.js already has "use client", skipping
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:34:52 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:34:52 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:34:52 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:34:52 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[local-pet] Local pet-function rebuilt; refreshing preview.
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+1:34:53 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:34:53 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:34:53 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:34:53 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:34:53 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:34:53 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:34:53 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+ESM dist\contracts.js                         0 B
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\apps.js                              46.55 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\todo.js                              382.47 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\inventory.js                         392.61 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\resources.js                         1.11 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\mallow-spritesheet-NE7HOA2U.webp     1.80 MB
+ESM dist\mochi-spritesheet-327FPEXP.webp      1.80 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\silverbelt-spritesheet-BNGLZTHP.webp 2.20 MB
+ESM dist\gulu-spritesheet-MROW2YFP.webp       2.20 MB
+ESM dist\munchkinspritesheet-PHPAE2T4.webp    2.18 MB
+ESM dist\fastrat-spritesheet-LZ6PI44L.webp    2.34 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM ⚡️ Build success in 367ms
+DTS Build start
+DTS ⚡️ Build success in 12025ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+[postbuild] prepended "use client" to pet.js
+1:35:06 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+1:35:06 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+[postbuild] prepended "use client" to elearning.js
+[postbuild] superapp.js already has "use client", skipping
+1:35:06 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:35:07 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:35:07 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[local-pet] Local pet-function rebuilt; refreshing preview.
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+1:35:42 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:35:42 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:35:42 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:35:42 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:35:42 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:35:42 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:35:42 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+ESM dist\mallow-spritesheet-55DNWN2R.webp     0 B
+ESM dist\contracts.js                         0 B
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\apps.js                              46.55 KB
+ESM dist\inventory.js                         392.61 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\todo.js                              382.47 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\resources.js                         1.11 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\mochi-spritesheet-327FPEXP.webp      1.80 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\gulu-spritesheet-MROW2YFP.webp       2.20 MB
+ESM dist\fastrat-spritesheet-LZ6PI44L.webp    2.34 MB
+ESM dist\silverbelt-spritesheet-BNGLZTHP.webp 2.20 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM dist\munchkinspritesheet-PHPAE2T4.webp    2.18 MB
+ESM ⚡️ Build success in 274ms
+DTS Build start
+DTS ⚡️ Build success in 13404ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+[postbuild] prepended "use client" to pet.js
+1:35:56 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+[postbuild] prepended "use client" to elearning.js
+[postbuild] superapp.js already has "use client", skipping
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:35:56 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:35:56 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+1:35:57 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:35:57 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:35:57 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[local-pet] Local pet-function rebuilt; refreshing preview.
+
+> @mrburdeveloperteam/pet-function@0.9.41 build
+> tsup && node scripts/postbuild.mjs
+
+CLI Building entry: {"apps":"src/apps/index.ts","inventory":"src/apps/inventory/index.ts","appointment":"src/apps/appointment/index.ts","todo":"src/apps/todo/index.ts","calculator":"src/apps/calculator/index.ts","elearning":"src/apps/elearning/index.ts","image-generator":"src/apps/image-generator/index.ts","superapp":"src/apps/superapp/index.ts","index":"src/index.ts","contracts":"src/contracts/index.ts","cat":"src/cat/index.ts","ai":"src/ai/index.ts","pet":"src/pet/index.ts","options":"src/pet/publicOptions.ts","resources":"src/resources.ts","assets":"src/assets/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: C:\Users\user\Desktop\intern\pet-function\tsup.config.ts
+CLI Target: es2019
+CLI Cleaning output folder
+ESM Build start
+1:35:58 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:35:58 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:35:58 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+1:35:58 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+1:35:58 pm [vite] (client) hmr update /src/App.tsx, /src/games/MeowdokuLauncher.tsx
+1:35:58 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+1:35:58 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+ESM dist\contracts.js                         0 B
+ESM dist\apps.js                              46.55 KB
+ESM dist\grey_bed-7LNENS3Z.png                95.87 KB
+ESM dist\sampleAsset-PQWYABX5.svg             134.00 B
+ESM dist\inventory.js                         392.61 KB
+ESM dist\todo.js                              382.47 KB
+ESM dist\appointment.js                       396.22 KB
+ESM dist\calculator.js                        369.48 KB
+ESM dist\elearning.js                         378.67 KB
+ESM dist\ai.js                                19.64 KB
+ESM dist\image-generator.js                   371.86 KB
+ESM dist\index.js                             292.42 KB
+ESM dist\superapp.js                          409.31 KB
+ESM dist\options.js                           3.10 KB
+ESM dist\pet.js                               264.56 KB
+ESM dist\cat.js                               43.08 KB
+ESM dist\resources.js                         1.11 KB
+ESM dist\assets.js                            138.00 B
+ESM dist\ai_logo-QSU3XLNS.png                 648.33 KB
+ESM dist\mallow-spritesheet-5ERTO6IN.webp     1.80 MB
+ESM dist\red_bed-JF3FLTNM.png                 1.90 MB
+ESM dist\mochi-spritesheet-4K2OXIUW.webp      1.80 MB
+ESM dist\purple_bed-NI4GA4JR.png              1.87 MB
+ESM dist\silverbelt-spritesheet-LLPIEK4F.webp 2.20 MB
+ESM dist\munchkinspritesheet-Y5WRJUT6.webp    2.19 MB
+ESM dist\gulu-spritesheet-SPLMKIYM.webp       2.20 MB
+ESM dist\soap-WD4TKVW3.png                    2.17 MB
+ESM dist\shower-TBC3Y4TW.png                  2.05 MB
+ESM dist\fastrat-spritesheet-HDKJFFFU.webp    2.33 MB
+ESM ⚡️ Build success in 335ms
+DTS Build start
+1:35:58 pm [vite] (client) hmr invalidate /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js Could not Fast Refresh ("ELEARNING_CAPABILITIES" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:35:58 pm [vite] (client) hmr update /src/App.tsx, /src/pages/Home.tsx
+1:35:59 pm [vite] (client) hmr invalidate /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js Could not Fast Refresh ("detectAndLogPetVisit" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:35:59 pm [vite] (client) hmr update /src/games/MeowdokuLauncher.tsx
+DTS ⚡️ Build success in 12238ms
+DTS dist\pet.d.ts                             1020.00 B
+DTS dist\options.d.ts                         877.00 B
+DTS dist\resources.d.ts                       1.36 KB
+DTS dist\cat.d.ts                             4.33 KB
+DTS dist\index.d.ts                           5.33 KB
+DTS dist\apps.d.ts                            1.01 KB
+DTS dist\superapp.d.ts                        11.53 KB
+DTS dist\calculator.d.ts                      24.57 KB
+DTS dist\image-generator.d.ts                 25.44 KB
+DTS dist\elearning.d.ts                       23.76 KB
+DTS dist\appointment.d.ts                     29.76 KB
+DTS dist\inventory.d.ts                       28.82 KB
+DTS dist\todo.d.ts                            23.96 KB
+DTS dist\ai.d.ts                              3.79 KB
+DTS dist\contracts.d.ts                       4.03 KB
+DTS dist\transport-D0MTj2Oh.d.ts              1.23 KB
+DTS dist\databaseClient-CZDq0NV4.d.ts         701.00 B
+DTS dist\petIdentity-DkTRiPm2.d.ts            596.00 B
+DTS dist\ai-BCWIDGPd.d.ts                     2.27 KB
+DTS dist\dialogue-DIa_IIjA.d.ts               2.78 KB
+DTS dist\SharedHostedVirtualPet-DG1hGfoJ.d.ts 1.46 KB
+DTS dist\SharedVirtualPet-DZU80zdO.d.ts       3.25 KB
+DTS dist\SharedCatMascot-DdLCyjA_.d.ts        4.62 KB
+DTS dist\types-Lr-u3D69.d.ts                  2.20 KB
+DTS dist\petRepository-BVOFGkzy.d.ts          13.32 KB
+[postbuild] prepended "use client" to index.js
+[postbuild] prepended "use client" to cat.js
+[postbuild] prepended "use client" to ai.js
+[postbuild] prepended "use client" to pet.js
+1:36:11 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/pet.js
+[postbuild] prepended "use client" to inventory.js
+[postbuild] prepended "use client" to appointment.js
+[postbuild] prepended "use client" to image-generator.js
+[postbuild] prepended "use client" to calculator.js
+[postbuild] prepended "use client" to todo.js
+1:36:11 pm [vite] (client) hmr update /@fs/C:/Users/user/Desktop/intern/pet-function/dist/elearning.js
+[postbuild] prepended "use client" to elearning.js
+[postbuild] superapp.js already has "use client", skipping
+1:36:11 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[postbuild] C:\Users\user\Desktop\intern\pet-function\src\styles\index.css -> C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] compiled C:\Users\user\Desktop\intern\pet-function\src\pet\tailwind-entry.css -> C:\Users\user\Desktop\intern\pet-function\dist\_pet-tailwind-raw.css
+[postbuild] appended scoped Tailwind utilities to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 22 unlayered transform-compat selector(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+[postbuild] appended 132 unlayered theme-compat custom properties and 763 unlayered utility-compat rule(s) to C:\Users\user\Desktop\intern\pet-function\dist\styles.css
+1:36:11 pm [vite] (client) page reload C:/Users/user/Desktop/intern/pet-function/dist/styles.css
+[local-pet] Local pet-function rebuilt; refreshing preview.

@@ -1,0 +1,83 @@
+≈ tailwindcss v4.3.3
+
+Done in 213ms
+(node:13008) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+1:25:01 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:01 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:01 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:01 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:05 pm [vite] http proxy error: /api/user/theme
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:05 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:05 pm [vite] http proxy error: /api/wallet?email=quanmingfong0720%40gmail.com
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:05 pm [vite] http proxy error: /api/user/theme
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:06 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:06 pm [vite] http proxy error: /api/wallet?email=quanmingfong0720%40gmail.com
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:06 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:25:07 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:08 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:08 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:09 pm [vite] http proxy error: /api/user/theme
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:09 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:09 pm [vite] http proxy error: /api/wallet?email=quanmingfong0720%40gmail.com
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:10 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:13 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:13 pm [vite] http proxy error: /api/elearning/activity
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:13 pm [vite] http proxy error: /api/user/theme
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:13 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:13 pm [vite] http proxy error: /api/wallet?email=quanmingfong0720%40gmail.com
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+1:26:14 pm [vite] http proxy error: /api/dental-categories
+Error: connect ECONNREFUSED 127.0.0.1:8787
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+The request id "C:\Users\user\Desktop\intern\pet-function\dist\styles.css" is outside of Vite serving allow list.
+
+- C:/Users/user/Desktop/intern/E-learning
+
+Refer to docs https://vite.dev/config/server-options.html#server-fs-allow for configurations and more details.
+
