@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { getSnabbbSignupUrl } from '@/lib/authLinks'
-import { Logo } from '../components/brand/Logo'
+// import { Logo } from '../components/brand/Logo'
 // import { ThemeToggle } from '../components/layout/ThemeToggle'
 import './Landing.css'
 
@@ -251,15 +251,14 @@ export function Landing() {
   return (
     <main className="dl-landing">
       <nav className="dl-nav" aria-label="Primary navigation">
-        {/* <a className="dl-brand" href="#top" onClick={closeMenu}>
-          <Logo clickable={false} imageClassName="dl-brand-logo" />
-          <span>DentalLearn</span>
-        </a> */}
-        <img
-          src="/logo/Snabbb (Teal).png"
-          alt="Snabbb"
-          className="dl-brand-logo" />
-        <span>E-learning</span>
+        <a className="dl-brand" href="#top" onClick={closeMenu}>
+          <img
+            src="/logo/Snabbb%20(Teal).png"
+            alt="Snabbb"
+            className="dl-brand-logo"
+          />
+          <span>E-learning</span>
+        </a>
 
         <div className={`dl-nav-links ${menuOpen ? 'dl-nav-open' : ''}`}>
           <a href="#features" onClick={closeMenu}>
@@ -496,15 +495,14 @@ export function Landing() {
       </section>
 
       <footer className="dl-footer">
-        {/* <a className="dl-brand" href="#top">
-          <Logo clickable={false} imageClassName="dl-brand-logo" />
-          <span>DentalLearn</span>
-        </a> */}
-        <img
-          src="/logo/Snabbb (Teal).png"
-          alt="Snabbb"
-          className="dl-brand-logo" />
-        <span>E-learning</span>
+        <a className="dl-brand" href="#top">
+          <img
+            src="/logo/Snabbb%20(Teal).png"
+            alt="Snabbb"
+            className="dl-brand-logo"
+          />
+          <span>E-learning</span>
+        </a>
 
         <p>Clinical learning for a better standard of care.</p>
 

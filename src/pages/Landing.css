@@ -52,8 +52,8 @@
 .dl-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: var(--dl-navy);
+  gap: 20px;
+  color: var(--dl-teal-dark);
   font-size: 18px;
   font-weight: 800;
 }
@@ -61,16 +61,18 @@
 .dl-brand-logo {
   display: block !important;
   width: auto !important;
-  height: 29px !important;
+  height: 35px !important;
   object-fit: contain;
 }
 
-.dl-brand span {
-  padding-left: 14px;
-  border-left: 1px solid var(--dl-line);
+.dl-nav .dl-brand > span {
+  padding-left: 20px;
+  border-left: 2px solid var(--dl-line);
   color: var(--dl-teal-dark);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .dl-nav {
