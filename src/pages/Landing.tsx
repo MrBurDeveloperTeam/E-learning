@@ -487,9 +487,8 @@ export function Landing() {
             sharing, and improving together.
           </p>
         </div>
-
         <a className="dl-light-button" href={signupUrl}>
-          Join DentalLearn
+          Sign Up
           <ArrowRight size={18} />
         </a>
       </section>
