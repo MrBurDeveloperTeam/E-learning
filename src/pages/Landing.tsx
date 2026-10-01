@@ -1,10 +1,232 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import {
+  ArrowRight,
+  Award,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Menu,
+  Play,
+  Search,
+  Stethoscope,
+  Users,
+  Video,
+  X,
+} from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { cn } from '@/lib/utils'
 import { getSnabbbSignupUrl } from '@/lib/authLinks'
 import { Logo } from '../components/brand/Logo'
 import { ThemeToggle } from '../components/layout/ThemeToggle'
+import './Landing.css'
+
+const features = [
+  {
+    icon: Video,
+    title: 'Clinical video library',
+    description:
+      'Watch high-definition procedures and clinical demonstrations from dental professionals around the world.',
+  },
+  {
+    icon: Stethoscope,
+    title: 'Expert instruction',
+    description:
+      'Learn practical techniques, treatment planning, and clinical decision-making from experienced practitioners.',
+  },
+  {
+    icon: Award,
+    title: 'CPD-ready learning',
+    description:
+      'Follow structured educational pathways and build knowledge that supports your continuing professional development.',
+  },
+  {
+    icon: Users,
+    title: 'Professional community',
+    description:
+      'Connect with dentists, specialists, educators, and colleagues who share your commitment to better care.',
+  },
+  {
+    icon: Search,
+    title: 'Find what matters',
+    description:
+      'Explore specialties, categories, creators, and topics through a focused learning experience.',
+  },
+  {
+    icon: Clock3,
+    title: 'Learn at your pace',
+    description:
+      'Save useful content and return to important lessons whenever your schedule allows.',
+  },
+]
+
+const faqs = [
+  {
+    question: 'Who is DentalLearn for?',
+    answer:
+      'DentalLearn is built for dentists, specialists, students, educators, and dental professionals who want to learn from reliable clinical content.',
+  },
+  {
+    question: 'What kind of content can I find?',
+    answer:
+      'You can explore clinical procedures, specialty-focused videos, treatment demonstrations, professional insights, and educational resources.',
+  },
+  {
+    question: 'Can I save videos for later?',
+    answer:
+      'Yes. Once signed in, you can save useful videos and return to them from your personal library.',
+  },
+  {
+    question: 'Is DentalLearn available on mobile?',
+    answer:
+      'Yes. The landing page and learning experience are responsive and designed to work across desktop, tablet, and mobile screens.',
+  },
+]
+
+function LearningPreview() {
+  return (
+    <div className="dl-preview-wrap">
+      <div className="dl-preview-glow dl-preview-glow-one" />
+      <div className="dl-preview-glow dl-preview-glow-two" />
+
+      <div className="dl-preview-shell">
+        <div className="dl-browser-bar">
+          <div className="dl-browser-dots" aria-hidden="true">
+            <span className="dl-dot dl-dot-red" />
+            <span className="dl-dot dl-dot-yellow" />
+            <span className="dl-dot dl-dot-green" />
+          </div>
+
+          <div className="dl-browser-address">
+            dentallearn.com/explore
+          </div>
+        </div>
+
+        <div className="dl-preview-app">
+          <aside className="dl-preview-sidebar">
+            <div className="dl-preview-brand">
+              <span className="dl-preview-mark">D</span>
+              <span>DentalLearn</span>
+            </div>
+
+            <div className="dl-preview-nav dl-preview-nav-active">
+              <Video size={15} />
+              <span>Explore</span>
+            </div>
+
+            <div className="dl-preview-nav">
+              <Stethoscope size={15} />
+              <span>Specialties</span>
+            </div>
+
+            <div className="dl-preview-nav">
+              <Award size={15} />
+              <span>Learning paths</span>
+            </div>
+
+            <div className="dl-preview-divider" />
+
+            <div className="dl-preview-label">Your library</div>
+
+            <div className="dl-preview-category">
+              <span className="dl-category-dot dl-category-teal" />
+              Saved videos
+            </div>
+
+            <div className="dl-preview-category">
+              <span className="dl-category-dot dl-category-purple" />
+              Recent learning
+            </div>
+          </aside>
+
+          <div className="dl-preview-content">
+            <div className="dl-preview-toolbar">
+              <strong>Explore clinical learning</strong>
+
+              <div className="dl-preview-toolbar-actions">
+                <div className="dl-preview-search">
+                  <Search size={12} />
+                  Search videos
+                </div>
+                <div className="dl-preview-avatar">DR</div>
+              </div>
+            </div>
+
+            <div className="dl-preview-main">
+              <div className="dl-preview-video-card">
+                <div className="dl-video-image">
+                  <div className="dl-video-image-label">Clinical focus</div>
+                  <div className="dl-video-play">
+                    <Play size={18} fill="currentColor" />
+                  </div>
+                  <span className="dl-video-duration">18:42</span>
+                </div>
+
+                <div className="dl-video-card-copy">
+                  <span className="dl-video-category">Implantology</span>
+                  <strong>Predictable soft tissue management</strong>
+                  <span>Dr. Hannah Lim · 2.4k views</span>
+                </div>
+              </div>
+
+              <div className="dl-preview-video-list">
+                <div className="dl-preview-list-heading">
+                  <span>Recommended for you</span>
+                  <span>View all</span>
+                </div>
+
+                <div className="dl-mini-video">
+                  <div className="dl-mini-video-image dl-mini-video-one">
+                    <Play size={12} fill="currentColor" />
+                  </div>
+                  <div>
+                    <strong>Anterior aesthetics</strong>
+                    <span>12 min · Aesthetics</span>
+                  </div>
+                </div>
+
+                <div className="dl-mini-video">
+                  <div className="dl-mini-video-image dl-mini-video-two">
+                    <Play size={12} fill="currentColor" />
+                  </div>
+                  <div>
+                    <strong>Modern endodontic workflow</strong>
+                    <span>24 min · Endodontics</span>
+                  </div>
+                </div>
+
+                <div className="dl-mini-video">
+                  <div className="dl-mini-video-image dl-mini-video-three">
+                    <Play size={12} fill="currentColor" />
+                  </div>
+                  <div>
+                    <strong>Occlusion essentials</strong>
+                    <span>16 min · Restorative</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="dl-floating-card dl-floating-learning">
+        <CheckCircle2 size={17} />
+        <span>
+          <strong>Learning progress</strong>
+          <small>Pathway 68% complete</small>
+        </span>
+      </div>
+
+      <div className="dl-floating-card dl-floating-community">
+        <Users size={17} />
+        <span>
+          <strong>5,000+ clinicians</strong>
+          <small>Learning together</small>
+        </span>
+      </div>
+    </div>
+  )
+}
 
 export function Landing() {
   const user = useAuthStore((state) => state.user)
@@ -12,6 +234,9 @@ export function Landing() {
   const search = useSearch({ strict: false }) as Record<string, string>
   const redirectTo = search?.redirect ?? '/explore'
   const signupUrl = getSnabbbSignupUrl()
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -21,240 +246,264 @@ export function Landing() {
 
   if (user) return null
 
+  const closeMenu = () => setMenuOpen(false)
+
   return (
-    <div className="min-h-screen bg-background selection:bg-primary/30">
-      {/* Navigation - simplified for landing */}
-      <nav className="fixed top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Logo />
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle className="rounded-full border border-border bg-card/80 shadow-sm backdrop-blur hover:bg-muted" />
-            <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Log In
+    <main className="dl-landing">
+      <nav className="dl-nav" aria-label="Primary navigation">
+        <a className="dl-brand" href="#top" onClick={closeMenu}>
+          <Logo clickable={false} imageClassName="dl-brand-logo" />
+          <span>DentalLearn</span>
+        </a>
+
+        <div className={`dl-nav-links ${menuOpen ? 'dl-nav-open' : ''}`}>
+          <a href="#features" onClick={closeMenu}>
+            Features
+          </a>
+
+          <a href="#workflow" onClick={closeMenu}>
+            How it works
+          </a>
+
+          <a href="#faq" onClick={closeMenu}>
+            FAQ
+          </a>
+
+          <div className="dl-mobile-actions">
+            <Link to="/login" onClick={closeMenu}>
+              Log in
             </Link>
-            <a href={signupUrl} className="bg-foreground text-background px-5 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-lg active:scale-95">
-              Sign Up
+            <a href={signupUrl} onClick={closeMenu}>
+              Sign up
             </a>
           </div>
         </div>
+
+        <div className="dl-nav-actions">
+          <ThemeToggle className="dl-theme-toggle" />
+
+          <Link className="dl-login" to="/login">
+            Log in
+          </Link>
+
+          <a className="dl-nav-cta" href={signupUrl}>
+            Sign up
+            <ArrowRight size={16} />
+          </a>
+        </div>
+
+        <button
+          className="dl-menu-button"
+          onClick={() => setMenuOpen((current) => !current)}
+          aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={menuOpen}
+          type="button"
+        >
+          {menuOpen ? <X size={23} /> : <Menu size={23} />}
+        </button>
       </nav>
 
-      <main>
-        {/* Hero Section */}
-        <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.15)_0%,transparent_70%)]" />
-          
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 relative text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-6 animate-fade-in">
-              <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-              THE FUTURE OF DENTAL EDUCATION
-            </div>
-            
-            <h1 className="text-5xl lg:text-7xl font-bold text-foreground tracking-tight mb-6 leading-[1.1]">
-              Master Dentistry <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">
-                With The World's Best
-              </span>
-            </h1>
-            
-            <p className="max-w-2xl mx-auto text-lg lg:text-xl text-muted-foreground mb-10 leading-relaxed">
-              Experience clinical excellence through high-definition surgical videos, 
-              interactive courses, and insights from global thought leaders in dentistry.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href={signupUrl} className="w-full sm:w-auto bg-primary text-primary-foreground px-8 py-4 rounded-full text-base font-semibold hover:opacity-90 transition-all shadow-xl shadow-primary/20 active:scale-95">
-                Get Started Free
-              </a>
-              <Link to="/explore">
-                <button className="w-full sm:w-auto bg-card border border-border text-foreground px-8 py-4 rounded-full text-base font-semibold hover:bg-muted transition-all active:scale-95">
-                  Browse Videos
-                </button>
-              </Link>
-            </div>
-
-            {/* Visual Mockup - Placeholder using basic CSS styling to look like a video player */}
-            <div className="mt-20 relative max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border-4 border-card animate-fade-in group">
-              <div className="aspect-video bg-muted flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
-                
-                {/* Simulated interface */}
-                <div className="absolute inset-0 p-8 flex flex-col justify-end text-left">
-                  <div className="h-1.5 w-full bg-white/20 rounded-full mb-4">
-                    <div className="h-full w-1/3 bg-primary rounded-full" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="h-3 w-48 bg-white/30 rounded-full" />
-                        <div className="h-2 w-32 bg-white/20 rounded-full" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative z-10 text-white/50 group-hover:text-white/80 transition-colors">
-                  <svg className="w-24 h-24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+      <section id="top" className="dl-hero">
+        <div className="dl-hero-copy">
+          <div className="dl-eyebrow">
+            <span className="dl-live-dot" />
+            The future of dental education
           </div>
-        </section>
 
-        {/* Features Section */}
-        <section className="py-24 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-                Designed for the Modern Clinician
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Comprehensive educational tools built to fit your busy surgical schedule and learning style.
-              </p>
-            </div>
+          <h1>
+            Learn better dentistry,
+            <em> together.</em>
+          </h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {features.map((feature, i) => (
-                <div key={i} className="bg-card p-8 rounded-3xl border border-border hover:border-primary transition-all hover:shadow-xl group">
-                  <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-colors", feature.color)}>
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+          <p>
+            Explore clinical videos, learn from trusted dental professionals,
+            and build practical knowledge in one focused learning community.
+          </p>
+
+          <div className="dl-hero-actions">
+            <a className="dl-primary-button" href={signupUrl}>
+              Start learning
+              <ArrowRight size={18} />
+            </a>
+
+            <Link className="dl-secondary-button" to="/explore">
+              Browse videos
+            </Link>
           </div>
-        </section>
 
-        {/* Categories Preview */}
-        <section className="py-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center gap-16">
-            <div className="flex-1 space-y-8">
-              <h2 className="text-3xl lg:text-5xl font-bold text-foreground leading-tight">
-                Specialize in What <br />
-                Matters to You
-              </h2>
-              <p className="text-muted-foreground text-lg">
-                From basic restorative techniques to advanced microsurgery, 
-                our library covers the full spectrum of modern dentistry.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                {['Implantology', 'Orthodontics', 'Endodontics', 'Periodontics', 'Oral Surgery', 'Aesthetics'].map((cat) => (
-                  <div key={cat} className="flex items-center gap-3 text-foreground font-medium">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                      <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    {cat}
-                  </div>
-                ))}
-              </div>
-              <a href={signupUrl} className="text-primary font-bold inline-flex items-center gap-2 group">
-                Explore all categories
-                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </a>
-            </div>
-            <div className="flex-1 grid grid-cols-2 gap-6 w-full">
-                <div className="space-y-6">
-                  <div className="h-48 rounded-3xl bg-gradient-to-br from-primary to-primary/60 shadow-lg" />
-                  <div className="h-64 rounded-3xl bg-secondary/10 flex items-end p-6 border border-border">
-                    <div className="space-y-2">
-                       <div className="h-2.5 w-20 bg-primary/40 rounded-full" />
-                       <div className="h-2 w-32 bg-primary/20 rounded-full" />
-                    </div>
-                  </div>
-               </div>
-                <div className="space-y-6 pt-12">
-                  <div className="h-64 rounded-3xl bg-muted flex items-center justify-center border border-border">
-                     <svg className="w-12 h-12 text-primary/30" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
-                  </div>
-                  <div className="h-48 rounded-3xl bg-primary/20 shadow-lg border border-primary/10" />
-               </div>
-            </div>
-          </div>
-        </section>
+          <div className="dl-trust-row">
+            <span>
+              <CheckCircle2 size={16} />
+              Expert-led content
+            </span>
 
-        {/* Final CTA */}
-        <section className="py-24">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6">
-            <div className="bg-primary/10 dark:bg-primary/5 rounded-[3rem] p-12 lg:p-20 relative overflow-hidden text-center border border-primary/20">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-              <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-                Ready to elevate <br /> your practice?
-              </h2>
-              <p className="text-muted-foreground text-lg mb-10 max-w-lg mx-auto">
-                Join our community of over 5,000 clinicians and world-class dental educators.
-              </p>
-              <a href={signupUrl} className="inline-block bg-primary text-primary-foreground px-10 py-5 rounded-full text-lg font-bold hover:opacity-90 transition-all shadow-2xl shadow-primary/20 active:scale-95">
-                Join DentalLearn Today
-              </a>
-            </div>
-          </div>
-        </section>
-      </main>
+            <span>
+              <CheckCircle2 size={16} />
+              Built for clinicians
+            </span>
 
-      <footer className="py-12 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="space-y-2 text-center md:text-left">
-            <Logo />
-            <p className="text-muted-foreground text-sm">© 2026 DentalLearn Education Inc.</p>
-          </div>
-          <div className="flex gap-8">
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Professional Terms</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Support</a>
+            <span>
+              <CheckCircle2 size={16} />
+              Learn at your pace
+            </span>
           </div>
         </div>
+
+        <LearningPreview />
+      </section>
+
+      <section className="dl-stat-strip" aria-label="DentalLearn highlights">
+        <div>
+          <strong>5k+</strong>
+          <span>clinicians learning</span>
+        </div>
+
+        <div>
+          <strong>4K</strong>
+          <span>clinical video quality</span>
+        </div>
+
+        <div>
+          <strong>24/7</strong>
+          <span>access to learning</span>
+        </div>
+      </section>
+
+      <section id="features" className="dl-section dl-features">
+        <div className="dl-section-heading">
+          <div className="dl-section-label">A focused learning ecosystem</div>
+          <h2>Everything you need to keep improving.</h2>
+          <p>
+            Discover practical education, trusted perspectives, and a
+            professional community designed around the realities of clinical
+            practice.
+          </p>
+        </div>
+
+        <div className="dl-feature-grid">
+          {features.map((feature) => {
+            const Icon = feature.icon
+
+            return (
+              <article className="dl-feature-card" key={feature.title}>
+                <div className="dl-feature-icon">
+                  <Icon size={22} />
+                </div>
+
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section id="workflow" className="dl-workflow">
+        <div className="dl-section-heading">
+          <div className="dl-section-label">A simple clinical learning loop</div>
+          <h2>From curiosity to confidence.</h2>
+          <p>
+            Build a habit of learning that fits naturally into your workday,
+            your study time, and your long-term professional goals.
+          </p>
+        </div>
+
+        <div className="dl-workflow-grid">
+          <div>
+            <span>01</span>
+            <strong>Discover</strong>
+            <p>
+              Find clinical videos, specialists, and subjects that match your
+              interests.
+            </p>
+          </div>
+
+          <div>
+            <span>02</span>
+            <strong>Understand</strong>
+            <p>
+              Watch detailed procedures and learn the thinking behind each
+              clinical decision.
+            </p>
+          </div>
+
+          <div>
+            <span>03</span>
+            <strong>Apply</strong>
+            <p>
+              Save useful lessons and bring new ideas into your next clinical
+              conversation.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="dl-section dl-faq">
+        <div className="dl-section-heading">
+          <div className="dl-section-label">Questions</div>
+          <h2>Good to know.</h2>
+          <p>Some quick answers about learning with DentalLearn.</p>
+        </div>
+
+        <div className="dl-faq-list">
+          {faqs.map((faq, index) => {
+            const isOpen = openFaq === index
+
+            return (
+              <div
+                className={`dl-faq-item ${isOpen ? 'is-open' : ''}`}
+                key={faq.question}
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(isOpen ? null : index)}
+                  aria-expanded={isOpen}
+                >
+                  <span>{faq.question}</span>
+                  <ChevronDown size={19} />
+                </button>
+
+                {isOpen && (
+                  <div className="dl-faq-answer">
+                    <p>{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="dl-final-cta">
+        <div>
+          <div className="dl-section-label">Your next lesson is waiting</div>
+          <h2>Make every clinical moment count.</h2>
+          <p>
+            Join a growing community of dental professionals learning,
+            sharing, and improving together.
+          </p>
+        </div>
+
+        <a className="dl-light-button" href={signupUrl}>
+          Join DentalLearn
+          <ArrowRight size={18} />
+        </a>
+      </section>
+
+      <footer className="dl-footer">
+        <a className="dl-brand" href="#top">
+          <Logo clickable={false} imageClassName="dl-brand-logo" />
+          <span>DentalLearn</span>
+        </a>
+
+        <p>Clinical learning for a better standard of care.</p>
+
+        <div className="dl-footer-links">
+          <a href="#features">Features</a>
+          <a href="#workflow">How it works</a>
+          <a href="#faq">FAQ</a>
+        </div>
       </footer>
-    </div>
+    </main>
   )
 }
-
-const features = [
-  {
-    title: 'Expert Instruction',
-    description: 'Learn step-by-step from world-renowned surgeons and specialized practitioners.',
-    color: 'bg-primary/10 text-primary',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-    )
-  },
-  {
-    title: '4K Clinical Video',
-    description: 'Crystal clear surgical perspectives that feel like you are standing right next to the chair.',
-    color: 'bg-[#F0EAFB] text-[#7C3AED]',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-      </svg>
-    )
-  },
-  {
-    title: 'CE Certification',
-    description: 'Earn continuing education credits recognized globally on completion of specialized pathways.',
-    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-    )
-  }
-]
