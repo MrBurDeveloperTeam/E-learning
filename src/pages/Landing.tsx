@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowRight,
-  Award,
   CheckCircle2,
   ChevronDown,
-  Clock3,
   Menu,
+  Upload,
   Play,
-  Search,
   Stethoscope,
   Users,
   Video,
@@ -34,28 +32,16 @@ const features = [
       'Learn practical techniques, treatment planning, and clinical decision-making from experienced practitioners.',
   },
   {
-    icon: Award,
-    title: 'CPD-ready learning',
-    description:
-      'Follow structured educational pathways and build knowledge that supports your continuing professional development.',
-  },
-  {
     icon: Users,
     title: 'Professional community',
     description:
       'Connect with dentists, specialists, educators, and colleagues who share your commitment to better care.',
   },
   {
-    icon: Search,
-    title: 'Find what matters',
+    icon: Upload,
+    title: 'Become a content creator',
     description:
-      'Explore specialties, categories, creators, and topics through a focused learning experience.',
-  },
-  {
-    icon: Clock3,
-    title: 'Learn at your pace',
-    description:
-      'Save useful content and return to important lessons whenever your schedule allows.',
+      'Share your clinical knowledge with the community by uploading videos and educational content.',
   },
 ]
 
@@ -118,11 +104,6 @@ function LearningPreview() {
               <span>Specialties</span>
             </div>
 
-            <div className="dl-preview-nav">
-              <Award size={15} />
-              <span>Learning paths</span>
-            </div>
-
             <div className="dl-preview-divider" />
 
             <div className="dl-preview-label">Your library</div>
@@ -143,10 +124,6 @@ function LearningPreview() {
               <strong>Explore clinical learning</strong>
 
               <div className="dl-preview-toolbar-actions">
-                <div className="dl-preview-search">
-                  <Search size={12} />
-                  Search videos
-                </div>
                 <div className="dl-preview-avatar">DR</div>
               </div>
             </div>

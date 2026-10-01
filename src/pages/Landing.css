@@ -1024,6 +1024,10 @@
   font-size: 13px;
 }
 
+.dl-footer .dl-brand > span {
+  font-weight: 400;
+}
+
 .dl-footer-links {
   display: flex;
   gap: 24px;
