@@ -24,14 +24,25 @@
   box-sizing: border-box;
 }
 
-.dl-landing a,
-.dl-landing button {
-  font: inherit;
-}
-
 .dl-landing a {
   color: inherit;
   text-decoration: none;
+}
+
+.dl-landing .dl-primary-button {
+  color: #ffffff;
+}
+
+.dl-landing .dl-primary-button svg {
+  color: #ffffff;
+}
+
+.dl-landing .dl-nav-cta {
+  color: #ffffff;
+}
+
+.dl-landing .dl-nav-cta svg {
+  color: #ffffff;
 }
 
 .dl-landing button {

@@ -258,8 +258,8 @@ export function Landing() {
         <img
           src="/logo/Snabbb (Teal).png"
           alt="Snabbb"
-          className="dl-brand-logo"
-        />
+          className="dl-brand-logo" />
+        <span>E-learning</span>
 
         <div className={`dl-nav-links ${menuOpen ? 'dl-nav-open' : ''}`}>
           <a href="#features" onClick={closeMenu}>
@@ -327,15 +327,15 @@ export function Landing() {
 
           <div className="dl-hero-actions">
             <a className="dl-primary-button" href={signupUrl}>
-              Start learning
+              Sign Up
               <ArrowRight size={18} />
             </a>
 
-            <Link className="dl-secondary-button" to="/explore">
-              Browse videos
-            </Link>
+            <a className="dl-secondary-button" href="#features">
+              Explore Features
+            </a>
           </div>
-
+          
           <div className="dl-trust-row">
             <span>
               <CheckCircle2 size={16} />
@@ -503,8 +503,8 @@ export function Landing() {
         <img
           src="/logo/Snabbb (Teal).png"
           alt="Snabbb"
-          className="dl-brand-logo"
-        />
+          className="dl-brand-logo" />
+        <span>E-learning</span>
 
         <p>Clinical learning for a better standard of care.</p>
 
