@@ -55,9 +55,20 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <main className="w-full max-w-xl rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-2xl sm:p-8 lg:p-10">
-        <div className="mb-8 text-left">
+        {/* <div className="mb-8 text-left">
           <Logo className="mb-5" imageClassName="h-7" />
           <h1 className="text-3xl font-black tracking-tighter text-slate-900">Welcome Back</h1>
+        </div> */}
+        <div className="mb-8 text-left">
+          <img
+            src="/logo/Snabbb (Teal).png"
+            alt="Snabbb"
+            className="mb-5 block h-7 w-auto object-contain"
+          />
+
+          <h1 className="text-3xl font-black tracking-tighter text-slate-900">
+            Welcome Back
+          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
