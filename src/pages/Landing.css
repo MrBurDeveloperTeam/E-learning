@@ -114,15 +114,6 @@
   gap: 17px;
 }
 
-/* Only remove the theme-toggle selection from landing page */
-/* .dl-theme-toggle {
-  width: 36px !important;
-  height: 36px !important;
-  border: 1px solid var(--dl-line);
-  border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.8);
-} */
-
 .dl-landing .dl-login {
   font-weight: 400;
 }
@@ -794,8 +785,8 @@
 
 .dl-feature-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
 }
 
 .dl-feature-card {
@@ -1025,7 +1016,8 @@
 }
 
 .dl-footer .dl-brand > span {
-  font-weight: 400;
+  font-weight: 500;
+  font-size: 15px;
 }
 
 .dl-footer-links {
@@ -1154,7 +1146,7 @@
   }
 
   .dl-feature-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .dl-final-cta {
