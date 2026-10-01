@@ -48,8 +48,10 @@
 }
 
 .dl-brand-logo {
+  display: block !important;
   width: auto !important;
   height: 29px !important;
+  object-fit: contain;
 }
 
 .dl-brand span {
@@ -99,13 +101,14 @@
   gap: 17px;
 }
 
-.dl-theme-toggle {
+/* Only remove the theme-toggle selection from landing page */
+/* .dl-theme-toggle {
   width: 36px !important;
   height: 36px !important;
   border: 1px solid var(--dl-line);
   border-radius: 999px !important;
   background: rgba(255, 255, 255, 0.8);
-}
+} */
 
 .dl-login {
   padding: 10px 3px;

@@ -17,7 +17,7 @@ import {
 import { useAuthStore } from '@/store/authStore'
 import { getSnabbbSignupUrl } from '@/lib/authLinks'
 import { Logo } from '../components/brand/Logo'
-import { ThemeToggle } from '../components/layout/ThemeToggle'
+// import { ThemeToggle } from '../components/layout/ThemeToggle'
 import './Landing.css'
 
 const features = [
@@ -251,10 +251,15 @@ export function Landing() {
   return (
     <main className="dl-landing">
       <nav className="dl-nav" aria-label="Primary navigation">
-        <a className="dl-brand" href="#top" onClick={closeMenu}>
+        {/* <a className="dl-brand" href="#top" onClick={closeMenu}>
           <Logo clickable={false} imageClassName="dl-brand-logo" />
           <span>DentalLearn</span>
-        </a>
+        </a> */}
+        <img
+          src="/logo/Snabbb (Teal).png"
+          alt="Snabbb"
+          className="dl-brand-logo"
+        />
 
         <div className={`dl-nav-links ${menuOpen ? 'dl-nav-open' : ''}`}>
           <a href="#features" onClick={closeMenu}>
@@ -280,7 +285,7 @@ export function Landing() {
         </div>
 
         <div className="dl-nav-actions">
-          <ThemeToggle className="dl-theme-toggle" />
+          {/* <ThemeToggle className="dl-theme-toggle" /> */}
 
           <Link className="dl-login" to="/login">
             Log in
@@ -491,10 +496,15 @@ export function Landing() {
       </section>
 
       <footer className="dl-footer">
-        <a className="dl-brand" href="#top">
+        {/* <a className="dl-brand" href="#top">
           <Logo clickable={false} imageClassName="dl-brand-logo" />
           <span>DentalLearn</span>
-        </a>
+        </a> */}
+        <img
+          src="/logo/Snabbb (Teal).png"
+          alt="Snabbb"
+          className="dl-brand-logo"
+        />
 
         <p>Clinical learning for a better standard of care.</p>
 
