@@ -158,7 +158,9 @@
 }
 
 .dl-nav-cta {
-  padding: 14px 20px;
+  min-height: 44px;
+  padding: 11px 16px;
+  font-size: 15px;
 }
 
 .dl-primary-button {
@@ -952,7 +954,7 @@
   padding: 68px clamp(28px, 6vw, 85px);
   border-radius: 24px;
   color: #ffffff;
-  background: var(--dl-teal-dark);
+  background: #43847d;
 }
 
 .dl-final-cta h2 {
