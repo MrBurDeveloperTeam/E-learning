@@ -228,7 +228,12 @@ export function Landing() {
   return (
     <main className="dl-landing">
       <nav className="dl-nav" aria-label="Primary navigation">
-        <a className="dl-brand" href="#top" onClick={closeMenu}>
+        <a
+          className="dl-brand"
+          href="https://app.snabbb.com/"
+          aria-label="Go to Snabbb Home"
+          onClick={closeMenu}
+        >
           <img
             src="/logo/Snabbb%20(Teal).png"
             alt="Snabbb"
@@ -475,7 +480,7 @@ export function Landing() {
       </section>
 
       <footer className="dl-footer">
-        <a className="dl-brand" href="#top">
+        <a className="dl-brand" href="https://app.snabbb.com/" aria-label="Go to Snabbb Home">
           <img
             src="/logo/Snabbb%20(Teal).png"
             alt="Snabbb"
