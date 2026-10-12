@@ -25,6 +25,7 @@ import Register from '@/pages/Register'
 import { Notifications } from '@/pages/Notifications'
 import { AdminDashboard } from '@/pages/admin/AdminDashboard'
 import { ContentReview } from '@/pages/admin/ContentReview'
+import { AdminSubtitles } from '@/pages/admin/AdminSubtitles'
 import { UserManagement } from '@/pages/admin/UserManagement'
 import { AdminFetchVideos } from '@/pages/admin/AdminFetchVideos'
 import { AdvertisementManagement } from '@/pages/admin/AdvertisementManagement'
@@ -247,6 +248,16 @@ const adminContentRoute = createRoute({
   ),
 })
 
+const adminSubtitlesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/subtitles',
+  component: () => (
+    <ProtectedRoute requireAdmin>
+      <AdminSubtitles />
+    </ProtectedRoute>
+  ),
+})
+
 const adminCommunityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/community',
@@ -341,6 +352,7 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   adminApplicationsRoute,
   adminContentRoute,
+  adminSubtitlesRoute,
   adminCommunityRoute,
   adminUsersRoute,
   adminFetchVideosRoute,
