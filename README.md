@@ -183,3 +183,7 @@ If a code expires, copy a new one and run the classifier again. Successfully
 classified rows are skipped automatically on the next run. The live report is
 kept only in the current browser page and is not stored in a new table or column.
 Refreshing or closing the page clears it.
+
+## Local AI subtitles
+
+Admin → AI subtitles (/admin/subtitles). Start the local engine with start-subtitles.cmd. See [setup and usage](tools/subtitles/WEB-INTEGRATION.md).

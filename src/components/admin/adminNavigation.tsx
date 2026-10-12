@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   ShieldEllipsis,
+  Captions,
   MessagesSquare,
   Users,
   Youtube,
@@ -37,6 +38,11 @@ export function getAdminSidebarItems(
       path: '/admin/content',
       badge: dentalReview,
       icon: <ShieldEllipsis className="h-4 w-4" />,
+    },
+    {
+      label: 'AI subtitles',
+      path: '/admin/subtitles',
+      icon: <Captions className="h-4 w-4" />,
     },
     {
       label: 'Community review',

@@ -18,3 +18,9 @@ supabase/.branches/
 local-db-backups/
 supabase/seed.sql
 /public/pet-function/
+
+# Local AI subtitle runtime and media
+tools/subtitles/.venv/
+tools/subtitles/models/
+tools/subtitles/output/
+tools/subtitles/.session-token
