@@ -108,7 +108,7 @@ export default function Login() {
           </label>
 
           <button type="submit" disabled={loading} className="mt-2 w-full rounded-xl bg-slate-900 py-3 text-base font-bold text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
-            {loading ? <LoadingSpinner size="sm" /> : 'Log in'}
+            {loading ? <LoadingSpinner size="sm" /> : 'Log In'}
           </button>
         </form>
 

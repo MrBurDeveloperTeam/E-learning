@@ -280,7 +280,7 @@ export function Navbar() {
             {!user ? (
               <>
                 <Link to="/login" search={{ redirect: undefined }} className="hidden md:block">
-                  <button type="button" className="btn-ghost text-sm">Log in</button>
+                  <button type="button" className="btn-ghost text-sm">Log In</button>
                 </Link>
                 <Link to="/register" className="hidden md:block">
                   <button type="button" className="btn-primary px-4 py-2 text-sm">Get started</button>
@@ -695,7 +695,7 @@ export function Navbar() {
             <div className="space-y-2 py-2">
               <Link to="/login" search={{ redirect: undefined }} onClick={closeMobileMenu} className="block">
                 <button type="button" className="btn-outline w-full text-sm">
-                  Log in
+                  Log In
                 </button>
               </Link>
               <Link to="/register" onClick={closeMobileMenu} className="block">
