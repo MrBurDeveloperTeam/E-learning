@@ -257,7 +257,7 @@ export function Landing() {
 
           <div className="dl-mobile-actions">
             <Link to="/login" onClick={closeMenu}>
-              Log in
+              Log In
             </Link>
             <a href={signupUrl} onClick={closeMenu}>
               Sign up
@@ -269,7 +269,7 @@ export function Landing() {
           {/* <ThemeToggle className="dl-theme-toggle" /> */}
 
           <Link className="dl-login" to="/login">
-            Log in
+            Log In
           </Link>
 
           <a className="dl-nav-cta" href={signupUrl}>
