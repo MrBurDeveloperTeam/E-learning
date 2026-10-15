@@ -22,7 +22,7 @@ import { logElearningActivity } from '@/lib/logActivityToOdoo'
 import { useElearningPersonalizedInsightState } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
 import { usePublishPersonalizedInsight, type PersonalizedInsightBridgeState } from '@/aiExperience/petDialogue/PersonalizedInsightBridge'
 import type { ElearningInsightCandidate } from '@/aiExperience/resolver/resolveElearningInsight'
-import { Clapperboard, Languages } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, Languages } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -328,6 +328,13 @@ export function Home() {
     }
   }
 
+  const scrollCreatorsBy = (distance: number) => {
+    const container = creatorScrollRef.current
+    if (container) {
+      container.scrollLeft += distance
+    }
+  }
+
   return (
     <>
       <Navbar />
@@ -411,32 +418,52 @@ export function Home() {
               </div>
             ))}
           </div>
-          <div
-            ref={creatorScrollbarRef}
-            role="scrollbar"
-            tabIndex={0}
-            aria-controls="creator-follow-suggestions"
-            aria-label="Scroll creators to follow"
-            aria-valuemin={0}
-            aria-valuemax={creatorScrollbar.maxScroll}
-            aria-valuenow={creatorScrollbar.scrollLeft}
-            onClick={handleCreatorScrollbarTrackClick}
-            onKeyDown={handleCreatorScrollbarKeyDown}
-            className="relative mt-2 h-1.5 w-full cursor-pointer rounded-full bg-border/80 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
+          <div className="mt-2 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => scrollCreatorsBy(-240)}
+              disabled={creatorScrollbar.maxScroll === 0 || creatorScrollbar.scrollLeft === 0}
+              aria-label="Scroll creators left"
+              className="flex h-4 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
             <div
-              ref={creatorScrollbarThumbRef}
-              onPointerDown={handleCreatorScrollbarPointerDown}
-              onPointerMove={handleCreatorScrollbarPointerMove}
-              onPointerUp={handleCreatorScrollbarPointerUp}
-              onPointerCancel={handleCreatorScrollbarPointerUp}
-              style={{
-                left: `${creatorScrollbar.thumbLeft}%`,
-                width: `${creatorScrollbar.thumbWidth}%`,
-              }}
-              className="absolute inset-y-0 rounded-full bg-primary transition-[left,width] duration-100 hover:bg-primary/90"
-              aria-hidden="true"
-            />
+              ref={creatorScrollbarRef}
+              role="scrollbar"
+              tabIndex={0}
+              aria-controls="creator-follow-suggestions"
+              aria-label="Scroll creators to follow"
+              aria-valuemin={0}
+              aria-valuemax={creatorScrollbar.maxScroll}
+              aria-valuenow={creatorScrollbar.scrollLeft}
+              onClick={handleCreatorScrollbarTrackClick}
+              onKeyDown={handleCreatorScrollbarKeyDown}
+              className="relative h-4 min-w-0 flex-1 cursor-pointer rounded-full bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <div
+                ref={creatorScrollbarThumbRef}
+                onPointerDown={handleCreatorScrollbarPointerDown}
+                onPointerMove={handleCreatorScrollbarPointerMove}
+                onPointerUp={handleCreatorScrollbarPointerUp}
+                onPointerCancel={handleCreatorScrollbarPointerUp}
+                style={{
+                  left: `${creatorScrollbar.thumbLeft}%`,
+                  width: `${creatorScrollbar.thumbWidth}%`,
+                }}
+                className="absolute inset-y-0 rounded-full bg-primary transition-[left,width] duration-100 hover:bg-primary/90"
+                aria-hidden="true"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollCreatorsBy(240)}
+              disabled={creatorScrollbar.maxScroll === 0 || creatorScrollbar.scrollLeft >= creatorScrollbar.maxScroll}
+              aria-label="Scroll creators right"
+              className="flex h-4 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
           </div>
         </div>
       )}
