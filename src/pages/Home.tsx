@@ -276,7 +276,7 @@ export function Home() {
             {creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex w-[280px] flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
+                className="flex w-fit min-w-[210px] flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
