@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
@@ -47,6 +47,21 @@ export function Home() {
   const user = useAuthStore((state) => state.user)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
   const creatorScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const creatorScrollbarRef = useRef<HTMLDivElement>(null)
+  const creatorScrollbarThumbRef = useRef<HTMLDivElement>(null)
+  const creatorScrollbarDragRef = useRef<{
+    startX: number
+    startScrollLeft: number
+    maxScroll: number
+    trackWidth: number
+    thumbWidth: number
+  } | null>(null)
+  const [creatorScrollbar, setCreatorScrollbar] = useState({
+    thumbWidth: 100,
+    thumbLeft: 0,
+    maxScroll: 0,
+    scrollLeft: 0,
+  })
   const navigate = useNavigate()
   // Phase-2B: Followed Creator Posted, Latest Video Performance, Most
   // Viewed Video. Pure, synchronous, reevaluates whenever the shared
@@ -213,6 +228,106 @@ export function Home() {
     .filter((creator) => !followingIds.has(creator.user_id))
   const hasMoreCreatorSuggestions = creatorSuggestionsQuery.hasNextPage
 
+  const updateCreatorScrollbar = useCallback(() => {
+    const container = creatorScrollRef.current
+    if (!container) return
+
+    const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth)
+    const thumbWidth = maxScroll === 0
+      ? 100
+      : Math.max(18, (container.clientWidth / container.scrollWidth) * 100)
+    const scrollRatio = maxScroll === 0 ? 0 : container.scrollLeft / maxScroll
+
+    setCreatorScrollbar({
+      thumbWidth,
+      thumbLeft: scrollRatio * (100 - thumbWidth),
+      maxScroll,
+      scrollLeft: container.scrollLeft,
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    const container = creatorScrollRef.current
+    if (!container) return
+
+    updateCreatorScrollbar()
+    container.addEventListener('scroll', updateCreatorScrollbar, { passive: true })
+    const resizeObserver = new ResizeObserver(updateCreatorScrollbar)
+    resizeObserver.observe(container)
+
+    return () => {
+      container.removeEventListener('scroll', updateCreatorScrollbar)
+      resizeObserver.disconnect()
+    }
+  }, [creatorSuggestions.length, updateCreatorScrollbar])
+
+  const handleCreatorScrollbarTrackClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || creatorScrollbar.maxScroll === 0) return
+
+    const track = event.currentTarget.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (event.clientX - track.left) / track.width))
+    const container = creatorScrollRef.current
+    if (container) {
+      container.scrollLeft = ratio * creatorScrollbar.maxScroll
+    }
+  }
+
+  const handleCreatorScrollbarPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (creatorScrollbar.maxScroll === 0) return
+
+    const track = creatorScrollbarRef.current
+    const container = creatorScrollRef.current
+    if (!track || !container) return
+
+    creatorScrollbarDragRef.current = {
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft,
+      maxScroll: creatorScrollbar.maxScroll,
+      trackWidth: track.clientWidth,
+      thumbWidth: creatorScrollbar.thumbWidth,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
+
+  const handleCreatorScrollbarPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = creatorScrollbarDragRef.current
+    const container = creatorScrollRef.current
+    if (!drag || !container) return
+
+    const draggableWidth = drag.trackWidth * (1 - drag.thumbWidth / 100)
+    if (draggableWidth <= 0) return
+
+    const distance = event.clientX - drag.startX
+    container.scrollLeft = drag.startScrollLeft + (distance / draggableWidth) * drag.maxScroll
+  }
+
+  const handleCreatorScrollbarPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    creatorScrollbarDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  const handleCreatorScrollbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const container = creatorScrollRef.current
+    if (!container) return
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault()
+      container.scrollLeft += 120
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      container.scrollLeft -= 120
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      container.scrollLeft = 0
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      container.scrollLeft = container.scrollWidth
+    }
+  }
+
   return (
     <>
       <Navbar />
@@ -271,7 +386,7 @@ export function Home() {
           <div
             ref={creatorScrollRef}
             id="creator-follow-suggestions"
-            className="creator-scrollbar flex cursor-grab select-none gap-3 overflow-x-auto pb-2 active:cursor-grabbing touch-pan-y"
+            className="scrollbar-hide flex cursor-grab select-none gap-3 overflow-x-auto pb-1 active:cursor-grabbing touch-pan-y"
           >
             {creatorSuggestions.map((creator) => (
               <div
@@ -295,6 +410,33 @@ export function Home() {
                 <FollowButton userId={creator.user_id} size="sm" />
               </div>
             ))}
+          </div>
+          <div
+            ref={creatorScrollbarRef}
+            role="scrollbar"
+            tabIndex={0}
+            aria-controls="creator-follow-suggestions"
+            aria-label="Scroll creators to follow"
+            aria-valuemin={0}
+            aria-valuemax={creatorScrollbar.maxScroll}
+            aria-valuenow={creatorScrollbar.scrollLeft}
+            onClick={handleCreatorScrollbarTrackClick}
+            onKeyDown={handleCreatorScrollbarKeyDown}
+            className="relative mt-2 h-1.5 w-full cursor-pointer rounded-full bg-border/80 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <div
+              ref={creatorScrollbarThumbRef}
+              onPointerDown={handleCreatorScrollbarPointerDown}
+              onPointerMove={handleCreatorScrollbarPointerMove}
+              onPointerUp={handleCreatorScrollbarPointerUp}
+              onPointerCancel={handleCreatorScrollbarPointerUp}
+              style={{
+                left: `${creatorScrollbar.thumbLeft}%`,
+                width: `${creatorScrollbar.thumbWidth}%`,
+              }}
+              className="absolute inset-y-0 rounded-full bg-primary transition-[left,width] duration-100 hover:bg-primary/90"
+              aria-hidden="true"
+            />
           </div>
         </div>
       )}
