@@ -334,6 +334,25 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+  .creator-scrollbar {
+    scrollbar-color: hsl(var(--primary) / 0.7) hsl(var(--border));
+    scrollbar-width: thin;
+  }
+  .creator-scrollbar::-webkit-scrollbar {
+    height: 8px;
+  }
+  .creator-scrollbar::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: hsl(var(--border));
+  }
+  .creator-scrollbar::-webkit-scrollbar-thumb {
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+    background: hsl(var(--primary) / 0.7);
+  }
+  .creator-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
+  }
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
