@@ -439,7 +439,7 @@ export function Home() {
               aria-valuenow={creatorScrollbar.scrollLeft}
               onClick={handleCreatorScrollbarTrackClick}
               onKeyDown={handleCreatorScrollbarKeyDown}
-              className="relative h-4 min-w-0 flex-1 cursor-pointer rounded-full bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="relative h-1.5 min-w-0 flex-1 cursor-pointer rounded-full bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div
                 ref={creatorScrollbarThumbRef}
