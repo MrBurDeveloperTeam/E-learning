@@ -120,20 +120,44 @@ export function Navbar() {
   // Opens another Snabbb app (e.g. the rewards app) via an SSO handoff so
   // the destination recognizes the session instead of bouncing to its own
   // login/home page.
-  async function openAppLink(appCode: string, targetUrl: string) {
+  //
+  // `section` is an optional deep-link hint (e.g. 'credit' makes the rewards
+  // app scroll to its credit section). It rides along as a query param and a
+  // short-lived shared cookie so it survives the SSO redirect chain.
+  async function openAppLink(appCode: string, targetUrl: string, section?: string) {
     setMenuOpen(false)
     const win = window.open('', '_blank')
+
+    const withSection = (rawUrl: string) => {
+      if (!section) return rawUrl
+      try {
+        const target = new URL(rawUrl)
+        target.searchParams.set('section', section)
+        return target.toString()
+      } catch {
+        return rawUrl
+      }
+    }
+
+    if (section && appCode === 'reward') {
+      try {
+        document.cookie = `snabbb_reward_section=${encodeURIComponent(section)}; domain=.snabbb.com; path=/; max-age=300; SameSite=Lax; Secure`
+      } catch {
+        // cookie is only a backup hint
+      }
+    }
+
     try {
       const res = await getAppLink({
         app: appCode,
         email: user?.email || '',
         name: avatarLabel || '',
       })
-      const url = res?.result?.url || targetUrl
+      const url = withSection(res?.result?.url || targetUrl)
       if (win) win.location.href = url
     } catch (err) {
       console.error(`Failed to create SSO link for "${appCode}":`, err)
-      if (win) win.location.href = targetUrl
+      if (win) win.location.href = withSection(targetUrl)
     }
   }
 
@@ -442,7 +466,7 @@ export function Navbar() {
                           {/* Snabbb Credit — a separate Snabbb app, opened via SSO handoff */}
                           <button
                             type="button"
-                            onClick={() => void openAppLink('reward', 'https://reward.snabbb.com')}
+                            onClick={() => void openAppLink('reward', 'https://reward.snabbb.com', 'credit')}
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
                             <div className="min-w-0 flex-1">
