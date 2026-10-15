@@ -117,14 +117,16 @@ export async function fetchPublicCreatorProfiles(userIds: string[]) {
 export async function fetchTopPublicCreators(options?: {
   excludeUserId?: string
   limit?: number
+  offset?: number
 }) {
   const limit = options?.limit ?? 6
+  const offset = options?.offset ?? 0
 
   let query = supabase
     .from('creator_public_profiles')
     .select(publicProfileSelect)
     .order('follower_count', { ascending: false })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
 
   if (options?.excludeUserId) {
     query = query.neq('user_id', options.excludeUserId)

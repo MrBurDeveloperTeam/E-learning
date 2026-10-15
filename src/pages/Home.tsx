@@ -186,13 +186,17 @@ export function Home() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const { data: following = [] } = useFollowing(profile?.user_id ?? '')
-  const creatorSuggestionsQuery = useQuery({
+  const creatorSuggestionsQuery = useInfiniteQuery({
     queryKey: ['home-follow-suggestions', profile?.user_id],
-    queryFn: () =>
+    queryFn: ({ pageParam = 0 }) =>
       fetchTopPublicCreators({
         excludeUserId: profile?.user_id,
-        limit: 6,
+        limit: 10,
+        offset: pageParam * 10,
       }),
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === 10 ? pages.length : undefined,
+    initialPageParam: 0,
     enabled:
       !!profile?.user_id && (profile.following_count ?? 0) < 5,
   })
@@ -202,10 +206,11 @@ export function Home() {
       .map((row) => row.following_id)
       .filter((value): value is string => !!value)
   )
-  const creatorSuggestions = (creatorSuggestionsQuery.data ?? [])
+  const creatorSuggestions = (creatorSuggestionsQuery.data?.pages ?? [])
+    .flatMap((page) => page)
     .filter((creator) => creator.user_id !== profile?.user_id)
     .filter((creator) => !followingIds.has(creator.user_id))
-    .slice(0, 6)
+  const hasMoreCreatorSuggestions = creatorSuggestionsQuery.hasNextPage
 
   return (
     <>
@@ -241,14 +246,35 @@ export function Home() {
 
       {profile && profile.following_count < 5 && creatorSuggestions.length > 0 && (
         <div className="mx-auto max-w-[1400px] border-b border-border px-4 py-4 md:px-6">
-          <p className="mb-3 text-sm font-medium text-foreground">
-            Creators to follow
-          </p>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <p className="text-sm font-medium text-foreground">
+              Creators to follow
+            </p>
+            {hasMoreCreatorSuggestions && (
+              <button
+                type="button"
+                onClick={() => creatorSuggestionsQuery.fetchNextPage()}
+                disabled={creatorSuggestionsQuery.isFetchingNextPage}
+                className="btn-outline inline-flex h-9 w-24 shrink-0 items-center justify-center gap-2 px-3 py-1.5 text-xs"
+                aria-controls="creator-follow-suggestions"
+                aria-busy={creatorSuggestionsQuery.isFetchingNextPage}
+              >
+                {creatorSuggestionsQuery.isFetchingNextPage ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  'Load more'
+                )}
+              </button>
+            )}
+          </div>
+          <div
+            id="creator-follow-suggestions"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+          >
             {creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
+                className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
