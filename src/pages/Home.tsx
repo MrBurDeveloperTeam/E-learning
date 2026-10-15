@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
@@ -22,7 +22,7 @@ import { logElearningActivity } from '@/lib/logActivityToOdoo'
 import { useElearningPersonalizedInsightState } from '@/aiExperience/hooks/useElearningPersonalizedInsight'
 import { usePublishPersonalizedInsight, type PersonalizedInsightBridgeState } from '@/aiExperience/petDialogue/PersonalizedInsightBridge'
 import type { ElearningInsightCandidate } from '@/aiExperience/resolver/resolveElearningInsight'
-import { Clapperboard, Languages } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, Languages } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -46,6 +46,22 @@ export function Home() {
   const profile = useAuthStore((state) => state.profile)
   const user = useAuthStore((state) => state.user)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const creatorScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const creatorScrollbarRef = useRef<HTMLDivElement>(null)
+  const creatorScrollbarThumbRef = useRef<HTMLDivElement>(null)
+  const creatorScrollbarDragRef = useRef<{
+    startX: number
+    startScrollLeft: number
+    maxScroll: number
+    trackWidth: number
+    thumbWidth: number
+  } | null>(null)
+  const [creatorScrollbar, setCreatorScrollbar] = useState({
+    thumbWidth: 100,
+    thumbLeft: 0,
+    maxScroll: 0,
+    scrollLeft: 0,
+  })
   const navigate = useNavigate()
   // Phase-2B: Followed Creator Posted, Latest Video Performance, Most
   // Viewed Video. Pure, synchronous, reevaluates whenever the shared
@@ -186,13 +202,17 @@ export function Home() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const { data: following = [] } = useFollowing(profile?.user_id ?? '')
-  const creatorSuggestionsQuery = useQuery({
+  const creatorSuggestionsQuery = useInfiniteQuery({
     queryKey: ['home-follow-suggestions', profile?.user_id],
-    queryFn: () =>
+    queryFn: ({ pageParam = 0 }) =>
       fetchTopPublicCreators({
         excludeUserId: profile?.user_id,
-        limit: 6,
+        limit: 10,
+        offset: pageParam * 10,
       }),
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === 10 ? pages.length : undefined,
+    initialPageParam: 0,
     enabled:
       !!profile?.user_id && (profile.following_count ?? 0) < 5,
   })
@@ -202,10 +222,118 @@ export function Home() {
       .map((row) => row.following_id)
       .filter((value): value is string => !!value)
   )
-  const creatorSuggestions = (creatorSuggestionsQuery.data ?? [])
+  const creatorSuggestions = (creatorSuggestionsQuery.data?.pages ?? [])
+    .flatMap((page) => page)
     .filter((creator) => creator.user_id !== profile?.user_id)
     .filter((creator) => !followingIds.has(creator.user_id))
-    .slice(0, 6)
+  const hasMoreCreatorSuggestions = creatorSuggestionsQuery.hasNextPage
+
+  const updateCreatorScrollbar = useCallback(() => {
+    const container = creatorScrollRef.current
+    if (!container) return
+
+    const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth)
+    const thumbWidth = maxScroll === 0
+      ? 100
+      : Math.max(18, (container.clientWidth / container.scrollWidth) * 100)
+    const scrollRatio = maxScroll === 0 ? 0 : container.scrollLeft / maxScroll
+
+    setCreatorScrollbar({
+      thumbWidth,
+      thumbLeft: scrollRatio * (100 - thumbWidth),
+      maxScroll,
+      scrollLeft: container.scrollLeft,
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    const container = creatorScrollRef.current
+    if (!container) return
+
+    updateCreatorScrollbar()
+    container.addEventListener('scroll', updateCreatorScrollbar, { passive: true })
+    const resizeObserver = new ResizeObserver(updateCreatorScrollbar)
+    resizeObserver.observe(container)
+
+    return () => {
+      container.removeEventListener('scroll', updateCreatorScrollbar)
+      resizeObserver.disconnect()
+    }
+  }, [creatorSuggestions.length, updateCreatorScrollbar])
+
+  const handleCreatorScrollbarTrackClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || creatorScrollbar.maxScroll === 0) return
+
+    const track = event.currentTarget.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (event.clientX - track.left) / track.width))
+    const container = creatorScrollRef.current
+    if (container) {
+      container.scrollLeft = ratio * creatorScrollbar.maxScroll
+    }
+  }
+
+  const handleCreatorScrollbarPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (creatorScrollbar.maxScroll === 0) return
+
+    const track = creatorScrollbarRef.current
+    const container = creatorScrollRef.current
+    if (!track || !container) return
+
+    creatorScrollbarDragRef.current = {
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft,
+      maxScroll: creatorScrollbar.maxScroll,
+      trackWidth: track.clientWidth,
+      thumbWidth: creatorScrollbar.thumbWidth,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
+
+  const handleCreatorScrollbarPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = creatorScrollbarDragRef.current
+    const container = creatorScrollRef.current
+    if (!drag || !container) return
+
+    const draggableWidth = drag.trackWidth * (1 - drag.thumbWidth / 100)
+    if (draggableWidth <= 0) return
+
+    const distance = event.clientX - drag.startX
+    container.scrollLeft = drag.startScrollLeft + (distance / draggableWidth) * drag.maxScroll
+  }
+
+  const handleCreatorScrollbarPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    creatorScrollbarDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  const handleCreatorScrollbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const container = creatorScrollRef.current
+    if (!container) return
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault()
+      container.scrollLeft += 120
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      container.scrollLeft -= 120
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      container.scrollLeft = 0
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      container.scrollLeft = container.scrollWidth
+    }
+  }
+
+  const scrollCreatorsBy = (distance: number) => {
+    const container = creatorScrollRef.current
+    if (container) {
+      container.scrollLeft += distance
+    }
+  }
 
   return (
     <>
@@ -241,14 +369,36 @@ export function Home() {
 
       {profile && profile.following_count < 5 && creatorSuggestions.length > 0 && (
         <div className="mx-auto max-w-[1400px] border-b border-border px-4 py-4 md:px-6">
-          <p className="mb-3 text-sm font-medium text-foreground">
-            Creators to follow
-          </p>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <p className="text-sm font-medium text-foreground">
+              Creators to follow
+            </p>
+            {hasMoreCreatorSuggestions && (
+              <button
+                type="button"
+                onClick={() => creatorSuggestionsQuery.fetchNextPage()}
+                disabled={creatorSuggestionsQuery.isFetchingNextPage}
+                className="btn-outline inline-flex h-9 w-24 shrink-0 items-center justify-center gap-2 px-3 py-1.5 text-xs"
+                aria-controls="creator-follow-suggestions"
+                aria-busy={creatorSuggestionsQuery.isFetchingNextPage}
+              >
+                {creatorSuggestionsQuery.isFetchingNextPage ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  'Load more'
+                )}
+              </button>
+            )}
+          </div>
+          <div
+            ref={creatorScrollRef}
+            id="creator-follow-suggestions"
+            className="scrollbar-hide flex cursor-grab select-none gap-3 overflow-x-auto pb-1 active:cursor-grabbing touch-pan-y"
+          >
             {creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
+                className="flex w-fit min-w-[210px] flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
@@ -267,6 +417,53 @@ export function Home() {
                 <FollowButton userId={creator.user_id} size="sm" />
               </div>
             ))}
+          </div>
+          <div className="mt-2 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => scrollCreatorsBy(-240)}
+              disabled={creatorScrollbar.maxScroll === 0 || creatorScrollbar.scrollLeft === 0}
+              aria-label="Scroll creators left"
+              className="flex h-4 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            <div
+              ref={creatorScrollbarRef}
+              role="scrollbar"
+              tabIndex={0}
+              aria-controls="creator-follow-suggestions"
+              aria-label="Scroll creators to follow"
+              aria-valuemin={0}
+              aria-valuemax={creatorScrollbar.maxScroll}
+              aria-valuenow={creatorScrollbar.scrollLeft}
+              onClick={handleCreatorScrollbarTrackClick}
+              onKeyDown={handleCreatorScrollbarKeyDown}
+              className="relative h-1.5 min-w-0 flex-1 cursor-pointer rounded-full bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <div
+                ref={creatorScrollbarThumbRef}
+                onPointerDown={handleCreatorScrollbarPointerDown}
+                onPointerMove={handleCreatorScrollbarPointerMove}
+                onPointerUp={handleCreatorScrollbarPointerUp}
+                onPointerCancel={handleCreatorScrollbarPointerUp}
+                style={{
+                  left: `${creatorScrollbar.thumbLeft}%`,
+                  width: `${creatorScrollbar.thumbWidth}%`,
+                }}
+                className="absolute inset-y-0 rounded-full bg-primary transition-[left,width] duration-100 hover:bg-primary/90"
+                aria-hidden="true"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollCreatorsBy(240)}
+              disabled={creatorScrollbar.maxScroll === 0 || creatorScrollbar.scrollLeft >= creatorScrollbar.maxScroll}
+              aria-label="Scroll creators right"
+              className="flex h-4 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
           </div>
         </div>
       )}
