@@ -46,6 +46,7 @@ export function Home() {
   const profile = useAuthStore((state) => state.profile)
   const user = useAuthStore((state) => state.user)
   const categoryScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
+  const creatorScrollRef = useHorizontalWheelScroll<HTMLDivElement>()
   const navigate = useNavigate()
   // Phase-2B: Followed Creator Posted, Latest Video Performance, Most
   // Viewed Video. Pure, synchronous, reevaluates whenever the shared
@@ -268,13 +269,14 @@ export function Home() {
             )}
           </div>
           <div
+            ref={creatorScrollRef}
             id="creator-follow-suggestions"
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+            className="flex cursor-grab select-none gap-3 overflow-x-auto pb-1 scrollbar-hide active:cursor-grabbing"
           >
             {creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
+                className="flex w-[280px] flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
