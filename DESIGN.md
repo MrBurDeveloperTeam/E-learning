@@ -85,6 +85,11 @@ Brand-filled buttons are reserved for the primary safe action. Neutral bordered 
 
 Admin navigation and cards reuse the shared admin primitives. Status badges combine text with semantic tone. Result grids change column count responsively without hiding values.
 
+Home's specialty chips filter the existing unified upload/curated feed and use
+the selected category as the video heading; All restores the full feed and
+"All videos" heading. The horizontal-scroll hook captures pointers only after
+the drag threshold, preserving ordinary button/link clicks and keyboard access.
+
 ### Forms and overlays
 
 Forms use explicit labels and app-owned validation. Authored selects use the shared Base UI Select primitive with trigger-width popups, keyboard behavior, collision handling, and visible focus.
