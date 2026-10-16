@@ -24,7 +24,7 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
   { label: 'Community', path: '/community' },
   { label: 'Following', path: '/feed' },
   { label: 'Saved videos', path: '/saved' },
-  { label: 'Categories', path: '/category' },
+  // { label: 'Categories', path: '/category' },
 ]
 
 const SHOW_SUPPORT_TICKETS = true
