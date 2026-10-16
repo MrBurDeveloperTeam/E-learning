@@ -256,7 +256,7 @@
 
 .dl-hero h1 em {
   color: var(--dl-teal);
-  font-style: italic;
+  font-style: normal;
 }
 
 .dl-hero-copy > p {
