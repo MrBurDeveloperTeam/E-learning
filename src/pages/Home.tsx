@@ -351,6 +351,8 @@ export function Home() {
               return (
                 <button
                   key={item}
+                  type="button"
+                  aria-pressed={active}
                   onClick={() => setCategory(item)}
                   className={cn(
                     'flex-shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-sm transition-all duration-150',
@@ -471,7 +473,9 @@ export function Home() {
       <div className="mx-auto max-w-[1400px] px-4 py-4 md:px-6">
         <div className="grid gap-4 sm:grid-cols-2 sm:items-center lg:grid-cols-[minmax(0,1fr)_180px_200px_minmax(280px,448px)]">
           <div className="sm:col-span-2 lg:col-span-1">
-            <h1 className="text-lg font-medium text-foreground">All videos</h1>
+            <h1 className="text-lg font-medium text-foreground">
+              {category === 'All' ? 'All videos' : category}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {category === 'All'
                 ? 'Browse every uploaded and curated video together.'

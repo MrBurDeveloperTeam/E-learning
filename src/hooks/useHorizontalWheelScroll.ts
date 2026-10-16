@@ -12,24 +12,26 @@ export function useHorizontalWheelScroll<T extends HTMLElement>() {
 
     let isPointerDown = false
     let isDragging = false
+    let activePointerId: number | null = null
     let startX = 0
     let startScrollLeft = 0
     let suppressClick = false
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (event.pointerType === 'mouse' && event.button !== 0) {
+      if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) {
         return
       }
 
       isPointerDown = true
       isDragging = false
+      activePointerId = event.pointerId
+      suppressClick = false
       startX = event.clientX
       startScrollLeft = container.scrollLeft
-      container.setPointerCapture(event.pointerId)
     }
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (!isPointerDown) {
+      if (!isPointerDown || event.pointerId !== activePointerId) {
         return
       }
 
@@ -38,26 +40,32 @@ export function useHorizontalWheelScroll<T extends HTMLElement>() {
         return
       }
 
-      isDragging = true
+      // Capturing on pointerdown retargets an ordinary button click to this
+      // container. Capture only after a real drag has crossed the threshold.
+      if (!isDragging) {
+        isDragging = true
+        container.setPointerCapture(event.pointerId)
+      }
       event.preventDefault()
       container.scrollLeft = startScrollLeft - distance
     }
 
     const handlePointerUp = (event: PointerEvent) => {
-      if (!isPointerDown) {
+      if (!isPointerDown || event.pointerId !== activePointerId) {
         return
       }
 
       suppressClick = isDragging
       isPointerDown = false
       isDragging = false
+      activePointerId = null
       if (container.hasPointerCapture(event.pointerId)) {
         container.releasePointerCapture(event.pointerId)
       }
     }
 
     const handleClick = (event: MouseEvent) => {
-      if (!suppressClick) {
+      if (!suppressClick || event.detail === 0) {
         return
       }
 
@@ -82,16 +90,17 @@ export function useHorizontalWheelScroll<T extends HTMLElement>() {
     container.addEventListener('wheel', handleWheel, { passive: false })
     container.addEventListener('pointerdown', handlePointerDown)
     container.addEventListener('pointermove', handlePointerMove)
-    container.addEventListener('pointerup', handlePointerUp)
-    container.addEventListener('pointercancel', handlePointerUp)
+    // A non-drag release can occur outside the container before capture starts.
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerUp)
     container.addEventListener('click', handleClick, true)
 
     return () => {
       container.removeEventListener('wheel', handleWheel)
       container.removeEventListener('pointerdown', handlePointerDown)
       container.removeEventListener('pointermove', handlePointerMove)
-      container.removeEventListener('pointerup', handlePointerUp)
-      container.removeEventListener('pointercancel', handlePointerUp)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerUp)
       container.removeEventListener('click', handleClick, true)
     }
   }, [])
