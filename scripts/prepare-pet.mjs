@@ -1,13 +1,16 @@
 import { createRequire } from 'node:module';
 import { readFileSync as readResource } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 
 const host = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const packageRoot = dirname(require.resolve('@mrburdeveloperteam/pet-function/package.json'));
-const packagePublic = join(packageRoot, 'public');
+const syncResources = join(packageRoot, 'scripts/sync-resource-packs.mjs');
+const packagePublic = existsSync(syncResources)
+  ? await (await import(pathToFileURL(syncResources).href)).ensurePublicResources(packageRoot)
+  : join(packageRoot, 'public');
 if (!existsSync(packagePublic)) throw new Error('Installed pet-function package has no public resources: ' + packageRoot);
 
 rmSync(join(host, 'public', 'pets'), { recursive: true, force: true });

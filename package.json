@@ -1,6 +1,6 @@
 {
   "name": "dental-learn",
-  "version": "0.1.0",
+  "version": "0.12.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "build:frontend": "tsc -b && vite build",
     "postbuild:frontend": "node scripts/compress-cloudflare-games.mjs",
     "preview": "vite preview",
+    "verify:pet": "node scripts/verify-pet.mjs",
     "deploy": "wrangler pages deploy dist --project-name e-learning",
     "deploy:frontend": "wrangler pages deploy dist --project-name e-learning",
     "deploy:scheduler": "wrangler deploy --config wrangler.scheduler.jsonc"
@@ -27,7 +28,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/geist": "^5.2.8",
-    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.45",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.12.2",
     "@mux/mux-player-react": "^3.11.7",
     "@mux/upchunk": "^3.5.0",
     "@supabase/supabase-js": "^2.49.4",
@@ -64,6 +65,7 @@
     "wrangler": "^4.122.0"
   },
   "allowScripts": {
+    "github:mrburdeveloperteam/pet-function#8a1993a66d60087829519c053ee7de0ed3475320": true,
     "github:mrburdeveloperteam/pet-function#a59a54551c6831c773633de186b00e76214aed8b": true,
     "esbuild@0.28.2": true,
     "esbuild@0.28.1": true
