@@ -221,7 +221,7 @@
 .dl-section-label {
   color: var(--dl-teal-dark);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -229,21 +229,20 @@
 .dl-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   padding: 9px 13px;
   margin-bottom: 26px;
-  border: 1px solid var(--dl-line);
-  border-radius: 999px;
-  background: var(--dl-white);
-  box-shadow: 0 8px 24px rgba(16, 43, 53, 0.06);
+  border: 1px solid #c9ece7;
+  border-radius: 30px;
+  background: rgba(223, 247, 243, 0.7);
 }
 
 .dl-live-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #69c89e;
-  box-shadow: 0 0 0 4px rgba(105, 200, 158, 0.16);
+  background: var(--dl-teal);
+  box-shadow: 0 0 0 5px rgba(11, 159, 145, 0.12);
 }
 
 .dl-hero h1 {
