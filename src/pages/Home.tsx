@@ -393,7 +393,7 @@ export function Home() {
           <div
             ref={creatorScrollRef}
             id="creator-follow-suggestions"
-            className="scrollbar-hide flex cursor-grab select-none gap-3 overflow-x-auto pb-1 active:cursor-grabbing touch-pan-y"
+            className="scrollbar-hide flex select-none gap-3 overflow-x-auto pb-1 touch-pan-x md:cursor-grab md:active:cursor-grabbing"
           >
             {creatorSuggestions.map((creator) => (
               <div
