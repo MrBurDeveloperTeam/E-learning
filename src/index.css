@@ -422,6 +422,13 @@
   transform: none;
 }
 
+/* Clear the mobile navigation; the cat bed follows the SNAI anchor above it. */
+@media (max-width: 767px) {
+  .elearning-ai-dock .snabbb-molar-experience .molar-ai-trigger-wrapper {
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .community-ai-dock .snabbb-molar-experience .molar-cat-bed {
     transition: none;
