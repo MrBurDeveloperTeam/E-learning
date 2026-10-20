@@ -139,14 +139,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  border-radius: 13px;
-  font-weight: 400;
+  gap: 12px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
     background 0.2s ease,
     border-color 0.2s ease;
+}
+
+.dl-nav-cta,
+.dl-light-button {
+  gap: 9px;
+  border-radius: 13px;
 }
 
 .dl-nav-cta,
@@ -157,6 +165,11 @@
   box-shadow: 0 12px 25px rgba(11, 159, 145, 0.2);
 }
 
+.dl-primary-button {
+  background: #55a39a;
+  box-shadow: 0 12px 25px rgba(85, 163, 154, 0.2);
+}
+
 .dl-nav-cta {
   min-height: 44px;
   padding: 11px 16px;
@@ -164,20 +177,23 @@
 }
 
 .dl-primary-button {
-  min-height: 52px;
-  padding: 14px 22px;
+  padding: 14px 20px;
 }
 
-.dl-nav-cta:hover,
-.dl-primary-button:hover {
+.dl-nav-cta:hover {
   transform: translateY(-2px);
   background: var(--dl-teal-dark);
   box-shadow: 0 16px 30px rgba(11, 159, 145, 0.28);
 }
 
+.dl-primary-button:hover {
+  transform: translateY(-2px);
+  background: #478d85;
+  box-shadow: 0 12px 25px rgba(85, 163, 154, 0.2);
+}
+
 .dl-secondary-button {
-  min-height: 52px;
-  padding: 14px 22px;
+  padding: 14px 20px;
   border: 1px solid var(--dl-line);
   color: var(--dl-navy);
   background: var(--dl-white);
@@ -255,7 +271,7 @@
 }
 
 .dl-hero h1 em {
-  color: var(--dl-teal);
+  color: #56a39a;
   font-style: normal;
 }
 
