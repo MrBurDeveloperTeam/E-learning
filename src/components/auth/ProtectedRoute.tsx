@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { Navigate, useLocation } from '@tanstack/react-router'
 import { useAuthStore } from '../../store/authStore'
-import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { LaunchScreen } from '../ui/LaunchScreen'
 import { isAdminProfile, isCreatorProfile } from '../../lib/auth'
 
 interface ProtectedRouteProps {
@@ -15,11 +15,7 @@ export function ProtectedRoute({ children, requiredRole, requireAdmin = false }:
   const location = useLocation()
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-neutral-50" aria-busy="true">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
+    return <LaunchScreen status="Signing you in…" />
   }
 
   if (!user) {
@@ -45,11 +41,7 @@ export function CreatorRoute({ children }: CreatorRouteProps) {
   const { profile, isLoading } = useAuthStore()
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
+    return <LaunchScreen status="Checking your access…" />
   }
 
   if (!profile) {

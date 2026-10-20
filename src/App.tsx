@@ -1,3 +1,4 @@
+import { LaunchScreen } from './components/ui/LaunchScreen'
 import { useEffect, useMemo, useState } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
@@ -65,6 +66,19 @@ function InnerApp() {
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false)
   const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false)
   const isAuthRoute = currentPath === '/login' || currentPath === '/register'
+
+  // Keep the launch screen up (identical to the gallery's /opening.html and index.html's
+  // splash) until the first auth check finishes, so the user never sees the page
+  // half-loaded. Only for the initial load, never for later sign-in/out, and capped at
+  // 10s so a hung auth check can't block public pages.
+  const [bootDone, setBootDone] = useState(false)
+  useEffect(() => {
+    if (!isLoading) setBootDone(true)
+  }, [isLoading])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBootDone(true), 10000)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   // All four games live in pet-function. E-learning only wires the
   // Meowdoku selector card to its shared launcher and owns open/close state.
@@ -145,6 +159,7 @@ function InnerApp() {
   return (
     <PersonalizedInsightBridgeProvider>
       <RouterProvider router={router} />
+      {!bootDone && <LaunchScreen status="Signing you in…" />}
       {!isAuthRoute && (
         <div className={`elearning-ai-dock ${isVirtualPetOpen ? 'hidden' : 'contents'} ${currentPath === '/community' || currentPath.startsWith('/community/') ? 'community-ai-dock' : ''}`}>
           {/* key forces remount when auth state changes: 'guest' → userId
