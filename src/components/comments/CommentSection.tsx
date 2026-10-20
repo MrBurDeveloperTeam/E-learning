@@ -6,21 +6,24 @@ import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CommentInput } from './CommentInput'
 import { CommentItem } from './CommentItem'
+import type { CommentSource } from '@/lib/queries/comments'
 
 interface CommentSectionProps {
   videoId: string
   commentCount: number
+  source?: CommentSource
 }
 
 export function CommentSection({
   videoId,
   commentCount,
+  source = 'video',
 }: CommentSectionProps) {
   const user = useAuthStore((state) => state.user)
   const { profileImageUrl } = useProfileImage(Boolean(user))
   const [sort, setSort] = useState<'top' | 'newest'>('top')
-  const { data: comments = [], isLoading, isError, refetch } = useComments(videoId)
-  const commentCountQuery = useCommentCount(videoId)
+  const { data: comments = [], isLoading, isError, refetch } = useComments(videoId, source)
+  const commentCountQuery = useCommentCount(videoId, source)
   const displayCommentCount = commentCountQuery.data ?? commentCount
 
   const sortedComments =
@@ -49,6 +52,7 @@ export function CommentSection({
 
       <CommentInput
         videoId={videoId}
+        source={source}
         currentUserAvatarUrl={profileImageUrl}
       />
 
@@ -78,6 +82,7 @@ export function CommentSection({
               key={comment.id}
               comment={comment}
               videoId={videoId}
+              source={source}
               currentUserAvatarUrl={profileImageUrl}
             />
           ))}

@@ -8,29 +8,30 @@ import {
   fetchReplies,
   likeComment,
   unlikeComment,
+  type CommentSource,
 } from '../lib/queries/comments'
 import { useAuthStore } from '../store/authStore'
 
-export function useComments(videoId: string) {
+export function useComments(videoId: string, source: CommentSource = 'video') {
   return useQuery({
     queryKey: ['comments', videoId],
-    queryFn: () => fetchComments(videoId),
+    queryFn: () => fetchComments(videoId, source),
     enabled: !!videoId,
   })
 }
 
-export function useCommentCount(videoId: string) {
+export function useCommentCount(videoId: string, source: CommentSource = 'video') {
   return useQuery({
     queryKey: ['comment-count', videoId],
-    queryFn: () => fetchCommentCount(videoId),
+    queryFn: () => fetchCommentCount(videoId, source),
     enabled: !!videoId,
   })
 }
 
-export function useReplies(parentId: string) {
+export function useReplies(parentId: string, source: CommentSource = 'video') {
   return useQuery({
     queryKey: ['replies', parentId],
-    queryFn: () => fetchReplies(parentId),
+    queryFn: () => fetchReplies(parentId, source),
     enabled: !!parentId,
   })
 }
@@ -59,16 +60,17 @@ export function useDeleteComment() {
   return useMutation({
     mutationFn: async ({
       commentId,
-      videoId,
+      source = 'video',
     }: {
       commentId: string
       videoId: string
+      source?: CommentSource
     }) => {
       if (!userId) {
         throw new Error('You must be signed in to delete a comment.')
       }
 
-      await deleteOwnComment(userId, commentId)
+      await deleteOwnComment(userId, commentId, source)
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['comments', variables.videoId] })
@@ -87,14 +89,14 @@ export function useDeleteComment() {
   })
 }
 
-export function useCommentLike(commentId: string) {
+export function useCommentLike(commentId: string, source: CommentSource = 'video') {
   const qc = useQueryClient()
   const profile = useAuthStore((state) => state.profile)
   const userId = profile?.user_id
 
   const likedQuery = useQuery({
     queryKey: ['comment-liked', userId, commentId],
-    queryFn: () => checkCommentLiked(userId!, commentId),
+    queryFn: () => checkCommentLiked(userId!, commentId, source),
     enabled: !!userId && !!commentId,
   })
 
@@ -103,9 +105,9 @@ export function useCommentLike(commentId: string) {
       if (!userId) return
 
       if (likedQuery.data) {
-        await unlikeComment(userId, commentId)
+        await unlikeComment(userId, commentId, source)
       } else {
-        await likeComment(userId, commentId)
+        await likeComment(userId, commentId, source)
       }
     },
     onSuccess: () => {

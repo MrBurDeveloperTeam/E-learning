@@ -11,6 +11,7 @@ import { FeaturedProductsList } from '@/components/video/FeaturedProductCard'
 import { useDentalVideoProducts } from '@/hooks/useProducts'
 import { useDentalVideoSave } from '@/hooks/useDentalVideoSaves'
 import { cn } from '@/lib/utils'
+import { CommentSection } from '@/components/comments/CommentSection'
 import { useAuthStore } from '@/store/authStore'
 import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
 import { selectAdvertisement } from '@/lib/advertisementRotation'
@@ -597,6 +598,10 @@ export function DentalVideoDetail() {
                 </p>
               </div>
             )}
+
+            <div className="mt-8">
+              <CommentSection videoId={video.id} commentCount={0} source="dental" />
+            </div>
           </div>
         ) : null}
       </div>

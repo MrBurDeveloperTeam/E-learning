@@ -4,9 +4,11 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useCreateComment } from '@/hooks/useComments'
 import { getDisplayName } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
+import type { CommentSource } from '@/lib/queries/comments'
 
 interface CommentInputProps {
   videoId: string
+  source?: CommentSource
   currentUserAvatarUrl?: string | null
   parentId?: string
   onCancel?: () => void
@@ -16,6 +18,7 @@ interface CommentInputProps {
 
 export function CommentInput({
   videoId,
+  source = 'video',
   currentUserAvatarUrl,
   parentId,
   onCancel,
@@ -46,6 +49,7 @@ export function CommentInput({
       author_id: user.id,
       body: trimmed,
       parent_id: parentId,
+      source,
     })
 
     setBody('')

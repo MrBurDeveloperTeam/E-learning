@@ -17,10 +17,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { CommentInput } from './CommentInput'
+import type { CommentSource } from '@/lib/queries/comments'
 
 interface CommentItemProps {
   comment: CommentWithAuthor
   videoId: string
+  source?: CommentSource
   isReply?: boolean
   currentUserAvatarUrl?: string | null
 }
@@ -28,17 +30,18 @@ interface CommentItemProps {
 export function CommentItem({
   comment,
   videoId,
+  source = 'video',
   isReply = false,
   currentUserAvatarUrl,
 }: CommentItemProps) {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
   const profile = useAuthStore((state) => state.profile)
-  const { isLiked, toggleLike, isPending } = useCommentLike(comment.id)
+  const { isLiked, toggleLike, isPending } = useCommentLike(comment.id, source)
   const deleteCommentMutation = useDeleteComment()
   const [showReplies, setShowReplies] = useState(false)
   const [showReplyInput, setShowReplyInput] = useState(false)
-  const repliesQuery = useReplies(showReplies ? comment.id : '')
+  const repliesQuery = useReplies(showReplies ? comment.id : '', source)
   const replyCount = comment.reply_count ?? 0
   const isOwnComment = profile?.user_id === comment.author_id
   const authorName = getDisplayName(comment.profiles, 'Unknown user')
@@ -58,6 +61,7 @@ export function CommentItem({
       await deleteCommentMutation.mutateAsync({
         commentId: comment.id,
         videoId,
+        source,
       })
       toast.success('Comment deleted')
     } catch (error) {
@@ -201,6 +205,7 @@ export function CommentItem({
           <div className="mt-3">
             <CommentInput
               videoId={videoId}
+              source={source}
               currentUserAvatarUrl={currentUserAvatarUrl}
               parentId={comment.id}
               placeholder="Write a reply..."
@@ -228,6 +233,7 @@ export function CommentItem({
                 key={reply.id}
                 comment={reply}
                 videoId={videoId}
+                source={source}
                 isReply
                 currentUserAvatarUrl={currentUserAvatarUrl}
               />

@@ -10,7 +10,36 @@ type CommentRow = Omit<CommentWithAuthor, 'profiles'> & { profiles?: CommentWith
 
 type CommentAuthor = NonNullable<CommentWithAuthor['profiles']>
 
-const commentSelect = `
+/**
+ * Comments live in `comments` for uploaded videos and in `dental_video_comments`
+ * for imported YouTube videos. Rows from both are returned with a `video_id`
+ * field so the UI doesn't care which source it is looking at.
+ */
+export type CommentSource = 'video' | 'dental'
+
+function tablesFor(source: CommentSource) {
+  return source === 'dental'
+    ? {
+        comments: 'dental_video_comments',
+        likes: 'dental_video_comment_likes',
+        fk: 'dental_video_id',
+        select: `
+  id,
+  video_id:dental_video_id,
+  author_id,
+  parent_id,
+  body,
+  is_pinned,
+  like_count,
+  created_at,
+  updated_at
+`,
+      }
+    : {
+        comments: 'comments',
+        likes: 'comment_likes',
+        fk: 'video_id',
+        select: `
   id,
   video_id,
   author_id,
@@ -20,7 +49,9 @@ const commentSelect = `
   like_count,
   created_at,
   updated_at
-`
+`,
+      }
+}
 
 async function attachCommentAuthors(comments: CommentRow[]): Promise<CommentWithAuthor[]> {
   if (comments.length === 0) {
@@ -54,13 +85,13 @@ async function attachCommentAuthors(comments: CommentRow[]): Promise<CommentWith
   }))
 }
 
-async function fetchReplyCounts(parentIds: string[]) {
+async function fetchReplyCounts(parentIds: string[], source: CommentSource) {
   if (parentIds.length === 0) {
     return new Map<string, number>()
   }
 
   const { data, error } = await supabase
-    .from('comments')
+    .from(tablesFor(source).comments)
     .select('parent_id')
     .in('parent_id', parentIds)
 
@@ -75,19 +106,23 @@ async function fetchReplyCounts(parentIds: string[]) {
   return counts
 }
 
-export async function fetchComments(videoId: string): Promise<CommentWithAuthor[]> {
+export async function fetchComments(
+  videoId: string,
+  source: CommentSource = 'video'
+): Promise<CommentWithAuthor[]> {
+  const t = tablesFor(source)
   const { data, error } = await supabase
-    .from('comments')
-    .select(commentSelect)
-    .eq('video_id', videoId)
+    .from(t.comments)
+    .select(t.select)
+    .eq(t.fk, videoId)
     .is('parent_id', null)
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
 
   if (error) throw error
 
-  const comments = await attachCommentAuthors((data ?? []) as CommentRow[])
-  const replyCounts = await fetchReplyCounts(comments.map((comment) => comment.id))
+  const comments = await attachCommentAuthors((data ?? []) as unknown as CommentRow[])
+  const replyCounts = await fetchReplyCounts(comments.map((comment) => comment.id), source)
 
   return comments.map((comment) => ({
     ...comment,
@@ -95,27 +130,35 @@ export async function fetchComments(videoId: string): Promise<CommentWithAuthor[
   }))
 }
 
-export async function fetchCommentCount(videoId: string): Promise<number> {
+export async function fetchCommentCount(
+  videoId: string,
+  source: CommentSource = 'video'
+): Promise<number> {
+  const t = tablesFor(source)
   const { count, error } = await supabase
-    .from('comments')
+    .from(t.comments)
     .select('id', { count: 'exact', head: true })
-    .eq('video_id', videoId)
+    .eq(t.fk, videoId)
 
   if (error) throw error
 
   return count ?? 0
 }
 
-export async function fetchReplies(parentId: string): Promise<CommentWithAuthor[]> {
+export async function fetchReplies(
+  parentId: string,
+  source: CommentSource = 'video'
+): Promise<CommentWithAuthor[]> {
+  const t = tablesFor(source)
   const { data, error } = await supabase
-    .from('comments')
-    .select(commentSelect)
+    .from(t.comments)
+    .select(t.select)
     .eq('parent_id', parentId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
 
-  return attachCommentAuthors((data ?? []) as CommentRow[])
+  return attachCommentAuthors((data ?? []) as unknown as CommentRow[])
 }
 
 export async function createComment(payload: {
@@ -123,10 +166,13 @@ export async function createComment(payload: {
   author_id: string
   body: string
   parent_id?: string
+  source?: CommentSource
 }) {
+  const { source = 'video', video_id, ...rest } = payload
+  const t = tablesFor(source)
   const { data, error } = await supabase
-    .from('comments')
-    .insert(payload)
+    .from(t.comments)
+    .insert({ ...rest, [t.fk]: video_id })
     .select()
     .single()
 
@@ -141,9 +187,13 @@ export async function deleteComment(id: string) {
   logElearningActivity('comment_deleted', `Deleted comment ${id}`)
 }
 
-export async function deleteOwnComment(userId: string, commentId: string) {
+export async function deleteOwnComment(
+  userId: string,
+  commentId: string,
+  source: CommentSource = 'video'
+) {
   const { data, error } = await supabase
-    .from('comments')
+    .from(tablesFor(source).comments)
     .delete()
     .eq('id', commentId)
     .eq('author_id', userId)
@@ -156,9 +206,9 @@ export async function deleteOwnComment(userId: string, commentId: string) {
   logElearningActivity('comment_deleted', `Deleted comment ${commentId}`)
 }
 
-export async function likeComment(userId: string, commentId: string) {
+export async function likeComment(userId: string, commentId: string, source: CommentSource = 'video') {
   const { error } = await supabase
-    .from('comment_likes')
+    .from(tablesFor(source).likes)
     .upsert(
       { user_id: userId, comment_id: commentId },
       { onConflict: 'user_id,comment_id', ignoreDuplicates: true }
@@ -167,9 +217,9 @@ export async function likeComment(userId: string, commentId: string) {
   if (error) throw error
 }
 
-export async function unlikeComment(userId: string, commentId: string) {
+export async function unlikeComment(userId: string, commentId: string, source: CommentSource = 'video') {
   const { error } = await supabase
-    .from('comment_likes')
+    .from(tablesFor(source).likes)
     .delete()
     .eq('user_id', userId)
     .eq('comment_id', commentId)
@@ -177,9 +227,13 @@ export async function unlikeComment(userId: string, commentId: string) {
   if (error) throw error
 }
 
-export async function checkCommentLiked(userId: string, commentId: string): Promise<boolean> {
+export async function checkCommentLiked(
+  userId: string,
+  commentId: string,
+  source: CommentSource = 'video'
+): Promise<boolean> {
   const { data, error } = await supabase
-    .from('comment_likes')
+    .from(tablesFor(source).likes)
     .select('comment_id')
     .eq('user_id', userId)
     .eq('comment_id', commentId)
