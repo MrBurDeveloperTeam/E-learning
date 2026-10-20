@@ -6,6 +6,7 @@ import type { CommentWithAuthor } from '@/types'
 import { cn, getDisplayName, timeAgo } from '@/lib/utils'
 import { useCommentLike, useDeleteComment, useReplies } from '@/hooks/useComments'
 import { useAuthStore } from '@/store/authStore'
+import { isAdminProfile } from '@/lib/auth'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,6 +24,8 @@ interface CommentItemProps {
   comment: CommentWithAuthor
   videoId: string
   source?: CommentSource
+  /** Owner of the uploaded video; they can delete any comment on it. */
+  videoCreatorId?: string | null
   isReply?: boolean
   currentUserAvatarUrl?: string | null
 }
@@ -31,6 +34,7 @@ export function CommentItem({
   comment,
   videoId,
   source = 'video',
+  videoCreatorId = null,
   isReply = false,
   currentUserAvatarUrl,
 }: CommentItemProps) {
@@ -44,6 +48,9 @@ export function CommentItem({
   const repliesQuery = useReplies(showReplies ? comment.id : '', source)
   const replyCount = comment.reply_count ?? 0
   const isOwnComment = profile?.user_id === comment.author_id
+  const isModerator =
+    isAdminProfile(profile) || (!!videoCreatorId && profile?.user_id === videoCreatorId)
+  const canDelete = isOwnComment || isModerator
   const authorName = getDisplayName(comment.profiles, 'Unknown user')
 
   function handleLike() {
@@ -62,6 +69,7 @@ export function CommentItem({
         commentId: comment.id,
         videoId,
         source,
+        asModerator: !isOwnComment,
       })
       toast.success('Comment deleted')
     } catch (error) {
@@ -168,7 +176,7 @@ export function CommentItem({
                   <Flag className="h-4 w-4" />
                   Report
                 </DropdownMenuItem>
-                {isOwnComment && (
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator className="bg-[#EAF4F3]" />
                     <DropdownMenuItem
@@ -234,6 +242,7 @@ export function CommentItem({
                 comment={reply}
                 videoId={videoId}
                 source={source}
+                videoCreatorId={videoCreatorId}
                 isReply
                 currentUserAvatarUrl={currentUserAvatarUrl}
               />

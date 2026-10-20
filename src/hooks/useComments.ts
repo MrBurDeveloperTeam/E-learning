@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   checkCommentLiked,
   createComment,
+  deleteCommentAsModerator,
   deleteOwnComment,
   fetchCommentCount,
   fetchComments,
@@ -61,13 +62,21 @@ export function useDeleteComment() {
     mutationFn: async ({
       commentId,
       source = 'video',
+      asModerator = false,
     }: {
       commentId: string
       videoId: string
       source?: CommentSource
+      /** Deleting someone else's comment as the video creator or an admin. */
+      asModerator?: boolean
     }) => {
       if (!userId) {
         throw new Error('You must be signed in to delete a comment.')
+      }
+
+      if (asModerator) {
+        await deleteCommentAsModerator(commentId, source)
+        return
       }
 
       await deleteOwnComment(userId, commentId, source)

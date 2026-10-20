@@ -417,7 +417,11 @@ export function Watch() {
               {/* Comments */}
               <div className="px-4 lg:px-0 mt-4">
                 {isAuthenticated ? (
-                  <CommentSection videoId={videoId} commentCount={video.comment_count} />
+                  <CommentSection
+                    videoId={videoId}
+                    commentCount={video.comment_count}
+                    videoCreatorId={video.creator_id}
+                  />
                 ) : (
                   <div className="rounded-xl bg-muted/30 py-8 text-center">
                     <p className="text-sm text-muted-foreground">

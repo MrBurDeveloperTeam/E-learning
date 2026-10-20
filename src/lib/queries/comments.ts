@@ -181,10 +181,23 @@ export async function createComment(payload: {
   return data
 }
 
-export async function deleteComment(id: string) {
-  const { error } = await supabase.from('comments').delete().eq('id', id)
+/**
+ * Moderator delete (video creator or admin). Unlike deleteOwnComment this does
+ * not filter on the author; row-level security decides who is allowed, and an
+ * empty result means the database refused it.
+ */
+export async function deleteCommentAsModerator(commentId: string, source: CommentSource = 'video') {
+  const { data, error } = await supabase
+    .from(tablesFor(source).comments)
+    .delete()
+    .eq('id', commentId)
+    .select('id')
+
   if (error) throw error
-  logElearningActivity('comment_deleted', `Deleted comment ${id}`)
+  if (!data?.length) {
+    throw new Error('You do not have permission to delete this comment.')
+  }
+  logElearningActivity('comment_deleted', `Moderated (deleted) comment ${commentId}`)
 }
 
 export async function deleteOwnComment(

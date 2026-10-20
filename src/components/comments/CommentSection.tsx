@@ -12,12 +12,14 @@ interface CommentSectionProps {
   videoId: string
   commentCount: number
   source?: CommentSource
+  videoCreatorId?: string | null
 }
 
 export function CommentSection({
   videoId,
   commentCount,
   source = 'video',
+  videoCreatorId = null,
 }: CommentSectionProps) {
   const user = useAuthStore((state) => state.user)
   const { profileImageUrl } = useProfileImage(Boolean(user))
@@ -26,13 +28,22 @@ export function CommentSection({
   const commentCountQuery = useCommentCount(videoId, source)
   const displayCommentCount = commentCountQuery.data ?? commentCount
 
-  const sortedComments =
-    sort === 'newest'
-      ? [...comments].sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-      : comments
+  const byNewest = (
+    a: (typeof comments)[number],
+    b: (typeof comments)[number]
+  ) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+  // "Top": pinned first, then most liked, then most replied-to, then newest.
+  // "Newest first": strictly by date, ignoring likes and pins.
+  const sortedComments = [...comments].sort((a, b) => {
+    if (sort === 'newest') return byNewest(a, b)
+
+    if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
+    if (b.like_count !== a.like_count) return b.like_count - a.like_count
+    const replyDiff = (b.reply_count ?? 0) - (a.reply_count ?? 0)
+    if (replyDiff !== 0) return replyDiff
+    return byNewest(a, b)
+  })
 
   return (
     <div>
@@ -83,6 +94,7 @@ export function CommentSection({
               comment={comment}
               videoId={videoId}
               source={source}
+              videoCreatorId={videoCreatorId}
               currentUserAvatarUrl={profileImageUrl}
             />
           ))}
