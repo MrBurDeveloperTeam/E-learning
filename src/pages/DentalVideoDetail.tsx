@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
+import { Bookmark, ChevronLeft, ChevronRight, VolumeX } from 'lucide-react'
+import { toast } from 'sonner'
 import { Navbar } from '@/components/layout/Navbar'
 import { AdvertisementOverlay } from '@/components/dental/AdvertisementOverlay'
 import { CategoryBadge } from '@/components/CategoryBadge'
@@ -8,6 +9,8 @@ import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FeaturedProductsList } from '@/components/video/FeaturedProductCard'
 import { useDentalVideoProducts } from '@/hooks/useProducts'
+import { useDentalVideoSave } from '@/hooks/useDentalVideoSaves'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
 import { selectAdvertisement } from '@/lib/advertisementRotation'
@@ -117,6 +120,7 @@ export function DentalVideoDetail() {
   const { id } = useParams({ from: '/dental-videos/$id' })
   const session = useAuthStore((s) => s.session)
   const featuredProductsQuery = useDentalVideoProducts(id)
+  const { isSaved, toggleSave, isPending: savePending } = useDentalVideoSave(id)
   const navigate = useNavigate()
 
   const [video, setVideo] = useState<DentalVideo | null>(null)
@@ -508,6 +512,32 @@ export function DentalVideoDetail() {
               <span className="text-[#9BB5B5] dark:text-muted-foreground">
                 {formatPublishedDate(video.published_at)}
               </span>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                disabled={savePending}
+                onClick={() => {
+                  if (!session) {
+                    toast.error('Sign in to save videos')
+                    return
+                  }
+                  toggleSave.mutate(undefined, {
+                    onSuccess: () => toast.success(isSaved ? 'Removed from saved videos' : 'Saved to your videos'),
+                    onError: () => toast.error('Could not update saved videos'),
+                  })
+                }}
+                className={cn(
+                  'flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all',
+                  isSaved
+                    ? 'border-primary bg-primary/20 text-primary'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
+                )}
+              >
+                <Bookmark className={cn('h-4 w-4', isSaved && 'fill-current')} />
+                {isSaved ? 'Saved' : 'Save video'}
+              </button>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
