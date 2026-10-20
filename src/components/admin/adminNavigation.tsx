@@ -7,6 +7,7 @@ import {
   Youtube,
   Megaphone,
   SlidersHorizontal,
+  Package,
 } from 'lucide-react'
 import type { SidebarItem } from '@/components/layout/Sidebar'
 
@@ -58,6 +59,11 @@ export function getAdminSidebarItems(
       label: 'Advertisements',
       path: '/admin/advertisements',
       icon: <Megaphone className="h-4 w-4" />,
+    },
+    {
+      label: 'Featured products',
+      path: '/admin/video-products',
+      icon: <Package className="h-4 w-4" />,
     },
     {
       label: 'Platform settings',
