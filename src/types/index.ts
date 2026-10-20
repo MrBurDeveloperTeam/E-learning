@@ -136,8 +136,12 @@ export interface VideoWithCreator extends Video {
 
 export interface VideoProduct {
   id: string
-  video_id: string
-  creator_id: string
+  /** Set for uploaded videos; null when the product is on a YouTube (dental) video. */
+  video_id: string | null
+  /** Set for imported YouTube videos (dental_videos.id); null for uploaded videos. */
+  dental_video_id: string | null
+  /** Video owner. Null for YouTube videos, which never earn credit. */
+  creator_id: string | null
   product_ref: string
   product_name: string
   product_image_url: string | null

@@ -16,7 +16,7 @@ function formatPrice(price: number, currency: string) {
  * SSO is handled separately via a POST to /api/shop-redirect (see handleClick)
  * so the session token never appears in the URL or browser history.
  */
-function buildTargetUrl(productUrl: string, videoId: string, creatorId: string): string {
+function buildTargetUrl(productUrl: string, videoId: string, creatorId?: string | null): string {
   try {
     const url = new URL(productUrl)
     // Unwrap any existing return_url nesting from a previous wrapping
@@ -25,18 +25,19 @@ function buildTargetUrl(productUrl: string, videoId: string, creatorId: string):
     target.searchParams.set('utm_source', 'elearning')
     target.searchParams.set('utm_medium', 'video')
     target.searchParams.set('ref_video', videoId)
-    target.searchParams.set('ref_creator', creatorId)
+    // YouTube videos have no creator, so no ref_creator (and no credit).
+    if (creatorId) target.searchParams.set('ref_creator', creatorId)
     return target.toString()
   } catch {
     const sep = productUrl.includes('?') ? '&' : '?'
-    return `${productUrl}${sep}utm_source=elearning&utm_medium=video&ref_video=${encodeURIComponent(videoId)}&ref_creator=${encodeURIComponent(creatorId)}`
+    return `${productUrl}${sep}utm_source=elearning&utm_medium=video&ref_video=${encodeURIComponent(videoId)}${creatorId ? `&ref_creator=${encodeURIComponent(creatorId)}` : ''}`
   }
 }
 
 interface FeaturedProductCardProps {
   product: VideoProduct
   videoId: string
-  creatorId: string
+  creatorId?: string | null
 }
 
 export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedProductCardProps) {
@@ -141,7 +142,7 @@ export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedPro
 interface FeaturedProductsListProps {
   products: VideoProduct[]
   videoId: string
-  creatorId: string
+  creatorId?: string | null
 }
 
 export function FeaturedProductsList({ products, videoId, creatorId }: FeaturedProductsListProps) {

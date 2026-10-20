@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchCreditSettings,
   fetchMyProductPurchases,
+  fetchDentalVideoProducts,
   fetchVideoProducts,
+  replaceDentalVideoProducts,
   replaceVideoProducts,
   searchPartnerProducts,
   updateCreditSettings,
@@ -25,6 +27,31 @@ export function useVideoProducts(videoId: string) {
     queryKey: ['video-products', videoId],
     queryFn: () => fetchVideoProducts(videoId),
     enabled: !!videoId,
+  })
+}
+
+export function useDentalVideoProducts(dentalVideoId: string) {
+  return useQuery({
+    queryKey: ['dental-video-products', dentalVideoId],
+    queryFn: () => fetchDentalVideoProducts(dentalVideoId),
+    enabled: !!dentalVideoId,
+  })
+}
+
+export function useSaveDentalVideoProducts() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      dentalVideoId,
+      products,
+    }: {
+      dentalVideoId: string
+      products: FeaturedProductInput[]
+    }) => replaceDentalVideoProducts(dentalVideoId, products),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['dental-video-products', variables.dentalVideoId] })
+    },
   })
 }
 

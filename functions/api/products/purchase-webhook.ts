@@ -147,6 +147,19 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     if (!videoProduct) {
+      // Products on imported YouTube videos (video_products.dental_video_id) have
+      // no creator and never earn Snabbb Credit, so there is nothing to record.
+      const { data: dentalProduct } = await supabase
+        .from("video_products")
+        .select("id")
+        .eq("dental_video_id", videoId)
+        .eq("product_ref", productRef)
+        .maybeSingle();
+
+      if (dentalProduct) {
+        return jsonResponse({ ok: true, skipped: true, reason: "youtube_video_no_credit" });
+      }
+
       console.warn("No matching featured product for webhook payload", { videoId, productRef, odooOrderId });
       return jsonResponse(
         { ok: false, error: "No featured product matches ref_video/product_ref" },

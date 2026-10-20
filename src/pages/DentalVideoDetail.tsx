@@ -6,6 +6,9 @@ import { AdvertisementOverlay } from '@/components/dental/AdvertisementOverlay'
 import { CategoryBadge } from '@/components/CategoryBadge'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FeaturedProductsList } from '@/components/video/FeaturedProductCard'
+import { useDentalVideoProducts } from '@/hooks/useProducts'
+import { useAuthStore } from '@/store/authStore'
 import { getAdjacentVideos, getVideoById } from '@/lib/dentalVideosApi'
 import { selectAdvertisement } from '@/lib/advertisementRotation'
 import { getAdvertisementsForVideo, getAdvertisementFrequency, type VideoAdvertisement } from '@/lib/videoAdvertisements'
@@ -112,6 +115,8 @@ async function getVideoPage(id: string) {
 
 export function DentalVideoDetail() {
   const { id } = useParams({ from: '/dental-videos/$id' })
+  const session = useAuthStore((s) => s.session)
+  const featuredProductsQuery = useDentalVideoProducts(id)
   const navigate = useNavigate()
 
   const [video, setVideo] = useState<DentalVideo | null>(null)
@@ -543,6 +548,15 @@ export function DentalVideoDetail() {
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {!!session && !!featuredProductsQuery.data?.length && (
+              <div className="mt-4">
+                <FeaturedProductsList
+                  products={featuredProductsQuery.data}
+                  videoId={video.id}
+                />
               </div>
             )}
 

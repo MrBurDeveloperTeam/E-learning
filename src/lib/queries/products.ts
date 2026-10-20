@@ -50,6 +50,17 @@ export async function fetchVideoProducts(videoId: string): Promise<VideoProduct[
   return (data ?? []) as VideoProduct[]
 }
 
+export async function fetchDentalVideoProducts(dentalVideoId: string): Promise<VideoProduct[]> {
+  const { data, error } = await supabase
+    .from('video_products')
+    .select('*')
+    .eq('dental_video_id', dentalVideoId)
+    .order('position', { ascending: true })
+
+  if (error) throw error
+  return (data ?? []) as VideoProduct[]
+}
+
 export type FeaturedProductInput = Pick<
   VideoProduct,
   'product_ref' | 'product_name' | 'product_image_url' | 'product_price' | 'currency' | 'product_url' | 'cta_label'
@@ -110,6 +121,62 @@ export async function replaceVideoProducts(
   logElearningActivity(
     'video_products_updated',
     `Featured ${products.length} product(s) on video ${videoId}`
+  )
+}
+
+/**
+ * Same as replaceVideoProducts but for imported YouTube videos. These have no
+ * creator, so no Snabbb Credit is ever awarded for purchases through them.
+ */
+export async function replaceDentalVideoProducts(
+  dentalVideoId: string,
+  products: FeaturedProductInput[]
+): Promise<void> {
+  const { data: existing, error: fetchError } = await supabase
+    .from('video_products')
+    .select('id, product_ref')
+    .eq('dental_video_id', dentalVideoId)
+
+  if (fetchError) throw fetchError
+
+  const keepRefs = new Set(products.map((product) => product.product_ref))
+  const toRemove = (existing ?? []).filter((row) => !keepRefs.has(row.product_ref))
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('video_products')
+      .delete()
+      .in('id', toRemove.map((row) => row.id))
+
+    if (deleteError) throw deleteError
+  }
+
+  if (products.length > 0) {
+    const rows = products.map((product, index) => ({
+      dental_video_id: dentalVideoId,
+      video_id: null,
+      creator_id: null,
+      product_ref: product.product_ref,
+      product_name: product.product_name,
+      product_image_url: product.product_image_url,
+      product_price: product.product_price,
+      currency: product.currency,
+      product_url: product.product_url,
+      cta_label: product.cta_label || 'View Product',
+      position: index,
+      updated_at: new Date().toISOString(),
+    }))
+
+    const { error: upsertError } = await supabase
+      .from('video_products')
+      .upsert(rows, { onConflict: 'dental_video_id,product_ref' })
+
+    if (upsertError) throw upsertError
+  }
+
+  logElearningActivity(
+    'video_products_updated',
+    `Featured ${products.length} product(s) on YouTube video ${dentalVideoId}`
   )
 }
 
