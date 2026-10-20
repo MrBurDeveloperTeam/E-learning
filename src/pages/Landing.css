@@ -294,47 +294,47 @@
   color: var(--dl-teal);
 }
 
-.dl-preview-wrap {
+.dl-hero-preview {
   position: relative;
-  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 470px;
 }
 
 .dl-preview-glow {
   position: absolute;
+  z-index: 0;
   border-radius: 50%;
-  filter: blur(70px);
   pointer-events: none;
 }
 
 .dl-preview-glow-one {
-  top: 5%;
-  right: 10%;
-  width: 240px;
-  height: 240px;
-  background: rgba(11, 159, 145, 0.2);
+  width: 420px;
+  height: 420px;
+  background: rgba(145, 227, 216, 0.25);
+  filter: blur(3px);
 }
 
 .dl-preview-glow-two {
-  bottom: 5%;
-  left: 5%;
-  width: 180px;
-  height: 180px;
-  background: rgba(116, 80, 200, 0.15);
+  right: 10%;
+  bottom: 7%;
+  width: 170px;
+  height: 170px;
+  background: rgba(244, 194, 103, 0.18);
+  filter: blur(3px);
 }
 
 .dl-workspace-preview-image {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: block;
-  width: 100%;
+  width: min(100%, 650px);
   height: auto;
-  border: 1px solid rgba(16, 43, 53, 0.12);
-  border-radius: 22px;
-  background: var(--dl-white);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.03),
-    0 30px 80px rgba(16, 43, 53, 0.17),
-    0 8px 28px rgba(16, 43, 53, 0.08);
+  border: 1px solid #c9e6e2;
+  border-radius: 24px;
+  background: #f8fffe;
+  box-shadow: 0 35px 80px rgba(31, 99, 101, 0.16);
 }
 
 .dl-browser-dots {
@@ -1061,7 +1061,7 @@
   }
 }
 
-@media (max-width: 850px) {
+@media (max-width: 900px) {
   .dl-nav {
     min-height: 68px;
     padding: 0 5vw;
@@ -1143,7 +1143,7 @@
     justify-content: center;
   }
 
-  .dl-preview-wrap {
+  .dl-hero-preview {
     margin-top: 25px;
   }
 
@@ -1157,7 +1157,7 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 680px) {
   .dl-brand span {
     display: none;
   }
@@ -1165,6 +1165,14 @@
   .dl-hero {
     padding-right: 5vw;
     padding-left: 5vw;
+  }
+
+  .dl-hero-preview {
+    min-height: 435px;
+  }
+
+  .dl-workspace-preview-image {
+    border-radius: 18px;
   }
 
   .dl-hero-copy > p {

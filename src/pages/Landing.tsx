@@ -335,11 +335,15 @@ export function Landing() {
           </div>
         </div>
 
-        <img
-          className="dl-workspace-preview-image"
-          src="/images/e-learning-preview.png"
-          alt="DentalLearn Explore page showing clinical videos and learning categories"
-        />
+        <div className="dl-hero-preview">
+          <div className="dl-preview-glow dl-preview-glow-one" aria-hidden="true" />
+          <div className="dl-preview-glow dl-preview-glow-two" aria-hidden="true" />
+          <img
+            className="dl-workspace-preview-image"
+            src="/images/e-learning-preview.png"
+            alt="DentalLearn Explore page showing clinical videos and learning categories"
+          />
+        </div>
       </section>
 
       <section className="dl-stat-strip" aria-label="DentalLearn highlights">
