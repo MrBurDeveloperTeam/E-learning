@@ -439,6 +439,8 @@ export function CommunityComments({
                       <img
                         src={media.public_url}
                         alt={media.file_name}
+                        loading="lazy"
+                        decoding="async"
                         className="h-24 max-w-40 rounded-lg object-cover"
                       />
                     </a>

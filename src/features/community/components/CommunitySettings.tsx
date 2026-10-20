@@ -100,7 +100,7 @@ export function CommunitySettings({ userId }: { userId: string }) {
                 className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 {post.preview_media?.media_type === 'image' ? (
-                  <img src={post.preview_media.public_url} alt={post.preview_media.alt_text || ''} loading="lazy" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" />
+                  <img src={post.preview_media.public_url} alt={post.preview_media.alt_text || ''} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" />
                 ) : post.preview_media?.media_type === 'video' ? (
                   <video src={post.preview_media.public_url} muted playsInline preload="metadata" aria-label={post.preview_media.alt_text || 'Video post preview'} className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" />
                 ) : (

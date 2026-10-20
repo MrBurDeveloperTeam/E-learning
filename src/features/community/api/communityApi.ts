@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { CommunityComment, CommunityManagedPost, CommunityPerson, CommunityPost, CommunityPostTopic, CommunitySummary, DirectConversation, DirectMessage } from '@/features/community/types'
 import { prepareCommunityMedia } from '@/features/community/utils/media'
+import { signCommunityMediaUrls } from '@/features/community/lib/signedUrlCache'
 import {
   COMMUNITY_BUCKETS,
   COMMUNITY_TABLES,
@@ -202,7 +203,7 @@ async function hydrateCommunityPosts(posts: CommunityPost[], userId?: string) {
     }
   }
   for (const [bucket, rows] of bucketGroups) {
-    const signed = await supabase.storage.from(bucket).createSignedUrls(rows.map((row) => row.storage_path!), 3600)
+    const signed = await signCommunityMediaUrls(bucket, rows.map((row) => row.storage_path!))
     if (signed.error) throw signed.error
     const urls = new Map((signed.data ?? []).map((item) => [item.path, item.signedUrl]))
     for (const row of rows) {
@@ -467,7 +468,7 @@ export async function fetchCommunityComments(postId: string, userId?: string, pa
     const bucketGroups = new Map<string, typeof mediaRows>()
     for (const row of mediaRows) bucketGroups.set(row.storage_bucket, [...(bucketGroups.get(row.storage_bucket) ?? []), row])
     for (const [bucket, bucketRows] of bucketGroups) {
-      const signed = await supabase.storage.from(bucket).createSignedUrls(bucketRows.map((row) => row.storage_path), 3600)
+      const signed = await signCommunityMediaUrls(bucket, bucketRows.map((row) => row.storage_path))
       if (signed.error) throw signed.error
       const urls = new Map((signed.data ?? []).map((item) => [item.path, item.signedUrl]))
       for (const row of bucketRows) {
@@ -850,7 +851,7 @@ export async function fetchDirectMessages(conversationId: string) {
   // prevent users from reading messages that were fetched successfully.
   const attachments = attachmentResult.error ? [] : (attachmentResult.data ?? [])
   if (attachments.length) {
-    const signed = await supabase.storage.from(COMMUNITY_BUCKETS.messageAttachments).createSignedUrls(attachments.map((row) => row.storage_path), 3600)
+    const signed = await signCommunityMediaUrls(COMMUNITY_BUCKETS.messageAttachments, attachments.map((row) => row.storage_path))
     if (!signed.error) {
       for (const item of signed.data ?? []) if (item.path && item.signedUrl) attachmentUrls.set(item.path, item.signedUrl)
     }
@@ -1244,7 +1245,7 @@ async function hydrateManagedPostPreviews(posts:CommunityManagedPost[]){
   const buckets=[...new Set(stored.map(row=>row.storage_bucket!))]
   for(const bucket of buckets){
     const rows=stored.filter(row=>row.storage_bucket===bucket)
-    const signed=await supabase.storage.from(bucket).createSignedUrls(rows.map(row=>row.storage_path!),3600)
+    const signed=await signCommunityMediaUrls(bucket, rows.map(row=>row.storage_path!))
     if(signed.error)throw signed.error
     for(const item of signed.data??[])if(item.signedUrl)signedUrls.set(`${bucket}:${item.path}`,item.signedUrl)
   }

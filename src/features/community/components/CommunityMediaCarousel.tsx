@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
   type Variants,
 } from "framer-motion";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Play } from "lucide-react";
 import type { CommunityPost } from "@/features/community/types";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,46 @@ const slideVariants: Variants = {
   }),
 };
 
+/**
+ * Image with a spinner until it has actually loaded (same idea as the Unified
+ * Shop's product cards). `priority` is for the image the viewer is looking at, so
+ * the browser fetches it first; others load lazily.
+ */
+function CarouselImage({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    // A cached image can finish before React attaches onLoad.
+    if (imageRef.current?.complete && imageRef.current.naturalWidth > 0) setLoaded(true);
+  }, [src]);
+
+  return (
+    <>
+      <img
+        ref={imageRef}
+        src={src}
+        alt={alt}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : "auto"}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+        className={cn(
+          "size-full select-none object-contain transition-opacity duration-200",
+          loaded ? "opacity-100" : "opacity-0",
+        )}
+        draggable={false}
+      />
+      {!loaded && (
+        <div className="absolute inset-0 grid place-items-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground/60" />
+        </div>
+      )}
+    </>
+  );
+}
+
 function DeckPreview({ item, depth }: { item: CommunityMedia; depth: number }) {
   return (
     <div
@@ -69,6 +109,8 @@ function DeckPreview({ item, depth }: { item: CommunityMedia; depth: number }) {
         <img
           src={item.public_url}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="size-full scale-110 object-cover"
           style={{
             filter:
@@ -118,6 +160,16 @@ export function CommunityMediaCarousel({
   useEffect(() => {
     if (activeIndex >= count) setActiveIndex(0);
   }, [activeIndex, count]);
+
+  // Warm the browser cache with the next image so swiping to it is instant.
+  const nextItem = count > 1 ? media[(activeIndex + 1) % count] : null;
+  const nextImageUrl = nextItem?.media_type === "image" ? nextItem.public_url : null;
+  useEffect(() => {
+    if (!nextImageUrl) return;
+    const preload = new Image();
+    preload.decoding = "async";
+    preload.src = nextImageUrl;
+  }, [nextImageUrl]);
 
   if (!active) return null;
 
@@ -208,11 +260,10 @@ export function CommunityMediaCarousel({
                   onEnded={(event) => onVideoEnded?.(event.currentTarget.duration)}
                 />
               ) : (
-                <img
+                <CarouselImage
                   src={active.public_url}
                   alt={active.alt_text || postTitle || `Community post image ${activeIndex + 1}`}
-                  className="size-full select-none object-contain"
-                  draggable={false}
+                  priority
                 />
               )}
             </motion.div>
