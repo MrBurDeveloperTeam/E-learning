@@ -139,14 +139,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  border-radius: 13px;
-  font-weight: 400;
+  gap: 12px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
     background 0.2s ease,
     border-color 0.2s ease;
+}
+
+.dl-nav-cta,
+.dl-light-button {
+  gap: 9px;
+  border-radius: 13px;
 }
 
 .dl-nav-cta,
@@ -164,8 +172,7 @@
 }
 
 .dl-primary-button {
-  min-height: 52px;
-  padding: 14px 22px;
+  padding: 14px 20px;
 }
 
 .dl-nav-cta:hover,
@@ -176,8 +183,7 @@
 }
 
 .dl-secondary-button {
-  min-height: 52px;
-  padding: 14px 22px;
+  padding: 14px 20px;
   border: 1px solid var(--dl-line);
   color: var(--dl-navy);
   background: var(--dl-white);

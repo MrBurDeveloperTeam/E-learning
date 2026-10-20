@@ -309,7 +309,7 @@ export function Landing() {
           <div className="dl-hero-actions">
             <a className="dl-primary-button" href={signupUrl}>
               Sign Up
-              <ArrowRight size={18} />
+              <ArrowRight size={22} strokeWidth={2.5} />
             </a>
 
             <a className="dl-secondary-button" href="#features">
