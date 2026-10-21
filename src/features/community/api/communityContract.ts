@@ -26,7 +26,8 @@ export const COMMUNITY_TABLES = {
   commentMedia: 'community_comment_media',
   commentLikes: 'community_comment_likes',
   follows: 'community_follows',
-  closeFriends: 'community_close_friends',
+  /* Close friends table is intentionally disabled; source preserved for re-enabling later. */
+  // closeFriends: 'community_close_friends',
   friendships: 'community_friendships',
   reports: 'community_reports',
   professionalBadges: 'community_professional_badges',

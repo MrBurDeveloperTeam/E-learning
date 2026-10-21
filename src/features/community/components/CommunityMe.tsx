@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, FileText, Heart, Pencil, Repeat2, Settings2, Star, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react'
+import { ArrowLeft, FileText, Heart, Pencil, Repeat2, Settings2, UserMinus, UserRoundCheck } from 'lucide-react'
+// Close friends UI is intentionally disabled but preserved below in comments.
+// import { Star, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -10,7 +12,9 @@ import { RetryCard } from '@/components/shared/RetryCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { CommunitySettings } from '@/features/community/components/CommunitySettings'
 import { CommunityFriendRequests } from '@/features/community/components/CommunityFriendRequests'
-import { useCloseFriendAction, useCloseFriends, useCommunitySettings, useFriendRequests, useRemoveCommunitySettingRelation } from '@/features/community/hooks/useCommunity'
+import { useCommunitySettings, useFriendRequests, useRemoveCommunitySettingRelation } from '@/features/community/hooks/useCommunity'
+// Close friends hooks are intentionally disabled but preserved in useCommunity.ts.
+// import { useCloseFriendAction, useCloseFriends } from '@/features/community/hooks/useCommunity'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { CommunityManagedPost, CommunityPerson } from '@/features/community/types'
 import type { Profile } from '@/types'
@@ -33,16 +37,16 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const queryClient = useQueryClient()
   const [showSettings, setShowSettings] = useState(false)
   const [followRequestsOpen, setFollowRequestsOpen] = useState(openFollowRequests)
-  const [connectionsView, setConnectionsView] = useState<'following' | 'close_friends' | null>(null)
+  const [connectionsView, setConnectionsView] = useState<'following' | null>(null)
   const [section, setSection] = useState<ProfileSection>('posts')
   const [backgroundFailed, setBackgroundFailed] = useState(false)
   const activityQuery = useCommunitySettings(userId, section)
   const ownPostsQuery = useCommunitySettings(userId, 'posts')
   const followingQuery = useCommunitySettings(userId, 'following')
-  const closeFriendsQuery = useCloseFriends(userId)
+  // const closeFriendsQuery = useCloseFriends(userId)
   const followRequestsQuery = useFriendRequests(userId)
   const unfollowMutation = useRemoveCommunitySettingRelation(userId, 'following')
-  const closeFriendAction = useCloseFriendAction(userId)
+  // const closeFriendAction = useCloseFriendAction(userId)
   const { profileImageUrl } = useProfileImage(true)
   const ownAccountAvatarUrl = useOwnAccountAvatar(userId)
   const posts = (activityQuery.data ?? []) as CommunityManagedPost[]
@@ -69,24 +73,27 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   }, [isPageVisible, queryClient, userId])
 
   if (connectionsView) {
-    const query = connectionsView === 'following' ? followingQuery : closeFriendsQuery
+    const query = followingQuery
     const people = (query.data ?? []) as CommunityPerson[]
     return <div className="mt-7">
       <div className="flex items-center gap-3 border-b border-border pb-5">
         <Button variant="ghost" size="icon" aria-label="Back to profile" onClick={() => setConnectionsView(null)}><ArrowLeft /></Button>
-        <div><h3 className="text-2xl font-semibold">{connectionsView === 'following' ? 'Following' : 'Close friends'}</h3><p className="mt-1 text-sm text-muted-foreground">{connectionsView === 'following' ? 'Mutual followers can be added privately to your Close friends.' : 'Only you can see and manage this private list.'}</p></div>
+        <div><h3 className="text-2xl font-semibold">Following</h3><p className="mt-1 text-sm text-muted-foreground">People you follow in the Community.</p></div>
       </div>
       {query.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg" /></div>}
       {query.isError && <div className="mt-5"><RetryCard onRetry={() => void query.refetch()} /></div>}
-      {!query.isLoading && !query.isError && people.length === 0 && <div className="mt-5"><EmptyState icon={connectionsView === 'following' ? <UserRoundCheck /> : <UsersRound />} title={`No ${connectionsView} yet`} description="People you connect with will appear here." /></div>}
+      {!query.isLoading && !query.isError && people.length === 0 && <div className="mt-5"><EmptyState icon={<UserRoundCheck />} title="No following yet" description="People you connect with will appear here." /></div>}
       {!query.isLoading && !query.isError && people.length > 0 && <div className="mt-5 space-y-3">{people.map((person) => {
         const name = person.full_name || person.name || 'Community member'
         return <article key={person.relation_id || person.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
           <UserAvatar name={name} avatarUrl={person.avatar_url} userId={person.user_id} size={48} />
-          <div className="min-w-0 flex-1"><p className="truncate font-semibold">{name}</p><p className="text-xs text-muted-foreground">{connectionsView === 'following' ? person.is_mutual ? 'Mutual follow' : 'Following' : 'Close friend · Mutual follow'}</p></div>
+          <div className="min-w-0 flex-1"><p className="truncate font-semibold">{name}</p><p className="text-xs text-muted-foreground">{person.is_mutual ? 'Mutual follow' : 'Following'}</p></div>
           <Button variant="ghost" render={<Link to="/profile/$userId" params={{ userId: person.user_id }} />}>View profile</Button>
+          {/*
           {connectionsView === 'following' && person.is_mutual && <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:!person.is_close_friend}).then(() => toast.success(person.is_close_friend ? 'Removed from Close friends.' : 'Added to Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><Star className="size-4" />{person.is_close_friend ? 'Remove close friend' : 'Add close friend'}</Button>}
           {connectionsView === 'following' ? <Button variant="outline" disabled={unfollowMutation.isPending||closeFriendAction.isPending} onClick={() => void (async()=>{try{if(person.is_close_friend)await closeFriendAction.mutateAsync({targetUserId:person.user_id,active:false});await unfollowMutation.mutateAsync(person.user_id);toast.success('Unfollowed.')}catch(error){toast.error(error instanceof Error ? error.message : 'Could not unfollow this member.')}})()}><UserMinus className="size-4" />Unfollow</Button> : <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:false}).then(() => toast.success('Removed from Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><UserMinus className="size-4" />Remove</Button>}
+          */}
+          <Button variant="outline" disabled={unfollowMutation.isPending} onClick={() => void unfollowMutation.mutateAsync(person.user_id).then(() => toast.success('Unfollowed.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not unfollow this member.'))}><UserMinus className="size-4" />Unfollow</Button>
         </article>
       })}</div>}
     </div>
@@ -130,7 +137,8 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
         <div className="mt-6 grid grid-cols-3 gap-2 sm:max-w-lg sm:gap-4">
           <button type="button" onClick={() => setSection('posts')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><FileText className="mb-2 size-4 text-primary" /><strong className="block text-xl">{ownPostsQuery.isLoading ? '—' : ownPostsQuery.data?.length ?? 0}</strong><span className="text-xs text-muted-foreground">Posts</span></button>
           <button type="button" onClick={() => setConnectionsView('following')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><UserRoundCheck className="mb-2 size-4 text-primary" /><strong className="block text-xl">{followingQuery.isLoading ? '—' : followingQuery.data?.length ?? profile?.following_count ?? 0}</strong><span className="text-xs text-muted-foreground">Following</span></button>
-          <button type="button" onClick={() => setConnectionsView('close_friends')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><Star className="mb-2 size-4 text-primary" /><strong className="block text-xl">{closeFriendsQuery.isLoading ? '—' : closeFriendsQuery.data?.length ?? 0}</strong><span className="text-xs text-muted-foreground">Close friends</span></button>
+          {/* Close friends statistic/card is intentionally hidden. Original JSX preserved below. */}
+          {/* <button type="button" onClick={() => setConnectionsView('close_friends')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><Star className="mb-2 size-4 text-primary" /><strong className="block text-xl">{closeFriendsQuery.isLoading ? '—' : closeFriendsQuery.data?.length ?? 0}</strong><span className="text-xs text-muted-foreground">Close friends</span></button> */}
         </div>
       </div>
     </section>
