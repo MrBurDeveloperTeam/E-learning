@@ -1,5 +1,10 @@
 /* User Community dashboard only. The global navbar, admin and other routes
    are outside this scope. Keep all colours tied to the existing theme. */
+
+/* Close friends feature styling is intentionally disabled.
+   The former card/control styling was inline Tailwind JSX in CommunityMe.tsx;
+   its source remains commented there so the feature can be restored without
+   deleting the original UI or CSS intent. */
 .community-dashboard {
   --community-shadow: 0 8px 32px hsl(var(--foreground) / .045);
   --community-line: hsl(var(--border) / .7);

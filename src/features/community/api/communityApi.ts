@@ -1121,20 +1121,30 @@ export async function fetchFollowingPeople(userId: string) {
   if (error) throw error
   const ids = (data ?? []).map((row) => row.following_id)
   const profiles = await fetchPeopleProfiles(ids)
+  /* Close friends lookup is intentionally disabled; original source preserved.
   const [incoming, closeFriends] = ids.length ? await Promise.all([
     supabase.from(COMMUNITY_TABLES.follows).select('follower_id').eq('following_id', userId).in('follower_id', ids),
     supabase.from(COMMUNITY_TABLES.closeFriends).select('close_friend_id').eq('owner_id', userId).in('close_friend_id', ids),
   ]) : [{ data: [], error: null }, { data: [], error: null }]
-  if (incoming.error) throw incoming.error
   if (closeFriends.error) throw closeFriends.error
-  const mutualIds = new Set((incoming.data ?? []).map(row => row.follower_id))
   const closeFriendIds = new Set((closeFriends.data ?? []).map(row => row.close_friend_id))
   return (data ?? []).flatMap((row) => {
     const profile = profiles.get(row.following_id)
     return profile ? [{ ...profile, relation_id: row.following_id, is_mutual: mutualIds.has(row.following_id), is_close_friend: closeFriendIds.has(row.following_id) }] : []
   })
+  */
+  const [incoming] = ids.length ? await Promise.all([
+    supabase.from(COMMUNITY_TABLES.follows).select('follower_id').eq('following_id', userId).in('follower_id', ids),
+  ]) : [{ data: [], error: null }]
+  if (incoming.error) throw incoming.error
+  const mutualIds = new Set((incoming.data ?? []).map(row => row.follower_id))
+  return (data ?? []).flatMap((row) => {
+    const profile = profiles.get(row.following_id)
+    return profile ? [{ ...profile, relation_id: row.following_id, is_mutual: mutualIds.has(row.following_id) }] : []
+  })
 }
 
+/* Close friends API is intentionally disabled; source preserved for re-enabling later.
 export async function fetchCloseFriends(userId: string) {
   const following = await fetchFollowingPeople(userId)
   return following.filter(person => person.is_mutual && person.is_close_friend)
@@ -1147,6 +1157,7 @@ export async function setCloseFriend(userId: string, closeFriendId: string, acti
   const { error } = await request
   if (error) throw error
 }
+*/
 
 export async function searchCommunityPeople(userId:string,search:string){
   const term=search.trim().replaceAll('%','').replaceAll('_','').replaceAll(',',' ')
