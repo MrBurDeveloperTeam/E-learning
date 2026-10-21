@@ -453,7 +453,7 @@ export function Home() {
                   left: `${creatorScrollbar.thumbLeft}%`,
                   width: `${creatorScrollbar.thumbWidth}%`,
                 }}
-                className="absolute inset-y-0 rounded-full bg-primary transition-[left,width] duration-100 hover:bg-primary/90"
+                className="absolute inset-y-0 rounded-full bg-primary hover:bg-primary/90"
                 aria-hidden="true"
               />
             </div>
