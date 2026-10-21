@@ -253,7 +253,7 @@ export function Profile() {
                         creatorApplicationQuery.isLoading ||
                         creatorApplicationStatus === 'pending'
                       }
-                      className="btn-primary text-sm px-4 py-2 w-full md:w-auto disabled:opacity-60"
+                      className="btn-primary text-sm px-4 py-2 w-full md:w-auto text-white disabled:opacity-60"
                     >
                       {creatorApplicationStatus === 'pending'
                         ? 'Verification pending'
