@@ -4,12 +4,18 @@ import { createClient } from '@supabase/supabase-js'
 // TypeScript interfaces (types/index.ts). The Supabase client is
 // untyped to avoid version-specific generic incompatibilities.
 const SUPABASE_FETCH_TIMEOUT_MS = 10000
+// File uploads (e.g. advertisement videos) legitimately take far longer than a
+// normal API call; the 10s limit was aborting them mid-upload ("(canceled)").
+const SUPABASE_UPLOAD_TIMEOUT_MS = 10 * 60 * 1000
 
 async function supabaseFetch(input: RequestInfo | URL, init?: RequestInit) {
-  const controller = new AbortController()
-  const timeoutId = window.setTimeout(() => controller.abort(), SUPABASE_FETCH_TIMEOUT_MS)
-  const start = Date.now()
   const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+  const method = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase()
+  const isStorageWrite = requestUrl.includes('/storage/v1/') && method !== 'GET' && method !== 'HEAD'
+  const timeoutMs = isStorageWrite ? SUPABASE_UPLOAD_TIMEOUT_MS : SUPABASE_FETCH_TIMEOUT_MS
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+  const start = Date.now()
 
   // Merge the timeout signal with any signal the Supabase SDK passes (e.g.
   // the internal lock signal used by getSession / token refresh). Overwriting
@@ -57,7 +63,7 @@ async function supabaseFetch(input: RequestInfo | URL, init?: RequestInit) {
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error(`Supabase request timed out after ${SUPABASE_FETCH_TIMEOUT_MS}ms`)
+      throw new Error(`Supabase request timed out after ${timeoutMs}ms`)
     }
 
     throw error
