@@ -260,7 +260,7 @@ export function Landing() {
               Log In
             </Link>
             <a href={signupUrl} onClick={closeMenu}>
-              Sign up
+              Sign Up
             </a>
           </div>
         </div>
@@ -273,7 +273,7 @@ export function Landing() {
           </Link>
 
           <a className="dl-nav-cta" href={signupUrl}>
-            Sign up
+            Sign Up
             <ArrowRight size={16} />
           </a>
         </div>
