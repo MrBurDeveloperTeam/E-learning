@@ -110,7 +110,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
             <Button
               type="button"
               variant="outline"
-              className="absolute right-3 top-3 z-10 h-11 rounded-xl border-white/30 bg-black/45 px-3 text-xs font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:top-4 sm:text-sm"
+              className="absolute right-3 top-3 z-10 h-9 rounded-xl border-white/30 bg-black/45 px-2.5 text-xs font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:top-4 sm:h-11 sm:px-3 sm:text-sm"
               onClick={(event) => {
                 event.stopPropagation()
                 openDestination()
@@ -118,7 +118,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
               aria-label={`${advertisement.cta_label}: open advertiser website`}
             >
               {advertisement.cta_label}
-              <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
             </Button>
           ) : null}
 
@@ -126,7 +126,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
             data-ad-skip
             type="button"
             variant="outline"
-            className="absolute bottom-3 right-3 z-10 h-11 min-w-32 rounded-xl border-white/35 bg-black/55 px-3 text-sm font-bold text-white shadow-lg backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/25 disabled:bg-black/45 disabled:text-white/75 disabled:opacity-100 sm:bottom-5 sm:right-5 sm:h-12 sm:min-w-40 sm:px-5 sm:text-base"
+            className="absolute bottom-3 right-3 z-10 h-9 min-w-28 rounded-xl border-white/35 bg-black/55 px-2.5 text-xs font-bold text-white shadow-lg backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/25 disabled:bg-black/45 disabled:text-white/75 disabled:opacity-100 sm:bottom-5 sm:right-5 sm:h-12 sm:min-w-40 sm:px-5 sm:text-base"
             disabled={!canSkip}
             onClick={(event) => {
               event.stopPropagation()
