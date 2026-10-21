@@ -93,19 +93,19 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
       <div
         ref={dialogRef}
         tabIndex={0}
-        className={`relative flex w-full flex-col overflow-hidden bg-card text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${embedded ? 'h-full bg-black' : 'max-h-[94dvh] max-w-5xl rounded-[1.75rem] border border-border shadow-[0_24px_70px_rgba(45,110,106,0.16)]'}`}
+        className={`overflow-hidden text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${embedded ? 'absolute inset-0 bg-black' : 'relative flex w-full max-h-[94dvh] flex-col bg-card max-w-5xl rounded-[1.75rem] border border-border shadow-[0_24px_70px_rgba(45,110,106,0.16)]'}`}
         onKeyDown={handleOverlayKeyDown}
         aria-label={advertisement.click_url ? `Open ${advertisement.advertiser_name} advertisement` : undefined}
       >
-        <div className={`flex min-h-12 items-center justify-between gap-4 border-b border-border px-4 py-3 sm:px-5 ${embedded ? 'absolute inset-x-0 top-0 z-20 border-0 bg-gradient-to-b from-black/75 to-transparent text-white' : ''}`}>
-          <div className="min-w-0">
+        <div className={`flex items-center justify-between gap-4 px-4 py-3 sm:px-5 ${embedded ? 'absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 to-transparent text-white' : 'min-h-12 border-b border-border'}`}>
+          <div className={`min-w-0 ${embedded ? 'max-w-[55%]' : ''}`}>
             <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${embedded ? 'text-white/80' : 'text-primary'}`}>Advertisement</p>
             <h2 id="advertisement-title" className={`truncate text-sm font-medium ${embedded ? 'text-white' : 'text-foreground'}`}>{advertisement.advertiser_name}</h2>
           </div>
-          <div className={`rounded-full px-3 py-1 text-xs ${embedded ? 'bg-black/35 text-white' : 'bg-muted text-muted-foreground'}`}>Sponsored</div>
+          {!embedded && <div className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">Sponsored</div>}
         </div>
 
-        <div className={`relative min-h-0 flex-1 bg-muted/35 ${embedded ? 'absolute inset-0' : ''}`}>
+        <div className={embedded ? 'absolute inset-0 z-0 bg-black' : 'relative min-h-0 flex-1 bg-muted/35'}>
           {advertisement.cta_label && advertisement.click_url ? (
             <Button
               type="button"
@@ -169,7 +169,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
           ) : null}
         </div>
 
-        <div className={`border-t border-border bg-card p-4 sm:px-5 ${embedded ? 'absolute inset-x-0 bottom-0 z-20 border-0 bg-gradient-to-t from-black/75 to-transparent text-white' : ''}`}>
+        <div className={embedded ? 'absolute inset-x-0 bottom-0 z-20 bg-transparent bg-gradient-to-t from-black/80 to-transparent p-4 text-white sm:px-5' : 'border-t border-border bg-card p-4 sm:px-5'}>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{advertisement.campaign_name}</p>
             <p className={`mt-0.5 text-xs ${embedded ? 'text-white/85' : 'text-muted-foreground'}`}>The learning video will continue after this advertisement.</p>
