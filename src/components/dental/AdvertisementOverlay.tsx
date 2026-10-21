@@ -93,24 +93,24 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
       <div
         ref={dialogRef}
         tabIndex={0}
-        className={`relative flex w-full flex-col overflow-hidden bg-card text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${embedded ? 'h-full' : 'max-h-[94dvh] max-w-5xl rounded-[1.75rem] border border-border shadow-[0_24px_70px_rgba(45,110,106,0.16)]'}`}
+        className={`overflow-hidden text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${embedded ? 'absolute inset-0 bg-black' : 'relative flex w-full max-h-[94dvh] flex-col bg-card max-w-5xl rounded-[1.75rem] border border-border shadow-[0_24px_70px_rgba(45,110,106,0.16)]'}`}
         onKeyDown={handleOverlayKeyDown}
         aria-label={advertisement.click_url ? `Open ${advertisement.advertiser_name} advertisement` : undefined}
       >
-        <div className="flex min-h-12 items-center justify-between gap-4 border-b border-border px-4 py-3 sm:px-5">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Advertisement</p>
-            <h2 id="advertisement-title" className="truncate text-sm font-medium text-foreground">{advertisement.advertiser_name}</h2>
+        <div className={`flex items-center justify-between gap-4 px-4 py-3 sm:px-5 ${embedded ? 'absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 to-transparent text-white' : 'min-h-12 border-b border-border'}`}>
+          <div className={`min-w-0 ${embedded ? 'max-w-[55%]' : ''}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${embedded ? 'text-white/80' : 'text-primary'}`}>Advertisement</p>
+            <h2 id="advertisement-title" className={`truncate text-sm font-medium ${embedded ? 'text-white' : 'text-foreground'}`}>{advertisement.advertiser_name}</h2>
           </div>
-          <div className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">Sponsored</div>
+          {!embedded && <div className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">Sponsored</div>}
         </div>
 
-        <div className="relative min-h-0 flex-1 bg-muted/35">
+        <div className={embedded ? 'absolute inset-0 z-0 bg-black' : 'relative min-h-0 flex-1 bg-muted/35'}>
           {advertisement.cta_label && advertisement.click_url ? (
             <Button
               type="button"
               variant="outline"
-              className="absolute right-3 top-3 z-10 h-9 rounded-xl border-white/30 bg-black/45 px-3 text-sm font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:top-4"
+              className="absolute right-3 top-3 z-10 h-9 rounded-xl border-white/30 bg-black/45 px-2.5 text-xs font-medium text-white shadow-lg backdrop-blur-md hover:border-white/45 hover:bg-black/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:top-4 sm:h-11 sm:px-3 sm:text-sm"
               onClick={(event) => {
                 event.stopPropagation()
                 openDestination()
@@ -118,7 +118,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
               aria-label={`${advertisement.cta_label}: open advertiser website`}
             >
               {advertisement.cta_label}
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
             </Button>
           ) : null}
 
@@ -126,7 +126,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
             data-ad-skip
             type="button"
             variant="outline"
-            className="absolute bottom-4 right-4 z-10 h-12 min-w-40 rounded-xl border-white/35 bg-black/45 px-5 text-base font-bold text-white shadow-lg backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/25 disabled:bg-black/35 disabled:text-white/75 disabled:opacity-100 sm:bottom-5 sm:right-5"
+            className="absolute bottom-3 right-3 z-10 h-9 min-w-28 rounded-xl border-white/35 bg-black/55 px-2.5 text-xs font-bold text-white shadow-lg backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/25 disabled:bg-black/45 disabled:text-white/75 disabled:opacity-100 sm:bottom-5 sm:right-5 sm:h-12 sm:min-w-40 sm:px-5 sm:text-base"
             disabled={!canSkip}
             onClick={(event) => {
               event.stopPropagation()
@@ -169,10 +169,10 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
           ) : null}
         </div>
 
-        <div className="border-t border-border bg-card p-4 sm:px-5">
+        <div className={embedded ? 'absolute inset-x-0 bottom-0 z-20 bg-transparent bg-gradient-to-t from-black/80 to-transparent p-3 pr-36 text-white sm:pb-5 sm:pl-5 sm:pr-56' : 'border-t border-border bg-card p-4 sm:px-5'}>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{advertisement.campaign_name}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">The learning video will continue after this advertisement.</p>
+            <p className={`truncate font-semibold ${embedded ? 'text-xs sm:text-sm' : 'text-sm'}`}>{advertisement.campaign_name}</p>
+            <p className={`mt-0.5 line-clamp-2 ${embedded ? 'text-[11px] leading-4 text-white/85 sm:text-xs' : 'text-xs text-muted-foreground'}`}>The learning video will continue after this advertisement.</p>
           </div>
         </div>
       </div>

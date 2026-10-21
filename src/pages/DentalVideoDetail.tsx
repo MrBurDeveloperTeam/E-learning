@@ -378,13 +378,6 @@ export function DentalVideoDetail() {
     <>
       <Navbar />
 
-      {deliveryAdvertisement && isEntryAdvertisementPlaying ? (
-        <AdvertisementOverlay
-          advertisement={deliveryAdvertisement}
-          onComplete={completeEntryAdvertisement}
-        />
-      ) : null}
-
       <div className="mx-auto max-w-[960px] px-4 py-6 pb-20 md:px-6 md:pb-12">
         <Link
           to="/explore"
@@ -485,11 +478,11 @@ export function DentalVideoDetail() {
                 className="absolute inset-0 h-full w-full"
                 aria-label={video.title}
               />
-              {deliveryAdvertisement && isAdvertisementPlaying ? (
+              {deliveryAdvertisement && (isEntryAdvertisementPlaying || isAdvertisementPlaying) ? (
                 <AdvertisementOverlay
                   advertisement={deliveryAdvertisement}
                   embedded
-                  onComplete={completeAdvertisement}
+                  onComplete={isEntryAdvertisementPlaying ? completeEntryAdvertisement : completeAdvertisement}
                 />
               ) : null}
             </div>
