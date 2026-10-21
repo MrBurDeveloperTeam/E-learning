@@ -52,27 +52,27 @@
 .dl-brand {
   display: inline-flex;
   align-items: center;
-  gap: 20px;
-  color: var(--dl-teal-dark);
+  gap: 10px;
+  color: var(--dl-navy);
+  font-family: 'Open Sans', sans-serif;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .dl-brand-logo {
   display: block !important;
   width: auto !important;
-  height: 35px !important;
+  height: 29px !important;
   object-fit: contain;
 }
 
 .dl-nav .dl-brand > span {
-  padding-left: 20px;
-  border-left: 2px solid var(--dl-line);
+  padding-left: 10px;
+  border-left: 1px solid var(--dl-line);
   color: var(--dl-teal-dark);
+  font-family: 'Open Sans', sans-serif;
   font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  font-weight: 700;
 }
 
 .dl-nav {
@@ -92,12 +92,12 @@
 .dl-nav-links {
   display: flex;
   align-items: center;
-  gap: 34px;
+  gap: 32px;
   margin-left: auto;
   margin-right: 38px;
   color: #71838a;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .dl-nav-links a {
@@ -111,21 +111,13 @@
 .dl-nav-actions {
   display: flex;
   align-items: center;
-  gap: 17px;
-}
-
-.dl-landing .dl-login {
-  font-weight: 400;
-}
-
-.dl-landing .dl-nav-cta {
-  font-weight: 400;
+  gap: 20px;
 }
 
 .dl-login {
   padding: 10px 3px;
   color: var(--dl-navy);
-  font-weight: 400;
+  font-weight: 600;
 }
 
 .dl-login:hover {
@@ -171,9 +163,10 @@
 }
 
 .dl-nav-cta {
-  min-height: 44px;
-  padding: 11px 16px;
-  font-size: 15px;
+  gap: 7px;
+  border-radius: 11px;
+  padding: 10px 16px;
+  font-size: 14px;
 }
 
 .dl-primary-button {
