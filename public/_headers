@@ -1,0 +1,5 @@
+# Cloudflare Pages response headers (copied to the build output as-is).
+# The shared pet package plays the meow sound repeatedly via `new Audio(url)`;
+# without cache headers each play re-downloads the file. Cache it in the browser.
+/pet-function/audio/*
+  Cache-Control: public, max-age=604800
