@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, FileText, Heart, Pencil, Repeat2, Settings2, UserMinus, UserRoundCheck } from 'lucide-react'
+import { ArrowLeft, FileText, Heart, Pencil, Repeat2, UserMinus, UserRoundCheck } from 'lucide-react'
 // Close friends UI is intentionally disabled but preserved below in comments.
 // import { Star, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
@@ -118,7 +118,6 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link to="/settings" />}><Pencil className="size-4" /> Edit profile</Button>
             <Button variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4" /> Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
-            <Button variant="outline" render={<Link to="/settings" search={{ tab: 'community' }} />}><Settings2 className="size-4" /> Settings</Button>
           </div>
         </div>
         {profile?.bio && <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">{profile.bio}</p>}

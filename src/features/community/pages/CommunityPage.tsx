@@ -127,7 +127,7 @@ export function CommunityPage() {
                         : activeTab === 'chat'
                           ? 'Start and continue private conversations with other Community members.'
                         : activeTab === 'me'
-                          ? 'View your profile, connections, posts, and personal Community settings.'
+                          ? 'View your profile, connections, and posts.'
                   : 'Clinical conversations, ranked by community engagement.'}
               </p>
             </div>
