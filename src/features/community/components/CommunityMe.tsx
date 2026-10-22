@@ -131,10 +131,10 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
         </Link>
       </div>
       <div className="px-5 pb-6 sm:px-7">
-      <div className="-mt-10 flex flex-col gap-5 sm:-mt-11 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 items-end gap-4">
+      <div className="flex flex-col gap-5 pt-5 sm:pt-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
           <div className="shrink-0 rounded-full border-4 border-card bg-card shadow-sm"><UserAvatar name={displayName} avatarUrl={avatarUrl} userId={userId} size={88} /></div>
-          <div className="min-w-0 pb-1 pt-10">
+          <div className="min-w-0">
             <div className="flex items-center gap-2"><h3 className="truncate text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{displayName}</h3>{profile?.is_verified && <VerifiedBadge />}</div>
             <p className="truncate text-sm text-muted-foreground">@{username}</p>
             {specialty && <p className="mt-1 text-sm text-muted-foreground">{specialty}{profile?.institution ? ` · ${profile.institution}` : ''}</p>}
