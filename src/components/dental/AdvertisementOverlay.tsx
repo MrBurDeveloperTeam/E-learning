@@ -126,11 +126,13 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
             data-ad-skip
             type="button"
             variant="outline"
-            className="absolute bottom-3 right-3 z-10 h-9 min-w-28 rounded-xl border-white/35 bg-black/55 px-2.5 text-xs font-bold text-white shadow-lg backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white disabled:border-white/25 disabled:bg-black/45 disabled:text-white/75 disabled:opacity-100 sm:bottom-5 sm:right-5 sm:h-12 sm:min-w-40 sm:px-5 sm:text-base"
-            disabled={!canSkip}
+            className="absolute bottom-3 right-3 z-10 h-9 min-w-28 rounded-xl border-white/35 bg-black/55 px-2.5 text-xs font-bold text-white shadow-lg backdrop-blur-md hover:border-white/55 hover:bg-black/65 hover:text-white focus-visible:ring-2 focus-visible:ring-white aria-disabled:cursor-not-allowed aria-disabled:border-white/25 aria-disabled:bg-black/45 aria-disabled:text-white/75 aria-disabled:hover:border-white/25 aria-disabled:hover:bg-black/45 aria-disabled:hover:text-white/75 sm:bottom-5 sm:right-5 sm:h-12 sm:min-w-40 sm:px-5 sm:text-base"
+            aria-disabled={!canSkip}
             onClick={(event) => {
+              // Always swallow the click so it never reaches the overlay's
+              // "open advertiser page" handler, even during the countdown.
               event.stopPropagation()
-              onComplete()
+              if (canSkip) onComplete()
             }}
           >
             {canSkip ? 'Skip Ads' : `Skip in ${secondsRemaining}s`}
