@@ -33,6 +33,11 @@ function isRateLimited(ip: string): boolean {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+// Explicit column list: select("*") also returned the generated search_vector
+// tsvector column, which the UI never uses and which bloats every row.
+const VIDEO_COLUMNS =
+  "id,video_id,title,description,thumbnail_url,channel_name,published_at,category,language,video_type,confidence_score,tags,needs_review,fetched_at";
+
 type Env = {
   SUPABASE_URL: string;
   VITE_SUPABASE_URL?: string;
@@ -40,9 +45,22 @@ type Env = {
 };
 
 function jsonResponse(body: unknown, status = 200) {
+  const cacheable =
+    status === 200 &&
+    typeof body === "object" &&
+    body !== null &&
+    ("totalPages" in body || "video_id" in body);
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      // Browser 30s, Cloudflare edge 2 min, serve stale while revalidating.
+      // Skips the Supabase round trip for repeat/popular requests.
+      ...(cacheable
+        ? { "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300" }
+        : { "Cache-Control": "no-store" }),
+    },
   });
 }
 
@@ -222,7 +240,7 @@ export async function onRequestGet(context: {
     if (idParam) {
       const { data, error } = await supabase
         .from("dental_videos")
-        .select("*")
+        .select(VIDEO_COLUMNS)
         .eq("id", idParam)
         .maybeSingle();
 
@@ -283,7 +301,7 @@ export async function onRequestGet(context: {
       }
       let languageSearchQuery = supabase
         .from("dental_videos")
-        .select("*", { count: "exact" })
+        .select(VIDEO_COLUMNS, { count: "exact" })
         .eq("needs_review", false)
         .eq("language", language)
         .or(`title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`);
@@ -318,7 +336,7 @@ export async function onRequestGet(context: {
 
         let othersQuery = supabase
           .from("dental_videos")
-          .select("*", { count: "exact" })
+          .select(VIDEO_COLUMNS, { count: "exact" })
           .eq("needs_review", false)
           .or(
             `title.ilike.%${escapedQuery}%,description.ilike.%${escapedQuery}%`
@@ -385,7 +403,7 @@ export async function onRequestGet(context: {
         // Use ILIKE as a simpler fallback
         let query = supabase
           .from("dental_videos")
-          .select("*", { count: "exact" })
+          .select(VIDEO_COLUMNS, { count: "exact" })
           .eq("needs_review", false)
           .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
 
@@ -433,7 +451,7 @@ export async function onRequestGet(context: {
     // Standard (non-search) query
     let query = supabase
       .from("dental_videos")
-      .select("*", { count: "exact" })
+      .select(VIDEO_COLUMNS, { count: "exact" })
       .eq("needs_review", false);
 
     if (category) {
