@@ -59,6 +59,10 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { VIDEO_CATEGORIES } from '@/types'
 
+// Ad files are stored in Supabase Storage (video-ad-media) but served through the
+// Cloudflare-cached ads.snabbb.com Worker so repeat views come from the edge.
+const AD_MEDIA_BASE_URL = 'https://ads.snabbb.com'
+
 type AdStatus = 'draft' | 'active' | 'paused' | 'hidden'
 type EditableAdStatus = Exclude<AdStatus, 'hidden'>
 type MediaType = 'image' | 'video'
@@ -384,7 +388,7 @@ export function AdvertisementManagement() {
           const upload = await supabase.storage.from('video-ad-media').upload(uploadedPath, selectedFile, { contentType: selectedFile.type, upsert: false })
           if (upload.error) throw upload.error
           mediaStoragePath = uploadedPath
-          mediaUrl = supabase.storage.from('video-ad-media').getPublicUrl(uploadedPath).data.publicUrl
+          mediaUrl = `${AD_MEDIA_BASE_URL}/${uploadedPath}`
         }
       }
       const nextStatus: EditableAdStatus = forceDraft
