@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, CreditCard, LogOut } from 'lucide-react'
+import { Mail, Phone, ChevronRight, CreditCard, LogOut, MessageCircleMore } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -754,18 +754,20 @@ export function Navbar() {
           </div>
         </Link>
 
-        <Link to="/search" onClick={closeMobileMenu}>
+        <Link
+          to="/community"
+          search={{ tab: undefined, q: undefined, topic: undefined, sort: undefined }}
+          onClick={closeMobileMenu}
+          aria-current={isActive('/community') ? 'page' : undefined}
+        >
           <div
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 transition-colors',
-              isActive('/search') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
+              isActive('/community') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
             )}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <span className="text-[10px]">Search</span>
+            <MessageCircleMore className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+            <span className="text-[10px]">Community</span>
           </div>
         </Link>
 
