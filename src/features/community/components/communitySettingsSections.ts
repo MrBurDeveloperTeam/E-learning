@@ -5,7 +5,6 @@ import {
   History,
   RotateCcw,
   Settings2,
-  Tags,
   Trash2,
   UserX,
 } from 'lucide-react'
@@ -16,7 +15,8 @@ export type CommunitySettingsView = Exclude<CommunitySettingsSection, 'bookmarks
 export const communitySettingsSections: Array<{ id: CommunitySettingsView; label: string; icon: typeof FileText }> = [
   { id: 'history', label: 'Watch history', icon: History },
   { id: 'deleted', label: 'Deleted posts', icon: Trash2 },
-  { id: 'topics', label: 'Topics', icon: Tags },
+  // Topics settings are temporarily hidden. Re-add the Tags import when restoring this entry.
+  // { id: 'topics', label: 'Topics', icon: Tags },
   { id: 'reports', label: 'My reports', icon: Flag },
   { id: 'appeals', label: 'Appeals', icon: RotateCcw },
   { id: 'restrictions', label: 'Restrictions', icon: Flag },
