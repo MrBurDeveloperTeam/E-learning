@@ -440,8 +440,8 @@ export function Navbar() {
                             className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                           >
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-bold leading-tight text-foreground">My Channel</p>
-                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Manage your channel</p>
+                              <p className="text-sm font-bold leading-tight text-foreground">My Profile</p>
+                              <p className="truncate text-[11px] font-semibold text-muted-foreground">Community and learning profile</p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                           </Link>
@@ -666,7 +666,7 @@ export function Navbar() {
                 onClick={closeMobileMenu}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
               >
-                My channel
+                My Profile
               </Link>
 
               {canAccessCreatorTools && (

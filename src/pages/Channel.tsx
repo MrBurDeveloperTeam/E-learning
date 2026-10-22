@@ -1,7 +1,7 @@
 import { Pencil } from 'lucide-react'
 import { Link, useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { FollowButton } from '@/components/creator/FollowButton'
 import { Navbar } from '@/components/layout/Navbar'
 import { RetryCard } from '@/components/shared/RetryCard'
@@ -14,6 +14,8 @@ import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 import { useAuthStore } from '@/store/authStore'
+
+const CombinedProfile = lazy(() => import('@/features/community/pages/CommunityPage').then(module => ({ default: module.CommunityPage })))
 
 export function Channel() {
   const { userId } = useParams({ from: '/channel/$userId' })
@@ -61,6 +63,11 @@ export function Channel() {
       document.title = 'DentalLearn - Dental Video Community'
     }
   }, [profile, profileName])
+
+  // My Channel owns the combined profile; other creators retain their public channel pages.
+  if (isOwnChannel) {
+    return <Suspense fallback={<><Navbar /><div className="flex min-h-64 items-center justify-center" role="status">Loading your channel…</div></>}><CombinedProfile channelProfile /></Suspense>
+  }
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { CircleUserRound, Compass, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, UserRoundCheck, X } from 'lucide-react'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
@@ -36,24 +36,24 @@ const navigation = [
   { id: 'communities', label: 'Communities', icon: MessageCircleMore, available: true },
   { id: 'video', label: 'Video', icon: PlaySquare, available: true },
   { id: 'chat', label: 'Chat', icon: MessagesSquare, available: true },
-  { id: 'me', label: 'Profile', icon: CircleUserRound, available: true },
+  { id: 'me', label: 'My Profile', icon: CircleUserRound, available: true },
 ].filter(item => item.id !== 'video' || COMMUNITY_VIDEO_FEED_ENABLED)
 
-export function CommunityPage() {
+export function CommunityPage({ channelProfile = false }: { channelProfile?: boolean }) {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { tab?: string;q?:string;topic?:string;sort?:'relevant'|'newest'|'popular' }
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const requestedTab = search.tab === 'video' && !COMMUNITY_VIDEO_FEED_ENABLED ? 'home' : search.tab
   useEffect(() => {
-    if (search.tab === 'settings') void navigate({ to: '/settings', search: { tab: 'community' }, replace: true })
-  }, [navigate, search.tab])
-  const activeTab = requestedTab === 'following' || requestedTab === 'communities' || requestedTab === 'video' || requestedTab === 'chat' || requestedTab === 'me' || requestedTab === 'settings' ? (requestedTab === 'settings' ? 'me' : requestedTab) : 'home'
+    if (!channelProfile && search.tab === 'settings') void navigate({ to: '/settings', search: { tab: 'community' }, replace: true })
+  }, [channelProfile, navigate, search.tab])
+  const activeTab = channelProfile ? 'me' : requestedTab === 'following' || requestedTab === 'communities' || requestedTab === 'video' || requestedTab === 'chat' || requestedTab === 'me' ? requestedTab : 'home'
   const feedMode = activeTab === 'communities' || activeTab === 'chat' || activeTab === 'me' ? 'home' : activeTab
   const [postSearch,setPostSearch]=useState(search.q??'')
   const topic=search.topic??'all',sort=search.sort??'relevant'
   useEffect(()=>{setPostSearch(search.q??'')},[search.q])
-  useEffect(()=>{if(postSearch===(search.q??''))return;const timer=window.setTimeout(()=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:postSearch.trim(),topic,sort},replace:true}),300);return()=>window.clearTimeout(timer)},[activeTab,navigate,postSearch,search.q,sort,topic])
+  useEffect(()=>{if(channelProfile||postSearch===(search.q??''))return;const timer=window.setTimeout(()=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:postSearch.trim(),topic,sort},replace:true}),300);return()=>window.clearTimeout(timer)},[activeTab,channelProfile,navigate,postSearch,search.q,sort,topic])
   const postsQuery = useCommunityPosts(user?.id, feedMode, search.q??'',topic,sort)
   const preferences=useCommunityPreferences(user?.id??'')
   const directConversations = useDirectConversations(user?.id)
@@ -61,6 +61,11 @@ export function CommunityPage() {
   const posts = postsQuery.data?.pages.flat() ?? []
   const isAdmin = isAdminProfile(profile)
   useEffect(()=>{if(activeTab!=='chat')return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[activeTab])
+
+  // Old Community profile URLs keep working, but the profile now lives at My Channel.
+  if (!channelProfile && activeTab === 'me' && user) {
+    return <Navigate to="/channel/$userId" params={{ userId: user.id }} search={{ requests: new URLSearchParams(window.location.search).get('requests') === '1' ? '1' : undefined }} replace />
+  }
 
   return (
     <div className={cn('bg-background',activeTab==='chat'?'h-screen overflow-hidden':'min-h-screen')}>
@@ -72,7 +77,7 @@ export function CommunityPage() {
             <h1 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Clinical exchange</h1>
           </div>
           <nav aria-label="Community navigation" className="space-y-1">
-            {navigation.map((item) => (
+            {navigation.filter(item => item.id !== 'me' || channelProfile).map((item) => (
               <button
                 key={item.label}
                 type="button"
@@ -80,7 +85,11 @@ export function CommunityPage() {
                 aria-current={activeTab === item.id ? 'page' : undefined}
                 onClick={() => {
                   if (!item.available) return
-                  void navigate({ to: '/community', search: { tab: item.id === 'home' ? undefined : item.id, q: search.q??'', topic, sort } })
+                  if (item.id === 'me' && user) {
+                    void navigate({ to: '/channel/$userId', params: { userId: user.id } })
+                  } else {
+                    void navigate({ to: '/community', search: { tab: item.id === 'home' ? undefined : item.id, q: search.q??'', topic, sort } })
+                  }
                 }}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
@@ -112,10 +121,10 @@ export function CommunityPage() {
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                {activeTab === 'following' ? 'Following feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'chat' ? 'Messages' : activeTab === 'me' ? 'My profile' : 'Home feed'}
+                {activeTab === 'following' ? 'Following feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'chat' ? 'Messages' : activeTab === 'me' ? 'My Profile' : 'Home feed'}
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
-                {activeTab === 'following' ? 'From people you follow' : activeTab === 'communities' ? 'Find your clinical circle' : activeTab === 'video' ? 'Video, tuned to your interests' : activeTab === 'chat' ? 'Your conversations' : activeTab === 'me' ? 'Your Community profile' : 'What dentistry is discussing'}
+                {activeTab === 'following' ? 'From people you follow' : activeTab === 'communities' ? 'Find your clinical circle' : activeTab === 'video' ? 'Video, tuned to your interests' : activeTab === 'chat' ? 'Your conversations' : activeTab === 'me' ? 'Your profile' : 'What dentistry is discussing'}
               </h2>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
                 {activeTab === 'following'
@@ -127,7 +136,7 @@ export function CommunityPage() {
                         : activeTab === 'chat'
                           ? 'Start and continue private conversations with other Community members.'
                         : activeTab === 'me'
-                          ? 'View your profile, connections, and posts.'
+                          ? 'Your Community posts, connections, and learning videos in one place.'
                   : 'Clinical conversations, ranked by community engagement.'}
               </p>
             </div>
