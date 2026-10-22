@@ -45,6 +45,7 @@ import { UserAvatar } from '../components/shared/UserAvatar'
 import { communitySettingsSections, isCommunitySettingsView, type CommunitySettingsView } from '../features/community/components/communitySettingsSections'
 
 const CommunitySettings = lazy(() => import('../features/community/components/CommunitySettings').then((module) => ({ default: module.CommunitySettings })))
+const CommunityNotificationSettings = lazy(() => import('../features/community/components/CommunityReleaseSettings').then((module) => ({ default: module.CommunityNotificationSettings })))
 
 type SettingsTab =
   | 'profile'
@@ -125,7 +126,7 @@ const NOTIFICATION_GROUPS = [
       ],
     }] : []),
   {
-    label: 'Community',
+    label: 'Course and case activity',
     items: [
       { key: 'caseReply', label: 'Reply to my case', description: 'When someone replies to a case you posted' },
       { key: 'kolEndorsement', label: 'KOL endorsed reply', description: 'When a KOL endorses a reply on your case' },
@@ -219,6 +220,11 @@ export function Settings() {
   useEffect(() => {
     if (activeTab === 'community') setCommunityExpanded(true)
   }, [activeTab])
+  useEffect(() => {
+    if (search.tab === 'community' && search.section === 'notifications') {
+      void navigate({ search: { tab: 'notifications', section: undefined }, replace: true })
+    }
+  }, [navigate, search.section, search.tab])
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState(
     profile?.background_url ?? null
@@ -942,6 +948,15 @@ export function Settings() {
             Save preferences
           </button>
         </div>
+        {user && (
+          <section aria-labelledby="community-notifications-heading" className="mt-6 border-t border-border pt-6">
+            <h3 id="community-notifications-heading" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Community notifications</h3>
+            <p className="mt-1 text-xs text-muted-foreground">These preferences are saved as you change them.</p>
+            <Suspense fallback={<div className="flex min-h-32 items-center justify-center" role="status" aria-label="Loading Community notifications"><LoadingSpinner size="lg" /></div>}>
+              <CommunityNotificationSettings userId={user.id} />
+            </Suspense>
+          </section>
+        )}
       </div>
     )
   }
@@ -1028,7 +1043,7 @@ export function Settings() {
     {
       label: 'Preferences',
       items: [
-        { id: 'notifications' as SettingsTab, label: 'E-learning notifications', icon: Bell },
+        { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
         // Appearance is intentionally retained for future use but hidden from desktop and mobile navigation.
         ...(false ? [{ id: 'appearance' as SettingsTab, label: 'Appearance', icon: SunMedium }] : []),
       ],
