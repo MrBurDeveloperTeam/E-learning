@@ -568,7 +568,7 @@ export function Navbar() {
                 onClick={closeMobileMenu}
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/saved') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
+                  isActive('/saved') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A] dark:bg-primary/15 dark:text-foreground' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground'
                 )}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -584,7 +584,7 @@ export function Navbar() {
                   onClick={closeMobileMenu}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                    isActive('/admin') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
+                    isActive('/admin') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A] dark:bg-primary/15 dark:text-foreground' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground'
                   )}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -601,7 +601,7 @@ export function Navbar() {
                 <Link
                   to="/studio"
                   onClick={closeMobileMenu}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
                 >
                   Creator studio
                 </Link>
@@ -610,10 +610,10 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => void openAppLink('reward', 'https://reward.snabbb.com', 'credit')}
-                className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
               >
                 <span>Snabbb Credit</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground dark:text-foreground/80">
                   {creditLoading
                     ? 'Loading...'
                     : creditError
@@ -629,17 +629,17 @@ export function Navbar() {
                   type="button"
                   disabled={isOpeningSupportTickets}
                   onClick={() => void openSupportTickets()}
-                  className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
                 >
                   <span>Support Tickets</span>
-                  <span className="text-xs text-muted-foreground">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</span>
+                  <span className="text-xs text-muted-foreground dark:text-foreground/80">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</span>
                 </button>
               )}
 
               <Link
                 to="/settings"
                 onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
               >
                 Settings
               </Link>
