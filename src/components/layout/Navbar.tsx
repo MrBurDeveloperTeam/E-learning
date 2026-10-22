@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, CreditCard, LogOut, MessageCircleMore } from 'lucide-react'
+import { Mail, Phone, ChevronRight, CreditCard, LogOut } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -766,7 +766,14 @@ export function Navbar() {
               isActive('/community') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
             )}
           >
-            <MessageCircleMore className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="7.5" r="3.5" />
+              <circle cx="4.5" cy="9.25" r="2.25" />
+              <circle cx="19.5" cy="9.25" r="2.25" />
+              <path d="M6.5 21v-1a5.5 5.5 0 0 1 11 0v1" />
+              <path d="M1 18v-.75a4.25 4.25 0 0 1 6.8-3.4" />
+              <path d="M23 18v-.75a4.25 4.25 0 0 0-6.8-3.4" />
+            </svg>
             <span className="text-[10px]">Community</span>
           </div>
         </Link>
