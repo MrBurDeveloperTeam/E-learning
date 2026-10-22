@@ -48,6 +48,8 @@ export function Navbar() {
   const navigate = useNavigate()
   const router = useRouterState()
   const currentPath = router.location.pathname
+  const ownProfileId = profile?.user_id ?? user?.id
+  const isOwnProfilePage = Boolean(ownProfileId && currentPath === `/channel/${ownProfileId}`)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [creditBalance, setCreditBalance] = useState<number | null>(
@@ -824,14 +826,15 @@ export function Navbar() {
         </Link>
 
         <Link
-          to={user ? '/profile/$userId' : '/login'}
-          {...(user ? { params: { userId: profile?.user_id ?? user?.id ?? '' } } : {})}
+          to={user ? '/channel/$userId' : '/login'}
+          {...(user ? { params: { userId: ownProfileId ?? '' } } : {})}
           onClick={closeMobileMenu}
+          aria-current={isOwnProfilePage ? 'page' : undefined}
         >
           <div
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 transition-colors',
-              isActive('/profile') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
+              isOwnProfilePage ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
             )}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
