@@ -171,8 +171,9 @@ const profileRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
-  validateSearch: (search: Record<string, unknown>): { tab?: 'profile' | 'security' | 'notifications' | 'appearance' | 'community' } => ({
+  validateSearch: (search: Record<string, unknown>): { tab?: 'profile' | 'security' | 'notifications' | 'appearance' | 'community'; section?: string } => ({
     tab: search.tab === 'profile' || search.tab === 'security' || search.tab === 'notifications' || search.tab === 'appearance' || search.tab === 'community' ? search.tab : undefined,
+    section: typeof search.section === 'string' ? search.section : undefined,
   }),
   component: () => (
     <ProtectedRoute>
