@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, FileText, Heart, Pencil, PlaySquare, Repeat2, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react'
+import { ArrowLeft, FileText, Heart, Pencil, PlaySquare, Repeat2, UserMinus, UserRoundCheck, UsersRound, Video } from 'lucide-react'
 // Close friends UI is intentionally disabled but preserved below in comments.
 // import { Star, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
@@ -174,7 +174,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
         <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">E-learning</p><h3 id="profile-videos-heading" className="mt-1 text-xl font-semibold">Videos</h3></div>
         <span className="text-sm text-muted-foreground">{videosQuery.isLoading ? '—' : videosQuery.data?.length ?? 0}</span>
       </div>
-      {videosQuery.isError ? <RetryCard onRetry={() => void videosQuery.refetch()} /> : <VideoGrid videos={videosQuery.data ?? []} columns={3} isLoading={videosQuery.isLoading} skeletonCount={3} emptyTitle="No videos yet" emptyDescription="Your learning videos will appear here when you upload them." />}
+      {videosQuery.isError ? <RetryCard onRetry={() => void videosQuery.refetch()} /> : <VideoGrid videos={videosQuery.data ?? []} columns={3} isLoading={videosQuery.isLoading} skeletonCount={3} emptyTitle="No videos yet" emptyDescription="Your learning videos will appear here when you upload them." emptyIcon={<Video />} />}
     </section>
     <Dialog open={followRequestsOpen} onOpenChange={setFollowRequestsOpen}>
       <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] overflow-y-auto sm:max-w-xl">

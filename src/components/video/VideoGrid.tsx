@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { VideoWithCreator } from '@/types'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { VideoCard } from './VideoCard'
@@ -10,6 +11,7 @@ interface VideoGridProps {
   columns?: 2 | 3 | 4
   emptyTitle?: string
   emptyDescription?: string
+  emptyIcon?: ReactNode
   size?: 'default' | 'small'
 }
 
@@ -26,6 +28,7 @@ export function VideoGrid({
   columns = 4,
   emptyTitle = 'No videos found',
   emptyDescription = 'Try another category or check back later.',
+  emptyIcon,
   size = 'default',
 }: VideoGridProps) {
   if (isLoading) {
@@ -40,7 +43,7 @@ export function VideoGrid({
 
   if (videos.length === 0) {
     return (
-      <EmptyState title={emptyTitle} description={emptyDescription} />
+      <EmptyState icon={emptyIcon} title={emptyTitle} description={emptyDescription} />
     )
   }
 
