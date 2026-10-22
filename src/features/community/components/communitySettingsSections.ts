@@ -1,5 +1,4 @@
 import {
-  FilePenLine,
   FileText,
   Flag,
   GraduationCap,
@@ -12,11 +11,10 @@ import {
 } from 'lucide-react'
 import type { CommunitySettingsSection } from '@/features/community/api/communityApi'
 
-export type CommunitySettingsView = Exclude<CommunitySettingsSection, 'bookmarks'> | 'drafts' | 'verification' | 'reports' | 'blocked' | 'privacy' | 'topics' | 'appeals' | 'restrictions'
+export type CommunitySettingsView = Exclude<CommunitySettingsSection, 'bookmarks'> | 'verification' | 'reports' | 'blocked' | 'privacy' | 'topics' | 'appeals' | 'restrictions'
 
 export const communitySettingsSections: Array<{ id: CommunitySettingsView; label: string; icon: typeof FileText }> = [
   { id: 'history', label: 'Watch history', icon: History },
-  { id: 'drafts', label: 'Drafts', icon: FilePenLine },
   { id: 'deleted', label: 'Deleted posts', icon: Trash2 },
   { id: 'topics', label: 'Topics', icon: Tags },
   { id: 'reports', label: 'My reports', icon: Flag },

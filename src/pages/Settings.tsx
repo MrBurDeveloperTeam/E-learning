@@ -225,6 +225,8 @@ export function Settings() {
       void navigate({ search: { tab: 'notifications', section: undefined }, replace: true })
     } else if (search.tab === 'community' && search.section === 'bookmarks') {
       void navigate({ to: '/saved', search: { tab: 'posts' }, replace: true })
+    } else if (search.tab === 'community' && search.section === 'drafts') {
+      void navigate({ to: '/community', search: { tab: 'drafts', q: undefined, topic: undefined, sort: undefined }, replace: true })
     }
   }, [navigate, search.section, search.tab])
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
