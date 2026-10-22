@@ -650,7 +650,7 @@ export function Navbar() {
                   textClassName="text-xs"
                 />
                 <div>
-                  <p className="text-sm font-medium text-[#1E3333]">
+                  <p className="text-sm font-medium text-foreground">
                     {avatarLabel || 'DentalLearn User'}
                   </p>
                   <p className="text-xs capitalize text-[#9BB5B5]">
