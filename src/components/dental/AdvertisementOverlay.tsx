@@ -97,7 +97,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
         onKeyDown={handleOverlayKeyDown}
         aria-label={advertisement.click_url ? `Open ${advertisement.advertiser_name} advertisement` : undefined}
       >
-        <div className={`flex items-center justify-between gap-4 px-4 py-3 sm:px-5 ${embedded ? 'absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 to-transparent text-white' : 'min-h-12 border-b border-border'}`}>
+        <div className={`flex items-center justify-between gap-4 px-4 py-3 sm:px-5 ${embedded ? 'pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 to-transparent text-white' : 'min-h-12 border-b border-border'}`}>
           <div className={`min-w-0 ${embedded ? 'max-w-[55%]' : ''}`}>
             <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${embedded ? 'text-white/80' : 'text-primary'}`}>Advertisement</p>
             <h2 id="advertisement-title" className={`truncate text-sm font-medium ${embedded ? 'text-white' : 'text-foreground'}`}>{advertisement.advertiser_name}</h2>
@@ -171,7 +171,7 @@ export function AdvertisementOverlay({ advertisement, onComplete, embedded = fal
           ) : null}
         </div>
 
-        <div className={embedded ? 'absolute inset-x-0 bottom-0 z-20 bg-transparent bg-gradient-to-t from-black/80 to-transparent p-3 pr-36 text-white sm:pb-5 sm:pl-5 sm:pr-56' : 'border-t border-border bg-card p-4 sm:px-5'}>
+        <div className={embedded ? 'pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-transparent bg-gradient-to-t from-black/80 to-transparent p-3 pr-36 text-white sm:pb-5 sm:pl-5 sm:pr-56' : 'border-t border-border bg-card p-4 sm:px-5'}>
           <div className="min-w-0">
             <p className={`truncate font-semibold ${embedded ? 'text-xs sm:text-sm' : 'text-sm'}`}>{advertisement.campaign_name}</p>
             <p className={`mt-0.5 line-clamp-2 ${embedded ? 'text-[11px] leading-4 text-white/85 sm:text-xs' : 'text-xs text-muted-foreground'}`}>The learning video will continue after this advertisement.</p>
