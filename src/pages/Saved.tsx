@@ -96,6 +96,7 @@ function SavedVideos() {
 
         {!isError && !isYoutubeError && !isListLoading && items.length === 0 && (
           <EmptyState
+            icon={<Play />}
             title="No saved videos"
             description="Save videos to watch them later"
           />
