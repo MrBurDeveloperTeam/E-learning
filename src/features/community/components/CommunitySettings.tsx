@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Bookmark, BellRing, FilePenLine, FileText, Flag, GraduationCap, Heart, History, Repeat2, RotateCcw, Settings2, Tags, Trash2, UserMinus, UsersRound, UserX } from 'lucide-react'
+import { Bookmark, FileText, GraduationCap, RotateCcw, Trash2, UserMinus, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -11,31 +11,15 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useCommunitySettings, useRemoveCommunitySettingRelation, useRestoreOwnCommunityPost } from '@/features/community/hooks/useCommunity'
 import type { CommunityManagedPost, CommunityPerson } from '@/features/community/types'
 import type { CommunitySettingsSection } from '@/features/community/api/communityApi'
-import { cn } from '@/lib/utils'
 import { ProfessionalVerification } from '@/features/community/components/ProfessionalVerification'
 import { CommunityReportStatus } from '@/features/community/components/CommunityReportStatus'
 import { CommunityBlockedUsers } from '@/features/community/components/CommunityBlockedUsers'
 import { CommunityPrivacySettings } from '@/features/community/components/CommunityPrivacySettings'
-import { CommunityAppealHistory, CommunityNotificationSettings, CommunityTopicSettings } from '@/features/community/components/CommunityReleaseSettings'
+import { CommunityAppealHistory, CommunityTopicSettings } from '@/features/community/components/CommunityReleaseSettings'
 import { CommunityAppealDialog } from '@/features/community/components/CommunityAppealDialog'
 import { CommunityRestrictionAppeals } from '@/features/community/components/CommunityRestrictionAppeals'
 import { CommunityDrafts } from '@/features/community/components/CommunityDrafts'
-
-type SettingsView = CommunitySettingsSection | 'drafts' | 'verification' | 'reports' | 'blocked' | 'privacy' | 'notifications' | 'topics' | 'appeals' | 'restrictions'
-const sections: Array<{ id: SettingsView; label: string; icon: typeof FileText }> = [
-  { id: 'history', label: 'Watch history', icon: History },
-  { id: 'bookmarks', label: 'Saved', icon: Bookmark },
-  { id: 'drafts', label: 'Drafts', icon: FilePenLine },
-  { id: 'deleted', label: 'Deleted posts', icon: Trash2 },
-  { id: 'topics', label: 'Topics', icon: Tags },
-  { id: 'notifications', label: 'Notifications', icon: BellRing },
-  { id: 'reports', label: 'My reports', icon: Flag },
-  { id: 'appeals', label: 'Appeals', icon: RotateCcw },
-  { id: 'restrictions', label: 'Restrictions', icon: Flag },
-  { id: 'blocked', label: 'Blocked users', icon: UserX },
-  { id: 'privacy', label: 'Privacy', icon: Settings2 },
-  { id: 'verification', label: 'Verifications', icon: GraduationCap },
-]
+import { communitySettingsSections, type CommunitySettingsView } from '@/features/community/components/communitySettingsSections'
 
 const postStatusHelp:Record<CommunityManagedPost['status'],string>={
   draft:'Only you can see this draft. Open it when you are ready to submit.',
@@ -46,15 +30,14 @@ const postStatusHelp:Record<CommunityManagedPost['status'],string>={
   deleted:'Moved to deleted items. You can restore it to the review queue.',
 }
 
-export function CommunitySettings({ userId }: { userId: string }) {
-  const [section, setSection] = useState<SettingsView>('history')
+export function CommunitySettings({ userId, section }: { userId: string; section: CommunitySettingsView }) {
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; label: string } | null>(null)
-  const dataSection: CommunitySettingsSection = section === 'drafts' || section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'notifications' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
+  const dataSection: CommunitySettingsSection = section === 'drafts' || section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
   const query = useCommunitySettings(userId, dataSection)
   const removeMutation = useRemoveCommunitySettingRelation(userId, dataSection)
   const restoreMutation=useRestoreOwnCommunityPost(userId)
   const isPeopleSection = section === 'following' || section === 'friends'
-  const showsActivity = section !== 'drafts' && section !== 'verification' && section !== 'reports' && section !== 'blocked' && section !== 'privacy' && section !== 'notifications' && section !== 'topics' && section !== 'appeals' && section !== 'restrictions'
+  const showsActivity = section !== 'drafts' && section !== 'verification' && section !== 'reports' && section !== 'blocked' && section !== 'privacy' && section !== 'topics' && section !== 'appeals' && section !== 'restrictions'
   const items = query.data ?? []
 
   const remove = async () => {
@@ -65,20 +48,11 @@ export function CommunitySettings({ userId }: { userId: string }) {
 
   return (
     <div className="mt-7">
-      <div className="flex gap-2 overflow-x-auto border-b border-border pb-3">
-        {sections.map((item) => (
-          <button key={item.id} type="button" onClick={() => setSection(item.id)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors', section === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-            <item.icon className="size-4" /> {item.label}
-          </button>
-        ))}
-      </div>
-
       {section === 'verification' && <ProfessionalVerification userId={userId} />}
       {section === 'reports' && <CommunityReportStatus userId={userId} />}
       {section === 'blocked' && <CommunityBlockedUsers userId={userId} />}
       {section === 'privacy' && <CommunityPrivacySettings userId={userId} />}
       {section === 'topics' && <CommunityTopicSettings userId={userId} />}
-      {section === 'notifications' && <CommunityNotificationSettings userId={userId} />}
       {section === 'appeals' && <CommunityAppealHistory userId={userId} />}
       {section === 'restrictions' && <CommunityRestrictionAppeals userId={userId} />}
       {section === 'drafts' && <CommunityDrafts userId={userId} />}
@@ -86,10 +60,10 @@ export function CommunitySettings({ userId }: { userId: string }) {
       {showsActivity && query.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
       {showsActivity && query.isError && <div className="mt-6"><RetryCard onRetry={() => void query.refetch()} /></div>}
       {showsActivity && !query.isLoading && !query.isError && items.length === 0 && (
-        <div className="mt-6"><EmptyState icon={isPeopleSection ? <UsersRound /> : <Bookmark />} title={`No ${sections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>
+        <div className="mt-6"><EmptyState icon={isPeopleSection ? <UsersRound /> : <Bookmark />} title={`No ${communitySettingsSections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>
       )}
 
-      {(section === 'history' || section === 'bookmarks' || section === 'deleted') && !query.isLoading && !query.isError && items.length > 0 && (
+      {(section === 'history' || section === 'deleted') && !query.isLoading && !query.isError && items.length > 0 && (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {(items as CommunityManagedPost[]).map((post) => (
             <article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card shadow-card">
@@ -144,7 +118,7 @@ export function CommunitySettings({ userId }: { userId: string }) {
         </div>
       )}
 
-      {showsActivity && section !== 'history' && section !== 'bookmarks' && section !== 'deleted' && !query.isLoading && !query.isError && !isPeopleSection && (
+      {showsActivity && section !== 'history' && section !== 'deleted' && !query.isLoading && !query.isError && !isPeopleSection && (
         <div className="mt-5 space-y-3">
           {(items as CommunityManagedPost[]).map((post) => (
             <article key={post.id} className="rounded-2xl border border-border bg-card p-5">
@@ -188,7 +162,7 @@ export function CommunitySettings({ userId }: { userId: string }) {
 
       <Dialog open={Boolean(pendingRemoval)} onOpenChange={(open) => { if (!open && !removeMutation.isPending) setPendingRemoval(null) }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Confirm removal</DialogTitle><DialogDescription>Remove {pendingRemoval?.label} from {sections.find((item) => item.id === section)?.label.toLowerCase()}? This only changes your local Community data.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Confirm removal</DialogTitle><DialogDescription>Remove {pendingRemoval?.label} from {communitySettingsSections.find((item) => item.id === section)?.label.toLowerCase()}? This only changes your local Community data.</DialogDescription></DialogHeader>
           <DialogFooter><DialogClose render={<Button variant="outline" disabled={removeMutation.isPending} />}>Cancel</DialogClose><Button variant="destructive" disabled={removeMutation.isPending} onClick={() => void remove()}>{removeMutation.isPending ? 'Removing…' : 'Remove'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,24 +1,56 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, CheckCircle2, Circle, RotateCcw } from 'lucide-react'
+import { CheckCircle2, Circle, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { CommunityAppealStatus } from '@/features/community/components/CommunityAppealStatus'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Switch } from '@/components/ui/switch'
-import { fetchCommunityAppeals, fetchCommunityNotificationPreferences, fetchFollowedCommunityTopics, saveCommunityNotificationPreferences, setCommunityTopicFollow, withdrawCommunityAppeal } from '@/features/community/api/communityReleaseApi'
+import { fetchCommunityAppeals, fetchCommunityNotificationPreferences, fetchFollowedCommunityTopics, saveCommunityNotificationPreferences, setCommunityTopicFollow, withdrawCommunityAppeal, type CommunityNotificationPreferences } from '@/features/community/api/communityReleaseApi'
 import type { CommunityPostTopic } from '@/features/community/types'
 import { useCommunityDirectory } from '@/features/community/hooks/useCommunity'
 import { CommunityAppealDialog } from '@/features/community/components/CommunityAppealDialog'
+import { RetryCard } from '@/components/shared/RetryCard'
 
 const topics: CommunityPostTopic[] = ['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management']
 
-export function CommunityNotificationSettings({userId}:{userId:string}) {
-  const client=useQueryClient(),query=useQuery({queryKey:['community-notification-preferences',userId],queryFn:()=>fetchCommunityNotificationPreferences(userId)})
-  const save=useMutation({mutationFn:(values:NonNullable<typeof query.data>)=>saveCommunityNotificationPreferences(userId,values),onSuccess:()=>{client.invalidateQueries({queryKey:['community-notification-preferences',userId]});toast.success('Notification preferences saved.')}})
-  if(query.isLoading)return <LoadingSpinner/>;if(!query.data)return null
-  const labels={likes:'Likes',replies:'Replies',mentions:'Mentions',follows:'New followers',friend_requests:'Friend requests',community_updates:'Community updates',moderation_updates:'Reports and moderation',direct_messages:'Direct messages'} as const
-  return <div className="mt-5 space-y-3">{Object.entries(labels).map(([key,label])=><div key={key} className="flex items-center gap-4 rounded-2xl border bg-card p-4"><BellRing className="size-4 text-primary"/><p className="min-w-0 flex-1 font-medium">{label}</p><Switch checked={query.data[key as keyof typeof query.data]} disabled={save.isPending} onCheckedChange={checked=>void save.mutateAsync({...query.data,[key]:checked})}/></div>)}</div>
+const communityNotificationLabels: Array<{ key: keyof CommunityNotificationPreferences; label: string }> = [
+  { key: 'likes', label: 'Likes' },
+  { key: 'replies', label: 'Replies' },
+  { key: 'mentions', label: 'Mentions' },
+  { key: 'follows', label: 'New followers' },
+  { key: 'friend_requests', label: 'Friend requests' },
+  { key: 'community_updates', label: 'Community updates' },
+  { key: 'moderation_updates', label: 'Reports and moderation' },
+  { key: 'direct_messages', label: 'Direct messages' },
+]
+
+export function CommunityNotificationSettings({ userId }: { userId: string }) {
+  const client = useQueryClient()
+  const query = useQuery({ queryKey: ['community-notification-preferences', userId], queryFn: () => fetchCommunityNotificationPreferences(userId) })
+  const save = useMutation({
+    mutationFn: (values: CommunityNotificationPreferences) => saveCommunityNotificationPreferences(userId, values),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['community-notification-preferences', userId] })
+      toast.success('Community notification preference saved.')
+    },
+    onError: () => toast.error('Could not save Community notification preference. Try again.'),
+  })
+
+  if (query.isLoading) return <div className="flex min-h-32 items-center justify-center" role="status" aria-label="Loading Community notifications"><LoadingSpinner size="lg" /></div>
+  if (query.isError || !query.data) return <div className="mt-4"><RetryCard onRetry={() => void query.refetch()} /></div>
+
+  const preferences = query.data
+  return (
+    <div className="mt-2">
+      {communityNotificationLabels.map(({ key, label }) => (
+        <div key={key} className="flex items-center justify-between gap-4 border-b border-border py-4 last:border-0">
+          <p className="min-w-0 flex-1 text-sm font-medium text-foreground">{label}</p>
+          <Switch aria-label={`Notify me about ${label.toLowerCase()}`} checked={preferences[key]} disabled={save.isPending} onCheckedChange={(checked) => save.mutate({ ...preferences, [key]: checked })} className="data-[state=checked]:bg-primary" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function CommunityTopicSettings({userId}:{userId:string}) {

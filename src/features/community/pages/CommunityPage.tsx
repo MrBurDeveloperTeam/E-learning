@@ -45,6 +45,9 @@ export function CommunityPage() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const requestedTab = search.tab === 'video' && !COMMUNITY_VIDEO_FEED_ENABLED ? 'home' : search.tab
+  useEffect(() => {
+    if (search.tab === 'settings') void navigate({ to: '/settings', search: { tab: 'community' }, replace: true })
+  }, [navigate, search.tab])
   const activeTab = requestedTab === 'following' || requestedTab === 'communities' || requestedTab === 'video' || requestedTab === 'chat' || requestedTab === 'me' || requestedTab === 'settings' ? (requestedTab === 'settings' ? 'me' : requestedTab) : 'home'
   const feedMode = activeTab === 'communities' || activeTab === 'chat' || activeTab === 'me' ? 'home' : activeTab
   const [postSearch,setPostSearch]=useState(search.q??'')
@@ -124,7 +127,7 @@ export function CommunityPage() {
                         : activeTab === 'chat'
                           ? 'Start and continue private conversations with other Community members.'
                         : activeTab === 'me'
-                          ? 'View your profile, connections, posts, and personal Community settings.'
+                          ? 'View your profile, connections, and posts.'
                   : 'Clinical conversations, ranked by community engagement.'}
               </p>
             </div>

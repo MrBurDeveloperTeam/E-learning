@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
+  ArrowLeft,
   Camera,
   Bell,
   CircleAlert,
@@ -18,6 +20,7 @@ import {
   Share2,
   SunMedium,
   UserRound,
+  UsersRound,
 } from 'lucide-react'
 import { PageLayout } from '../components/layout/PageLayout'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -39,12 +42,17 @@ import type { CreatorApplication } from '../types'
 import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
 import { syncAccountAvatar } from '../lib/syncAccountAvatar'
 import { UserAvatar } from '../components/shared/UserAvatar'
+import { communitySettingsSections, isCommunitySettingsView, type CommunitySettingsView } from '../features/community/components/communitySettingsSections'
+
+const CommunitySettings = lazy(() => import('../features/community/components/CommunitySettings').then((module) => ({ default: module.CommunitySettings })))
+const CommunityNotificationSettings = lazy(() => import('../features/community/components/CommunityReleaseSettings').then((module) => ({ default: module.CommunityNotificationSettings })))
 
 type SettingsTab =
   | 'profile'
   | 'security'
   | 'notifications'
   | 'appearance'
+  | 'community'
 
 interface ProfileFormValues {
   first_name: string
@@ -104,6 +112,7 @@ const TAB_META: Record<SettingsTab, { title: string; description: string }> = {
   security: { title: 'Security', description: 'Manage your password and account security' },
   notifications: { title: 'Notifications', description: 'Choose what you want to be notified about' },
   appearance: { title: 'Appearance', description: 'Preview upcoming visual and accessibility preferences' },
+  community: { title: 'Community settings', description: 'Manage your Community activity, preferences, privacy, and safety' },
 }
 
 const NOTIFICATION_GROUPS = [
@@ -117,7 +126,7 @@ const NOTIFICATION_GROUPS = [
       ],
     }] : []),
   {
-    label: 'Community',
+    label: 'Course and case activity',
     items: [
       { key: 'caseReply', label: 'Reply to my case', description: 'When someone replies to a case you posted' },
       { key: 'kolEndorsement', label: 'KOL endorsed reply', description: 'When a KOL endorses a reply on your case' },
@@ -188,6 +197,8 @@ function getPasswordStrength(password: string) {
 }
 
 export function Settings() {
+  const navigate = useNavigate({ from: '/settings' })
+  const search = useSearch({ from: '/settings' })
   const user = useAuthStore((s) => s.user)
   const profile = useAuthStore((s) => s.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
@@ -195,7 +206,27 @@ export function Settings() {
   const { signOut } = useAuth()
   const updateProfile = useUpdateProfile()
   const uploadBackground = useUploadBackground()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
+  const activeTab: SettingsTab = search.tab ?? 'profile'
+  const communitySection = isCommunitySettingsView(search.section) ? search.section : 'history'
+  const [communityExpanded, setCommunityExpanded] = useState(activeTab === 'community')
+  const setActiveTab = (tab: SettingsTab) => {
+    setCommunityExpanded((expanded) => tab === 'community' ? activeTab === 'community' ? !expanded : true : false)
+    void navigate({ search: { tab: tab === 'profile' ? undefined : tab, section: tab === 'community' ? communitySection : undefined } })
+  }
+  const setCommunitySection = (section: CommunitySettingsView) => {
+    setCommunityExpanded(true)
+    void navigate({ search: { tab: 'community', section } })
+  }
+  useEffect(() => {
+    if (activeTab === 'community') setCommunityExpanded(true)
+  }, [activeTab])
+  useEffect(() => {
+    if (search.tab === 'community' && search.section === 'notifications') {
+      void navigate({ search: { tab: 'notifications', section: undefined }, replace: true })
+    } else if (search.tab === 'community' && search.section === 'bookmarks') {
+      void navigate({ to: '/saved', search: { tab: 'posts' }, replace: true })
+    }
+  }, [navigate, search.section, search.tab])
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState(
     profile?.background_url ?? null
@@ -919,6 +950,15 @@ export function Settings() {
             Save preferences
           </button>
         </div>
+        {user && (
+          <section aria-labelledby="community-notifications-heading" className="mt-6 border-t border-border pt-6">
+            <h3 id="community-notifications-heading" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Community notifications</h3>
+            <p className="mt-1 text-xs text-muted-foreground">These preferences are saved as you change them.</p>
+            <Suspense fallback={<div className="flex min-h-32 items-center justify-center" role="status" aria-label="Loading Community notifications"><LoadingSpinner size="lg" /></div>}>
+              <CommunityNotificationSettings userId={user.id} />
+            </Suspense>
+          </section>
+        )}
       </div>
     )
   }
@@ -985,6 +1025,7 @@ export function Settings() {
 
   function renderPanelBody() {
     if (activeTab === 'profile') return renderProfilePanel()
+    if (activeTab === 'community') return user ? <div className="px-4 pb-6 sm:px-6"><Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status" aria-label="Loading Community settings"><LoadingSpinner size="lg" /></div>}><CommunitySettings userId={user.id} section={communitySection} /></Suspense></div> : null
     // Security and Appearance panels are retained above, but their sidebar entries are currently hidden.
     if (activeTab === 'security') return renderSecurityPanel()
     if (activeTab === 'notifications') return renderNotificationsPanel()
@@ -1009,9 +1050,37 @@ export function Settings() {
         ...(false ? [{ id: 'appearance' as SettingsTab, label: 'Appearance', icon: SunMedium }] : []),
       ],
     },
+    {
+      label: 'Community',
+      items: [
+        { id: 'community' as SettingsTab, label: 'Community settings', icon: UsersRound },
+      ],
+    },
   ]
   const mobileItems = navGroups.flatMap((group) => group.items)
-  const currentTabMeta = TAB_META[activeTab]
+  const selectedCommunityMeta = communitySettingsSections.find((item) => item.id === communitySection)
+  const currentTabMeta = activeTab === 'community'
+    ? { title: selectedCommunityMeta?.label ?? TAB_META.community.title, description: 'Community settings' }
+    : TAB_META[activeTab]
+
+  function renderCommunitySectionMenu(id: string, mobile = false) {
+    return (
+      <div id={id} style={{ display: communityExpanded ? 'block' : 'none' }} className={mobile ? 'mt-2 border-t border-border pt-2' : 'ml-5 mt-1 border-l border-border pl-2'}>
+        <div className={mobile ? 'grid max-h-64 grid-cols-2 gap-1 overflow-y-auto' : 'space-y-0.5'}>
+          {communitySettingsSections.map((section) => {
+            const Icon = section.icon
+            const active = activeTab === 'community' && communitySection === section.id
+            return (
+              <button key={section.id} type="button" aria-current={active ? 'page' : undefined} onClick={() => setCommunitySection(section.id)} className={cn('flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+                <Icon size={15} className="shrink-0" aria-hidden="true" />
+                <span>{section.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <PageLayout className="p-0" scrollMain={false}>
@@ -1019,20 +1088,21 @@ export function Settings() {
         <div className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-medium text-foreground">Settings</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage your account, preferences, and billing</p>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your account, E-learning, and Community preferences</p>
           </div>
           <div className="mb-4 rounded-2xl border border-border bg-card p-2 md:hidden">
-            <div className="flex min-w-max gap-1 overflow-x-auto">
+            <div className="flex gap-1 overflow-x-auto">
               {mobileItems.map((item) => {
                 const Icon = item.icon
                 const active = activeTab === item.id
-                return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground')}><Icon size={16} /><span className="hidden sm:inline">{item.label}</span></button>
+                return <button key={item.id} type="button" aria-current={active ? 'page' : undefined} aria-expanded={item.id === 'community' ? communityExpanded : undefined} aria-controls={item.id === 'community' ? 'community-settings-mobile-menu' : undefined} onClick={() => setActiveTab(item.id)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon size={16} /><span>{item.label}</span>{item.id === 'community' && <ChevronDown size={15} className={cn('transition-transform', communityExpanded && 'rotate-180')} aria-hidden="true" />}</button>
               })}
             </div>
+            {renderCommunitySectionMenu('community-settings-mobile-menu', true)}
           </div>
           <div className="grid items-start gap-6 md:grid-cols-[220px_1fr]">
-            <div className="sticky top-20 hidden self-start md:block">
-              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="sticky top-20 hidden max-h-[calc(100vh-6rem)] self-start overflow-y-auto md:block">
+              <div className="rounded-2xl border border-border bg-card">
                 <div className="border-b border-border p-5">
                   <UserAvatar name={watchedFullName || avatarName} avatarUrl={avatarPreviewUrl} userId={user?.id} preferAvatarUrl size={48} className="mb-3 border-0 text-base shadow-none" textClassName="text-base" />
                   <p className="truncate text-sm font-medium text-foreground">{watchedFullName || profile?.full_name || 'DentalLearn User'}</p>
@@ -1049,7 +1119,10 @@ export function Settings() {
                       {group.items.map((item) => {
                         const Icon = item.icon
                         const active = activeTab === item.id
-                        return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-primary')}><Icon size={16} />{item.label}</button>
+                        return <div key={item.id}>
+                          <button type="button" aria-current={active ? 'page' : undefined} aria-expanded={item.id === 'community' ? communityExpanded : undefined} aria-controls={item.id === 'community' ? 'community-settings-sidebar-menu' : undefined} onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-primary')}><Icon size={16} className="shrink-0" /><span className="min-w-0 flex-1">{item.label}</span>{item.id === 'community' && <ChevronDown size={15} className={cn('shrink-0 transition-transform', communityExpanded && 'rotate-180')} aria-hidden="true" />}</button>
+                          {item.id === 'community' && renderCommunitySectionMenu('community-settings-sidebar-menu')}
+                        </div>
                       })}
                     </div>
                   ))}
@@ -1066,7 +1139,11 @@ export function Settings() {
                     <h2 className="text-base font-medium text-foreground">{currentTabMeta.title}</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">{currentTabMeta.description}</p>
                   </div>
-                  {renderProfileHeaderAction()}
+                  {activeTab === 'community' ? (
+                    <Link to="/community" search={{ tab: 'me', q: undefined, topic: undefined, sort: undefined }} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <ArrowLeft size={16} /> Back to Community profile
+                    </Link>
+                  ) : renderProfileHeaderAction()}
                 </div>
               </div>
               {renderPanelBody()}
