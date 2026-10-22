@@ -63,7 +63,7 @@ export function CommunitySettings({ userId, section }: { userId: string; section
         <div className="mt-6"><EmptyState icon={isPeopleSection ? <UsersRound /> : <Bookmark />} title={`No ${communitySettingsSections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>
       )}
 
-      {(section === 'history' || section === 'bookmarks' || section === 'deleted') && !query.isLoading && !query.isError && items.length > 0 && (
+      {(section === 'history' || section === 'deleted') && !query.isLoading && !query.isError && items.length > 0 && (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {(items as CommunityManagedPost[]).map((post) => (
             <article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card shadow-card">
@@ -118,7 +118,7 @@ export function CommunitySettings({ userId, section }: { userId: string; section
         </div>
       )}
 
-      {showsActivity && section !== 'history' && section !== 'bookmarks' && section !== 'deleted' && !query.isLoading && !query.isError && !isPeopleSection && (
+      {showsActivity && section !== 'history' && section !== 'deleted' && !query.isLoading && !query.isError && !isPeopleSection && (
         <div className="mt-5 space-y-3">
           {(items as CommunityManagedPost[]).map((post) => (
             <article key={post.id} className="rounded-2xl border border-border bg-card p-5">

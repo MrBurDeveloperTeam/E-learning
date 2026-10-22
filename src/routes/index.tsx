@@ -147,6 +147,9 @@ const feedRoute = createRoute({
 const savedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/saved',
+  validateSearch: (search: Record<string, unknown>): { tab?: 'videos' | 'posts' } => ({
+    tab: search.tab === 'posts' ? 'posts' : undefined,
+  }),
   component: Saved,
 })
 

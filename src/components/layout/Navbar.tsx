@@ -23,7 +23,7 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
   { label: 'Home', path: '/explore' },
   { label: 'Community', path: '/community' },
   { label: 'Following', path: '/feed' },
-  { label: 'Saved videos', path: '/saved' },
+  { label: 'Saved', path: '/saved', search: { tab: undefined } },
   // { label: 'Categories', path: '/category' },
 ]
 
@@ -608,6 +608,7 @@ export function Navbar() {
 
               <Link
                 to="/saved"
+                search={{ tab: undefined }}
                 onClick={closeMobileMenu}
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
@@ -618,7 +619,7 @@ export function Navbar() {
                   <path d="M19 21H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2Z" />
                   <path d="m16 3-4 4-4-4" />
                 </svg>
-                Saved videos
+                Saved
               </Link>
 
               {canAccessAdmin && (

@@ -59,7 +59,12 @@ export function useCommunityPostInteraction(userId?: string) {
       if (!userId) throw new Error('Sign in to interact with posts.')
       await setCommunityPostInteraction(table, postId, userId, active, comment)
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['community-posts'] }),
+    onSuccess: (_data, input) => {
+      void queryClient.invalidateQueries({ queryKey: ['community-posts'] })
+      if (input.table === 'community_post_bookmarks' && userId) {
+        void queryClient.invalidateQueries({ queryKey: ['community-settings', userId, 'bookmarks'] })
+      }
+    },
   })
 }
 

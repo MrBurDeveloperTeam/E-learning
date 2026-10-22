@@ -223,6 +223,8 @@ export function Settings() {
   useEffect(() => {
     if (search.tab === 'community' && search.section === 'notifications') {
       void navigate({ search: { tab: 'notifications', section: undefined }, replace: true })
+    } else if (search.tab === 'community' && search.section === 'bookmarks') {
+      void navigate({ to: '/saved', search: { tab: 'posts' }, replace: true })
     }
   }, [navigate, search.section, search.tab])
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
