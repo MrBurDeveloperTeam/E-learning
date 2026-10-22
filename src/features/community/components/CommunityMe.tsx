@@ -10,7 +10,6 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
-import { CommunitySettings } from '@/features/community/components/CommunitySettings'
 import { CommunityFriendRequests } from '@/features/community/components/CommunityFriendRequests'
 import { useCommunitySettings, useFriendRequests, useRemoveCommunitySettingRelation } from '@/features/community/hooks/useCommunity'
 // Close friends hooks are intentionally disabled but preserved in useCommunity.ts.
@@ -35,7 +34,6 @@ const profileSections = [
 export function CommunityMe({ userId, profile, openFollowRequests = false }: { userId: string; profile: Profile | null; openFollowRequests?: boolean }) {
   const isPageVisible = useDocumentVisibility()
   const queryClient = useQueryClient()
-  const [showSettings, setShowSettings] = useState(false)
   const [followRequestsOpen, setFollowRequestsOpen] = useState(openFollowRequests)
   const [connectionsView, setConnectionsView] = useState<'following' | null>(null)
   const [section, setSection] = useState<ProfileSection>('posts')
@@ -99,16 +97,6 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
     </div>
   }
 
-  if (showSettings) {
-    return <div>
-      <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-4">
-        <div><p className="font-semibold">Community settings</p><p className="mt-1 text-sm text-muted-foreground">Manage your saved activity, safety, privacy, and account preferences.</p></div>
-        <Button variant="outline" onClick={() => setShowSettings(false)}>Back to profile</Button>
-      </div>
-      <CommunitySettings userId={userId} />
-    </div>
-  }
-
   return <div className="mt-7">
     <section className="overflow-hidden rounded-3xl border border-border bg-card">
       <div className="h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36">
@@ -130,7 +118,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link to="/settings" />}><Pencil className="size-4" /> Edit profile</Button>
             <Button variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4" /> Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
-            <Button variant="outline" onClick={() => setShowSettings(true)}><Settings2 className="size-4" /> Settings</Button>
+            <Button variant="outline" render={<Link to="/settings" search={{ tab: 'community' }} />}><Settings2 className="size-4" /> Settings</Button>
           </div>
         </div>
         {profile?.bio && <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">{profile.bio}</p>}

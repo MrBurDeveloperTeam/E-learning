@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
+  ArrowLeft,
   Camera,
   Bell,
   CircleAlert,
@@ -18,6 +20,7 @@ import {
   Share2,
   SunMedium,
   UserRound,
+  UsersRound,
 } from 'lucide-react'
 import { PageLayout } from '../components/layout/PageLayout'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -40,11 +43,14 @@ import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
 import { syncAccountAvatar } from '../lib/syncAccountAvatar'
 import { UserAvatar } from '../components/shared/UserAvatar'
 
+const CommunitySettings = lazy(() => import('../features/community/components/CommunitySettings').then((module) => ({ default: module.CommunitySettings })))
+
 type SettingsTab =
   | 'profile'
   | 'security'
   | 'notifications'
   | 'appearance'
+  | 'community'
 
 interface ProfileFormValues {
   first_name: string
@@ -104,6 +110,7 @@ const TAB_META: Record<SettingsTab, { title: string; description: string }> = {
   security: { title: 'Security', description: 'Manage your password and account security' },
   notifications: { title: 'Notifications', description: 'Choose what you want to be notified about' },
   appearance: { title: 'Appearance', description: 'Preview upcoming visual and accessibility preferences' },
+  community: { title: 'Community settings', description: 'Manage your Community activity, preferences, privacy, and safety' },
 }
 
 const NOTIFICATION_GROUPS = [
@@ -188,6 +195,8 @@ function getPasswordStrength(password: string) {
 }
 
 export function Settings() {
+  const navigate = useNavigate({ from: '/settings' })
+  const search = useSearch({ from: '/settings' })
   const user = useAuthStore((s) => s.user)
   const profile = useAuthStore((s) => s.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
@@ -195,7 +204,10 @@ export function Settings() {
   const { signOut } = useAuth()
   const updateProfile = useUpdateProfile()
   const uploadBackground = useUploadBackground()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
+  const activeTab: SettingsTab = search.tab ?? 'profile'
+  const setActiveTab = (tab: SettingsTab) => {
+    void navigate({ search: { tab: tab === 'profile' ? undefined : tab } })
+  }
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState(
     profile?.background_url ?? null
@@ -985,6 +997,7 @@ export function Settings() {
 
   function renderPanelBody() {
     if (activeTab === 'profile') return renderProfilePanel()
+    if (activeTab === 'community') return user ? <div className="px-4 pb-6 sm:px-6"><Suspense fallback={<div className="flex min-h-64 items-center justify-center" role="status" aria-label="Loading Community settings"><LoadingSpinner size="lg" /></div>}><CommunitySettings userId={user.id} /></Suspense></div> : null
     // Security and Appearance panels are retained above, but their sidebar entries are currently hidden.
     if (activeTab === 'security') return renderSecurityPanel()
     if (activeTab === 'notifications') return renderNotificationsPanel()
@@ -1004,9 +1017,15 @@ export function Settings() {
     {
       label: 'Preferences',
       items: [
-        { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
+        { id: 'notifications' as SettingsTab, label: 'E-learning notifications', icon: Bell },
         // Appearance is intentionally retained for future use but hidden from desktop and mobile navigation.
         ...(false ? [{ id: 'appearance' as SettingsTab, label: 'Appearance', icon: SunMedium }] : []),
+      ],
+    },
+    {
+      label: 'Community',
+      items: [
+        { id: 'community' as SettingsTab, label: 'Community settings', icon: UsersRound },
       ],
     },
   ]
@@ -1019,14 +1038,14 @@ export function Settings() {
         <div className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-medium text-foreground">Settings</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage your account, preferences, and billing</p>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your account, E-learning, and Community preferences</p>
           </div>
           <div className="mb-4 rounded-2xl border border-border bg-card p-2 md:hidden">
-            <div className="flex min-w-max gap-1 overflow-x-auto">
+            <div className="flex gap-1 overflow-x-auto">
               {mobileItems.map((item) => {
                 const Icon = item.icon
                 const active = activeTab === item.id
-                return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground')}><Icon size={16} /><span className="hidden sm:inline">{item.label}</span></button>
+                return <button key={item.id} type="button" aria-current={active ? 'page' : undefined} onClick={() => setActiveTab(item.id)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon size={16} /><span>{item.label}</span></button>
               })}
             </div>
           </div>
@@ -1049,7 +1068,7 @@ export function Settings() {
                       {group.items.map((item) => {
                         const Icon = item.icon
                         const active = activeTab === item.id
-                        return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-primary')}><Icon size={16} />{item.label}</button>
+                        return <button key={item.id} type="button" aria-current={active ? 'page' : undefined} onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-primary')}><Icon size={16} />{item.label}</button>
                       })}
                     </div>
                   ))}
@@ -1066,7 +1085,11 @@ export function Settings() {
                     <h2 className="text-base font-medium text-foreground">{currentTabMeta.title}</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">{currentTabMeta.description}</p>
                   </div>
-                  {renderProfileHeaderAction()}
+                  {activeTab === 'community' ? (
+                    <Link to="/community" search={{ tab: 'me', q: undefined, topic: undefined, sort: undefined }} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <ArrowLeft size={16} /> Back to Community profile
+                    </Link>
+                  ) : renderProfileHeaderAction()}
                 </div>
               </div>
               {renderPanelBody()}
