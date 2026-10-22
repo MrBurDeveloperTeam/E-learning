@@ -112,7 +112,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
 
   return <div className="mt-7 space-y-6">
     <section aria-label="My profile overview" className="community-profile-card overflow-hidden rounded-3xl border border-border bg-card">
-      <div className="h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36">
+      <div className="relative h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36">
         {profile?.background_url && !backgroundFailed && (
           <img
             src={profile.background_url}
@@ -121,6 +121,14 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
             onError={() => setBackgroundFailed(true)}
           />
         )}
+        <Link
+          to="/settings"
+          aria-label="Change profile background"
+          title="Change profile background"
+          className="absolute bottom-3 right-3 flex size-12 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:bottom-4 sm:right-5"
+        >
+          <Pencil className="size-5" aria-hidden="true" />
+        </Link>
       </div>
       <div className="px-5 pb-6 sm:px-7">
       <div className="-mt-10 flex flex-col gap-5 sm:-mt-11 lg:flex-row lg:items-end lg:justify-between">
