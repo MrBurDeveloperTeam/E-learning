@@ -1,4 +1,4 @@
-import { fetchAccountProfile } from './accountProfile'
+import { loadAccountProfile } from './accountProfile'
 import { supabase } from './supabase'
 import { queryClient } from './queryClient'
 import { useAuthStore } from '../store/authStore'
@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore'
 // Community, chat and creator lists all read this shared profile field.
 export async function syncAccountAvatar(userId: string, imageUrl?: string | null) {
   const accountUrl = imageUrl === undefined
-    ? (await fetchAccountProfile()).imageUrl
+    ? (await loadAccountProfile()).imageUrl
     : imageUrl
   let avatarUrl: string | null = null
   if (accountUrl) {

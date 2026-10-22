@@ -1,17 +1,20 @@
 // src/hooks/useProfileImage.ts
 import { useQuery } from "@tanstack/react-query";
-import { fetchAccountProfile } from "../lib/accountProfile";
+import { accountProfileKey, fetchAccountProfile } from "../lib/accountProfile";
+import { useAuthStore } from "../store/authStore";
 
-export const PROFILE_IMAGE_QUERY_KEY = ["account-profile-image"] as const;
-
+// Shares the ['snabbb-account-profile', userId] cache entry with Navbar, Settings,
+// Channel and useOwnAccountAvatar, so the whole app makes ONE profile request.
 export function useProfileImage(isLoggedIn: boolean | null) {
+  const userId = useAuthStore((state) => state.user?.id);
+
   const { data } = useQuery({
-    queryKey: PROFILE_IMAGE_QUERY_KEY,
-    queryFn: async () => (await fetchAccountProfile()).imageUrl,
-    enabled: Boolean(isLoggedIn),
-    staleTime: 10 * 60 * 1000, // shared across all components for 10 min
-    gcTime: 30 * 60 * 1000,
+    queryKey: accountProfileKey(userId),
+    queryFn: fetchAccountProfile,
+    enabled: Boolean(isLoggedIn && userId),
+    staleTime: 60_000,
     retry: false,
+    select: (profile) => profile.imageUrl,
   });
 
   return { profileImageUrl: isLoggedIn ? data ?? null : null };

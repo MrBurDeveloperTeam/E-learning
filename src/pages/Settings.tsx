@@ -34,7 +34,7 @@ import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { PasswordField } from '../components/ui/PasswordField'
 import { useTheme } from '../components/shared/ThemeProvider'
-import { useProfileImage, PROFILE_IMAGE_QUERY_KEY } from '../hooks/useProfileImage'
+import { useProfileImage } from '../hooks/useProfileImage'
 import type { CreatorApplication } from '../types'
 import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
 import { syncAccountAvatar } from '../lib/syncAccountAvatar'
@@ -328,7 +328,6 @@ export function Settings() {
         electronicFormat: values.electronic_invoice_format,
       })
       queryClient.setQueryData(['snabbb-account-profile', user?.id], updatedAccount)
-      queryClient.setQueryData(PROFILE_IMAGE_QUERY_KEY, updatedAccount.imageUrl)
 
       // Keep only the e-learning display summary mirrored in Supabase; Odoo remains the source of truth.
       try {
@@ -363,7 +362,6 @@ export function Settings() {
       setIsUploadingAvatar(true)
       const updatedAccount = await saveAccountProfile(accountProfile, file)
       queryClient.setQueryData(['snabbb-account-profile', user?.id], updatedAccount)
-      queryClient.setQueryData(PROFILE_IMAGE_QUERY_KEY, updatedAccount.imageUrl)
       setAvatarPreviewUrl(updatedAccount.imageUrl)
       if (user?.id) {
         try {

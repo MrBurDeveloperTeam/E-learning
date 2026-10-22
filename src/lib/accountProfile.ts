@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getAccountAvatarUrl } from './accountAvatar'
+import { queryClient } from './queryClient'
 
 const ACCOUNT_API_ORIGIN = window.location.hostname === 'e-learning.snabbb.com'
   ? 'https://e-learning-ddw.pages.dev'
@@ -108,6 +109,10 @@ function normalizeAccountProfile(data: AccountProfileResponse, userId?: string):
   }
 }
 
+export const accountProfileKey = (userId: string | null | undefined) =>
+  ['snabbb-account-profile', userId] as const
+
+// Raw network call. Use as the queryFn of useQuery, or call loadAccountProfile() outside React.
 export async function fetchAccountProfile() {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Please sign in again to load your account details')
@@ -126,6 +131,18 @@ export async function fetchAccountProfile() {
   }
 
   return normalizeAccountProfile(data, session.user.id)
+}
+
+// Non-hook callers (e.g. avatar sync) go through the same cache entry as the hooks,
+// so concurrent/repeat calls within the stale window reuse one request.
+export async function loadAccountProfile() {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Please sign in again to load your account details')
+  return queryClient.fetchQuery({
+    queryKey: accountProfileKey(session.user.id),
+    queryFn: () => fetchAccountProfile(),
+    staleTime: 60_000,
+  })
 }
 
 export async function saveAccountProfile(profile: AccountProfile, photo?: File | null) {
