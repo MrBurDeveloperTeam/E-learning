@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, FileText, Heart, Pencil, PlaySquare, Repeat2, UserMinus, UserRoundCheck } from 'lucide-react'
+import { ArrowLeft, FileText, Heart, Pencil, PlaySquare, Repeat2, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react'
 // Close friends UI is intentionally disabled but preserved below in comments.
 // import { Star, UsersRound } from 'lucide-react'
 import { toast } from 'sonner'
@@ -110,8 +110,8 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
     </div>
   }
 
-  return <div className="mt-7">
-    <section className="overflow-hidden rounded-3xl border border-border bg-card">
+  return <div className="mt-7 space-y-6">
+    <section aria-label="My profile overview" className="community-profile-card overflow-hidden rounded-3xl border border-border bg-card">
       <div className="h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36">
         {profile?.background_url && !backgroundFailed && (
           <img
@@ -122,46 +122,49 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
           />
         )}
       </div>
-      <div className="px-5 pb-6 sm:px-8">
-        <div className="-mt-12 flex flex-col gap-5 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex min-w-0 items-end gap-4">
-            <div className="rounded-full border-4 border-card bg-card shadow-sm"><UserAvatar name={displayName} avatarUrl={avatarUrl} userId={userId} size={104} /></div>
-            <div className="min-w-0 pb-1"><div className="flex items-center gap-2"><h3 className="truncate text-2xl font-semibold tracking-[-0.03em]">{displayName}</h3>{profile?.is_verified && <VerifiedBadge />}</div><p className="truncate text-sm text-muted-foreground">@{username}</p></div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" render={<Link to="/settings" />}><Pencil className="size-4" /> Edit profile</Button>
-            <Button variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4" /> Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
+      <div className="px-5 pb-6 sm:px-7">
+      <div className="-mt-10 flex flex-col gap-5 sm:-mt-11 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex min-w-0 items-end gap-4">
+          <div className="shrink-0 rounded-full border-4 border-card bg-card shadow-sm"><UserAvatar name={displayName} avatarUrl={avatarUrl} userId={userId} size={88} /></div>
+          <div className="min-w-0 pb-1 pt-10">
+            <div className="flex items-center gap-2"><h3 className="truncate text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{displayName}</h3>{profile?.is_verified && <VerifiedBadge />}</div>
+            <p className="truncate text-sm text-muted-foreground">@{username}</p>
+            {specialty && <p className="mt-1 text-sm text-muted-foreground">{specialty}{profile?.institution ? ` · ${profile.institution}` : ''}</p>}
           </div>
         </div>
-        {specialty && <p className="mt-5 text-sm text-muted-foreground">{specialty}{profile?.institution ? ` · ${profile.institution}` : ''}</p>}
-        {profile?.bio && <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{profile.bio}</p>}
-        <div className="mt-6 grid grid-cols-3 gap-2 sm:max-w-lg sm:gap-4">
-          <button type="button" onClick={() => setSection('posts')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><FileText className="mb-2 size-4 text-primary" /><strong className="block text-xl">{ownPostsQuery.isLoading ? '—' : ownPostsQuery.data?.length ?? 0}</strong><span className="text-xs text-muted-foreground">Posts</span></button>
-          <button type="button" onClick={() => setConnectionsView('following')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><UserRoundCheck className="mb-2 size-4 text-primary" /><strong className="block text-xl">{followingQuery.isLoading ? '—' : followingQuery.data?.length ?? profile?.following_count ?? 0}</strong><span className="text-xs text-muted-foreground">Following</span></button>
-          <a href="#profile-videos" className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><PlaySquare className="mb-2 size-4 text-primary" /><strong className="block text-xl">{videosQuery.isLoading ? '—' : videosQuery.data?.length ?? 0}</strong><span className="text-xs text-muted-foreground">Videos</span></a>
-          {/* Close friends statistic/card is intentionally hidden. Original JSX preserved below. */}
-          {/* <button type="button" onClick={() => setConnectionsView('close_friends')} className="rounded-2xl bg-muted/55 px-3 py-4 text-left transition-colors hover:bg-muted"><Star className="mb-2 size-4 text-primary" /><strong className="block text-xl">{closeFriendsQuery.isLoading ? '—' : closeFriendsQuery.data?.length ?? 0}</strong><span className="text-xs text-muted-foreground">Close friends</span></button> */}
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <Button variant="outline" render={<Link to="/settings" />}><Pencil className="size-4" /> Edit profile</Button>
+          <Button variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4" /> Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
         </div>
+      </div>
+      {profile?.bio && <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">{profile.bio}</p>}
+      <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5 sm:gap-3">
+        <button type="button" onClick={() => { setSection('posts'); document.getElementById('profile-activity')?.scrollIntoView() }} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><FileText className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{ownPostsQuery.isLoading || ownPostsQuery.isError ? '—' : ownPostsQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">Community posts</span></button>
+        <button type="button" onClick={() => setConnectionsView('following')} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><UserRoundCheck className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{followingQuery.isLoading || followingQuery.isError ? '—' : followingQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">Community following</span></button>
+        <a href="#profile-videos" className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><PlaySquare className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{videosQuery.isLoading || videosQuery.isError ? '—' : videosQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning videos</span></a>
+        <div className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4"><UsersRound className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{formatViewCount(profile?.follower_count ?? 0)}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning followers</span></div>
+        <div className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4"><UserRoundCheck className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{formatViewCount(profile?.following_count ?? 0)}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning following</span></div>
+      </div>
       </div>
     </section>
 
-    <div className="mt-6 flex border-b border-border" role="tablist" aria-label="Profile activity">
-      {profileSections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={section === item.id} onClick={() => setSection(item.id)} className={cn('flex flex-1 items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors', section === item.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}><item.icon className="size-4" />{item.label}</button>)}
-    </div>
-    {activityQuery.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg" /></div>}
-    {activityQuery.isError && <div className="mt-5"><RetryCard onRetry={() => void activityQuery.refetch()} /></div>}
-    {!activityQuery.isLoading && !activityQuery.isError && posts.length === 0 && <div className="mt-5"><EmptyState icon={section === 'likes' ? <Heart /> : section === 'reposts' ? <Repeat2 /> : <FileText />} title={`No ${profileSections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>}
-    {!activityQuery.isLoading && !activityQuery.isError && posts.length > 0 && <div className="mt-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <section id="profile-activity" aria-label="Community activity" className="scroll-mt-24 rounded-3xl border border-border bg-card p-4 sm:p-6">
+      <div className="flex" role="tablist" aria-label="Profile activity">
+        {profileSections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={section === item.id} onClick={() => setSection(item.id)} className={cn('flex flex-1 items-center justify-center gap-2 px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', section === item.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')}><item.icon className="size-4" />{item.label}</button>)}
+      </div>
+      <div className="min-h-48">
+      {activityQuery.isLoading && <div className="flex min-h-48 items-center justify-center"><LoadingSpinner size="lg" /></div>}
+      {activityQuery.isError && <div className="mt-5"><RetryCard onRetry={() => void activityQuery.refetch()} /></div>}
+      {!activityQuery.isLoading && !activityQuery.isError && posts.length === 0 && <div className="mt-5"><EmptyState icon={section === 'likes' ? <Heart /> : section === 'reposts' ? <Repeat2 /> : <FileText />} title={`No ${profileSections.find((item) => item.id === section)?.label.toLowerCase()} yet`} description="Your Community activity will appear here." /></div>}
+      {!activityQuery.isLoading && !activityQuery.isError && posts.length > 0 && <div className="mt-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {posts.map((post) => <article key={post.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card"><Link to="/community/post/$postId" params={{postId:post.id}} aria-label={`Open ${post.post_type} post`} className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">{post.preview_media?.media_type==='image'?<img src={post.preview_media.public_url} alt={post.preview_media.alt_text||''} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"/>:post.preview_media?.media_type==='video'?<video src={post.preview_media.public_url} muted playsInline preload="metadata" aria-label={post.preview_media.alt_text||'Video post preview'} className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"/>:<span className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground"><FileText className="size-8"/><span className="text-xs">Text post</span></span>}<span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end bg-gradient-to-t from-black/35 to-transparent p-3 pt-10 text-white">{post.preview_media?.media_type==='video'&&<span className="rounded-full bg-black/45 px-2 py-1 text-[11px] font-medium">Video</span>}</span></Link></article>)}
-    </div>}
-    <section id="profile-videos" aria-labelledby="profile-videos-heading" className="mt-9 scroll-mt-24">
+      </div>}
+      </div>
+    </section>
+    <section id="profile-videos" aria-labelledby="profile-videos-heading" className="scroll-mt-24 rounded-3xl border border-border bg-card p-5 sm:p-7">
       <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
         <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">E-learning</p><h3 id="profile-videos-heading" className="mt-1 text-xl font-semibold">Videos</h3></div>
         <span className="text-sm text-muted-foreground">{videosQuery.isLoading ? '—' : videosQuery.data?.length ?? 0}</span>
-      </div>
-      <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
-        <span><strong className="font-semibold text-foreground">{formatViewCount(profile?.follower_count ?? 0)}</strong> learning followers</span>
-        <span><strong className="font-semibold text-foreground">{formatViewCount(profile?.following_count ?? 0)}</strong> learning following</span>
       </div>
       {videosQuery.isError ? <RetryCard onRetry={() => void videosQuery.refetch()} /> : <VideoGrid videos={videosQuery.data ?? []} columns={3} isLoading={videosQuery.isLoading} skeletonCount={3} emptyTitle="No videos yet" emptyDescription="Your learning videos will appear here when you upload them." />}
     </section>
