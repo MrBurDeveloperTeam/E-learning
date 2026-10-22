@@ -142,5 +142,6 @@ export interface CommunityPerson {
   is_verified: boolean
   relation_id?: string
   is_mutual?: boolean
-  is_close_friend?: boolean
+  /* Close friends metadata is intentionally disabled; source preserved for re-enabling later. */
+  // is_close_friend?: boolean
 }
