@@ -128,6 +128,7 @@ export function Navbar() {
   // short-lived shared cookie so it survives the SSO redirect chain.
   async function openAppLink(appCode: string, targetUrl: string, section?: string) {
     setMenuOpen(false)
+    setMobileMenuOpen(false)
     const win = window.open('', '_blank')
 
     const withSection = (rawUrl: string) => {
@@ -562,53 +563,6 @@ export function Navbar() {
           {user ? (
             <>
               <Link
-                to="/explore"
-                onClick={closeMobileMenu}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/explore') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
-                )}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                Home
-              </Link>
-
-              <Link
-                to="/feed"
-                onClick={closeMobileMenu}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/feed') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
-                )}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                Following feed
-              </Link>
-
-              <Link
-                to="/search"
-                onClick={closeMobileMenu}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/search') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
-                )}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                Search
-              </Link>
-
-              <Link
                 to="/saved"
                 search={{ tab: undefined }}
                 onClick={closeMobileMenu}
@@ -643,51 +597,43 @@ export function Navbar() {
 
               <div className="my-2 h-px bg-border" />
 
-              <div className="flex items-center gap-3 px-3 py-2.5">
-                <UserAvatar
-                  name={avatarLabel}
-                  avatarUrl={avatarSrc}
-                  userId={user.id}
-                  size={36}
-                  className="flex-shrink-0 border-0 bg-[#2D6E6A] text-xs text-[#EAF4F3] shadow-none"
-                  textClassName="text-xs"
-                />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {avatarLabel || 'DentalLearn User'}
-                  </p>
-                  <p className="text-xs capitalize text-[#9BB5B5]">
-                    {profile?.role ?? 'member'}
-                  </p>
-                </div>
-              </div>
-
-              <Link
-                to="/channel/$userId"
-                params={{ userId: profile?.user_id ?? user?.id ?? '' }}
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-              >
-                My Profile
-              </Link>
-
               {canAccessCreatorTools && (
-                <>
-                  <Link
-                    to="/studio"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                  >
-                    Creator studio
-                  </Link>
-                  <Link
-                    to="/upload"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                  >
-                    Upload
-                  </Link>
-                </>
+                <Link
+                  to="/studio"
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                >
+                  Creator studio
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void openAppLink('reward', 'https://reward.snabbb.com', 'credit')}
+                className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span>Snabbb Credit</span>
+                <span className="text-xs text-muted-foreground">
+                  {creditLoading
+                    ? 'Loading...'
+                    : creditError
+                      ? creditError
+                      : creditBalance !== null
+                        ? `${creditBalance.toLocaleString()} credits`
+                        : 'Balance unavailable'}
+                </span>
+              </button>
+
+              {SHOW_SUPPORT_TICKETS && (
+                <button
+                  type="button"
+                  disabled={isOpeningSupportTickets}
+                  onClick={() => void openSupportTickets()}
+                  className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span>Support Tickets</span>
+                  <span className="text-xs text-muted-foreground">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</span>
+                </button>
               )}
 
               <Link
