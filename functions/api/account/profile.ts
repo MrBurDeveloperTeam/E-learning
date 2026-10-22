@@ -17,6 +17,7 @@ function cors(request: Request) {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
     'Cache-Control': 'private, no-store',
     Vary: 'Origin',
   }
