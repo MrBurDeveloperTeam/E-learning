@@ -104,8 +104,8 @@
   border-color: var(--community-line);
   box-shadow: var(--community-shadow);
 }
-.community-dashboard[data-community-tab="me"] main > div > section > div:first-child {
-  background: radial-gradient(ellipse at 80% 10%, hsl(var(--primary) / .4), transparent 60%), linear-gradient(120deg, hsl(var(--secondary)), hsl(var(--primary) / .14));
+.community-dashboard[data-community-tab="me"] .community-profile-card {
+  background: radial-gradient(ellipse at 100% 0%, hsl(var(--primary) / .13), transparent 48%), hsl(var(--card));
 }
 .community-dashboard[data-community-tab="chat"] main > div:first-child { padding: 18px 24px; }
 .community-dashboard[data-community-tab="chat"] main > div:first-child h2 { font-size: 24px; }

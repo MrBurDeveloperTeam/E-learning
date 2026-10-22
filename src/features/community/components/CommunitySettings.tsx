@@ -18,7 +18,6 @@ import { CommunityPrivacySettings } from '@/features/community/components/Commun
 import { CommunityAppealHistory, CommunityTopicSettings } from '@/features/community/components/CommunityReleaseSettings'
 import { CommunityAppealDialog } from '@/features/community/components/CommunityAppealDialog'
 import { CommunityRestrictionAppeals } from '@/features/community/components/CommunityRestrictionAppeals'
-import { CommunityDrafts } from '@/features/community/components/CommunityDrafts'
 import { communitySettingsSections, type CommunitySettingsView } from '@/features/community/components/communitySettingsSections'
 
 const postStatusHelp:Record<CommunityManagedPost['status'],string>={
@@ -32,12 +31,12 @@ const postStatusHelp:Record<CommunityManagedPost['status'],string>={
 
 export function CommunitySettings({ userId, section }: { userId: string; section: CommunitySettingsView }) {
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; label: string } | null>(null)
-  const dataSection: CommunitySettingsSection = section === 'drafts' || section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
+  const dataSection: CommunitySettingsSection = section === 'verification' || section === 'reports' || section === 'blocked' || section === 'privacy' || section === 'topics' || section === 'appeals' || section === 'restrictions' ? 'posts' : section
   const query = useCommunitySettings(userId, dataSection)
   const removeMutation = useRemoveCommunitySettingRelation(userId, dataSection)
   const restoreMutation=useRestoreOwnCommunityPost(userId)
   const isPeopleSection = section === 'following' || section === 'friends'
-  const showsActivity = section !== 'drafts' && section !== 'verification' && section !== 'reports' && section !== 'blocked' && section !== 'privacy' && section !== 'topics' && section !== 'appeals' && section !== 'restrictions'
+  const showsActivity = section !== 'verification' && section !== 'reports' && section !== 'blocked' && section !== 'privacy' && section !== 'topics' && section !== 'appeals' && section !== 'restrictions'
   const items = query.data ?? []
 
   const remove = async () => {
@@ -55,7 +54,6 @@ export function CommunitySettings({ userId, section }: { userId: string; section
       {section === 'topics' && <CommunityTopicSettings userId={userId} />}
       {section === 'appeals' && <CommunityAppealHistory userId={userId} />}
       {section === 'restrictions' && <CommunityRestrictionAppeals userId={userId} />}
-      {section === 'drafts' && <CommunityDrafts userId={userId} />}
 
       {showsActivity && query.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
       {showsActivity && query.isError && <div className="mt-6"><RetryCard onRetry={() => void query.refetch()} /></div>}

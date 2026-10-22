@@ -1,9 +1,10 @@
 import { Pencil } from 'lucide-react'
 import { Link, useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { FollowButton } from '@/components/creator/FollowButton'
 import { Navbar } from '@/components/layout/Navbar'
+import { LaunchScreen } from '@/components/ui/LaunchScreen'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
@@ -15,10 +16,13 @@ import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 import { useAuthStore } from '@/store/authStore'
 
+const MyProfilePage = lazy(() => import('@/pages/MyProfilePage').then(module => ({ default: module.MyProfilePage })))
+
 export function Channel() {
   const { userId } = useParams({ from: '/channel/$userId' })
   const user = useAuthStore((state) => state.user)
   const currentProfile = useAuthStore((state) => state.profile)
+  const isAuthLoading = useAuthStore((state) => state.isLoading)
   const isOwnChannel = currentProfile?.user_id === userId || user?.id === userId
   const { profileImageUrl } = useProfileImage(Boolean(user))
   const ownProfileQuery = useProfile(userId, isOwnChannel)
@@ -61,6 +65,15 @@ export function Channel() {
       document.title = 'DentalLearn - Dental Video Community'
     }
   }, [profile, profileName])
+
+  if (isAuthLoading) {
+    return <LaunchScreen status="Loading profile…" />
+  }
+
+  // My Channel owns the combined profile; other creators retain their public channel pages.
+  if (isOwnChannel) {
+    return <Suspense fallback={<><Navbar /><div className="flex min-h-64 items-center justify-center" role="status">Loading your profile…</div></>}><MyProfilePage /></Suspense>
+  }
 
   return (
     <>
