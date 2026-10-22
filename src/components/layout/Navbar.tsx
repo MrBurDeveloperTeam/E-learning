@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, Video, CreditCard, LogOut } from 'lucide-react'
+import { Mail, Phone, ChevronRight, CreditCard, LogOut } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -452,9 +452,6 @@ export function Navbar() {
                               onClick={() => setMenuOpen(false)}
                               className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all hover:bg-accent"
                             >
-                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-purple-500/10">
-                                <Video className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                              </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-bold leading-tight text-foreground">Creator Studio</p>
                                 <p className="truncate text-[11px] font-semibold text-muted-foreground">Manage your content</p>
@@ -653,7 +650,7 @@ export function Navbar() {
                   textClassName="text-xs"
                 />
                 <div>
-                  <p className="text-sm font-medium text-[#1E3333]">
+                  <p className="text-sm font-medium text-foreground">
                     {avatarLabel || 'DentalLearn User'}
                   </p>
                   <p className="text-xs capitalize text-[#9BB5B5]">
