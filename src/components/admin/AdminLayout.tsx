@@ -36,7 +36,10 @@ export function AdminLayout({
       showSidebar={true}
       sidebarItems={sidebarItems}
       sidebarVariant="admin"
-      className={cn('min-w-0 p-4 md:p-6 lg:p-8', className)}
+      className={cn(
+        'min-w-0 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6 lg:p-8 lg:pb-8',
+        className
+      )}
     >
       <div className="space-y-5 md:space-y-6">
         {currentPath !== '/admin' && (
