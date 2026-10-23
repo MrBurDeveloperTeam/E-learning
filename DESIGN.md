@@ -96,6 +96,8 @@ the drag threshold, preserving ordinary button/link clicks and keyboard access.
 
 Forms use explicit labels and app-owned validation. Authored selects use the shared Base UI Select primitive with trigger-width popups, keyboard behavior, collision handling, and visible focus.
 
+Profile background uploads open a crop dialog before saving. The user can drag, zoom, or use position sliders to frame a 4:1 image; responsive banners may trim its edges slightly.
+
 ### Iconography
 
 Lucide is the canonical icon family, using consistent outline strokes at 16–24px. Operational actions keep text labels unless the meaning is universally clear.
