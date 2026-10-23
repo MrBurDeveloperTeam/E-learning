@@ -595,8 +595,6 @@ export function Navbar() {
                 </Link>
               )}
 
-              <div className="my-2 h-px bg-border" />
-
               {canAccessCreatorTools && (
                 <Link
                   to="/studio"
@@ -610,18 +608,9 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => void openAppLink('reward', 'https://reward.snabbb.com', 'credit')}
-                className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
+                className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
               >
-                <span>Snabbb Credit</span>
-                <span className="text-xs text-muted-foreground dark:text-foreground/80">
-                  {creditLoading
-                    ? 'Loading...'
-                    : creditError
-                      ? creditError
-                      : creditBalance !== null
-                        ? `${creditBalance.toLocaleString()} credits`
-                        : 'Balance unavailable'}
-                </span>
+                Snabbb Credit
               </button>
 
               {SHOW_SUPPORT_TICKETS && (
@@ -629,10 +618,9 @@ export function Navbar() {
                   type="button"
                   disabled={isOpeningSupportTickets}
                   onClick={() => void openSupportTickets()}
-                  className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
+                  className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
                 >
-                  <span>Support Tickets</span>
-                  <span className="text-xs text-muted-foreground dark:text-foreground/80">{canAccessAdmin ? 'Manage all support tickets' : 'Create and track support tickets'}</span>
+                  Support Tickets
                 </button>
               )}
 
