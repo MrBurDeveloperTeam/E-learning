@@ -24,6 +24,7 @@ import useSessionDurationTracker from './hooks/useSessionDurationTracker'
 const PAGE_LABELS: Array<[string, string]> = [
   ['/watch/', 'Watch Video'],
   ['/channel/', 'Creator Channel'],
+  ['/community/chat/', 'Community Chat'],
   ['/category/', 'Category'],
   ['/dental-videos/', 'Dental Video Detail'],
   ['/profile/', 'Profile'],

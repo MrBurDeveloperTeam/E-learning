@@ -91,6 +91,8 @@ On mobile, Admin opens a full-page list of admin areas. Each area opens its own 
 
 On mobile Community routes, the footer switches to Home, Following, Communities, and Chat within Community. The main Community header links back to the app Home; desktop keeps its sidebar navigation.
 
+On mobile, selecting a Community chat opens its own full-height conversation route with a back link to the chat list. Desktop keeps the split conversation view.
+
 Home's specialty chips filter the existing unified upload/curated feed and use
 the selected category as the video heading; All restores the full feed and
 "All videos" heading. The horizontal-scroll hook captures pointers only after
