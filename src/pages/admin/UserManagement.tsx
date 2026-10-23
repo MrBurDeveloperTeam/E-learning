@@ -698,11 +698,12 @@ export function UserManagement() {
       >
         <DialogContent
           showCloseButton={false}
-          className="max-w-2xl rounded-[28px] border-border/80 bg-card p-0 overflow-hidden"
+          overlayClassName="z-[119]"
+          className="z-[120] flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-[28px] border-border/80 bg-card p-0 sm:max-w-2xl"
         >
           {detailUser && (
             <>
-              <DialogHeader className="border-b border-border/80 bg-muted/35 px-6 py-5">
+              <DialogHeader className="shrink-0 border-b border-border/80 bg-muted/35 px-6 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <DialogTitle className="text-lg text-foreground">
@@ -714,6 +715,7 @@ export function UserManagement() {
                   </div>
                   <button
                     type="button"
+                    aria-label="Close review details"
                     onClick={() => setDetailUser(null)}
                     className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
                   >
@@ -722,7 +724,7 @@ export function UserManagement() {
                 </div>
               </DialogHeader>
 
-              <div className="space-y-5 px-6 py-6">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-6">
                 <div className="flex items-center gap-4">
                   <UserAvatar
                     name={managedUserName(detailUser)}
@@ -730,11 +732,11 @@ export function UserManagement() {
                     size={60}
                     className="bg-primary/10 text-primary"
                   />
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-base font-semibold text-foreground">
                       {managedUserName(detailUser)}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="break-words text-sm text-muted-foreground">
                       {detailUser.email}
                     </p>
                   </div>
@@ -756,7 +758,7 @@ export function UserManagement() {
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
                         {label}
                       </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
+                      <p className="mt-2 break-words text-sm font-medium text-foreground">
                         {value}
                       </p>
                     </div>
@@ -768,14 +770,14 @@ export function UserManagement() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
                       Professional bio
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    <p className="mt-2 break-words text-sm leading-6 text-muted-foreground">
                       {detailUser.bio}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-border/80 bg-muted/35 px-6 py-4 sm:flex-row sm:justify-end">
+              <div className="flex shrink-0 flex-col gap-3 border-t border-border/80 bg-muted/35 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:flex-row sm:justify-end sm:pb-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -813,7 +815,8 @@ export function UserManagement() {
       >
         <DialogContent
           showCloseButton={false}
-          className="max-w-lg rounded-[28px] border-border/80 bg-card p-0 overflow-hidden"
+          overlayClassName="z-[129]"
+          className="z-[130] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto overscroll-contain rounded-[28px] border-border/80 bg-card p-0 sm:max-w-lg"
         >
           <DialogHeader className="border-b border-border/80 bg-muted/35 px-6 py-5">
             <DialogTitle className="text-lg text-foreground">
@@ -848,7 +851,7 @@ export function UserManagement() {
             </p>
           </div>
 
-          <DialogFooter className="gap-3 border-t border-border/80 bg-muted/35 px-6 py-4">
+          <DialogFooter className="mx-0 mb-0 gap-3 border-t border-border/80 bg-muted/35 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:pb-4">
             <button
               type="button"
               onClick={() => {
@@ -884,7 +887,8 @@ export function UserManagement() {
       >
         <DialogContent
           showCloseButton={false}
-          className="max-w-lg rounded-[28px] border-border/80 bg-card p-0 overflow-hidden"
+          overlayClassName="z-[119]"
+          className="z-[120] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto overscroll-contain rounded-[28px] border-border/80 bg-card p-0 sm:max-w-lg"
         >
           <DialogHeader className="border-b border-border/80 bg-muted/35 px-6 py-5">
             <DialogTitle className="text-lg text-foreground">
@@ -902,7 +906,7 @@ export function UserManagement() {
               </p>
             </div>
           </div>
-          <DialogFooter className="gap-3 border-t border-border/80 bg-muted/35 px-6 py-4">
+          <DialogFooter className="mx-0 mb-0 gap-3 border-t border-border/80 bg-muted/35 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:pb-4">
             <button
               type="button"
               onClick={() => setRevokeUserId(null)}

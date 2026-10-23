@@ -87,7 +87,11 @@ Admin navigation and cards reuse the shared admin primitives. Status badges comb
 
 On mobile, Settings opens an overview of available account, notification, and Community sections. Section links open URL-backed detail views with a route back to the overview; desktop retains the sidebar.
 
+On mobile, Admin opens a full-page list of admin areas. Each area opens its own route with a link back to the list; desktop retains the dashboard and sidebar navigation.
+
 On mobile Community routes, the footer switches to Home, Following, Communities, and Chat within Community. The main Community header links back to the app Home; desktop keeps its sidebar navigation.
+
+On mobile, selecting a Community chat opens its own full-height conversation route with a back link to the chat list. Desktop keeps the split conversation view.
 
 Home's specialty chips filter the existing unified upload/curated feed and use
 the selected category as the video heading; All restores the full feed and

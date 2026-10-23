@@ -32,7 +32,7 @@ export function Sidebar({
 
   function isItemActive(path: string) {
     if (path === '/admin') {
-      return currentPath === path
+      return currentPath === path || currentPath === '/admin/dashboard'
     }
 
     return currentPath === path || currentPath.startsWith(path + '/')

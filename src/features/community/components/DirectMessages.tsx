@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Loader2, MessageCircleMore, MoreHorizontal, Paperclip, Pencil, Reply, Send, SmilePlus, Trash2, X } from 'lucide-react'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, FileText, Loader2, MessageCircleMore, MoreHorizontal, Paperclip, Pencil, Reply, Send, SmilePlus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,8 +22,9 @@ function getMessageError(error: unknown) {
   return 'Message could not be confirmed. Retry uses the same message ID to prevent duplicates.'
 }
 
-export function DirectMessages({ userId, conversations, conversationsLoading = false }: { userId: string; conversations?: DirectConversation[]; conversationsLoading?: boolean }) {
-  const [selectedId, setSelectedId] = useState<string>()
+export function DirectMessages({ userId, conversations, conversationsLoading = false, initialConversationId, conversationOnly = false }: { userId: string; conversations?: DirectConversation[]; conversationsLoading?: boolean; initialConversationId?: string; conversationOnly?: boolean }) {
+  const navigate = useNavigate()
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialConversationId)
   const [draftRecipient,setDraftRecipient]=useState<CommunityPerson|null>(null)
   const [body, setBody] = useState('')
   const [files, setFiles] = useState<File[]>([])
@@ -39,6 +41,8 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
   const people=useCommunityPeopleSearch(userId,peopleSearch)
   const following=useCommunitySettings(userId,'following')
   const openConversation=useOpenDirectConversation(userId)
+
+  useEffect(() => { setSelectedId(initialConversationId) }, [initialConversationId])
 
   useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update)}},[])
 
@@ -79,13 +83,33 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
     return ([...((following.data??[]) as CommunityPerson[])]).filter(person=>!existing.has(person.user_id)).sort(()=>Math.random()-.5).slice(0,remaining)
   },[conversations,following.data])
 
-  function startConversation(person:CommunityPerson){
+  async function startConversation(person:CommunityPerson){
     const existing=conversations?.find(conversation=>conversation.other_user.user_id===person.user_id)
+    if (!conversationOnly && window.matchMedia('(max-width: 767px)').matches) {
+      try {
+        const conversationId = existing?.id ?? await openConversation.mutateAsync(person.user_id)
+        setPeopleSearch('')
+        await navigate({ to: '/community/chat/$conversationId', params: { conversationId } })
+      } catch (error) {
+        toast.error(getMessageError(error))
+      }
+      return
+    }
     setSelectedId(existing?.id)
     setDraftRecipient(existing?null:person)
     setPeopleSearch('')
     setSendError('')
     setFailedNonce(null)
+  }
+
+  function selectConversation(conversationId: string) {
+    if (!conversationOnly && window.matchMedia('(max-width: 767px)').matches) {
+      void navigate({ to: '/community/chat/$conversationId', params: { conversationId } })
+      return
+    }
+    setSelectedId(conversationId)
+    setDraftRecipient(null)
+    setSendError('')
   }
 
   async function submit(event?: React.FormEvent) {
@@ -133,6 +157,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
       setSendError('')
       setFailedNonce(null)
       toast.success('Conversation deleted for you.')
+      if (conversationOnly) await navigate({ to: '/community', search: { tab: 'chat', q: undefined, topic: undefined, sort: undefined }, replace: true })
     } catch (error) {
       toast.error(getMessageError(error))
     }
@@ -140,9 +165,9 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
 
   if (conversationsLoading) return <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>
   return (
-    <div className="mt-4 grid h-[calc(100%-1rem)] min-h-0 overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[230px_minmax(0,1fr)]">
-      <aside className="flex min-h-0 flex-col overflow-hidden border-b border-border md:border-b-0 md:border-r">
-            <p className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Conversations</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/>{peopleSearch.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">{people.data?.map(person=><button type="button" key={person.user_id} onClick={()=>startConversation(person)} className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-muted"><UserAvatar name={person.full_name||person.name||'Community member'} avatarUrl={person.avatar_url} userId={person.user_id} size={30}/><span className="truncate text-xs font-medium">{person.full_name||person.name||person.username||'Community member'}</span></button>)}</div>}</div>
+    <div className={cn('h-full min-h-0 overflow-hidden bg-card', conversationOnly ? 'flex flex-col md:rounded-2xl md:border md:border-border' : 'grid grid-rows-[minmax(0,1fr)] border-y border-border md:mt-4 md:h-[calc(100%-1rem)] md:grid-cols-[230px_minmax(0,1fr)] md:rounded-2xl md:border')}>
+      <aside className={cn('flex min-h-0 flex-col overflow-hidden border-b border-border md:border-b-0 md:border-r', conversationOnly && 'hidden')}>
+            <p className="px-4 pb-2 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground md:text-[10px] md:tracking-[0.16em]">Chats</p><div className="space-y-1 px-2 pb-2"><Input value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Find a member…" className="h-9 text-xs"/>{peopleSearch.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">{people.data?.map(person=><button type="button" key={person.user_id} onClick={()=>void startConversation(person)} disabled={openConversation.isPending} className="flex w-full items-center gap-2 px-2 py-2 text-left hover:bg-muted disabled:opacity-60"><UserAvatar name={person.full_name||person.name||'Community member'} avatarUrl={person.avatar_url} userId={person.user_id} size={30}/><span className="truncate text-xs font-medium">{person.full_name||person.name||person.username||'Community member'}</span></button>)}</div>}</div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
           {(conversations??[]).map((conversation) => {
             const name = conversation.other_user.full_name || conversation.other_user.name || 'Friend'
@@ -150,9 +175,9 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
               <button
                 key={conversation.id}
                 type="button"
-                onClick={() => {setSelectedId(conversation.id);setDraftRecipient(null);setSendError('')}}
+                onClick={() => selectConversation(conversation.id)}
                 className={cn(
-                  'flex min-w-52 cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors md:min-w-0 md:w-full',
+                  'flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors',
                   selectedId === conversation.id ? 'bg-primary/12' : 'hover:bg-muted',
                 )}
               >
@@ -169,13 +194,14 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
           })}
           {suggestions.map(person=>{
             const name=person.full_name||person.name||'Community member'
-            return <button type="button" key={`suggested-${person.user_id}`} onClick={()=>startConversation(person)} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted',draftRecipient?.user_id===person.user_id&&'bg-primary/12')}><UserAvatar name={name} avatarUrl={person.avatar_url} userId={person.user_id} size={36}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">Following · Start a chat</p></div></button>
+            return <button type="button" key={`suggested-${person.user_id}`} onClick={()=>void startConversation(person)} disabled={openConversation.isPending} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted disabled:opacity-60',draftRecipient?.user_id===person.user_id&&'bg-primary/12')}><UserAvatar name={name} avatarUrl={person.avatar_url} userId={person.user_id} size={36}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-xs text-muted-foreground">Following · Start a chat</p></div></button>
           })}
         </div>
       </aside>
 
-      {activeRecipient ? <section className="flex min-h-0 flex-col overflow-hidden">
+      {activeRecipient ? <section className={cn('min-h-0 flex-col overflow-hidden', conversationOnly ? 'flex flex-1' : 'hidden md:flex')}>
         <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+          {conversationOnly && <Link to="/community" search={{ tab: 'chat', q: undefined, topic: undefined, sort: undefined }} className="-ml-2 flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Back to chats"><ArrowLeft className="size-5" /></Link>}
           <UserAvatar name={activeRecipient.full_name || activeRecipient.name} avatarUrl={activeRecipient.avatar_url} userId={activeRecipient.user_id} size={34} />
           <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{activeRecipient.full_name || activeRecipient.name}</p><p className="text-xs text-muted-foreground">{selected?'Private conversation':'New conversation'}</p></div>
           {selected&&<DropdownMenu><DropdownMenuTrigger className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Conversation settings"><MoreHorizontal className="size-5"/></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48"><DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={()=>setDeletingConversation(true)}><Trash2/>Delete conversation</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
@@ -199,7 +225,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
         </div>
         {!online&&<div className="border-t border-warning/30 bg-warning/10 px-4 py-2 text-xs text-foreground" role="status">You are offline. Messages stay in the composer until you reconnect.</div>}
         {sendError&&<div className="flex items-center gap-3 border-t border-destructive/25 bg-destructive/5 px-4 py-2 text-xs text-destructive" role="alert"><span className="min-w-0 flex-1">{sendError}</span><Button type="button" size="sm" variant="outline" disabled={send.isPending||!online} onClick={()=>void submit()}>Retry</Button></div>}
-        <form noValidate onSubmit={submit} className="border-t border-border p-3">
+        <form noValidate onSubmit={submit} className={cn('border-t border-border p-3', conversationOnly && 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]')}>
           {replyingTo&&<div className="mb-2 flex items-center gap-2 rounded-lg border-l-2 border-primary bg-muted px-3 py-2 text-xs"><Reply className="size-4 shrink-0"/><div className="min-w-0 flex-1"><p className="font-medium">Replying to a message</p><p className="truncate text-muted-foreground">{replyingTo.body}</p></div><button type="button" aria-label="Cancel reply" onClick={()=>setReplyingTo(null)}><X className="size-4"/></button></div>}
           {files.length>0&&<div className="mb-2 flex flex-wrap gap-2">{files.map((file,index)=><span key={`${file.name}-${index}`} className="inline-flex max-w-full items-center gap-2 rounded-lg bg-muted px-2 py-1 text-xs"><span className="truncate">{file.name}</span><button type="button" aria-label={`Remove ${file.name}`} onClick={()=>setFiles(current=>current.filter((_,itemIndex)=>itemIndex!==index))}><X className="size-3"/></button></span>)}</div>}
           <div className="flex gap-2"><label htmlFor="direct-message" className="sr-only">Message</label>
@@ -211,7 +237,7 @@ export function DirectMessages({ userId, conversations, conversationsLoading = f
             </Button>
           </div>
         </form>
-      </section>:<section className="flex min-h-0 items-center justify-center overflow-hidden"><EmptyState icon={<MessageCircleMore/>} title="Choose someone to chat with" description="Select a conversation or find a member from the list to start chatting."/></section>}
+      </section>:<section className={cn('min-h-0 items-center justify-center overflow-hidden', conversationOnly ? 'flex flex-1' : 'hidden md:flex')}><EmptyState icon={<MessageCircleMore/>} title="Choose someone to chat with" description="Select a conversation or find a member from the list to start chatting."/></section>}
       <Dialog open={Boolean(editingMessage)} onOpenChange={open=>{if(!open)setEditingMessage(null)}}><DialogContent><DialogHeader><DialogTitle>Edit message</DialogTitle></DialogHeader><Textarea value={editBody} maxLength={5000} className="min-h-28 resize-none" onChange={event=>setEditBody(event.target.value)}/><div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditingMessage(null)}>Cancel</Button><Button disabled={!editBody.trim()||messageActions.isPending} onClick={()=>editingMessage&&void messageActions.mutateAsync({id:editingMessage.id,action:'edit',body:editBody}).then(()=>setEditingMessage(null))}>Save changes</Button></div></DialogContent></Dialog>
       <Dialog open={Boolean(withdrawingMessage)} onOpenChange={open=>{if(!open&&!messageActions.isPending)setWithdrawingMessage(null)}}>
         <DialogContent>

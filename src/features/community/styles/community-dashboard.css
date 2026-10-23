@@ -126,6 +126,8 @@
 @media (max-width: 767px) {
   .community-dashboard { grid-template-rows: minmax(0, 1fr); }
   .community-dashboard[data-community-tab="chat"] { height: calc(100dvh - 7.25rem - env(safe-area-inset-bottom, 0px)); }
+  .community-dashboard[data-community-tab="chat"] .community-dashboard-main { padding: 0; }
+  .community-dashboard[data-community-tab="chat"] main > .flex-1 > .grid { border: 0; border-radius: 0; box-shadow: none; }
   .community-dashboard-main { padding-top: 14px; }
   .community-dashboard-main > div:first-child { padding: 22px 18px; border-radius: 18px; }
   .community-dashboard-main > [aria-live="polite"] > article { border-radius: 18px; }

@@ -26,6 +26,7 @@ import Login from '@/pages/Login'
 import Register from '@/pages/Register'
 import { Notifications } from '@/pages/Notifications'
 import { AdminDashboard } from '@/pages/admin/AdminDashboard'
+import { AdminHome } from '@/pages/admin/AdminHome'
 import { ContentReview } from '@/pages/admin/ContentReview'
 import { AdminSubtitles } from '@/pages/admin/AdminSubtitles'
 import { UserManagement } from '@/pages/admin/UserManagement'
@@ -42,6 +43,7 @@ import { useAuthStore } from '@/store/authStore'
 const CommunityPage = lazy(() => import('@/features/community/pages/CommunityPage').then(module => ({ default: module.CommunityPage })))
 const CommunityAdminPage = lazy(() => import('@/features/community/pages/CommunityAdminPage').then(module => ({ default: module.CommunityAdminPage })))
 const CommunityPostDetailPage = lazy(() => import('@/features/community/pages/CommunityPostDetailPage').then(module => ({ default: module.CommunityPostDetailPage })))
+const CommunityDirectChatPage = lazy(() => import('@/features/community/pages/CommunityDirectChatPage').then(module => ({ default: module.CommunityDirectChatPage })))
 const CommunitySpacePage = lazy(() => import('@/features/community/pages/CommunitySpacePage').then(module => ({ default: module.CommunitySpacePage })))
 
 function CommunityRouteFallback() {
@@ -238,6 +240,7 @@ const communityRoute = createRoute({
 })
 
 const communityPostRoute = createRoute({getParentRoute:()=>rootRoute,path:'/community/post/$postId',component:()=><ProtectedRoute><LazyCommunityRoute><CommunityPostDetailPage/></LazyCommunityRoute></ProtectedRoute>})
+const communityDirectChatRoute = createRoute({getParentRoute:()=>rootRoute,path:'/community/chat/$conversationId',component:()=><ProtectedRoute><LazyCommunityRoute><CommunityDirectChatPage/></LazyCommunityRoute></ProtectedRoute>})
 const communitySpaceRoute = createRoute({getParentRoute:()=>rootRoute,path:'/community/$communitySlug',component:()=><ProtectedRoute><LazyCommunityRoute><CommunitySpacePage/></LazyCommunityRoute></ProtectedRoute>})
 
 // ─── Admin routes ─────────────────────────────────────
@@ -245,6 +248,16 @@ const communitySpaceRoute = createRoute({getParentRoute:()=>rootRoute,path:'/com
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
+  component: () => (
+    <ProtectedRoute requireAdmin>
+      <AdminHome />
+    </ProtectedRoute>
+  ),
+})
+
+const adminDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/dashboard',
   component: () => (
     <ProtectedRoute requireAdmin>
       <AdminDashboard />
@@ -382,8 +395,10 @@ const routeTree = rootRoute.addChildren([
   notificationsRoute,
   communityRoute,
   communityPostRoute,
+  communityDirectChatRoute,
   communitySpaceRoute,
   adminRoute,
+  adminDashboardRoute,
   adminApplicationsRoute,
   adminContentRoute,
   adminSubtitlesRoute,

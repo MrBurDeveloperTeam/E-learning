@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Link, useRouterState } from '@tanstack/react-router'
+import { ChevronLeft } from 'lucide-react'
 import { PageLayout } from '@/components/layout/PageLayout'
-import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import {
-  getAdminSidebarItems,
+  useAdminSidebarItems,
   type AdminSidebarBadges,
 } from './adminNavigation'
 
@@ -30,99 +29,28 @@ export function AdminLayout({
 }: AdminLayoutProps) {
   const router = useRouterState()
   const currentPath = router.location.pathname
-  const pendingUsersQuery = useQuery({
-    queryKey: ['admin-sidebar-badges'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('creator_applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-
-      if (error) throw error
-      return count ?? 0
-    },
-    staleTime: 30_000,
-  })
-
-  const dentalReviewQuery = useQuery({
-    queryKey: ['admin-dental-review-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('dental_videos')
-        .select('*', { count: 'exact', head: true })
-        .eq('needs_review', true)
-
-      if (error) throw error
-      return count ?? 0
-    },
-    staleTime: 30_000,
-  })
-
-  const resolvedSidebarBadges: AdminSidebarBadges = {
-    pendingUsers:
-      sidebarBadges?.pendingUsers ?? pendingUsersQuery.data ?? 0,
-    dentalReviewCount:
-      sidebarBadges?.dentalReviewCount ?? dentalReviewQuery.data ?? 0,
-  }
-
-  const sidebarItems = getAdminSidebarItems(resolvedSidebarBadges)
-
-  function isItemActive(path: string) {
-    if (path === '/admin') {
-      return currentPath === path
-    }
-
-    return currentPath === path || currentPath.startsWith(path + '/')
-  }
+  const sidebarItems = useAdminSidebarItems(sidebarBadges)
 
   return (
     <PageLayout
       showSidebar={true}
       sidebarItems={sidebarItems}
       sidebarVariant="admin"
-      className={cn('min-w-0 p-4 md:p-6 lg:p-8', className)}
+      className={cn(
+        'min-w-0 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6 lg:p-8 lg:pb-8',
+        className
+      )}
     >
       <div className="space-y-5 md:space-y-6">
-        <div className="-mx-1 overflow-x-auto pb-1 md:hidden scrollbar-hide">
-          <div className="flex min-w-max gap-2 px-1">
-            {sidebarItems.map((item) => {
-              const isActive = isItemActive(item.path)
-
-              if (item.disabled) {
-                return (
-                  <div
-                    key={item.path}
-                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-2 text-xs font-medium text-muted-foreground/50"
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </div>
-                )
-              }
-
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors',
-                    isActive
-                      ? 'border-primary/20 bg-primary/10 text-primary'
-                      : 'border-border/70 bg-card/70 text-muted-foreground hover:border-primary/20 hover:bg-primary/5 hover:text-foreground'
-                  )}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
+        {currentPath !== '/admin' && (
+          <Link
+            to="/admin"
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Admin actions
+          </Link>
+        )}
 
         <section className="admin-hero-panel rounded-[30px] p-5 sm:p-6 lg:p-8">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">

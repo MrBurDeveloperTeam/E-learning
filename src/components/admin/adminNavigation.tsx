@@ -9,11 +9,48 @@ import {
   SlidersHorizontal,
   Package,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import type { SidebarItem } from '@/components/layout/Sidebar'
+import { supabase } from '@/lib/supabase'
 
 export type AdminSidebarBadges = {
   pendingUsers?: number
   dentalReviewCount?: number
+}
+
+export function useAdminSidebarItems(sidebarBadges?: AdminSidebarBadges): SidebarItem[] {
+  const pendingUsersQuery = useQuery({
+    queryKey: ['admin-sidebar-badges'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('creator_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 30_000,
+  })
+
+  const dentalReviewQuery = useQuery({
+    queryKey: ['admin-dental-review-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('dental_videos')
+        .select('*', { count: 'exact', head: true })
+        .eq('needs_review', true)
+
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 30_000,
+  })
+
+  return getAdminSidebarItems({
+    pendingUsers: sidebarBadges?.pendingUsers ?? pendingUsersQuery.data ?? 0,
+    dentalReviewCount: sidebarBadges?.dentalReviewCount ?? dentalReviewQuery.data ?? 0,
+  })
 }
 
 export function getAdminSidebarItems(

@@ -589,14 +589,10 @@ export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: nu
                   to="/admin"
                   onClick={closeMobileMenu}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
+                    'flex items-center rounded-xl px-3 py-2.5 text-sm transition-colors',
                     isActive('/admin') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A] dark:bg-primary/15 dark:text-foreground' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground'
                   )}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4Z" />
-                    <path d="M9.5 12.5 11 14l3.5-3.5" />
-                  </svg>
                   Admin
                 </Link>
               )}
