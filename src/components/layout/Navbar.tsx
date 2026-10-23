@@ -12,6 +12,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Mail, Phone, ChevronRight, CreditCard, LogOut, Home, UserRoundCheck, MessageCircleMore, MessagesSquare } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
+import { useOdooSessionName } from '@/hooks/useOdooSessionName'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { submitCreatorApplication } from '@/lib/creatorApplications'
@@ -40,6 +41,8 @@ export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: nu
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
+  // Name from Odoo get_session_info (same source as the App Gallery).
+  const odooSessionName = useOdooSessionName(Boolean(user), user?.email)
   const accountProfileQuery = useQuery({
     queryKey: ['snabbb-account-profile', user?.id],
     queryFn: fetchAccountProfile,
@@ -71,7 +74,7 @@ export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: nu
   const [isRequestingCreatorAccess, setIsRequestingCreatorAccess] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   // Profile Info uses the same Odoo account source as Settings; Supabase is only a fallback while it loads.
-  const avatarLabel = accountFullName || profile?.full_name || profile?.name || user?.email?.split('@')[0] || null
+  const avatarLabel = odooSessionName || accountFullName || profile?.full_name || profile?.name || user?.email?.split('@')[0] || null
   const badgeLabel = accountProfile?.categoryIds[0]
     ? ACCOUNT_SPECIALTY_NAMES[accountProfile.categoryIds[0]]
     : profile?.specialty || null
