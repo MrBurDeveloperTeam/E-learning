@@ -39,7 +39,7 @@ export function UserAvatar({
   return (
     <div
       className={cn(
-        'flex items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary font-medium border border-primary/20 shadow-sm',
+        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary font-medium border border-primary/20 shadow-sm',
         className
       )}
       style={{ width: size, height: size }}
