@@ -112,7 +112,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
 
   return <div className="mt-7 space-y-6">
     <section aria-label="My profile overview" className="community-profile-card overflow-hidden rounded-3xl border border-border bg-card">
-      <div className="relative h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36">
+      <div className="relative h-28 overflow-hidden bg-gradient-to-r from-primary/20 via-primary/8 to-muted sm:h-36 lg:h-56 xl:h-60">
         {profile?.background_url && !backgroundFailed && (
           <img
             src={profile.background_url}
