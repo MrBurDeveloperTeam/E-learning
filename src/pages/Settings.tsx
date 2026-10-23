@@ -43,7 +43,6 @@ import type { CreatorApplication } from '../types'
 import { fetchAccountProfile, saveAccountProfile } from '../lib/accountProfile'
 import { syncAccountAvatar } from '../lib/syncAccountAvatar'
 import { UserAvatar } from '../components/shared/UserAvatar'
-import { BackgroundCropDialog } from '../components/profile/BackgroundCropDialog'
 import { communitySettingsSections, isCommunitySettingsView, type CommunitySettingsView } from '../features/community/components/communitySettingsSections'
 
 const CommunitySettings = lazy(() => import('../features/community/components/CommunitySettings').then((module) => ({ default: module.CommunitySettings })))
@@ -238,8 +237,6 @@ export function Settings() {
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState(
     profile?.background_url ?? null
   )
-  const [backgroundCropFile, setBackgroundCropFile] = useState<File | null>(null)
-  const [isLoadingBackground, setIsLoadingBackground] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -421,38 +418,9 @@ export function Settings() {
     }
   }
 
-  function handleBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    e.target.value = ''
     if (!file || !profile) return
-    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      toast.error('Choose a JPG or PNG image')
-      return
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error('Background image must be below 4MB')
-      return
-    }
-    setBackgroundCropFile(file)
-  }
-
-  async function handleAdjustCurrentBackground() {
-    if (!backgroundPreviewUrl) return
-    try {
-      setIsLoadingBackground(true)
-      const response = await fetch(backgroundPreviewUrl)
-      if (!response.ok) throw new Error('Background image could not be loaded')
-      const blob = await response.blob()
-      setBackgroundCropFile(new File([blob], 'current-background.jpg', { type: blob.type || 'image/jpeg' }))
-    } catch {
-      toast.error('Could not open the current background. Please choose the original image again.')
-    } finally {
-      setIsLoadingBackground(false)
-    }
-  }
-
-  async function saveBackgroundCrop(file: File) {
-    if (!profile) throw new Error('Sign in to save your background')
     try {
       const updatedProfile = await uploadBackground.mutateAsync({
         userId: profile.user_id,
@@ -460,9 +428,10 @@ export function Settings() {
       })
       setBackgroundPreviewUrl(updatedProfile.background_url)
       toast.success('Channel background updated')
-      setBackgroundCropFile(null)
     } catch {
-      throw new Error('Failed to upload channel background')
+      toast.error('Failed to upload channel background')
+    } finally {
+      e.target.value = ''
     }
   }
 
@@ -740,35 +709,23 @@ export function Settings() {
               </div>
 
               <div className="flex flex-col gap-3 px-4 py-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-                <p>JPG or PNG, max 4MB. Adjust the image before saving.</p>
-                <div className="flex flex-wrap gap-2">
-                  {backgroundPreviewUrl && <button type="button" disabled={uploadBackground.isPending || isLoadingBackground} onClick={() => void handleAdjustCurrentBackground()} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">{isLoadingBackground ? 'Opening…' : 'Adjust current'}</button>}
-                  <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-muted focus-within:ring-2 focus-within:ring-ring">
-                    {uploadBackground.isPending ? (
-                      <LoadingSpinner size="sm" />
-                    ) : (
-                      <Camera size={14} />
-                    )}
-                    {backgroundPreviewUrl ? 'Change background' : 'Upload background'}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      className="sr-only"
-                      disabled={uploadBackground.isPending || isLoadingBackground}
-                      onChange={handleBackgroundUpload}
-                    />
-                  </label>
-                </div>
+                <p>JPG or PNG, recommended 1600x400px or wider, max 4MB</p>
+                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-muted">
+                  {uploadBackground.isPending ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                  {backgroundPreviewUrl ? 'Change background' : 'Upload background'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleBackgroundUpload}
+                  />
+                </label>
               </div>
             </div>
-            {backgroundCropFile && (
-              <BackgroundCropDialog
-                file={backgroundCropFile}
-                isSaving={uploadBackground.isPending}
-                onClose={() => setBackgroundCropFile(null)}
-                onSave={saveBackgroundCrop}
-              />
-            )}
           </div>
 
           <div className="border-b border-border py-6">
