@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, CreditCard, LogOut } from 'lucide-react'
+import { Mail, Phone, ChevronRight, CreditCard, LogOut, Home, UserRoundCheck, MessageCircleMore, MessagesSquare } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -29,7 +29,14 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
 
 const SHOW_SUPPORT_TICKETS = true
 
-export function Navbar() {
+const communityMobileLinks = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'following', label: 'Following', icon: UserRoundCheck },
+  { id: 'communities', label: 'Communities', icon: MessageCircleMore },
+  { id: 'chat', label: 'Chat', icon: MessagesSquare },
+] as const
+
+export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: number } = {}) {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
@@ -48,6 +55,9 @@ export function Navbar() {
   const navigate = useNavigate()
   const router = useRouterState()
   const currentPath = router.location.pathname
+  const isCommunityIndex = currentPath === '/community' || currentPath === '/community/'
+  const isCommunityArea = isCommunityIndex || currentPath.startsWith('/community/')
+  const communityTab = (router.location.search as { tab?: string }).tab ?? 'home'
   const ownProfileId = profile?.user_id ?? user?.id
   const isOwnProfilePage = Boolean(ownProfileId && currentPath === `/channel/${ownProfileId}`)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -671,7 +681,28 @@ export function Navbar() {
         />
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around border-t border-border bg-background px-2 py-2 md:hidden safe-area-pb">
+      <nav aria-label={isCommunityArea ? 'Community sections' : 'Main navigation'} className="fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around border-t border-border bg-background px-2 py-2 md:hidden safe-area-pb">
+        {isCommunityArea ? communityMobileLinks.map((item) => {
+          const active = isCommunityIndex && communityTab === item.id
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.id}
+              to="/community"
+              search={{ tab: item.id === 'home' ? undefined : item.id, q: undefined, topic: undefined, sort: undefined }}
+              onClick={closeMobileMenu}
+              aria-current={active ? 'page' : undefined}
+              aria-label={item.id === 'chat' && communityUnreadCount > 0 ? `Chat, ${communityUnreadCount} unread messages` : item.id === 'home' ? 'Community Home' : item.label}
+              className={cn('flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}
+            >
+              <span className="relative">
+                <Icon className="size-5" aria-hidden="true" />
+                {item.id === 'chat' && communityUnreadCount > 0 && <span className="absolute -right-1 -top-1 size-2 rounded-full bg-destructive" aria-hidden="true" />}
+              </span>
+              <span className="truncate">{item.label}</span>
+            </Link>
+          )
+        }) : <>
         <Link to="/explore" onClick={closeMobileMenu}>
           <div
             className={cn(
@@ -775,6 +806,7 @@ export function Navbar() {
             <span className="text-[10px]">Profile</span>
           </div>
         </Link>
+        </>}
       </nav>
     </>
   )
