@@ -2,7 +2,9 @@ import {
   createRouter,
   createRoute,
   createRootRoute,
+  Navigate,
   Outlet,
+  useParams,
 } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
@@ -35,6 +37,7 @@ import { VideoProductAttachment } from '@/pages/admin/VideoProductAttachment'
 import { DentalVideos } from '@/pages/DentalVideos'
 import { DentalVideoDetail } from '@/pages/DentalVideoDetail'
 import { NotFound } from '@/pages/NotFound'
+import { useAuthStore } from '@/store/authStore'
 
 const CommunityPage = lazy(() => import('@/features/community/pages/CommunityPage').then(module => ({ default: module.CommunityPage })))
 const CommunityAdminPage = lazy(() => import('@/features/community/pages/CommunityAdminPage').then(module => ({ default: module.CommunityAdminPage })))
@@ -165,10 +168,23 @@ const studioRoute = createRoute({
   component: Studio,
 })
 
+function ProfileRoute() {
+  const { userId } = useParams({ from: '/profile/$userId' })
+  const user = useAuthStore((state) => state.user)
+  const profile = useAuthStore((state) => state.profile)
+  const isAuthLoading = useAuthStore((state) => state.isLoading)
+
+  if (!isAuthLoading && (user?.id === userId || profile?.user_id === userId)) {
+    return <Navigate to="/channel/$userId" params={{ userId }} replace />
+  }
+
+  return <Profile />
+}
+
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile/$userId',
-  component: Profile,
+  component: ProfileRoute,
 })
 
 const settingsRoute = createRoute({

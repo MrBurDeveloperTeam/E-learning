@@ -9,7 +9,7 @@ import { NotificationBell } from './NotificationBell'
 import { Logo } from '../brand/Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mail, Phone, ChevronRight, CreditCard, LogOut } from 'lucide-react'
+import { Mail, Phone, ChevronRight, CreditCard, LogOut, Home, UserRoundCheck, MessageCircleMore, MessagesSquare } from 'lucide-react'
 import { useAppLink } from '../../lib/useAppLink'
 import { useProfileImage } from '@/hooks/useProfileImage';
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -29,7 +29,14 @@ const baseNavLinks: { label: string; path: string; search?: Record<string, unkno
 
 const SHOW_SUPPORT_TICKETS = true
 
-export function Navbar() {
+const communityMobileLinks = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'following', label: 'Following', icon: UserRoundCheck },
+  { id: 'communities', label: 'Communities', icon: MessageCircleMore },
+  { id: 'chat', label: 'Chat', icon: MessagesSquare },
+] as const
+
+export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: number } = {}) {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const { profileImageUrl } = useProfileImage(Boolean(user))
@@ -48,6 +55,11 @@ export function Navbar() {
   const navigate = useNavigate()
   const router = useRouterState()
   const currentPath = router.location.pathname
+  const isCommunityIndex = currentPath === '/community' || currentPath === '/community/'
+  const isCommunityArea = isCommunityIndex || currentPath.startsWith('/community/')
+  const communityTab = (router.location.search as { tab?: string }).tab ?? 'home'
+  const ownProfileId = profile?.user_id ?? user?.id
+  const isOwnProfilePage = Boolean(ownProfileId && currentPath === `/channel/${ownProfileId}`)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [creditBalance, setCreditBalance] = useState<number | null>(
@@ -126,6 +138,7 @@ export function Navbar() {
   // short-lived shared cookie so it survives the SSO redirect chain.
   async function openAppLink(appCode: string, targetUrl: string, section?: string) {
     setMenuOpen(false)
+    setMobileMenuOpen(false)
     const win = window.open('', '_blank')
 
     const withSection = (rawUrl: string) => {
@@ -560,65 +573,14 @@ export function Navbar() {
           {user ? (
             <>
               <Link
-                to="/explore"
-                onClick={closeMobileMenu}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/explore') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
-                )}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                Home
-              </Link>
-
-              <Link
-                to="/feed"
-                onClick={closeMobileMenu}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/feed') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
-                )}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                Following feed
-              </Link>
-
-              <Link
-                to="/search"
-                onClick={closeMobileMenu}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/search') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
-                )}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                Search
-              </Link>
-
-              <Link
                 to="/saved"
                 search={{ tab: undefined }}
                 onClick={closeMobileMenu}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                  isActive('/saved') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
+                  'flex items-center rounded-xl px-3 py-2.5 text-sm transition-colors',
+                  isActive('/saved') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A] dark:bg-primary/15 dark:text-foreground' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground'
                 )}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2Z" />
-                  <path d="m16 3-4 4-4-4" />
-                </svg>
                 Saved
               </Link>
 
@@ -628,7 +590,7 @@ export function Navbar() {
                   onClick={closeMobileMenu}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                    isActive('/admin') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A]' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A]'
+                    isActive('/admin') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A] dark:bg-primary/15 dark:text-foreground' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground'
                   )}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -639,59 +601,40 @@ export function Navbar() {
                 </Link>
               )}
 
-              <div className="my-2 h-px bg-border" />
-
-              <div className="flex items-center gap-3 px-3 py-2.5">
-                <UserAvatar
-                  name={avatarLabel}
-                  avatarUrl={avatarSrc}
-                  userId={user.id}
-                  size={36}
-                  className="flex-shrink-0 border-0 bg-[#2D6E6A] text-xs text-[#EAF4F3] shadow-none"
-                  textClassName="text-xs"
-                />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {avatarLabel || 'DentalLearn User'}
-                  </p>
-                  <p className="text-xs capitalize text-[#9BB5B5]">
-                    {profile?.role ?? 'member'}
-                  </p>
-                </div>
-              </div>
-
-              <Link
-                to="/channel/$userId"
-                params={{ userId: profile?.user_id ?? user?.id ?? '' }}
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-              >
-                My Profile
-              </Link>
-
               {canAccessCreatorTools && (
-                <>
-                  <Link
-                    to="/studio"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                  >
-                    Creator studio
-                  </Link>
-                  <Link
-                    to="/upload"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
-                  >
-                    Upload
-                  </Link>
-                </>
+                <Link
+                  to="/studio"
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
+                >
+                  Creator studio
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void openAppLink('reward', 'https://reward.snabbb.com', 'credit')}
+                className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
+              >
+                Snabbb Credit
+              </button>
+
+              {SHOW_SUPPORT_TICKETS && (
+                <button
+                  type="button"
+                  disabled={isOpeningSupportTickets}
+                  onClick={() => void openSupportTickets()}
+                  className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
+                >
+                  Support Tickets
+                </button>
               )}
 
               <Link
                 to="/settings"
+                search={{ tab: undefined, section: undefined }}
                 onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A]"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
               >
                 Settings
               </Link>
@@ -738,7 +681,28 @@ export function Navbar() {
         />
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around border-t border-border bg-background px-2 py-2 md:hidden safe-area-pb">
+      <nav aria-label={isCommunityArea ? 'Community sections' : 'Main navigation'} className="fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around border-t border-border bg-background px-2 py-2 md:hidden safe-area-pb">
+        {isCommunityArea ? communityMobileLinks.map((item) => {
+          const active = isCommunityIndex && communityTab === item.id
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.id}
+              to="/community"
+              search={{ tab: item.id === 'home' ? undefined : item.id, q: undefined, topic: undefined, sort: undefined }}
+              onClick={closeMobileMenu}
+              aria-current={active ? 'page' : undefined}
+              aria-label={item.id === 'chat' && communityUnreadCount > 0 ? `Chat, ${communityUnreadCount} unread messages` : item.id === 'home' ? 'Community Home' : item.label}
+              className={cn('flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}
+            >
+              <span className="relative">
+                <Icon className="size-5" aria-hidden="true" />
+                {item.id === 'chat' && communityUnreadCount > 0 && <span className="absolute -right-1 -top-1 size-2 rounded-full bg-destructive" aria-hidden="true" />}
+              </span>
+              <span className="truncate">{item.label}</span>
+            </Link>
+          )
+        }) : <>
         <Link to="/explore" onClick={closeMobileMenu}>
           <div
             className={cn(
@@ -754,18 +718,27 @@ export function Navbar() {
           </div>
         </Link>
 
-        <Link to="/search" onClick={closeMobileMenu}>
+        <Link
+          to="/community"
+          search={{ tab: undefined, q: undefined, topic: undefined, sort: undefined }}
+          onClick={closeMobileMenu}
+          aria-current={isActive('/community') ? 'page' : undefined}
+        >
           <div
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 transition-colors',
-              isActive('/search') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
+              isActive('/community') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
             )}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="7.5" r="3.5" />
+              <circle cx="4.5" cy="9.25" r="2.25" />
+              <circle cx="19.5" cy="9.25" r="2.25" />
+              <path d="M6.5 21v-1a5.5 5.5 0 0 1 11 0v1" />
+              <path d="M1 18v-.75a4.25 4.25 0 0 1 6.8-3.4" />
+              <path d="M23 18v-.75a4.25 4.25 0 0 0-6.8-3.4" />
             </svg>
-            <span className="text-[10px]">Search</span>
+            <span className="text-[10px]">Community</span>
           </div>
         </Link>
 
@@ -815,14 +788,15 @@ export function Navbar() {
         </Link>
 
         <Link
-          to={user ? '/profile/$userId' : '/login'}
-          {...(user ? { params: { userId: profile?.user_id ?? user?.id ?? '' } } : {})}
+          to={user ? '/channel/$userId' : '/login'}
+          {...(user ? { params: { userId: ownProfileId ?? '' } } : {})}
           onClick={closeMobileMenu}
+          aria-current={isOwnProfilePage ? 'page' : undefined}
         >
           <div
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 transition-colors',
-              isActive('/profile') ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
+              isOwnProfilePage ? 'text-[#2D6E6A]' : 'text-[#9BB5B5]'
             )}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -832,6 +806,7 @@ export function Navbar() {
             <span className="text-[10px]">Profile</span>
           </div>
         </Link>
+        </>}
       </nav>
     </>
   )

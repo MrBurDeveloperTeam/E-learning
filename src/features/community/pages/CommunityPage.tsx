@@ -74,7 +74,7 @@ export function CommunityPage() {
 
   return (
     <div className={cn('bg-background',activeTab==='chat'?'h-screen overflow-hidden':'min-h-screen')}>
-      <Navbar />
+      <Navbar communityUnreadCount={unreadMessageCount} />
       <div data-community-tab={activeTab} className={cn('community-dashboard mx-auto grid w-full max-w-[1440px] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 md:px-6',activeTab==='chat'&&'h-[calc(100vh-4.375rem)] overflow-hidden')}>
         <aside className="hidden border-r border-border/70 py-7 pr-5 md:sticky md:top-14 md:block md:h-[calc(100vh-3.5rem)] md:self-start md:overflow-y-auto">
           <div className="mb-6 px-3">
@@ -118,8 +118,9 @@ export function CommunityPage() {
           </nav>
         </aside>
 
-        <main className={cn('community-dashboard-main min-w-0 px-4 py-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden')}>
+        <main className={cn('community-dashboard-main min-w-0 px-4 pb-24 pt-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden pb-0')}>
           <div className="flex flex-wrap items-end justify-between gap-4">
+            <Link to="/explore" className="inline-flex min-h-10 w-full items-center gap-2 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"><ArrowLeft className="size-4" aria-hidden="true" /> Back to Home</Link>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 {activeTab === 'following' ? 'Following feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'chat' ? 'Messages' : activeTab === 'drafts' ? 'Your posts' : activeTab === 'me' ? 'My Profile' : 'Home feed'}

@@ -52,8 +52,22 @@ type DirectoryTab = "public" | "private" | "joined";
 
 function DiscoveryCommunityTile({ community, userId, onView }: { community: CommunitySearchResult; userId: string; onView: (community: CommunitySearchResult) => void }) {
   const join = useJoinPublicCommunity(userId)
-  return <article className="rounded-2xl border border-border bg-card p-5 shadow-card">
-    <div className="flex items-start gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">{community.visibility === 'private' ? <LockKeyhole className="size-5" /> : <Globe2 className="size-5" />}</div><div className="min-w-0 flex-1"><h3 className="font-semibold">{community.name}</h3><p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{community.description || 'A dental Community for sharing knowledge and discussion.'}</p><div className="mt-4 flex flex-wrap items-center gap-3"><span className="rounded-full bg-muted px-2 py-1 text-xs font-medium capitalize">{community.visibility}</span><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><UsersRound className="size-3.5" />{community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}</span>{community.visibility === 'public' ? <Button size="sm" variant="secondary" className="ml-auto" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>View community</Button> : <Button size="sm" variant="secondary" className="ml-auto" onClick={() => onView(community)}>View</Button>}{community.visibility === 'public' && !community.viewerIsMember && <Button size="sm" disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch(error => toast.error(error instanceof Error ? error.message : 'Could not join this Community.'))}>{join.isPending ? 'Joining…' : 'Join'}</Button>}</div></div></div>
+  return <article className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
+    <div className="flex items-start gap-3 sm:gap-4">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">{community.visibility === 'private' ? <LockKeyhole className="size-5" /> : <Globe2 className="size-5" />}</div>
+      <div className="min-w-0 flex-1">
+        <h3 className="font-semibold">{community.name}</h3>
+        <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{community.description || 'A dental Community for sharing knowledge and discussion.'}</p>
+      </div>
+    </div>
+    <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+      <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium capitalize">{community.visibility}</span>
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><UsersRound className="size-3.5" />{community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}</span>
+    </div>
+    <div className="mt-4 grid gap-2 sm:flex sm:justify-end">
+      {community.visibility === 'public' ? <Button size="sm" variant="secondary" className="min-h-11 w-full sm:w-auto" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>View community</Button> : <Button size="sm" variant="secondary" className="min-h-11 w-full sm:w-auto" onClick={() => onView(community)}>View</Button>}
+      {community.visibility === 'public' && !community.viewerIsMember && <Button size="sm" className="min-h-11 w-full sm:w-auto" disabled={join.isPending} onClick={() => void join.mutateAsync(community.id).then(() => toast.success(`Joined ${community.name}.`)).catch(error => toast.error(error instanceof Error ? error.message : 'Could not join this Community.'))}>{join.isPending ? 'Joining…' : 'Join'}</Button>}
+    </div>
   </article>
 }
 
@@ -81,8 +95,8 @@ function CommunityTile({
   }
 
   return (
-    <article className="rounded-2xl border border-border bg-card p-5 shadow-card">
-      <div className="flex items-start gap-4">
+    <article className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
+      <div className="flex items-start gap-3 sm:gap-4">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
           {community.visibility === "private" ? (
             <LockKeyhole className="size-5" />
@@ -138,19 +152,29 @@ function CommunityTile({
               </ol>
             </details>
           )}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium capitalize text-muted-foreground">
-              {community.visibility}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <UsersRound className="size-3.5" /> {community.member_count}{" "}
-              {community.member_count === 1 ? "member" : "members"}
-            </span>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+        <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium capitalize text-muted-foreground">
+          {community.visibility}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <UsersRound className="size-3.5" /> {community.member_count}{" "}
+          {community.member_count === 1 ? "member" : "members"}
+        </span>
+        {community.status === "archived" && <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">Deleted · read-only</span>}
+        {community.status === "pending_review" && (
+          <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700">
+            Pending admin review
+          </span>
+        )}
+      </div>
+      {!(community.status === "pending_review" && community.owner_id === userId) && <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
             {community.status !== "archived" && (community.viewer_is_member ? (
               community.viewer_membership_role !== "owner" ? (
                 <CommunityConfirmAction
                   trigger={
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none">
                       Leave
                     </Button>
                   }
@@ -167,7 +191,7 @@ function CommunityTile({
             ) : community.visibility === "public" ? (
               <Button
                 size="sm"
-                className="ml-auto min-w-20"
+                className="min-h-11 flex-1 sm:flex-none"
                 disabled={join.isPending}
                 onClick={() => void handleJoin()}
               >
@@ -175,15 +199,9 @@ function CommunityTile({
               </Button>
             ) : null)}
             {community.viewer_is_member && (community.status === "active" || community.status === "archived") && (
-              <Button size="sm" variant="secondary" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>
+              <Button size="sm" variant="secondary" className="min-h-11 flex-1 sm:flex-none" render={<Link to="/community/$communitySlug" params={{ communitySlug: community.slug }} />}>
                 {community.status === "archived" ? "View history" : "Open community"}
               </Button>
-            )}
-            {community.status === "archived" && <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">Deleted · read-only</span>}
-            {community.status === "pending_review" && (
-              <span className="ml-auto rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700">
-                Pending admin review
-              </span>
             )}
             {community.status !== "archived" && community.owner_id !== userId && (
               <CommunityReportDialog
@@ -192,9 +210,7 @@ function CommunityTile({
                 targetName={community.name}
               />
             )}
-          </div>
-        </div>
-      </div>
+      </div>}
     </article>
   );
 }
@@ -293,9 +309,9 @@ export function CommunityDirectory({ userId }: { userId: string }) {
 
   return (
     <section className="mt-7">
-      <div className="mb-4 flex flex-wrap justify-end gap-2">
+      <div className="mb-4 grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
         <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
-          <DialogTrigger render={<Button variant="outline" onClick={() => { setInviteSlugLocked(false); setInviteCommunityName(''); setPrivateSlug(''); setJoinMessage(''); setCommunitySearch(''); setSelectedCommunity(null) }} />}>
+          <DialogTrigger render={<Button variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => { setInviteSlugLocked(false); setInviteCommunityName(''); setPrivateSlug(''); setJoinMessage(''); setCommunitySearch(''); setSelectedCommunity(null) }} />}>
             <Search />
             Find community
           </DialogTrigger>
@@ -361,7 +377,7 @@ export function CommunityDirectory({ userId }: { userId: string }) {
           </DialogContent>
         </Dialog>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger render={<Button />}>
+          <DialogTrigger render={<Button className="min-h-11 w-full sm:w-auto" />}>
             <Plus />
             Create community
           </DialogTrigger>

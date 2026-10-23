@@ -124,16 +124,12 @@ export function Channel() {
                   {isOwnChannel ? (
                     <Link
                       to="/settings"
-                      className="absolute z-10"
+                      search={{ tab: 'profile', section: undefined }}
+                      aria-label="Customize channel"
+                      className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       style={{ bottom: '16px', right: '24px', left: 'auto' }}
                     >
-                      <button
-                        type="button"
-                        aria-label="Customize channel"
-                        className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm transition-colors hover:bg-background"
-                      >
-                        <Pencil size={16} />
-                      </button>
+                      <Pencil size={16} aria-hidden="true" />
                     </Link>
                   ) : null}
                 </div>

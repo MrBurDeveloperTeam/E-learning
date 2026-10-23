@@ -99,11 +99,9 @@ export function Studio() {
               title="Creator studio"
               subtitle="Manage your videos and track performance"
               actions={
-                <Link to="/upload">
-                  <button className="btn-primary flex items-center gap-2 px-4 py-2 text-sm">
-                    <Upload className="h-4 w-4" />
-                    Upload video
-                  </button>
+                <Link to="/upload" className="btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 py-2 text-sm md:w-auto">
+                  <Upload className="h-4 w-4" />
+                  Upload video
                 </Link>
               }
             />

@@ -85,6 +85,10 @@ Brand-filled buttons are reserved for the primary safe action. Neutral bordered 
 
 Admin navigation and cards reuse the shared admin primitives. Status badges combine text with semantic tone. Result grids change column count responsively without hiding values.
 
+On mobile, Settings opens an overview of available account, notification, and Community sections. Section links open URL-backed detail views with a route back to the overview; desktop retains the sidebar.
+
+On mobile Community routes, the footer switches to Home, Following, Communities, and Chat within Community. The main Community header links back to the app Home; desktop keeps its sidebar navigation.
+
 Home's specialty chips filter the existing unified upload/curated feed and use
 the selected category as the video heading; All restores the full feed and
 "All videos" heading. The horizontal-scroll hook captures pointers only after
