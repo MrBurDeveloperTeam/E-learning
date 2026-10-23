@@ -567,14 +567,10 @@ export function Navbar() {
                 search={{ tab: undefined }}
                 onClick={closeMobileMenu}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
+                  'flex items-center rounded-xl px-3 py-2.5 text-sm transition-colors',
                   isActive('/saved') ? 'bg-[#EAF4F3] font-medium text-[#2D6E6A] dark:bg-primary/15 dark:text-foreground' : 'text-[#6B8E8E] hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground'
                 )}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2Z" />
-                  <path d="m16 3-4 4-4-4" />
-                </svg>
                 Saved
               </Link>
 
