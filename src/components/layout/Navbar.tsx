@@ -622,6 +622,7 @@ export function Navbar() {
 
               <Link
                 to="/settings"
+                search={{ tab: undefined, section: undefined }}
                 onClick={closeMobileMenu}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#6B8E8E] transition-colors hover:bg-[#EAF4F3] hover:text-[#2D6E6A] dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-foreground"
               >

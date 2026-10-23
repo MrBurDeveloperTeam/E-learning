@@ -9,6 +9,7 @@ import {
   CircleAlert,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Clock3,
   Copy,
   Lock,
@@ -211,7 +212,7 @@ export function Settings() {
   const [communityExpanded, setCommunityExpanded] = useState(activeTab === 'community')
   const setActiveTab = (tab: SettingsTab) => {
     setCommunityExpanded((expanded) => tab === 'community' ? activeTab === 'community' ? !expanded : true : false)
-    void navigate({ search: { tab: tab === 'profile' ? undefined : tab, section: tab === 'community' ? communitySection : undefined } })
+    void navigate({ search: { tab, section: tab === 'community' ? communitySection : undefined } })
   }
   const setCommunitySection = (section: CommunitySettingsView) => {
     setCommunityExpanded(true)
@@ -229,6 +230,9 @@ export function Settings() {
       void navigate({ to: '/community', search: { tab: 'drafts', q: undefined, topic: undefined, sort: undefined }, replace: true })
     }
   }, [navigate, search.section, search.tab])
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 767px)').matches) window.scrollTo(0, 0)
+  }, [search.tab, search.section])
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(profile?.avatar_url ?? null)
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState(
     profile?.background_url ?? null
@@ -1059,16 +1063,15 @@ export function Settings() {
       ],
     },
   ]
-  const mobileItems = navGroups.flatMap((group) => group.items)
   const selectedCommunityMeta = communitySettingsSections.find((item) => item.id === communitySection)
   const currentTabMeta = activeTab === 'community'
     ? { title: selectedCommunityMeta?.label ?? TAB_META.community.title, description: 'Community settings' }
     : TAB_META[activeTab]
 
-  function renderCommunitySectionMenu(id: string, mobile = false) {
+  function renderCommunitySectionMenu(id: string) {
     return (
-      <div id={id} style={{ display: communityExpanded ? 'block' : 'none' }} className={mobile ? 'mt-2 border-t border-border pt-2' : 'ml-5 mt-1 border-l border-border pl-2'}>
-        <div className={mobile ? 'grid max-h-64 grid-cols-2 gap-1 overflow-y-auto' : 'space-y-0.5'}>
+      <div id={id} style={{ display: communityExpanded ? 'block' : 'none' }} className="ml-5 mt-1 border-l border-border pl-2">
+        <div className="space-y-0.5">
           {communitySettingsSections.map((section) => {
             const Icon = section.icon
             const active = activeTab === 'community' && communitySection === section.id
@@ -1092,17 +1095,47 @@ export function Settings() {
             <h1 className="text-2xl font-medium text-foreground">Settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">Manage your account, E-learning, and Community preferences</p>
           </div>
-          <div className="mb-4 rounded-2xl border border-border bg-card p-2 md:hidden">
-            <div className="flex gap-1 overflow-x-auto">
-              {mobileItems.map((item) => {
-                const Icon = item.icon
-                const active = activeTab === item.id
-                return <button key={item.id} type="button" aria-current={active ? 'page' : undefined} aria-expanded={item.id === 'community' ? communityExpanded : undefined} aria-controls={item.id === 'community' ? 'community-settings-mobile-menu' : undefined} onClick={() => setActiveTab(item.id)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon size={16} /><span>{item.label}</span>{item.id === 'community' && <ChevronDown size={15} className={cn('transition-transform', communityExpanded && 'rotate-180')} aria-hidden="true" />}</button>
-              })}
-            </div>
-            {renderCommunitySectionMenu('community-settings-mobile-menu', true)}
-          </div>
-          <div className="grid items-start gap-6 md:grid-cols-[220px_1fr]">
+          {search.tab === undefined ? (
+            <nav aria-label="Settings sections" className="mb-8 space-y-7 md:hidden">
+              {navGroups.filter((group) => group.label !== 'Community').map((group) => (
+                <section key={group.label} aria-labelledby={`settings-${group.label.toLowerCase()}-heading`}>
+                  <h2 id={`settings-${group.label.toLowerCase()}-heading`} className="mb-3 px-1 text-sm font-semibold text-foreground">{group.label}</h2>
+                  <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <Link key={item.id} to="/settings" search={{ tab: item.id, section: undefined }} className="flex min-h-14 items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                          <Icon size={20} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                          <span className="min-w-0 flex-1">{item.label}</span>
+                          <ChevronRight size={18} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </section>
+              ))}
+              <section aria-labelledby="settings-community-heading">
+                <h2 id="settings-community-heading" className="mb-3 px-1 text-sm font-semibold text-foreground">Community</h2>
+                <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+                  {communitySettingsSections.map((section) => {
+                    const Icon = section.icon
+                    return (
+                      <Link key={section.id} to="/settings" search={{ tab: 'community', section: section.id }} className="flex min-h-14 items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                        <Icon size={20} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">{section.label}</span>
+                        <ChevronRight size={18} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                      </Link>
+                    )
+                  })}
+                </div>
+              </section>
+            </nav>
+          ) : (
+            <Link to="/settings" search={{ tab: undefined, section: undefined }} className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
+              <ArrowLeft size={18} aria-hidden="true" /> All settings
+            </Link>
+          )}
+          <div className={cn('grid items-start gap-6 md:grid-cols-[220px_1fr]', search.tab === undefined && 'hidden md:grid')}>
             <div className="sticky top-20 hidden max-h-[calc(100vh-6rem)] self-start overflow-y-auto md:block">
               <div className="rounded-2xl border border-border bg-card">
                 <div className="border-b border-border p-5">

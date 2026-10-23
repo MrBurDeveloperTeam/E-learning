@@ -123,6 +123,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
         )}
         <Link
           to="/settings"
+          search={{ tab: 'profile', section: undefined }}
           aria-label="Change profile background"
           title="Change profile background"
           className="absolute bottom-3 right-3 flex size-12 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:bottom-4 sm:right-5"
@@ -141,7 +142,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
           </div>
         </div>
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Button variant="outline" render={<Link to="/settings" />}><Pencil className="size-4" /> Edit profile</Button>
+          <Button variant="outline" render={<Link to="/settings" search={{ tab: 'profile', section: undefined }} />}><Pencil className="size-4" /> Edit profile</Button>
           <Button variant="outline" onClick={() => setFollowRequestsOpen(true)}><UserRoundCheck className="size-4" /> Follow requests{incomingFollowRequestCount > 0 && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">{incomingFollowRequestCount}</span>}</Button>
         </div>
       </div>
