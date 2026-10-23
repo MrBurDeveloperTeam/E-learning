@@ -21,6 +21,8 @@ import type { CommunityManagedPost, CommunityPerson } from '@/features/community
 import type { Profile } from '@/types'
 import { cn, formatViewCount } from '@/lib/utils'
 import { useProfileImage } from '@/hooks/useProfileImage'
+import { useOdooSessionName } from '@/hooks/useOdooSessionName'
+import { useAuthStore } from '@/store/authStore'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 import { supabase } from '@/lib/supabase'
@@ -49,6 +51,9 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const unfollowMutation = useRemoveCommunitySettingRelation(userId, 'following')
   // const closeFriendAction = useCloseFriendAction(userId)
   const { profileImageUrl } = useProfileImage(true)
+  // Name from Odoo get_session_info (same source as the App Gallery and the navbar menu).
+  const authEmail = useAuthStore((state) => state.user?.email)
+  const odooSessionName = useOdooSessionName(true, authEmail || profile?.email)
   const accountProfileQuery = useQuery({
     queryKey: ['snabbb-account-profile', userId],
     queryFn: fetchAccountProfile,
@@ -58,7 +63,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const posts = (activityQuery.data ?? []) as CommunityManagedPost[]
   const accountProfile = accountProfileQuery.data
   const accountFullName = accountProfile ? `${accountProfile.firstName} ${accountProfile.lastName}`.trim() : ''
-  const displayName = accountFullName || profile?.full_name || profile?.name || profile?.username || 'Community member'
+  const displayName = odooSessionName || accountFullName || profile?.full_name || profile?.name || profile?.username || 'Community member'
   const username = profile?.username || profile?.email?.split('@')[0] || 'member'
   const avatarUrl = accountProfile?.imageUrl || profileImageUrl || profile?.avatar_url
   const specialty = accountProfile?.categoryIds[0]

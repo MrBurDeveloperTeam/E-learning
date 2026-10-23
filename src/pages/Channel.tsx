@@ -11,6 +11,7 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge'
 import { VideoGrid } from '@/components/video/VideoGrid'
 import { useProfile, usePublicCreatorProfile } from '@/hooks/useProfile'
 import { useProfileImage } from '@/hooks/useProfileImage'
+import { useOdooSessionName } from '@/hooks/useOdooSessionName'
 import { useCreatorVideos } from '@/hooks/useVideos'
 import { formatViewCount, getDisplayName } from '@/lib/utils'
 import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
@@ -25,6 +26,8 @@ export function Channel() {
   const isAuthLoading = useAuthStore((state) => state.isLoading)
   const isOwnChannel = currentProfile?.user_id === userId || user?.id === userId
   const { profileImageUrl } = useProfileImage(Boolean(user))
+  // Name from Odoo get_session_info (same source as the App Gallery and the navbar menu).
+  const odooSessionName = useOdooSessionName(Boolean(user) && isOwnChannel, user?.email)
   const ownProfileQuery = useProfile(userId, isOwnChannel)
   const accountProfileQuery = useQuery({
     queryKey: ['snabbb-account-profile', user?.id],
@@ -42,7 +45,7 @@ export function Channel() {
   const accountFullName = accountProfile
     ? `${accountProfile.firstName} ${accountProfile.lastName}`.trim()
     : ''
-  const profileName = accountFullName || getDisplayName(profile, 'Unknown creator')
+  const profileName = (isOwnChannel && odooSessionName) || accountFullName || getDisplayName(profile, 'Unknown creator')
   const profileSpecialty = accountProfile?.categoryIds[0]
     ? ACCOUNT_SPECIALTY_NAMES[accountProfile.categoryIds[0]]
     : profile?.specialty
