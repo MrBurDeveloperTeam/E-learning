@@ -140,9 +140,13 @@ class SnabbbElearningProductsController(http.Controller):
             # Rewards / credit items (e.g. "30+30 Sign Up Rewards") and
             # free placeholders aren't purchasable merchandise, so they
             # must never be offered as featured products on a video.
-            ("type", "!=", "service"),
+            ("type", "=", "consu"),
             ("list_price", ">", 0),
         ]
+        # Odoo 18: physical goods are type=consu with "Track Inventory"
+        # (is_storable) on. Reward/credit items are non-tracked goods.
+        if "is_storable" in request.env["product.template"]._fields:
+            domain.append(("is_storable", "=", True))
         if query:
             domain += ["|", ("name", "ilike", query), ("default_code", "ilike", query)]
 
