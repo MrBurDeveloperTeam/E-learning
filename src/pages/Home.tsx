@@ -335,6 +335,13 @@ export function Home() {
     }
   }
 
+  // Reserve the "Creators to follow" space while it loads, so the video
+  // section below doesn't jump down when the suggestions arrive (CLS).
+  const creatorsEligible = !!profile && (profile.following_count ?? 0) < 5
+  const creatorsLoading = creatorsEligible && creatorSuggestionsQuery.isLoading
+  const showCreatorsSection =
+    creatorsEligible && (creatorsLoading || creatorSuggestions.length > 0)
+
   return (
     <>
       <Navbar />
@@ -369,9 +376,9 @@ export function Home() {
         </div>
       </div>
 
-      {profile && profile.following_count < 5 && creatorSuggestions.length > 0 && (
+      {showCreatorsSection && (
         <div className="mx-auto max-w-[1400px] border-b border-border px-4 py-4 md:px-6">
-          <div className="mb-3 flex items-center justify-between gap-4">
+          <div className="mb-3 flex min-h-9 items-center justify-between gap-4">
             <p className="text-sm font-medium text-foreground">
               Creators to follow
             </p>
@@ -397,10 +404,16 @@ export function Home() {
             id="creator-follow-suggestions"
             className="scrollbar-hide flex select-none gap-3 overflow-x-auto pb-1 touch-pan-x md:cursor-grab md:active:cursor-grabbing"
           >
-            {creatorSuggestions.map((creator) => (
+            {creatorsLoading ? Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={`creator-skeleton-${index}`}
+                aria-hidden="true"
+                className="h-[52px] w-[210px] flex-shrink-0 animate-pulse rounded-2xl border border-border bg-card"
+              />
+            )) : creatorSuggestions.map((creator) => (
               <div
                 key={creator.user_id}
-                className="flex w-fit min-w-[210px] flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
+                className="flex h-[52px] w-fit min-w-[210px] flex-shrink-0 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2 transition-colors hover:border-primary"
               >
                 <UserAvatar
                   name={getDisplayName(creator, 'Unknown creator')}
