@@ -290,7 +290,7 @@ export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: nu
     <>
       <nav className="sticky top-0 z-[110] h-14 w-full border-b border-border bg-background">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 md:px-6">
-          <Logo imageClassName="h-10 md:h-8" />
+          <Logo imageClassName="h-8" />
 
           {user && (
             <div className="hidden items-center gap-1 md:flex">

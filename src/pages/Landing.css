@@ -1085,10 +1085,6 @@
 }
 
 @media (max-width: 900px) {
-  .dl-nav .dl-brand-logo {
-    height: 40px !important;
-  }
-
   .dl-nav {
     min-height: 68px;
     padding: 0 5vw;
