@@ -22,21 +22,33 @@ function getApiUrl(path: string) {
  * Searches the Snabbb partner product catalog (proxied through Odoo — see
  * functions/api/products/search.ts) for the "Add product" picker.
  */
-export async function searchPartnerProducts(query: string): Promise<PartnerProduct[]> {
+export const PARTNER_PRODUCTS_PAGE_SIZE = 20
+
+export interface PartnerProductPage {
+  products: PartnerProduct[]
+  hasMore: boolean
+}
+
+export async function searchPartnerProducts(query: string, offset = 0): Promise<PartnerProductPage> {
   const params = new URLSearchParams()
   if (query.trim()) params.set('q', query.trim())
-  params.set('limit', '20')
+  params.set('limit', String(PARTNER_PRODUCTS_PAGE_SIZE))
+  if (offset > 0) params.set('offset', String(offset))
 
   const response = await fetch(getApiUrl(`/api/products/search?${params.toString()}`))
   const result = (await response.json().catch(() => null)) as
-    | { ok: boolean; products?: PartnerProduct[]; error?: string }
+    | { ok: boolean; products?: PartnerProduct[]; has_more?: boolean; error?: string }
     | null
 
   if (!response.ok || !result?.ok) {
     throw new Error(result?.error || 'Unable to load Snabbb partner products.')
   }
 
-  return result.products ?? []
+  const products = result.products ?? []
+  return {
+    products,
+    hasMore: typeof result.has_more === 'boolean' ? result.has_more : products.length >= PARTNER_PRODUCTS_PAGE_SIZE,
+  }
 }
 
 export async function fetchVideoProducts(videoId: string): Promise<VideoProduct[]> {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Package, Plus, Search, X } from 'lucide-react'
 import {
   Dialog,
@@ -45,6 +45,30 @@ export function ProductPicker({ selected, onChange, disabled }: ProductPickerPro
   }, [searchInput])
 
   const productsQuery = usePartnerProductSearch(debouncedQuery)
+  // Flatten pages, dropping any duplicate refs in case the catalog shifted
+  // between page fetches.
+  const products = useMemo(() => {
+    const seen = new Set<string>()
+    return (productsQuery.data?.pages ?? [])
+      .flatMap((page) => page.products)
+      .filter((product) => (seen.has(product.product_ref) ? false : (seen.add(product.product_ref), true)))
+  }, [productsQuery.data])
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = productsQuery
+  const listRef = useRef<HTMLDivElement>(null)
+
+  function handleListScroll() {
+    const el = listRef.current
+    if (!el || !hasNextPage || isFetchingNextPage) return
+    // Load the next page once the user is within ~120px of the bottom.
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) fetchNextPage()
+  }
+
+  // If the first page doesn't fill the list (no scrollbar), keep loading.
+  useEffect(() => {
+    const el = listRef.current
+    if (!el || !hasNextPage || isFetchingNextPage) return
+    if (el.scrollHeight <= el.clientHeight) fetchNextPage()
+  }, [products.length, hasNextPage, isFetchingNextPage, fetchNextPage])
   const selectedRefs = new Set(selected.map((product) => product.product_ref))
 
   function toggleProduct(product: PartnerProduct) {
@@ -122,7 +146,7 @@ export function ProductPicker({ selected, onChange, disabled }: ProductPickerPro
             />
           </div>
 
-          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+          <div ref={listRef} onScroll={handleListScroll} className="max-h-80 space-y-1.5 overflow-y-auto">
             {productsQuery.isLoading && (
               <p className="py-6 text-center text-sm text-muted-foreground">Loading products…</p>
             )}
@@ -133,11 +157,11 @@ export function ProductPicker({ selected, onChange, disabled }: ProductPickerPro
               </p>
             )}
 
-            {productsQuery.data?.length === 0 && !productsQuery.isLoading && (
+            {products.length === 0 && !productsQuery.isLoading && !productsQuery.isError && (
               <p className="py-6 text-center text-sm text-muted-foreground">No products found.</p>
             )}
 
-            {productsQuery.data?.map((product) => {
+            {products.map((product) => {
               const isSelected = selectedRefs.has(product.product_ref)
               return (
                 <button
@@ -172,6 +196,10 @@ export function ProductPicker({ selected, onChange, disabled }: ProductPickerPro
                 </button>
               )
             })}
+
+            {isFetchingNextPage && (
+              <p className="py-3 text-center text-xs text-muted-foreground">Loading more…</p>
+            )}
           </div>
 
           <DialogFooter showCloseButton>

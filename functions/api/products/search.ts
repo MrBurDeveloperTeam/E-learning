@@ -96,11 +96,14 @@ export const onRequestGet = async (context: { request: Request; env: Env }) => {
     const query = (url.searchParams.get('q') || '').trim()
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 20, 1), 50)
 
+    const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+
     const odooBase = String(env.ODOO_BASE || 'https://mrbur.odoo.com').replace(/\/$/, '')
 
     const upstreamUrl = new URL(`${odooBase}/api/v1/products/search`)
     if (query) upstreamUrl.searchParams.set('q', query)
     upstreamUrl.searchParams.set('limit', String(limit))
+    if (offset > 0) upstreamUrl.searchParams.set('offset', String(offset))
     // Snabbb partner products only — exclude other Odoo catalog listings if the endpoint
     // supports scoping. Safe no-op if the upstream ignores unknown params.
     upstreamUrl.searchParams.set('partner_products', 'true')
@@ -136,7 +139,13 @@ export const onRequestGet = async (context: { request: Request; env: Env }) => {
       .map(mapOdooProduct)
       .filter((product): product is NonNullable<typeof product> => product !== null)
 
-    return jsonResponse(request, { ok: true, products })
+    // Odoo reports has_more; fall back to "a full page came back" if it doesn't.
+    const hasMore =
+      typeof upstreamData?.has_more === 'boolean'
+        ? upstreamData.has_more
+        : rawProducts.length >= limit
+
+    return jsonResponse(request, { ok: true, products, has_more: hasMore })
   } catch (error: any) {
     console.error('Product search error:', error)
     return jsonResponse(

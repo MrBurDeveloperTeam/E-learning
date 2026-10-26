@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchCreditSettings,
   fetchMyProductPurchases,
@@ -13,9 +13,14 @@ import {
 import { useAuthStore } from '../store/authStore'
 
 export function usePartnerProductSearch(query: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['partner-products', query],
-    queryFn: () => searchPartnerProducts(query),
+    queryFn: ({ pageParam }) => searchPartnerProducts(query, pageParam),
+    initialPageParam: 0,
+    // Next page starts after everything loaded so far; stop when Odoo says
+    // there is nothing more.
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.reduce((count, page) => count + page.products.length, 0) : undefined,
     // Always enabled (even for an empty query) so the picker shows a default
     // list of Snabbb partner products as soon as it opens.
     staleTime: 30_000,
