@@ -137,11 +137,13 @@ class SnabbbElearningProductsController(http.Controller):
             ("is_snabbb_partner_product", "=", True),
             ("sale_ok", "=", True),
             ("active", "=", True),
+            # Rewards / credit items (e.g. "30+30 Sign Up Rewards") are
+            # Services in Odoo; they aren't merchandise and must never be
+            # offered as featured products on a video.
+            ("type", "!=", "service"),
+            # Free placeholders (RM 0.00) aren't purchasable either.
+            ("list_price", ">", 0),
         ]
-        # Odoo 18: physical goods are type=consu with "Track Inventory"
-        # (is_storable) on. Reward/credit items are non-tracked goods.
-        if "is_storable" in request.env["product.template"]._fields:
-            domain.append(("is_storable", "=", True))
         if query:
             domain += ["|", ("name", "ilike", query), ("default_code", "ilike", query)]
 
