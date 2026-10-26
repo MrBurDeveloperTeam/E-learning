@@ -100,6 +100,10 @@ export function useMyVideos() {
     queryKey: ['my-videos', profile?.user_id],
     queryFn: () => fetchMyVideos(profile!.user_id),
     enabled: !!profile?.user_id,
+    // While Mux is still encoding (status 'processing'), poll so the studio
+    // flips to 'published' on its own once the webhook lands. Stops when done.
+    refetchInterval: (query) =>
+      query.state.data?.some((video) => video.status === 'processing') ? 5000 : false,
   })
 }
 
