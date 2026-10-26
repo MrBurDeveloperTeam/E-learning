@@ -34,17 +34,32 @@ function buildTargetUrl(productUrl: string, videoId: string, creatorId?: string 
   }
 }
 
+const KANEIKO_SHOP_ORIGIN = 'https://kaneiko.shop'
+
 /**
- * Kaneiko products live on kaneiko.shop rather than mrbur.shop. Odoo decides
- * the brand with the Snabbb Shop's own method and bakes it into the
- * product_url it returns when the product is attached, so the saved URL's
- * host is the source of truth here — no name guessing in the frontend.
+ * Kaneiko products live on kaneiko.shop rather than mrbur.shop. A product is
+ * Kaneiko when "kaneiko" is in its name (same rule as Odoo's product search),
+ * or its saved URL is already on kaneiko.shop. Checking the name here means
+ * products attached before the URL was brand-aware still go to the right shop.
  */
 function isKaneikoProduct(product: VideoProduct): boolean {
+  if (/kaneiko/i.test(product.product_name)) return true
   try {
     return new URL(product.product_url).hostname.endsWith('kaneiko.shop')
   } catch {
     return false
+  }
+}
+
+/** The product page URL on the right shop for this product's brand. */
+function getShopProductUrl(product: VideoProduct): string {
+  if (!isKaneikoProduct(product)) return product.product_url
+  try {
+    const url = new URL(product.product_url)
+    if (url.hostname.endsWith('kaneiko.shop')) return product.product_url
+    return `${KANEIKO_SHOP_ORIGIN}${url.pathname}${url.search}`
+  } catch {
+    return product.product_url
   }
 }
 
@@ -78,7 +93,7 @@ export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedPro
       `Clicked "${product.product_name}" from video ${videoId}`
     )
 
-    const targetUrl = buildTargetUrl(product.product_url, videoId, creatorId)
+    const targetUrl = buildTargetUrl(getShopProductUrl(product), videoId, creatorId)
 
     // Open a blank tab NOW — this is synchronous inside the click handler so
     // the browser allows it.  We'll navigate it once we have the SSO URL.
@@ -121,7 +136,7 @@ export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedPro
 
   // Keep a fallback href for middle-clicks, right-click → "Open in new tab",
   // and accessibility tools that don't trigger onClick.
-  const fallbackHref = buildTargetUrl(product.product_url, videoId, creatorId)
+  const fallbackHref = buildTargetUrl(getShopProductUrl(product), videoId, creatorId)
 
   return (
     <a
