@@ -34,6 +34,21 @@ function buildTargetUrl(productUrl: string, videoId: string, creatorId?: string 
   }
 }
 
+/**
+ * Kaneiko products live on kaneiko.shop rather than mrbur.shop. The brand
+ * isn't stored on video_products, so it's derived from the saved product_url
+ * (set by Odoo's product search) — with the name as a fallback for older
+ * attachments saved before URLs were brand-aware.
+ */
+function isKaneikoProduct(product: VideoProduct): boolean {
+  try {
+    if (new URL(product.product_url).hostname.endsWith('kaneiko.shop')) return true
+  } catch {
+    /* fall through to the name check */
+  }
+  return /kaneiko/i.test(product.product_name)
+}
+
 interface FeaturedProductCardProps {
   product: VideoProduct
   videoId: string
@@ -81,7 +96,10 @@ export function FeaturedProductCard({ product, videoId, creatorId }: FeaturedPro
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ return_url: targetUrl }),
+          body: JSON.stringify({
+            return_url: targetUrl,
+            ...(isKaneikoProduct(product) ? { brand: 'kaneiko' } : {}),
+          }),
         })
 
         if (res.ok) {

@@ -155,6 +155,8 @@ export const onRequestPost = async (context: any) => {
         exchangeUrl.searchParams.set('token', token)
         exchangeUrl.searchParams.set('company_code', companyCode)
         exchangeUrl.searchParams.set('next', next)
+        // Kaneiko products open on *.kaneiko.shop instead of *.mrbur.shop.
+        if (body.brand === 'kaneiko') exchangeUrl.searchParams.set('brand', 'kaneiko')
 
         console.log('[shop-redirect] success, exchange URL:', exchangeUrl.toString())
         return new Response(JSON.stringify({ redirect_url: exchangeUrl.toString() }), {
