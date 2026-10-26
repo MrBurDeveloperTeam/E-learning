@@ -35,18 +35,17 @@ function buildTargetUrl(productUrl: string, videoId: string, creatorId?: string 
 }
 
 /**
- * Kaneiko products live on kaneiko.shop rather than mrbur.shop. The brand
- * isn't stored on video_products, so it's derived from the saved product_url
- * (set by Odoo's product search) — with the name as a fallback for older
- * attachments saved before URLs were brand-aware.
+ * Kaneiko products live on kaneiko.shop rather than mrbur.shop. Odoo decides
+ * the brand with the Snabbb Shop's own method and bakes it into the
+ * product_url it returns when the product is attached, so the saved URL's
+ * host is the source of truth here — no name guessing in the frontend.
  */
 function isKaneikoProduct(product: VideoProduct): boolean {
   try {
-    if (new URL(product.product_url).hostname.endsWith('kaneiko.shop')) return true
+    return new URL(product.product_url).hostname.endsWith('kaneiko.shop')
   } catch {
-    /* fall through to the name check */
+    return false
   }
-  return /kaneiko/i.test(product.product_name)
 }
 
 interface FeaturedProductCardProps {
