@@ -337,10 +337,28 @@ export function Home() {
 
   // Reserve the "Creators to follow" space while it loads, so the video
   // section below doesn't jump down when the suggestions arrive (CLS).
-  const creatorsEligible = !!profile && (profile.following_count ?? 0) < 5
-  const creatorsLoading = creatorsEligible && creatorSuggestionsQuery.isLoading
+  // The profile arrives after the first render, so reserve the space while auth
+  // is still loading too — but only if this browser last saw the block, so
+  // users who follow 5+ creators don't get a placeholder that then collapses.
+  const authLoading = useAuthStore((state) => state.isLoading)
+  const CREATORS_KEY = 'elearning:creators-block'
+  const creatorsExpected = (() => {
+    try { return localStorage.getItem(CREATORS_KEY) !== '0' } catch { return true }
+  })()
+  const creatorsEligible = profile
+    ? (profile.following_count ?? 0) < 5
+    : authLoading && creatorsExpected
+  const creatorsLoading =
+    creatorsEligible && (!profile || creatorSuggestionsQuery.isLoading)
   const showCreatorsSection =
     creatorsEligible && (creatorsLoading || creatorSuggestions.length > 0)
+
+  useEffect(() => {
+    if (!profile) return
+    try {
+      localStorage.setItem(CREATORS_KEY, (profile.following_count ?? 0) < 5 ? '1' : '0')
+    } catch { /* storage unavailable */ }
+  }, [profile])
 
   return (
     <>
