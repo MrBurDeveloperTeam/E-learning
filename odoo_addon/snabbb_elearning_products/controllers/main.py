@@ -137,6 +137,11 @@ class SnabbbElearningProductsController(http.Controller):
             ("is_snabbb_partner_product", "=", True),
             ("sale_ok", "=", True),
             ("active", "=", True),
+            # Rewards / credit items (e.g. "30+30 Sign Up Rewards") and
+            # free placeholders aren't purchasable merchandise, so they
+            # must never be offered as featured products on a video.
+            ("type", "!=", "service"),
+            ("list_price", ">", 0),
         ]
         if query:
             domain += ["|", ("name", "ilike", query), ("default_code", "ilike", query)]
