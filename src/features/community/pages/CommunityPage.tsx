@@ -155,11 +155,14 @@ export function CommunityPage() {
           {activeTab === 'drafts' && user ? <div className="mt-7 rounded-3xl border border-border bg-card p-4 sm:p-6"><Suspense fallback={<CommunityPanelFallback />}><CommunityDrafts userId={user.id} /></Suspense></div> : activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <div className="min-h-0 flex-1"><Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} conversations={directConversations.data} conversationsLoading={directConversations.isLoading} /></Suspense></div> : <div className="mt-7 space-y-4" aria-live="polite">
             {postsQuery.isLoading && (
               <div
-                className="min-h-72 animate-pulse rounded-2xl border border-border bg-muted/40 shadow-card"
+                className="relative min-h-72 overflow-hidden rounded-2xl border border-border bg-muted/70 shadow-card"
                 role="status"
                 aria-busy="true"
                 aria-label="Loading posts"
-              />
+              >
+                {/* Light band sweeping across the card so it clearly reads as "loading" */}
+                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent bg-[length:200%_100%] dark:via-white/10" />
+              </div>
             )}
             {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (
