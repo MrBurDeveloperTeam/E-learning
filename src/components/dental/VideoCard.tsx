@@ -39,7 +39,7 @@ export function DentalVideoCard({ video }: DentalVideoCardProps) {
           src={getThumbnailUrl(video)}
           alt={`Thumbnail for ${video.title}`}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="h-full w-full object-cover"
         />
 
         {active && <YouTubeHoverPreview videoId={video.video_id} title={video.title} />}

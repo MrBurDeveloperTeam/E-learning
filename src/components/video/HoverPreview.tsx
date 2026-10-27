@@ -142,12 +142,14 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
           allow="autoplay; encrypted-media"
           tabIndex={-1}
           aria-hidden="true"
-          onLoad={() =>
+          onLoad={() => {
             iframeRef.current?.contentWindow?.postMessage(
               JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
               '*'
             )
-          }
+            // Fallback if YouTube never reports its state.
+            window.setTimeout(() => setPlaying(true), 1500)
+          }}
           style={{
             width: YT_W,
             height: YT_H,

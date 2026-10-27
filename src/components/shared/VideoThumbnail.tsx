@@ -41,7 +41,7 @@ export function VideoThumbnail({
           alt={title}
           loading="lazy"
           className={cn(
-            'h-full w-full object-cover transition-transform duration-300 group-hover:scale-105',
+            'h-full w-full object-cover',
             imageClassName
           )}
         />
