@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
           video_quality: "basic",
           normalize_audio: false,
           master_access: "temporary",
+          generated_subtitles: [{ language_code: "en", name: "English CC" }],
         },
       }),
     });

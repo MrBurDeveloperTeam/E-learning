@@ -15,6 +15,17 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
 
     video.muted = true
 
+    // Show the first captions/subtitles track the stream offers (if any).
+    const showCaptions = () => {
+      for (const track of Array.from(video.textTracks)) {
+        if (track.kind === 'subtitles' || track.kind === 'captions') {
+          track.mode = 'showing'
+          return
+        }
+      }
+    }
+    video.textTracks.addEventListener('addtrack', showCaptions)
+
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari / iOS: native HLS
       video.src = src
@@ -23,6 +34,10 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
       void import('hls.js').then(({ default: Hls }) => {
         if (cancelled || !Hls.isSupported()) return
         hls = new Hls({ capLevelToPlayerSize: true, startLevel: 0, maxBufferLength: 10 })
+        hls.subtitleDisplay = true
+        hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_e, data) => {
+          if (data.subtitleTracks.length > 0 && hls) hls.subtitleTrack = 0
+        })
         hls.loadSource(src)
         hls.attachMedia(video)
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -33,6 +48,7 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
 
     return () => {
       cancelled = true
+      video.textTracks.removeEventListener('addtrack', showCaptions)
       hls?.destroy()
       video.pause()
       video.removeAttribute('src')
@@ -49,7 +65,7 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
       preload="none"
       onPlaying={() => setPlaying(true)}
       className={cn(
-        'pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300',
+        'pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 [&::cue]:text-[13px]',
         playing ? 'opacity-100' : 'opacity-0'
       )}
     />
@@ -66,6 +82,7 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
     loop: '1',
     playlist: videoId,
     playsinline: '1',
+    cc_load_policy: '1',
     modestbranding: '1',
     rel: '0',
     disablekb: '1',

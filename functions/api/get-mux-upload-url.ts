@@ -76,6 +76,7 @@ export async function onRequestPost(context: any) {
           video_quality: "basic",
           normalize_audio: false,
           master_access: "temporary",
+          generated_subtitles: [{ language_code: "en", name: "English CC" }],
         },
       }),
     });
