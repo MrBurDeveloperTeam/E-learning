@@ -110,11 +110,11 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
   useEffect(() => {
     const box = boxRef.current
     if (!box) return
-    // const update = () => setScale((box.clientWidth / YT_W) * YT_CROP)
-    // update()
-    // const observer = new ResizeObserver(update)
-    // observer.observe(box)
-    // return () => observer.disconnect()
+    const update = () => setScale((box.clientWidth / YT_W) * YT_CROP)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+    return () => observer.disconnect()
   }, [])
 
   const params = new URLSearchParams({
