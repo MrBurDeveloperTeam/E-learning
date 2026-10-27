@@ -79,16 +79,5 @@ export const supabase = createClient(
     global: {
       fetch: supabaseFetch,
     },
-    auth: {
-      // Disable the Web Locks API. gotrue-js uses navigator.locks to
-      // serialise session access across tabs, but the lock can deadlock
-      // when async onAuthStateChange listeners or the custom fetch wrapper
-      // make further Supabase requests while the lock is held. A no-op lock
-      // avoids the deadlock entirely; cross-tab sync still works via
-      // localStorage "storage" events.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      lock: (_name: string, _acquireTimeout: number, fn: (token: string) => Promise<any>) =>
-        fn(''),
-    },
   }
 )
