@@ -77,8 +77,8 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
 // full desktop size and scaled down to fit the card.
 const YT_W = 640
 const YT_H = 360
-// Slight over-scale so the card edge crops YouTube's title bar.
-const YT_CROP = 1.08
+// 1 = show the full frame (no crop) so burned-in/bottom captions stay visible.
+const YT_CROP = 1
 
 /** Muted, control-less YouTube embed. Fades in once loaded. */
 export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title: string }) {
