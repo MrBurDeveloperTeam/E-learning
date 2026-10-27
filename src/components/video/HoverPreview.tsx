@@ -72,21 +72,24 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
   )
 }
 
-/** Muted, looping, control-less YouTube embed. Fades in once loaded. */
+/**
+ * Muted, control-less YouTube embed. Fades in once loaded. Scaled up so the
+ * title bar / chrome YouTube draws at the edges is cropped by the card.
+ * (No `loop`/`playlist` param: it makes YouTube show prev/next + pause buttons.)
+ */
 export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title: string }) {
   const [loaded, setLoaded] = useState(false)
   const params = new URLSearchParams({
     autoplay: '1',
     mute: '1',
     controls: '0',
-    loop: '1',
-    playlist: videoId,
     playsinline: '1',
     cc_load_policy: '1',
     modestbranding: '1',
     rel: '0',
     disablekb: '1',
     iv_load_policy: '3',
+    fs: '0',
   })
 
   return (
@@ -98,7 +101,7 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
       aria-hidden="true"
       onLoad={() => setLoaded(true)}
       className={cn(
-        'pointer-events-none absolute inset-0 h-full w-full border-0 transition-opacity duration-300',
+        'pointer-events-none absolute inset-0 h-full w-full scale-[1.4] border-0 transition-opacity duration-300',
         loaded ? 'opacity-100' : 'opacity-0'
       )}
     />
