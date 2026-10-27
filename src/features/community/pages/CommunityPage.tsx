@@ -119,15 +119,16 @@ export function CommunityPage() {
         </aside>
 
         <main className={cn('community-dashboard-main min-w-0 px-4 pb-24 pt-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden pb-0')}>
-          {/* Mobile "Back to Home": pinned under the navbar while scrolling, with the
-              admin-hero-panel gradient background so it stays readable over the feed. Sits directly in <main>
+          {/* Mobile "Back to Home": pinned under the navbar while scrolling, with a soft primary radial
+              glow over the page background so it stays readable over the feed. Sits directly in <main>
               (not the header row) so it can stay stuck for the whole page. */}
           <Link
             to="/explore"
             className={cn(
-              'sticky top-14 z-[90] -mx-4 mb-4 inline-flex min-h-11 w-[calc(100%+2rem)] items-center gap-2 admin-hero-panel border-0 shadow-none px-4 text-sm font-medium text-primary backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:hidden',
+              'sticky top-14 z-[90] -mx-4 mb-4 inline-flex min-h-11 w-[calc(100%+2rem)] items-center gap-2 bg-background px-4 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:hidden',
               activeTab === 'chat' && 'hidden'
             )}
+            style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, hsl(var(--primary) / .09), transparent 42%)' }}
           >
             <ArrowLeft className="size-4" aria-hidden="true" /> Back to Home
           </Link>
