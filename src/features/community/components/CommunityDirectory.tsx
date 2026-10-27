@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { CommunityLoadingCard } from "./CommunityLoadingCard";
 import { RetryCard } from "@/components/shared/RetryCard";
 import {
   useCommunityDirectory,
@@ -501,9 +502,7 @@ export function CommunityDirectory({ userId }: { userId: string }) {
       </div>
 
       {directory.isLoading || (tab !== 'joined' && browseLoading) ? (
-        <div className="flex min-h-64 items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
+        <CommunityLoadingCard count={3} className="mt-4" label="Loading communities" />
       ) : directory.isError || (tab !== 'joined' && browseError) ? (
         <div className="mt-4">
           <RetryCard onRetry={() => void directory.refetch()} />

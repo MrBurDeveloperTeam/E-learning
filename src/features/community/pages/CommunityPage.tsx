@@ -5,7 +5,7 @@ import { CommunityPostCard } from '@/features/community/components/CommunityPost
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { CommunityLoadingCard } from '@/features/community/components/CommunityLoadingCard'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { useCommunityDrafts, useCommunityPosts, useCommunityPreferences, useDirectConversations } from '@/features/community/hooks/useCommunity'
 import { useAuthStore } from '@/store/authStore'
@@ -23,7 +23,7 @@ const CommunityDirectory = lazy(() => import('@/features/community/components/Co
 const DirectMessages = lazy(() => import('@/features/community/components/DirectMessages').then(module => ({ default: module.DirectMessages })))
 
 function CommunityPanelFallback() {
-  return <div className="mt-7 flex min-h-64 items-center justify-center" role="status" aria-label="Loading Community section"><LoadingSpinner size="lg" /></div>
+  return <CommunityLoadingCard count={3} className="mt-7" label="Loading Community section" />
 }
 
 // Community Video feed is temporarily hidden. Keep its UI/feed code intact;
@@ -153,17 +153,7 @@ export function CommunityPage() {
           {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'drafts' && activeTab !== 'me' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
 
           {activeTab === 'drafts' && user ? <div className="mt-7 rounded-3xl border border-border bg-card p-4 sm:p-6"><Suspense fallback={<CommunityPanelFallback />}><CommunityDrafts userId={user.id} /></Suspense></div> : activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <div className="min-h-0 flex-1"><Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} conversations={directConversations.data} conversationsLoading={directConversations.isLoading} /></Suspense></div> : <div className="mt-7 space-y-4" aria-live="polite">
-            {postsQuery.isLoading && (
-              <div
-                className="relative min-h-72 overflow-hidden rounded-2xl border border-border bg-muted/70 shadow-card"
-                role="status"
-                aria-busy="true"
-                aria-label="Loading posts"
-              >
-                {/* Light band sweeping across the card so it clearly reads as "loading" */}
-                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent bg-[length:200%_100%] dark:via-white/10" />
-              </div>
-            )}
+            {postsQuery.isLoading && <CommunityLoadingCard count={3} label="Loading posts" />}
             {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
             {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && (
               <EmptyState

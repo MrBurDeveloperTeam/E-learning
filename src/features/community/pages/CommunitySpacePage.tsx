@@ -5,7 +5,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import '../styles/community-space.css'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { CommunityLoadingCard } from '@/features/community/components/CommunityLoadingCard'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
 import { CommunityManagementDialog } from '@/features/community/components/CommunityManagementDialog'
@@ -35,7 +35,7 @@ export function CommunitySpacePage() {
     <div className="community-space min-h-screen bg-background">
       <Navbar />
       {directory.isLoading ? (
-        <div className="flex min-h-[60vh] items-center justify-center"><LoadingSpinner size="lg" /></div>
+        <main className="mx-auto max-w-6xl px-4 py-10"><CommunityLoadingCard className="min-h-[60vh]" label="Loading community" /></main>
       ) : directory.isError ? (
         <main className="mx-auto max-w-3xl px-4 py-10"><RetryCard onRetry={() => void directory.refetch()} /></main>
       ) : !community ? (
@@ -79,7 +79,7 @@ export function CommunitySpacePage() {
                 <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Community feed</p><h2 id="community-feed-title" className="mt-1 text-xl font-semibold">Posts and discussions</h2></div>
               </div>
               <div className="space-y-4" aria-live="polite">
-                {postsQuery.isLoading && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner size="lg" /></div>}
+                {postsQuery.isLoading && <CommunityLoadingCard count={3} label="Loading posts" />}
                 {postsQuery.isError && <RetryCard onRetry={() => void postsQuery.refetch()} />}
                 {!postsQuery.isLoading && !postsQuery.isError && posts.length === 0 && <EmptyState icon={<UsersRound />} title="No posts here yet" description={community.viewer_is_member ? 'Start the first discussion by sharing text, images, or a video.' : 'Join this community to take part in the discussion.'} />}
                 {posts.map((post) => <CommunityPostCard key={post.id} post={post} userId={user.id} readOnly={isArchived} commentsDisabledReason={muteMessage} />)}
