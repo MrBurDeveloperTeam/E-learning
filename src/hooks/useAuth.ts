@@ -114,13 +114,26 @@ export function useAuth({ initialize = false }: UseAuthOptions = {}) {
 
         if (!mounted) return
 
-        if (sessionError) {
+        // A dead refresh token ("Refresh Token Not Found" / "Invalid Refresh
+        // Token") means this app's stored session is stale. supabase-js has
+        // already removed it from storage, so fall through to the SSO exchange
+        // below instead of giving up (which made the *next* open work).
+        const isStaleRefreshToken =
+          !!sessionError &&
+          /refresh token|refresh_token/i.test(
+            `${sessionError.message} ${(sessionError as { code?: string }).code ?? ''}`
+          )
+
+        if (sessionError && !isStaleRefreshToken) {
           console.warn('[useAuth] getSession error:', sessionError.message)
           clearStore()
           return
         }
+        if (isStaleRefreshToken) {
+          console.warn('[useAuth] stale session discarded, retrying via SSO')
+        }
 
-        if (currentSession?.user) {
+        if (!sessionError && currentSession?.user) {
           setIsLoading(true)
           setProfile(null)
           setUser(currentSession.user)
