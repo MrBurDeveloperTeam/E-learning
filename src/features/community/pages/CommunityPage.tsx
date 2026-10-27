@@ -125,7 +125,7 @@ export function CommunityPage() {
           <Link
             to="/explore"
             className={cn(
-              'sticky top-14 z-[90] -mx-4 mb-4 inline-flex min-h-11 w-[calc(100%+2rem)] items-center gap-2 bg-background px-4 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:hidden',
+              'sticky top-[3.46rem] z-[90] -mx-4 mb-4 inline-flex min-h-11 w-[calc(100%+2rem)] items-center gap-2 bg-background px-4 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:hidden',
               activeTab === 'chat' && 'hidden'
             )}
             style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, hsl(var(--primary) / .09), transparent 42%)' }}
