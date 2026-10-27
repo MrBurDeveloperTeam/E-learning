@@ -72,13 +72,30 @@ export function MuxHoverPreview({ playbackId }: { playbackId: string }) {
   )
 }
 
-/**
- * Muted, control-less YouTube embed. Fades in once loaded. Scaled up so the
- * title bar / chrome YouTube draws at the edges is cropped by the card.
- * (No `loop`/`playlist` param: it makes YouTube show prev/next + pause buttons.)
- */
+// YouTube switches small embeds to a compact layout with big centre buttons
+// (prev/pause/next) regardless of `controls=0`. So the iframe is rendered at a
+// full desktop size and scaled down to fit the card.
+const YT_W = 640
+const YT_H = 360
+// Slight over-scale so the card edge crops YouTube's title bar.
+const YT_CROP = 1.08
+
+/** Muted, control-less YouTube embed. Fades in once loaded. */
 export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title: string }) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState<number | null>(null)
   const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    const box = boxRef.current
+    if (!box) return
+    const update = () => setScale((box.clientWidth / YT_W) * YT_CROP)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+    return () => observer.disconnect()
+  }, [])
+
   const params = new URLSearchParams({
     autoplay: '1',
     mute: '1',
@@ -93,17 +110,28 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
   })
 
   return (
-    <iframe
-      src={`https://www.youtube-nocookie.com/embed/${videoId}?${params}`}
-      title={`Preview of ${title}`}
-      allow="autoplay; encrypted-media"
-      tabIndex={-1}
-      aria-hidden="true"
-      onLoad={() => setLoaded(true)}
-      className={cn(
-        'pointer-events-none absolute inset-0 h-full w-full scale-[1.4] border-0 transition-opacity duration-300',
-        loaded ? 'opacity-100' : 'opacity-0'
+    <div ref={boxRef} className="pointer-events-none absolute inset-0 overflow-hidden bg-black">
+      {scale !== null && (
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${videoId}?${params}`}
+          title={`Preview of ${title}`}
+          allow="autoplay; encrypted-media"
+          tabIndex={-1}
+          aria-hidden="true"
+          onLoad={() => setLoaded(true)}
+          style={{
+            width: YT_W,
+            height: YT_H,
+            left: '50%',
+            top: '50%',
+            transform: `translate(-50%, -50%) scale(${scale})`,
+          }}
+          className={cn(
+            'absolute max-w-none border-0 transition-opacity duration-300',
+            loaded ? 'opacity-100' : 'opacity-0'
+          )}
+        />
       )}
-    />
+    </div>
   )
 }
