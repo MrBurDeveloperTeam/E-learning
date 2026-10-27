@@ -105,7 +105,7 @@ export function Feed() {
           />
         )}
 
-        {session && !isError && (
+        {session && !isError && (isLoading || videos.length > 0) && (
           <VideoGrid videos={videos} columns={4} isLoading={isLoading} />
         )}
       </div>
