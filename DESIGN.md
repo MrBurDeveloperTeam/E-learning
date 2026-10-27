@@ -79,7 +79,7 @@ Interactive controls provide hover, visible focus, pressed, disabled, and busy s
 
 ### Buttons and actions
 
-Brand-filled buttons are reserved for the primary safe action. Neutral bordered buttons handle secondary operations. Buttons pair unfamiliar icons with visible labels and use explicit disabled cursors and opacity.
+Brand-filled buttons are reserved for the primary safe action and use white labels and icons in both themes and at every viewport width. Neutral bordered buttons handle secondary operations. Buttons pair unfamiliar icons with visible labels and use explicit disabled cursors and opacity.
 
 ### Navigation and data display
 
