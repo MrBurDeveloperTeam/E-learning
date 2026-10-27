@@ -344,7 +344,7 @@ export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: nu
             ) : (
               <>
                 {canAccessCreatorTools && (
-                  <Link to="/upload" className="hidden items-center gap-1.5 rounded-lg bg-[#88C1BD] px-4 py-1.5 text-sm font-medium text-[#1A4A47] transition-colors duration-150 hover:bg-[#5A8784] hover:text-[#EAF4F3] md:flex">
+                  <Link to="/upload" className="hidden items-center gap-1.5 rounded-lg bg-[#88C1BD] px-4 py-1.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#5A8784] md:flex">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                       <polyline points="17 8 12 3 7 8" />
@@ -393,7 +393,7 @@ export function Navbar({ communityUnreadCount = 0 }: { communityUnreadCount?: nu
                   <button
                     type="button"
                     onClick={() => setMenuOpen(!menuOpen)}
-                    className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-[13px] font-medium text-[#EAF4F3] transition-opacity hover:opacity-90"
+                    className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#2D6E6A] text-[13px] font-medium text-white transition-opacity hover:opacity-90"
                   >
                     <UserAvatar
                       name={avatarLabel}

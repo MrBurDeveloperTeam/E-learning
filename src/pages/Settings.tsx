@@ -924,7 +924,7 @@ export function Settings() {
               <label className="text-xs font-medium text-[#3D5C5C]">Confirm new password</label>
               <PasswordField value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field" placeholder="Confirm new password" />
             </div>
-            <button type="button" onClick={() => toast.error('Password updates are not available yet')} className="mt-2 rounded-lg bg-[#88C1BD] px-5 py-2 text-sm font-medium text-[#1A4A47] transition-colors hover:bg-[#5A8784] hover:text-[#EAF4F3]">
+            <button type="button" onClick={() => toast.error('Password updates are not available yet')} className="mt-2 rounded-lg bg-[#88C1BD] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5A8784]">
               Update password
             </button>
           </div>
@@ -952,7 +952,7 @@ export function Settings() {
           </div>
         ))}
         <div className="flex justify-end pt-5">
-          <button type="button" onClick={() => toast.success('Notification preferences saved')} className="rounded-lg bg-[#88C1BD] px-5 py-2 text-sm font-medium text-[#1A4A47] transition-colors hover:bg-[#5A8784] hover:text-[#EAF4F3]">
+          <button type="button" onClick={() => toast.success('Notification preferences saved')} className="rounded-lg bg-[#88C1BD] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5A8784]">
             Save preferences
           </button>
         </div>
