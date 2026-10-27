@@ -2,14 +2,13 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { SearchBar } from '@/components/dental/SearchBar'
-import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
+import { UnifiedVideoGrid, UnifiedVideoGridLoading } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
 import { getCategories } from '@/lib/dentalVideosApi'
 import { fetchUnifiedVideoPage } from '@/lib/libraryFeed'
 import { buildCombinedCategoryList } from '@/lib/videoLibrary'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { SLUG_TO_CATEGORY } from '@/types'
 import { categoryToSlug, slugToCategory } from '@/lib/utils'
 
@@ -147,13 +146,13 @@ export function Category() {
               }
             />
 
-            <div ref={loadMoreRef} className="mt-8 h-10">
-              {isFetchingNextPage && (
-                <div className="flex justify-center">
-                  <LoadingSpinner size="md" />
-                </div>
-              )}
-            </div>
+            {isFetchingNextPage && (
+              <div className="mt-6">
+                <UnifiedVideoGridLoading rows={1} />
+              </div>
+            )}
+
+            <div ref={loadMoreRef} className="mt-8 h-10" />
           </>
         )}
       </div>
