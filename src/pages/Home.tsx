@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } fr
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { SearchBar } from '@/components/dental/SearchBar'
-import { UnifiedVideoGrid, UnifiedVideoGridLoading } from '@/components/library/UnifiedVideoGrid'
+import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
 import { FollowButton } from '@/components/creator/FollowButton'
 import { RetryCard } from '@/components/shared/RetryCard'
@@ -592,6 +592,7 @@ export function Home() {
             <UnifiedVideoGrid
               items={items}
               isLoading={isLoading}
+              isFetchingMore={isFetchingNextPage}
               emptyTitle="No videos found"
               emptyDescription={
                 query
@@ -605,12 +606,6 @@ export function Home() {
                     : `No videos are available in ${category} yet.`
               }
             />
-
-            {isFetchingNextPage && (
-              <div className="mt-6">
-                <UnifiedVideoGridLoading rows={1} />
-              </div>
-            )}
 
             <div ref={loadMoreRef} className="mt-8 h-10" />
           </>

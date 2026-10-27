@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { SearchBar } from '@/components/dental/SearchBar'
-import { UnifiedVideoGrid, UnifiedVideoGridLoading } from '@/components/library/UnifiedVideoGrid'
+import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
@@ -138,6 +138,7 @@ export function Category() {
             <UnifiedVideoGrid
               items={items}
               isLoading={isLoading}
+              isFetchingMore={isFetchingNextPage}
               emptyTitle="No videos found"
               emptyDescription={
                 query
@@ -145,12 +146,6 @@ export function Category() {
                   : `No videos are available in ${categoryName} yet.`
               }
             />
-
-            {isFetchingNextPage && (
-              <div className="mt-6">
-                <UnifiedVideoGridLoading rows={1} />
-              </div>
-            )}
 
             <div ref={loadMoreRef} className="mt-8 h-10" />
           </>

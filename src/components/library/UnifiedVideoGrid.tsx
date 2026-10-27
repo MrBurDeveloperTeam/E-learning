@@ -1,4 +1,5 @@
 import { DentalVideoCard } from '@/components/dental/VideoCard'
+import { useEffect, useState } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { VideoCard } from '@/components/video/VideoCard'
 import { ShimmerCard } from '@/components/ui/ShimmerCard'
@@ -8,8 +9,27 @@ import type { UnifiedVideoItem } from '@/lib/libraryFeed'
 interface UnifiedVideoGridProps {
   items: UnifiedVideoItem[]
   isLoading?: boolean
+  /** Next page is being fetched: shimmer cards are appended inside the grid. */
+  isFetchingMore?: boolean
   emptyTitle?: string
   emptyDescription?: string
+}
+
+// Mirrors the grid's Tailwind breakpoints: 1 / sm:2 / lg:3 / xl:4 columns.
+function columnsForWidth(width: number) {
+  return width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 640 ? 2 : 1
+}
+
+function useGridColumns() {
+  const [columns, setColumns] = useState(() =>
+    typeof window === 'undefined' ? 4 : columnsForWidth(window.innerWidth)
+  )
+  useEffect(() => {
+    const update = () => setColumns(columnsForWidth(window.innerWidth))
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  return columns
 }
 
 /**
@@ -45,9 +65,12 @@ export function UnifiedVideoGridLoading({ rows = 3 }: { rows?: number }) {
 export function UnifiedVideoGrid({
   items,
   isLoading = false,
+  isFetchingMore = false,
   emptyTitle = 'No videos found',
   emptyDescription = 'Try another category or search term.',
 }: UnifiedVideoGridProps) {
+  const columns = useGridColumns()
+
   if (isLoading) return <UnifiedVideoGridLoading rows={3} />
 
   if (items.length === 0) {
@@ -67,6 +90,19 @@ export function UnifiedVideoGrid({
         ) : (
           <DentalVideoCard key={item.id} video={item.video} />
         )
+      )}
+
+      {isFetchingMore && (
+        // Fill the unfinished last row first (solid), then one whole extra row
+        // that fades out vertically, 100% -> 1%.
+        <>
+          {Array.from({ length: (columns - (items.length % columns)) % columns }).map((_, index) => (
+            <ShimmerCard key={`fill-${index}`} className="aspect-[4/3]" aria-hidden="true" />
+          ))}
+          {Array.from({ length: columns }).map((_, index) => (
+            <ShimmerCard key={`next-${index}`} className="aspect-[4/3]" fade aria-hidden="true" />
+          ))}
+        </>
       )}
     </div>
   )
