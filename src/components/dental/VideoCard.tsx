@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import type { DentalVideo } from '@/types/dentalVideo'
+import { useHoverPreview } from '@/hooks/useHoverPreview'
+import { YouTubeHoverPreview } from '@/components/video/HoverPreview'
 
 interface DentalVideoCardProps {
   video: DentalVideo
@@ -23,6 +25,8 @@ function getThumbnailUrl(video: DentalVideo): string {
 }
 
 export function DentalVideoCard({ video }: DentalVideoCardProps) {
+  const { active, handlers } = useHoverPreview(Boolean(video.video_id))
+
   return (
     <Link
       to="/dental-videos/$id"
@@ -30,7 +34,7 @@ export function DentalVideoCard({ video }: DentalVideoCardProps) {
       className="group block cursor-pointer animate-fade-in outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
     >
       {/* Thumbnail */}
-      <div className="relative overflow-hidden rounded-xl aspect-video bg-muted">
+      <div {...handlers} className="relative overflow-hidden rounded-xl aspect-video bg-muted">
         <img
           src={getThumbnailUrl(video)}
           alt={`Thumbnail for ${video.title}`}
@@ -38,8 +42,10 @@ export function DentalVideoCard({ video }: DentalVideoCardProps) {
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
 
-        {/* Play button overlay — CSS only */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/30">
+        {active && <YouTubeHoverPreview videoId={video.video_id} title={video.title} />}
+
+        {/* Play button overlay — CSS only; hidden while previewing */}
+        <div className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition-opacity duration-200 ${active ? 'opacity-0' : 'group-hover:bg-black/30'}`}>
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 group-hover:scale-100 scale-75">
             <svg
               width="20"

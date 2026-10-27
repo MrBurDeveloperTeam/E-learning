@@ -63,6 +63,7 @@ const creatorAvatarUrl =
             title={video.title}
             durationSeconds={video.duration_seconds}
             status={video.status}
+        previewPlaybackId={video.mux_playback_id}
             className="aspect-video"
           />
         </div>
@@ -102,6 +103,7 @@ const creatorAvatarUrl =
         title={video.title}
         durationSeconds={video.duration_seconds}
         status={video.status}
+        previewPlaybackId={video.mux_playback_id}
         className="aspect-video"
       />
 

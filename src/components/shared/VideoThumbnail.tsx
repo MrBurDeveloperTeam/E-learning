@@ -1,6 +1,8 @@
 import { Play } from 'lucide-react'
 import { formatDuration, cn } from '@/lib/utils'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { useHoverPreview } from '@/hooks/useHoverPreview'
+import { MuxHoverPreview } from '@/components/video/HoverPreview'
 
 interface VideoThumbnailProps {
   src: string | null
@@ -9,6 +11,8 @@ interface VideoThumbnailProps {
   status?: string
   className?: string
   imageClassName?: string
+  /** Mux playback id; when set, hovering plays a muted preview. */
+  previewPlaybackId?: string | null
 }
 
 export function VideoThumbnail({
@@ -18,9 +22,14 @@ export function VideoThumbnail({
   status,
   className,
   imageClassName,
+  previewPlaybackId,
 }: VideoThumbnailProps) {
+  const canPreview = Boolean(previewPlaybackId) && status !== 'processing'
+  const { active, handlers } = useHoverPreview(canPreview)
+
   return (
     <div
+      {...handlers}
       className={cn(
         'relative overflow-hidden rounded-xl bg-muted',
         className
@@ -42,7 +51,9 @@ export function VideoThumbnail({
         </div>
       )}
 
-      <div className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-medium text-white">
+      {active && previewPlaybackId && <MuxHoverPreview playbackId={previewPlaybackId} />}
+
+      <div className="absolute bottom-2 right-2 z-10 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-medium text-white">
         {formatDuration(durationSeconds)}
       </div>
 
