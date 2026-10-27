@@ -119,8 +119,19 @@ export function CommunityPage() {
         </aside>
 
         <main className={cn('community-dashboard-main min-w-0 px-4 pb-24 pt-6 sm:px-6 md:px-0 md:py-8',activeTab==='chat'&&'flex min-h-0 flex-col overflow-hidden pb-0')}>
+          {/* Mobile "Back to Home": pinned under the navbar while scrolling, on a solid
+              background so it stays readable over the feed. Sits directly in <main>
+              (not the header row) so it can stay stuck for the whole page. */}
+          <Link
+            to="/explore"
+            className={cn(
+              'sticky top-14 z-[90] -mx-4 mb-4 inline-flex min-h-11 w-[calc(100%+2rem)] items-center gap-2 border-b border-border bg-background px-4 text-sm font-medium text-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:hidden',
+              activeTab === 'chat' && 'hidden'
+            )}
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" /> Back to Home
+          </Link>
           <div className={cn('flex flex-wrap items-end justify-between gap-4', activeTab === 'chat' && 'hidden md:flex')}>
-            <Link to="/explore" className="inline-flex min-h-10 w-full items-center gap-2 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"><ArrowLeft className="size-4" aria-hidden="true" /> Back to Home</Link>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 {activeTab === 'following' ? 'Following feed' : activeTab === 'communities' ? 'Community directory' : activeTab === 'video' ? 'Video feed' : activeTab === 'chat' ? 'Messages' : activeTab === 'drafts' ? 'Your posts' : activeTab === 'me' ? 'My Profile' : 'Home feed'}
