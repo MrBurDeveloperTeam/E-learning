@@ -84,7 +84,28 @@ const YT_CROP = 1.08
 export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title: string }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState<number | null>(null)
-  const [loaded, setLoaded] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  // Reveal the iframe only once YouTube reports the video is actually playing,
+  // so the thumbnail stays visible while the player loads / buffers.
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.source !== iframeRef.current?.contentWindow) return
+      let data: { event?: string; info?: unknown } | null = null
+      try {
+        data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+      } catch {
+        return
+      }
+      if (!data) return
+      const info = data.info as { playerState?: number } | number | undefined
+      const state = typeof info === 'number' ? info : info?.playerState
+      if (state === 1) setPlaying(true)
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
   useEffect(() => {
     const box = boxRef.current
@@ -107,18 +128,26 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
     disablekb: '1',
     iv_load_policy: '3',
     fs: '0',
+    enablejsapi: '1',
+    origin: window.location.origin,
   })
 
   return (
-    <div ref={boxRef} className="pointer-events-none absolute inset-0 overflow-hidden bg-black">
+    <div ref={boxRef} className="pointer-events-none absolute inset-0 overflow-hidden">
       {scale !== null && (
         <iframe
+          ref={iframeRef}
           src={`https://www.youtube-nocookie.com/embed/${videoId}?${params}`}
           title={`Preview of ${title}`}
           allow="autoplay; encrypted-media"
           tabIndex={-1}
           aria-hidden="true"
-          onLoad={() => setLoaded(true)}
+          onLoad={() =>
+            iframeRef.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+              '*'
+            )
+          }
           style={{
             width: YT_W,
             height: YT_H,
@@ -128,7 +157,7 @@ export function YouTubeHoverPreview({ videoId, title }: { videoId: string; title
           }}
           className={cn(
             'absolute max-w-none border-0 transition-opacity duration-300',
-            loaded ? 'opacity-100' : 'opacity-0'
+            playing ? 'opacity-100' : 'opacity-0'
           )}
         />
       )}
