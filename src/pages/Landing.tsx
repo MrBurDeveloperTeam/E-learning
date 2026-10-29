@@ -235,7 +235,7 @@ export function Landing() {
           onClick={closeMenu}
         >
           <img
-            src="/logo/Snabbb%20(Teal).png"
+            src="/logo/Snabbb%20(Teal).webp"
             alt="Snabbb"
             className="dl-brand-logo"
           />
@@ -486,7 +486,7 @@ export function Landing() {
       <footer className="dl-footer">
         <a className="dl-brand" href="https://app.snabbb.com/" aria-label="Go to Snabbb Home">
           <img
-            src="/logo/Snabbb%20(Teal).png"
+            src="/logo/Snabbb%20(Teal).webp"
             alt="Snabbb"
             className="dl-brand-logo"
           />
