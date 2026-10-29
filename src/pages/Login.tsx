@@ -61,7 +61,7 @@ export default function Login() {
         </div> */}
         <div className="mb-8 text-left">
           <img
-            src="/logo/Snabbb (Teal).png"
+            src="/logo/Snabbb%20(Teal).webp"
             alt="Snabbb"
             className="mb-5 block h-7 w-auto object-contain"
           />

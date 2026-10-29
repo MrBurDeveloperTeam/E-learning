@@ -11,13 +11,13 @@ export function Logo({ className, imageClassName, clickable = true }: LogoProps)
     <>
       {/* Light Mode Logo (Teal) */}
       <img
-        src="/logo/Snabbb%20(Teal).png"
+        src="/logo/Snabbb%20(Teal).webp"
         alt="Snabbb"
         className={cn("h-7 w-auto block dark:hidden object-contain", imageClassName)}
       />
       {/* Dark Mode Logo (White) */}
       <img
-        src="/logo/Snabbb%20(White).png"
+        src="/logo/Snabbb%20(White).webp"
         alt="Snabbb"
         className={cn("h-7 w-auto hidden dark:block object-contain", imageClassName)}
       />
