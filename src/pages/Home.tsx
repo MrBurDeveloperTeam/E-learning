@@ -5,6 +5,7 @@ import { SearchBar } from '@/components/dental/SearchBar'
 import { UnifiedVideoGrid } from '@/components/library/UnifiedVideoGrid'
 import { Navbar } from '@/components/layout/Navbar'
 import { FollowButton } from '@/components/creator/FollowButton'
+import { CreatorSuggestionSkeleton } from '@/components/creator/CreatorSuggestionSkeleton'
 import { RetryCard } from '@/components/shared/RetryCard'
 import { useFollowing } from '@/hooks/useFollow'
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll'
@@ -423,10 +424,9 @@ export function Home() {
             className="scrollbar-hide flex select-none gap-3 overflow-x-auto pb-1 touch-pan-x md:cursor-grab md:active:cursor-grabbing"
           >
             {creatorsLoading ? Array.from({ length: 5 }).map((_, index) => (
-              <div
+              <CreatorSuggestionSkeleton
                 key={`creator-skeleton-${index}`}
-                aria-hidden="true"
-                className="h-[52px] w-[210px] flex-shrink-0 animate-pulse rounded-2xl border border-border bg-card"
+                delayMs={index * 120}
               />
             )) : creatorSuggestions.map((creator) => (
               <div
