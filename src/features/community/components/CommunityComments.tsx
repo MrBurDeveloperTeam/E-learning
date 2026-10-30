@@ -624,7 +624,7 @@ export function CommunityComments({
 
   return (
     <section
-      className="mt-4 border-t border-border/70 pt-4"
+      className="border-t border-border/70 pt-4"
       aria-label="Comments"
     >
       {expanded && commentsDisabledReason && <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950" role="status">{commentsDisabledReason}</div>}

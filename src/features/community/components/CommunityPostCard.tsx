@@ -314,15 +314,6 @@ export function CommunityPostCard({
             <Heart className={cn(post.viewer_has_liked && "fill-current")} />{" "}
             {post.like_count}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Share post"
-            disabled={actions.isPending}
-            onClick={() => void share()}
-          >
-            <Share2 />
-          </Button>
           {userId === post.author_id && (
             <>
               <EditCommunityPostDialog post={post} userId={userId} />
@@ -370,6 +361,15 @@ export function CommunityPostCard({
           <Button
             variant="ghost"
             size="icon-sm"
+            aria-label="Copy post link"
+            disabled={actions.isPending}
+            onClick={() => void share()}
+          >
+            <Share2 />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             aria-label={
               post.viewer_has_bookmarked ? "Remove bookmark" : "Bookmark post"
             }
@@ -403,7 +403,7 @@ export function CommunityPostCard({
           </>}
         </footer>
         {(post.title || post.body) && (
-          <div className="mt-3 border-b border-border/70 pb-4">
+          <div className="mt-3 pb-4">
             {post.title && (
               <h2 className="text-base font-semibold tracking-[-0.02em] text-foreground">
                 <Link
