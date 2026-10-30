@@ -74,6 +74,26 @@
 .community-review-dashboard input[type="checkbox"] { accent-color: hsl(var(--primary)); }
 .community-review-dashboard [role="tablist"] { border-radius: 14px; padding: 6px; gap: 6px; }
 .community-review-dashboard [role="tab"] { border-radius: 10px; }
+@media (max-width: 639px) {
+  .community-dashboard .community-dashboard-main > .community-feed-filters {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .community-dashboard .community-feed-filters :is([data-slot="input"], [data-slot="select-trigger"]) {
+    min-height: 48px;
+    border-radius: 12px;
+    border-color: hsl(var(--border));
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px hsl(var(--foreground) / .04);
+  }
+  .community-dashboard .community-feed-filters [data-slot="select-trigger"] {
+    padding-left: 36px;
+    padding-right: 12px;
+  }
+}
 @media (max-width: 480px) {
   .community-people-dialog { width: calc(100vw - 20px); height: min(640px, calc(100dvh - 20px)); max-height: calc(100dvh - 20px); border-radius: 18px; }
   .community-people-dialog [aria-live] > .divide-y > div { padding: 10px; gap: 8px; flex-wrap: wrap; }
