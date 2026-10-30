@@ -172,8 +172,8 @@ export function CommunityPage() {
               <div className="relative order-1 sm:order-2">
                 <Tags className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground sm:hidden" aria-hidden="true" />
                 <Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}>
-                  <SelectTrigger aria-label="Filter by topic"><SelectValue>{topic === 'all' ? 'All topics' : topic.replaceAll('_', ' ')}</SelectValue></SelectTrigger>
-                  <SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent>
+                  <SelectTrigger aria-label="Filter by topic" className="community-topic-trigger"><SelectValue>{topic === 'all' ? 'All topics' : topic.replaceAll('_', ' ')}</SelectValue></SelectTrigger>
+                  <SelectContent side="bottom" collisionAvoidance={{ side: 'none', fallbackAxisSide: 'none' }}><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="relative order-2 sm:order-3">

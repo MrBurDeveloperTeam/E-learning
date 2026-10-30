@@ -74,6 +74,9 @@
 .community-review-dashboard input[type="checkbox"] { accent-color: hsl(var(--primary)); }
 .community-review-dashboard [role="tablist"] { border-radius: 14px; padding: 6px; gap: 6px; }
 .community-review-dashboard [role="tab"] { border-radius: 10px; }
+.community-dashboard .community-feed-filters .community-topic-trigger[aria-expanded="true"] svg {
+  transform: none;
+}
 @media (max-width: 639px) {
   .community-dashboard .community-dashboard-main > .community-feed-filters {
     padding: 0;
