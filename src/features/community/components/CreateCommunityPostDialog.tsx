@@ -126,6 +126,7 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
       <form noValidate onSubmit={submit} className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]">
         <DialogHeader className="border-b bg-gradient-to-r from-primary/15 via-primary/5 to-transparent px-4 py-3 pr-12 sm:px-6 sm:py-5 sm:pr-14">
           <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="size-5"/></span><div><DialogTitle className="text-xl">Create a community post</DialogTitle><DialogDescription className="mt-1">{communityName ? `Share with ${communityName}. ` : ''}Drafts may be empty. Publishing requires every section.</DialogDescription></div></div>
+          {error&&<div id="community-post-error" className="max-h-28 overflow-y-auto rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>}
         </DialogHeader>
 
         <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
@@ -145,7 +146,6 @@ export function CreateCommunityPostDialog({ userId, communityId, communityName, 
             </aside>
           </div>
           {progress&&<div className="mt-5 rounded-xl bg-muted p-3" role="status" aria-live="polite"><div className="flex justify-between gap-3 text-xs font-medium"><span className="truncate capitalize">{progress.stage} {progress.currentFile}</span><span>{progress.completed}/{progress.total} files</span></div><progress className="mt-2 h-2 w-full accent-primary" value={progress.completed} max={progress.total}>{progressPercent}%</progress></div>}
-          {error&&<div id="community-post-error" className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>}
         </div>
 
         <DialogFooter className="mx-0 mb-0 max-h-[40dvh] overflow-y-auto rounded-none border-t bg-background/95 px-4 py-3 backdrop-blur sm:max-h-none sm:items-center sm:px-6 sm:py-4"><span className="mr-auto hidden text-xs text-muted-foreground md:block">Drafts sync across devices. Complete every section to publish.</span>{createPost.isPending?<Button type="button" variant="outline" onClick={()=>abortRef.current?.abort()}>Cancel upload</Button>:<DialogClose render={<Button type="button" variant="ghost" disabled={busy} />}>Cancel</DialogClose>}<Button type="submit" name="intent" value="draft" variant="outline" disabled={busy}>{saveDraft.isPending?<Loader2 className="animate-spin"/>:<Save/>}{saveDraft.isPending?'Saving…':'Save draft'}</Button><Button type="submit" name="intent" value="publish" disabled={busy} className="sm:min-w-36">{createPost.isPending?<><Loader2 className="animate-spin"/>Publishing</>:<><Send/>Publish post</>}</Button></DialogFooter>
