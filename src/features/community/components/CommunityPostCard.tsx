@@ -288,7 +288,7 @@ export function CommunityPostCard({
           />
         )}
 
-        <footer className="mt-4 flex items-center gap-1 border-t border-border/70 pt-3">
+        <footer className="community-post-actions mt-4 flex items-center gap-1 border-t border-border/70 pt-3">
           {isReadOnly ? <>
             <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground"><Heart className="size-4" />{post.like_count}</span>
             <Button variant="ghost" size="sm" aria-expanded={commentsExpanded} aria-controls={`comments-${post.id}`} onClick={() => setCommentsExpanded(current => !current)}><MessageCircle />{post.comment_count}</Button>
