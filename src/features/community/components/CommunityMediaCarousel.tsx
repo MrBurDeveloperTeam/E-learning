@@ -296,7 +296,7 @@ export function CommunityMediaCarousel({
       </div>
 
       {count > 1 && (
-        <div className="mt-2 flex justify-center gap-1.5" aria-label="Choose media item">
+        <div className="mt-2 flex justify-center" aria-label="Choose media item">
           {media.map((item, index) => (
             <button
               key={item.id}
@@ -304,11 +304,16 @@ export function CommunityMediaCarousel({
               aria-label={`Show media ${index + 1}`}
               aria-current={index === activeIndex ? "true" : undefined}
               onClick={() => select(index)}
-              className={cn(
-                "size-2.5 cursor-pointer rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                index === activeIndex ? "w-5 bg-primary" : "bg-border hover:bg-muted-foreground/60",
-              )}
-            />
+              className="group grid size-6 shrink-0 cursor-pointer place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "size-1.5 rounded-full transition-all",
+                  index === activeIndex ? "w-3 bg-primary" : "bg-border group-hover:bg-muted-foreground/60",
+                )}
+              />
+            </button>
           ))}
         </div>
       )}

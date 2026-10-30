@@ -1,6 +1,6 @@
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { ArrowLeft, Compass, FilePenLine, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, UserRoundCheck, X } from 'lucide-react'
+import { ArrowDownWideNarrow, ArrowLeft, Compass, FilePenLine, Home, MessageCircleMore, MessagesSquare, PlaySquare, Search, ShieldCheck, Tags, UserRoundCheck, X } from 'lucide-react'
 import { CommunityPostCard } from '@/features/community/components/CommunityPostCard'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui/button'
@@ -162,7 +162,29 @@ export function CommunityPage() {
 
           {user && activeTab !== 'communities' && activeTab !== 'video' && activeTab !== 'chat' && activeTab !== 'drafts' && activeTab !== 'me' && <div className="mt-5 flex flex-wrap gap-2 sm:hidden">{activeTab === 'home' && <FindPeopleDialog userId={user.id} />}{draftCount > 0 && <DraftsLink count={draftCount} />}<Suspense fallback={null}><CreateCommunityPostDialog userId={user.id} /></Suspense></div>}
 
-          {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'drafts' && activeTab !== 'me' && <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_190px_150px]"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} placeholder="Search posts, topics, or #tags" className="pl-9 pr-9"/>{postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}</div><Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}><SelectTrigger aria-label="Filter by topic"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}><SelectTrigger aria-label="Sort posts"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent></Select></div>}
+          {activeTab !== 'communities' && activeTab !== 'chat' && activeTab !== 'drafts' && activeTab !== 'me' && (
+            <div className="community-feed-filters mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px_150px] sm:gap-2">
+              <div className="relative order-3 sm:order-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input value={postSearch} onChange={event=>setPostSearch(event.target.value)} aria-label="Search Community posts" placeholder="Search posts, topics, or #tags" className="h-12 pl-9 pr-9 sm:h-auto" />
+                {postSearch&&<Button size="icon-sm" variant="ghost" aria-label="Clear Community search" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={()=>setPostSearch('')}><X/></Button>}
+              </div>
+              <div className="relative order-1 sm:order-2">
+                <Tags className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground sm:hidden" aria-hidden="true" />
+                <Select value={topic} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic:value??'all',sort},replace:true})}>
+                  <SelectTrigger aria-label="Filter by topic" className="community-topic-trigger"><SelectValue>{topic === 'all' ? 'All topics' : topic.replaceAll('_', ' ')}</SelectValue></SelectTrigger>
+                  <SelectContent side="bottom" collisionAvoidance={{ side: 'none', fallbackAxisSide: 'none' }}><SelectItem value="all">All topics</SelectItem>{['general_dentistry','implantology','orthodontics','endodontics','periodontology','oral_surgery','prosthodontics','pediatric_dentistry','digital_dentistry','practice_management'].map(value=><SelectItem key={value} value={value}>{value.replaceAll('_',' ')}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="relative order-2 sm:order-3">
+                <ArrowDownWideNarrow className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground sm:hidden" aria-hidden="true" />
+                <Select value={sort} onValueChange={value=>void navigate({to:'/community',search:{tab:activeTab==='home'?undefined:activeTab,q:search.q??'',topic,sort:(value??'relevant') as typeof sort},replace:true})}>
+                  <SelectTrigger aria-label="Sort posts"><SelectValue>{sort === 'relevant' ? 'Relevant' : sort === 'popular' ? 'Popular' : 'Newest'}</SelectValue></SelectTrigger>
+                  <SelectContent><SelectItem value="relevant">Relevant</SelectItem><SelectItem value="popular">Popular</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
           {activeTab === 'drafts' && user ? <div className="mt-7 rounded-3xl border border-border bg-card p-4 sm:p-6"><Suspense fallback={<CommunityPanelFallback />}><CommunityDrafts userId={user.id} /></Suspense></div> : activeTab === 'communities' && user ? <Suspense fallback={<CommunityPanelFallback />}><CommunityDirectory userId={user.id} /></Suspense> : activeTab === 'chat' && user ? <div className="min-h-0 flex-1"><Suspense fallback={<CommunityPanelFallback />}><DirectMessages userId={user.id} conversations={directConversations.data} conversationsLoading={directConversations.isLoading} /></Suspense></div> : <div className="mt-7 space-y-4" aria-live="polite">
             {postsQuery.isLoading && <CommunityLoadingCard count={3} label="Loading posts" />}
