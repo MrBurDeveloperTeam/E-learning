@@ -393,6 +393,7 @@
 /* Post actions stay plain across Community feeds, spaces, and post details. */
 article .community-post-actions :is([data-slot="button"], [data-slot="dialog-trigger"]) {
   border: 0;
+  border-radius: 999px;
   box-shadow: none;
 }
 
