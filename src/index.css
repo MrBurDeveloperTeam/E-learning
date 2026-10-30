@@ -390,6 +390,18 @@
   color: hsl(var(--foreground));
 }
 
+/* Post actions stay plain across Community feeds, spaces, and post details. */
+article .community-post-actions :is([data-slot="button"], [data-slot="dialog-trigger"]) {
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+article .community-post-actions :is([data-slot="button"], [data-slot="dialog-trigger"]):hover:not(:disabled) {
+  border: 0;
+  box-shadow: none;
+}
+
 /* Keep the SNAI launcher discoverable without covering Community chat controls. */
 .community-ai-dock .snabbb-molar-experience .molar-ai-trigger-wrapper {
   right: 0;
