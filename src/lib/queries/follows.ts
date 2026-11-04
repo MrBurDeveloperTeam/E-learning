@@ -1,31 +1,7 @@
 import { supabase } from '../supabase'
 import { logElearningActivity } from '../logActivityToOdoo'
-import type { Profile } from '../../types'
-
-type FollowProfile = Pick<
-  Profile,
-  | 'user_id'
-  | 'full_name'
-  | 'name'
-  | 'username'
-  | 'avatar_url'
-  | 'specialty'
-  | 'is_verified'
-  | 'is_creator'
-  | 'follower_count'
-  | 'video_count'
->
-
-function normalizeProfile<T extends { profiles: FollowProfile[] | FollowProfile | null }>(
-  row: T
-): Omit<T, 'profiles'> & { profiles: FollowProfile | null } {
-  return {
-    ...row,
-    profiles: Array.isArray(row.profiles)
-      ? row.profiles[0] ?? null
-      : row.profiles,
-  }
-}
+import { fetchPublicProfiles } from './profiles'
+import type { PublicProfile } from '../../types'
 
 export async function followUser(
   followerId: string,
@@ -72,56 +48,36 @@ export async function fetchFollowers(userId: string): Promise<
   Array<{
     follower_id: string
     created_at: string
-    profiles: FollowProfile | null
+    profiles: PublicProfile | null
   }>
 > {
   const { data, error } = await supabase
     .from('follows')
-    .select(`
-      follower_id,
-      created_at,
-      profiles!follows_follower_id_fkey (
-        user_id, full_name, name, username,
-        avatar_url, specialty,
-        is_verified, is_creator,
-        follower_count, video_count
-      )
-    `)
+    .select('follower_id, created_at')
     .eq('following_id', userId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return ((data ?? []) as Array<{
-    follower_id: string
-    created_at: string
-    profiles: FollowProfile[] | FollowProfile | null
-  }>).map(normalizeProfile)
+
+  const rows = (data ?? []) as Array<{ follower_id: string; created_at: string }>
+  const profiles = await fetchPublicProfiles(rows.map((row) => row.follower_id))
+  return rows.map((row) => ({ ...row, profiles: profiles.get(row.follower_id) ?? null }))
 }
 
 export async function fetchFollowing(userId: string): Promise<
   Array<{
     following_id: string
     created_at: string
-    profiles: FollowProfile | null
+    profiles: PublicProfile | null
   }>
 > {
   const { data, error } = await supabase
     .from('follows')
-    .select(`
-      following_id,
-      created_at,
-      profiles!follows_following_id_fkey (
-        user_id, full_name, name, username,
-        avatar_url, specialty,
-        is_verified, is_creator,
-        follower_count, video_count
-      )
-    `)
+    .select('following_id, created_at')
     .eq('follower_id', userId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return ((data ?? []) as Array<{
-    following_id: string
-    created_at: string
-    profiles: FollowProfile[] | FollowProfile | null
-  }>).map(normalizeProfile)
+
+  const rows = (data ?? []) as Array<{ following_id: string; created_at: string }>
+  const profiles = await fetchPublicProfiles(rows.map((row) => row.following_id))
+  return rows.map((row) => ({ ...row, profiles: profiles.get(row.following_id) ?? null }))
 }

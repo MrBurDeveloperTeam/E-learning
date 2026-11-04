@@ -114,6 +114,27 @@ export async function fetchPublicCreatorProfiles(userIds: string[]) {
   )
 }
 
+export async function fetchPublicProfiles(userIds: string[]) {
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))]
+  if (uniqueUserIds.length === 0) {
+    return new Map<string, PublicProfile>()
+  }
+
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select(publicProfileSelect)
+    .in('user_id', uniqueUserIds)
+
+  if (error) throw error
+
+  return new Map(
+    ((data ?? []) as PublicProfile[])
+      .map((profile) => normalizePublicProfile(profile))
+      .filter((profile): profile is PublicProfile => !!profile)
+      .map((profile) => [profile.user_id, profile])
+  )
+}
+
 export async function fetchTopPublicCreators(options?: {
   excludeUserId?: string
   limit?: number
