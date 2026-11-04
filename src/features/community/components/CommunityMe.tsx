@@ -19,11 +19,12 @@ import { useCommunitySettings, useFriendRequests, useRemoveCommunitySettingRelat
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { CommunityManagedPost, CommunityPerson } from '@/features/community/types'
 import type { Profile } from '@/types'
-import { cn, formatViewCount } from '@/lib/utils'
+import { cn, formatViewCount, getDisplayName } from '@/lib/utils'
 import { useProfileImage } from '@/hooks/useProfileImage'
 import { useOdooSessionName } from '@/hooks/useOdooSessionName'
 import { useAuthStore } from '@/store/authStore'
 import { useCreatorVideos } from '@/hooks/useVideos'
+import { useFollowers, useFollowing } from '@/hooks/useFollow'
 import { ACCOUNT_SPECIALTY_NAMES, fetchAccountProfile } from '@/lib/accountProfile'
 import { supabase } from '@/lib/supabase'
 import { useDocumentVisibility } from '@/hooks/useDocumentVisibility'
@@ -40,12 +41,14 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   const isPageVisible = useDocumentVisibility()
   const queryClient = useQueryClient()
   const [followRequestsOpen, setFollowRequestsOpen] = useState(openFollowRequests)
-  const [connectionsView, setConnectionsView] = useState<'following' | null>(null)
+  const [connectionsView, setConnectionsView] = useState<'community-following' | 'elearning-followers' | 'elearning-following' | null>(null)
   const [section, setSection] = useState<ProfileSection>('posts')
   const [backgroundFailed, setBackgroundFailed] = useState(false)
   const activityQuery = useCommunitySettings(userId, section)
   const ownPostsQuery = useCommunitySettings(userId, 'posts')
   const followingQuery = useCommunitySettings(userId, 'following')
+  const elearningFollowersQuery = useFollowers(userId, connectionsView === 'elearning-followers')
+  const elearningFollowingQuery = useFollowing(userId, connectionsView === 'elearning-following')
   // const closeFriendsQuery = useCloseFriends(userId)
   const followRequestsQuery = useFriendRequests(userId)
   const unfollowMutation = useRemoveCommunitySettingRelation(userId, 'following')
@@ -89,6 +92,32 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
   }, [isPageVisible, queryClient, userId])
 
   if (connectionsView) {
+    if (connectionsView !== 'community-following') {
+      const isFollowersView = connectionsView === 'elearning-followers'
+      const query = isFollowersView ? elearningFollowersQuery : elearningFollowingQuery
+      const people = query.data ?? []
+      const title = isFollowersView ? 'E-learning followers' : 'E-learning following'
+      return <div className="mt-7">
+        <div className="flex items-center gap-3 border-b border-border pb-5">
+          <Button variant="ghost" size="icon" aria-label="Back to profile" onClick={() => setConnectionsView(null)}><ArrowLeft /></Button>
+          <div><h3 className="text-2xl font-semibold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{isFollowersView ? 'People who follow your E-learning channel.' : 'People you follow in E-learning.'}</p></div>
+        </div>
+        {query.isLoading && <div className="flex min-h-52 items-center justify-center"><LoadingSpinner size="lg" /></div>}
+        {query.isError && <div className="mt-5"><RetryCard onRetry={() => void query.refetch()} /></div>}
+        {!query.isLoading && !query.isError && people.length === 0 && <div className="mt-5"><EmptyState icon={<UsersRound />} title={isFollowersView ? 'No followers yet' : 'Not following anyone yet'} description={isFollowersView ? 'People who follow your E-learning channel will appear here.' : 'People you follow in E-learning will appear here.'} /></div>}
+        {!query.isLoading && !query.isError && people.length > 0 && <div className="mt-5 space-y-3">{people.map((entry) => {
+          const person = entry.profiles
+          const personId = 'follower_id' in entry ? entry.follower_id : entry.following_id
+          const name = getDisplayName(person, 'E-learning member')
+          return <article key={personId} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
+            <UserAvatar name={name} avatarUrl={person?.avatar_url} userId={personId} size={48} />
+            <div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 truncate font-semibold">{name}{person?.is_verified && <VerifiedBadge />}</p><p className="text-xs text-muted-foreground">{person?.specialty || (person ? 'E-learning member' : 'Profile unavailable')}</p></div>
+            {person && <Button variant="ghost" render={<Link to="/channel/$userId" params={{ userId: personId }} />}>View channel</Button>}
+          </article>
+        })}</div>}
+      </div>
+    }
+
     const query = followingQuery
     const people = (query.data ?? []) as CommunityPerson[]
     return <div className="mt-7">
@@ -106,8 +135,8 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
           <div className="min-w-0 flex-1"><p className="truncate font-semibold">{name}</p><p className="text-xs text-muted-foreground">{person.is_mutual ? 'Mutual follow' : 'Following'}</p></div>
           <Button variant="ghost" render={<Link to="/profile/$userId" params={{ userId: person.user_id }} />}>View profile</Button>
           {/*
-          {connectionsView === 'following' && person.is_mutual && <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:!person.is_close_friend}).then(() => toast.success(person.is_close_friend ? 'Removed from Close friends.' : 'Added to Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><Star className="size-4" />{person.is_close_friend ? 'Remove close friend' : 'Add close friend'}</Button>}
-          {connectionsView === 'following' ? <Button variant="outline" disabled={unfollowMutation.isPending||closeFriendAction.isPending} onClick={() => void (async()=>{try{if(person.is_close_friend)await closeFriendAction.mutateAsync({targetUserId:person.user_id,active:false});await unfollowMutation.mutateAsync(person.user_id);toast.success('Unfollowed.')}catch(error){toast.error(error instanceof Error ? error.message : 'Could not unfollow this member.')}})()}><UserMinus className="size-4" />Unfollow</Button> : <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:false}).then(() => toast.success('Removed from Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><UserMinus className="size-4" />Remove</Button>}
+          {connectionsView === 'community-following' && person.is_mutual && <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:!person.is_close_friend}).then(() => toast.success(person.is_close_friend ? 'Removed from Close friends.' : 'Added to Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><Star className="size-4" />{person.is_close_friend ? 'Remove close friend' : 'Add close friend'}</Button>}
+          {connectionsView === 'community-following' ? <Button variant="outline" disabled={unfollowMutation.isPending||closeFriendAction.isPending} onClick={() => void (async()=>{try{if(person.is_close_friend)await closeFriendAction.mutateAsync({targetUserId:person.user_id,active:false});await unfollowMutation.mutateAsync(person.user_id);toast.success('Unfollowed.')}catch(error){toast.error(error instanceof Error ? error.message : 'Could not unfollow this member.')}})()}><UserMinus className="size-4" />Unfollow</Button> : <Button variant="outline" disabled={closeFriendAction.isPending} onClick={() => void closeFriendAction.mutateAsync({targetUserId:person.user_id,active:false}).then(() => toast.success('Removed from Close friends.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not update Close friends.'))}><UserMinus className="size-4" />Remove</Button>}
           */}
           <Button variant="outline" disabled={unfollowMutation.isPending} onClick={() => void unfollowMutation.mutateAsync(person.user_id).then(() => toast.success('Unfollowed.')).catch(error => toast.error(error instanceof Error ? error.message : 'Could not unfollow this member.'))}><UserMinus className="size-4" />Unfollow</Button>
         </article>
@@ -154,10 +183,10 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
       {profile?.bio && <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">{profile.bio}</p>}
       <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5 sm:gap-3">
         <button type="button" onClick={() => { setSection('posts'); document.getElementById('profile-activity')?.scrollIntoView() }} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><FileText className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{ownPostsQuery.isLoading || ownPostsQuery.isError ? '—' : ownPostsQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">Community posts</span></button>
-        <button type="button" onClick={() => setConnectionsView('following')} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><UserRoundCheck className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{followingQuery.isLoading || followingQuery.isError ? '—' : followingQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">Community following</span></button>
+        <button type="button" onClick={() => setConnectionsView('community-following')} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><UserRoundCheck className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{followingQuery.isLoading || followingQuery.isError ? '—' : followingQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">Community following</span></button>
         <a href="#profile-videos" className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><PlaySquare className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{videosQuery.isLoading || videosQuery.isError ? '—' : videosQuery.data?.length ?? 0}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning videos</span></a>
-        <div className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4"><UsersRound className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{formatViewCount(profile?.follower_count ?? 0)}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning followers</span></div>
-        <div className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4"><UserRoundCheck className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{formatViewCount(profile?.following_count ?? 0)}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning following</span></div>
+        <button type="button" onClick={() => setConnectionsView('elearning-followers')} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><UsersRound className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{formatViewCount(profile?.follower_count ?? 0)}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning followers</span></button>
+        <button type="button" onClick={() => setConnectionsView('elearning-following')} className="flex min-h-28 flex-col rounded-2xl border border-border bg-muted/55 p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><UserRoundCheck className="mb-3 size-5 text-primary" /><strong className="block text-xl leading-none">{formatViewCount(profile?.following_count ?? 0)}</strong><span className="mt-2 text-xs font-medium text-muted-foreground">E-learning following</span></button>
       </div>
       </div>
     </section>
