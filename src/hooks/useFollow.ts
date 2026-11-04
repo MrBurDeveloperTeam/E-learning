@@ -199,18 +199,18 @@ export function useFollowToggle(followingId: string) {
   }
 }
 
-export function useFollowers(userId: string) {
+export function useFollowers(userId: string, enabled = true) {
   return useQuery({
     queryKey: ['followers', userId],
     queryFn: () => fetchFollowers(userId),
-    enabled: !!userId,
+    enabled: enabled && !!userId,
   })
 }
 
-export function useFollowing(userId: string) {
+export function useFollowing(userId: string, enabled = true) {
   return useQuery({
     queryKey: ['following', userId],
     queryFn: () => fetchFollowing(userId),
-    enabled: !!userId,
+    enabled: enabled && !!userId,
   })
 }
