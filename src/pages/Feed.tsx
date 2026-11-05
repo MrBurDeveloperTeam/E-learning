@@ -49,12 +49,12 @@ export function Feed() {
         {session && following.length > 0 && (
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-medium text-foreground">
+              <h2 id="following-channels-heading" className="text-sm font-medium text-foreground">
                 Channels you follow
               </h2>
               <span className="text-xs text-muted-foreground/60">{following.length}</span>
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="channels-scrollbar flex gap-3 overflow-x-auto pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" role="region" aria-labelledby="following-channels-heading" tabIndex={0}>
               {following.map((entry) => {
                 const creator = entry.profiles
                 if (!creator) return null

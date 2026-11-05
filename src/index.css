@@ -320,6 +320,21 @@
 
 
 @layer utilities {
+  .channels-scrollbar {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.65) hsl(var(--muted) / 0.5);
+    scrollbar-width: thin;
+  }
+  .channels-scrollbar::-webkit-scrollbar {
+    height: 8px;
+  }
+  .channels-scrollbar::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: hsl(var(--muted) / 0.5);
+  }
+  .channels-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: hsl(var(--muted-foreground) / 0.65);
+  }
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
