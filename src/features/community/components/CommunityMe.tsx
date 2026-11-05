@@ -111,7 +111,7 @@ export function CommunityMe({ userId, profile, openFollowRequests = false }: { u
           const name = getDisplayName(person, 'E-learning member')
           return <article key={personId} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
             <UserAvatar name={name} avatarUrl={person?.avatar_url} userId={personId} size={48} />
-            <div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 truncate font-semibold">{name}{person?.is_verified && <VerifiedBadge />}</p><p className="text-xs text-muted-foreground">{person?.specialty || (person ? 'E-learning member' : 'Profile unavailable')}</p></div>
+            <div className="min-w-0 flex-1"><p className="flex min-w-0 items-center gap-1.5 font-semibold"><span className="min-w-0 truncate">{name}</span>{person?.is_verified && <VerifiedBadge />}</p><p className="text-xs text-muted-foreground">{person?.specialty || (person ? 'E-learning member' : 'Profile unavailable')}</p></div>
             {person && <Button variant="ghost" render={<Link to="/channel/$userId" params={{ userId: personId }} />}>View channel</Button>}
           </article>
         })}</div>}
